@@ -90,7 +90,8 @@ def cek_secret(app):
 BATAS_COOKIE_JAM = 24
 # Request otomatis (polling) tidak dihitung sebagai aktivitas, supaya layar yang ditinggal tetap logout
 PATH_POLLING = ("/api/timbang/status", "/health", "/api/notifikasi", "/api/dashboard/arus",
-                "/api/admin/sesi", "/api/security/list-tiket-aktif")
+                "/api/admin/sesi", "/api/security/list-tiket-aktif",
+                "/api/analytics/saya")
 
 
 def pasang_cookie(app):
@@ -188,6 +189,10 @@ CSP = ("default-src 'self'; "
        "script-src 'self'; style-src 'self' 'unsafe-inline'; "
        "img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self'; "
        "worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'")
+# Laporan Analytics dibuka dalam bingkai (routes/analytics.py). Satu situs (/analytics) cukup 'self'; bila ANALYTICS_URL alamat
+# lengkap (server / port lain, mis. saat pengembangan), asalnya diizinkan sebagai isi bingkai.
+_ANALYTICS = re.match(r"https?://[^/]+", os.getenv("ANALYTICS_URL", ""))
+CSP += f"; frame-src 'self'{' ' + _ANALYTICS.group(0) if _ANALYTICS else ''}"
 
 
 def pasang_header_keamanan(app):

@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+/* Tampilan disamakan dengan CPOS: font Plus Jakarta Sans & JetBrains Mono (public/fonts, sama dengan CPOS static/vendor/fonts)
+   dan warna utama biru CPOS (blue-600). Komponen Analytics memakai kelas sky-*, jadi skala sky diganti nilai blue. */
+@theme {
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --color-sky-50: #eff6ff;
+  --color-sky-100: #dbeafe;
+  --color-sky-200: #bfdbfe;
+  --color-sky-300: #93c5fd;
+  --color-sky-400: #60a5fa;
+  --color-sky-500: #3b82f6;
+  --color-sky-600: #2563eb;
+  --color-sky-700: #1d4ed8;
+  --color-sky-800: #1e40af;
+  --color-sky-900: #1e3a8a;
+  --color-sky-950: #172554;
+}
+
 /* Klik mouse pada grafik tidak memunculkan kotak fokus; navigasi keyboard tetap menampilkannya */
 .recharts-wrapper:focus:not(:focus-visible),
 .recharts-wrapper :focus:not(:focus-visible) {

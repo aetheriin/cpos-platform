@@ -6,6 +6,7 @@ saja (tanpa banyak worker). Isi .env dijelaskan di README.
 import asyncio
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from typing import Annotated
@@ -15,7 +16,7 @@ from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Request, Res
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from inti import ekspor, konfigurasi, sandi as kata_sandi
+from inti import cpos, ekspor, konfigurasi, sandi as kata_sandi
 from inti.aktivitas import JENIS as JENIS_AKTIVITAS, LogAktivitas, ringkas_pengguna
 from inti.db import get_connection_app
 from inti.filter import FilterTidakValid
@@ -131,12 +132,26 @@ def periksa_izin_awal():
         log.warning("Role ini punya akun tetapi belum punya akses ke laporan apa pun (atur di menu Permission Control): %s", ", ".join(tanpa))
 
 
+# Mode CPOS: sesi dipegang CPOS, jadi data laporan milik sesi CPOS yang sudah lama tidak memanggil Analytics dibuang di sini
+_cpos_terakhir = {}      # pemilik "cpos:<sid>" -> waktu terakhir terlihat (monotonic)
+
+
+def _lepas_cpos_diam():
+    batas = max(pengaturan.baca()["idle_menit"], 30) * 60
+    sekarang = time.monotonic()
+    for pemilik, waktu in list(_cpos_terakhir.items()):
+        if sekarang - waktu > batas:
+            _cpos_terakhir.pop(pemilik, None)
+            _sesi_berakhir(pemilik, pemilik)
+
+
 async def _sapu_sesi():
     """Membuang sesi kedaluwarsa (dan data laporannya) walau tidak ada yang mengaksesnya lagi."""
     while True:
         await asyncio.sleep(SAPU_SESI_DETIK)
         try:
             sesi_login.bersihkan()
+            _lepas_cpos_diam()
         except Exception:  # noqa: BLE001 - penyapu harus tetap jalan
             log.exception("Gagal menyapu sesi kedaluwarsa")
 
@@ -148,7 +163,10 @@ def periksa_ekspor_awal():
 
 @asynccontextmanager
 async def _siklus_hidup(_app):
-    periksa_pengguna_awal()
+    if cpos.aktif():
+        log.info("Login dan hak akses laporan mengikuti CPOS di %s", konfigurasi.CPOS_URL)
+    else:
+        periksa_pengguna_awal()
     periksa_ekspor_awal()
     penyapu = asyncio.create_task(_sapu_sesi())
     try:
@@ -205,8 +223,30 @@ def _tanpa_izin_db(e, perintah, tabel="pengguna"):
     raise HTTPException(503, f"Akun database yang dipakai server tidak punya izin {perintah} pada tabel {tabel}. Hubungi administrator database.")
 
 
-def pengguna_saat_ini(sesi_id: str | None = Cookie(default=None, alias=NAMA_COOKIE)):
-    """Dibaca ulang dari tabel pengguna setiap permintaan (dengan cache singkat), jadi akun yang dihapus atau diganti role-nya langsung berlaku."""
+def _pengguna_cpos(request):
+    """Mode CPOS: pengguna & laporan yang boleh dibuka ditanyakan ke CPOS dengan cookie sesi CPOS dari browser."""
+    try:
+        data = cpos.pengguna(request.cookies.get(konfigurasi.CPOS_COOKIE) if request is not None else None,
+                             request.headers.get("user-agent") if request is not None else None,
+                             (request.headers.get("x-forwarded-for") if request is not None else None) or _ip(request))
+    except cpos.CposTidakTersedia as e:
+        log.error("CPOS tidak dapat dihubungi di %s: %s", konfigurasi.CPOS_URL, e)
+        raise HTTPException(503, "CPOS tidak dapat dihubungi untuk memeriksa login. Coba lagi sebentar atau hubungi administrator.")
+    if not data:
+        raise HTTPException(401, "Sesi CPOS berakhir. Silakan masuk lagi di CPOS.")
+    pemilik = f"cpos:{data.get('sid') or data['username']}"
+    _cpos_terakhir[pemilik] = time.monotonic()
+    company = data.get("company")
+    return {"id": data["id"], "username": data["username"], "nama": data["nama"], "role": data["role"], "divisi": "",
+            "company": ", ".join(company) if company else "Semua", "admin": False, "cpos": True,
+            "laporan": [i for i in LAPORAN if i in set(data["laporan"])], "_sid": pemilik}
+
+
+def pengguna_saat_ini(sesi_id: str | None = Cookie(default=None, alias=NAMA_COOKIE), request: Request = None):
+    """Dibaca ulang dari tabel pengguna setiap permintaan (dengan cache singkat), jadi akun yang dihapus atau diganti role-nya langsung berlaku.
+    Mode CPOS (CPOS_URL diisi): dari sesi CPOS."""
+    if cpos.aktif():
+        return _pengguna_cpos(request)
     username = sesi_login.ambil(sesi_id)
     if not username:     # sesi yang diakhiri paksa membawa alasannya sendiri
         raise HTTPException(401, sesi_login.alasan(sesi_id) or "Belum masuk atau sesi berakhir. Silakan masuk lagi.")
@@ -323,11 +363,13 @@ def _ringkas(p):
 @app.get("/api/status")
 def status():
     """Tanpa login: dipakai halaman masuk."""
-    return {"ok": True, "nama": konfigurasi.NAMA_APLIKASI}
+    return {"ok": True, "nama": konfigurasi.NAMA_APLIKASI, "cpos": cpos.aktif()}
 
 
 @app.post("/api/auth/masuk")
 def masuk(perm: PermintaanLogin, response: Response, request: Request = None):
+    if cpos.aktif():
+        raise HTTPException(400, "Masuk lewat CPOS, lalu buka laporan dari menu CPOS.")
     if len(perm.username) > 100 or len(perm.sandi) > 200:
         raise HTTPException(422, "Username atau password terlalu panjang")
     kunci = perm.username.strip().lower()
@@ -381,7 +423,8 @@ def keluar(response: Response, sesi_id: str | None = Cookie(default=None, alias=
 
 @app.get("/api/auth/saya")
 def saya(user=Depends(pengguna_saat_ini)):
-    return {**{k: v for k, v in user.items() if not k.startswith("_")}, "batas_idle_detik": sesi_login.idle}
+    # Mode CPOS: batas idle dijaga CPOS sendiri, jadi frontend tidak mengeluarkan pengguna
+    return {**{k: v for k, v in user.items() if not k.startswith("_")}, "batas_idle_detik": 0 if cpos.aktif() else sesi_login.idle}
 
 
 class PermintaanGantiSandi(BaseModel):
@@ -391,6 +434,8 @@ class PermintaanGantiSandi(BaseModel):
 
 @app.post("/api/auth/ganti-sandi")
 def ganti_sandi(perm: PermintaanGantiSandi, request: Request = None, user=Depends(pengguna_saat_ini)):
+    if cpos.aktif():
+        raise HTTPException(400, "Password diganti di CPOS.")
     """Salah password lama dibatasi seperti login, supaya sesi yang tertinggal terbuka tidak bisa dipakai menebak password."""
     if len(perm.sandi_lama) > 200 or len(perm.sandi_baru) > 200:
         raise HTTPException(422, "Password terlalu panjang (maksimal 200 karakter).")

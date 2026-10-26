@@ -10,6 +10,7 @@ import { IkonBulan, IkonKunci, IkonMatahari, IkonMenu } from './komponen/Ikon'
 import Login from './komponen/Login'
 import MenuAkun from './komponen/MenuAkun'
 import Sidebar, { ID_AKTIVITAS, ID_IZIN, ID_PENGGUNA, ID_STRUKTUR } from './komponen/Sidebar'
+import { keLoginCpos, SEMATAN } from './lib/cpos'
 import { hariIni, salam } from './lib/data'
 import { useJagaIdle } from './lib/idle'
 import { idDariAlamat, keLogin, keluarDariLogin, pindahAlamat } from './lib/rute'
@@ -37,6 +38,7 @@ export default function App() {
   const [merek, setMerek] = useState('')
   const [pesanAlamat, setPesanAlamat] = useState('')
   const [batasIdle, setBatasIdle] = useState(0) // detik; dari server (diatur administrator), 0 = tanpa batas
+  const [modeCpos, setModeCpos] = useState(SEMATAN) // login & hak akses mengikuti CPOS (backend CPOS_URL); dibuka dari menu CPOS
   const sudahOtomatis = useRef(false)
   const [tema, gantiTema] = useTema()
 
@@ -58,15 +60,20 @@ export default function App() {
       bersihkan()
       setPesanLogin(pesan || 'Sesi Anda berakhir. Silakan masuk lagi.')
     })
-    // Cookie sesi mungkin masih berlaku (mis. halaman dimuat ulang)
-    sayaSendiri()
-      .then((p) => {
+    // Cookie sesi mungkin masih berlaku (mis. halaman dimuat ulang). Status server ditunggu juga: di mode CPOS tidak ada halaman masuk sendiri.
+    Promise.allSettled([sayaSendiri(), statusServer()]).then(([saya, st]) => {
+      if (st.status === 'fulfilled') {
+        setMerek(st.value.nama ?? '')
+        if (st.value.nama && typeof document !== 'undefined') document.title = st.value.nama
+        if (st.value.cpos) setModeCpos(true)
+      }
+      if (saya.status === 'fulfilled') {
         keluarDariLogin() // sudah masuk tetapi membuka /login: langsung ke tujuan
-        setBatasIdle(p.batas_idle_detik ?? 0)
-        setPengguna(p)
-      })
-      .catch(() => {})
-      .finally(() => setCek(false))
+        setBatasIdle(saya.value.batas_idle_detik ?? 0)
+        setPengguna(saya.value)
+      }
+      setCek(false)
+    })
   }, [])
 
   useEffect(() => {
@@ -105,15 +112,6 @@ export default function App() {
       batal = true
     }
   }, [pengguna])
-
-  useEffect(() => {
-    statusServer()
-      .then((s) => {
-        setMerek(s.nama ?? '')
-        if (s.nama && typeof document !== 'undefined') document.title = s.nama
-      })
-      .catch(() => {})
-  }, [])
 
   const buka = (id) => {
     setAktif(id)
@@ -163,10 +161,24 @@ export default function App() {
 
   // Belum masuk (termasuk sesi habis atau baru keluar): alamat apa pun diganti /login, dengan halaman tujuan disimpan di ?ke=
   useEffect(() => {
-    if (!cek && !pengguna) keLogin()
-  }, [cek, pengguna])
+    if (!cek && !pengguna && !modeCpos) keLogin()
+  }, [cek, pengguna, modeCpos])
 
   if (cek) return <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Memuat...</div>
+  if (!pengguna && modeCpos) {
+    return (
+      <section role="status" className="mx-auto mt-16 max-w-md rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+        <span aria-hidden="true" className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+          <IkonKunci className="h-6 w-6" />
+        </span>
+        <h1 className="mt-4 text-lg font-semibold">{pesanLogin || 'Sesi CPOS berakhir atau belum masuk.'}</h1>
+        <p className="mt-1 text-sm text-slate-600">Laporan Analytics dibuka dari menu CPOS. Masuk lagi di CPOS untuk melanjutkan.</p>
+        <button type="button" onClick={keLoginCpos} className="mt-5 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700">
+          Masuk ke CPOS
+        </button>
+      </section>
+    )
+  }
   if (!pengguna) {
     return (
       <Login
@@ -197,9 +209,10 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-800">
-      {menu && <Sidebar nama={merek} tanpaAkses={tanpaAkses} laporan={laporan} aktif={aktif} status={status} onPilih={pilih} admin={pengguna.admin} pengguna={pengguna} onKeluar={keluarAkun} />}
+      {menu && !SEMATAN && <Sidebar nama={merek} tanpaAkses={tanpaAkses} laporan={laporan} aktif={aktif} status={status} onPilih={pilih} admin={pengguna.admin} pengguna={pengguna} onKeluar={keluarAkun} />}
 
       <div className="min-w-0 flex-1">
+        {!SEMATAN && (
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur">
           <button
             type="button"
@@ -238,6 +251,7 @@ export default function App() {
           </button>
           {!menu && <MenuAkun pengguna={pengguna} onKeluar={keluarAkun} arah="bawah" />}
         </header>
+        )}
 
         {/* Tata letak padat memakai seluruh lebar layar dengan tepi tipis; halaman administrasi tetap selebar biasa */}
         <main className={tataLetak === 'padat' && !ID_ADMIN.includes(aktif) ? 'p-3 sm:px-4' : 'mx-auto max-w-6xl p-4 sm:p-6'}>

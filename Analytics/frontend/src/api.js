@@ -12,9 +12,13 @@ export const aturSesiHabis = (fn) => {
   saatSesiHabis = fn
 }
 
+// Aplikasi berada di bawah base (mis. /analytics/), jadi /api/... dipanggil sebagai /analytics/api/...
+const DASAR = import.meta.env.BASE_URL.replace(/\/$/, '')
+export const alamatApi = (url) => (url.startsWith('/') ? DASAR + url : url)
+
 async function ambilRespons(url, opsi = {}) {
   const { tanpa401, ...opsiFetch } = opsi // tanpa401: panggilan login/cek sesi, 401-nya bukan "sesi berakhir"
-  const res = await fetch(url, { credentials: 'same-origin', cache: 'no-store', ...opsiFetch })
+  const res = await fetch(alamatApi(url), { credentials: 'same-origin', cache: 'no-store', ...opsiFetch })
   if (!res.ok) {
     let pesan = `Terjadi kesalahan (${res.status})`
     let dariServer // pesan yang benar-benar ditulis server; kosong kalau jawabannya tidak membawa pesan (mis. dari proxy)

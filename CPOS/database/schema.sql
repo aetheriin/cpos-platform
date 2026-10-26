@@ -1270,12 +1270,12 @@ JOIN dbo.Menu p ON p.MenuCode = v.induk;
 -- Menu Lv3 (bagian halaman / sub-halaman)
 INSERT INTO dbo.Menu (MenuCode, MenuName, ParentMenuID, MenuLevel, Url, SortOrder)
 SELECT v.kode, v.nama, p.MenuID, 3, v.url, v.urut
-FROM (VALUES ('AN_PR_PO',         N'PR & PO Outstanding',       'AN_DASHBOARD', '/halaman/AN_PR_PO',    1),
-             ('AN_PO_PI',         N'PO & PI Outstanding',       'AN_DASHBOARD', '/halaman/AN_PO_PI',    2),
-             ('AN_PVR_KPI',       N'PVR KPI',                   'AN_DASHBOARD', '/halaman/AN_PVR_KPI',  3),
-             ('AN_PV_KPI',        N'PV KPI',                    'AN_DASHBOARD', '/halaman/AN_PV_KPI',   4),
-             ('AN_WB_FRAUD',      N'Weighbridge Fraud Analyst', 'AN_DASHBOARD', '/halaman/AN_WB_FRAUD', 5),
-             ('AN_TBS',           N'TBS Transaction Analyst',   'AN_DASHBOARD', '/halaman/AN_TBS',      6),
+FROM (VALUES ('AN_PR_PO',         N'PR & PO Outstanding',       'AN_DASHBOARD', '/an/pr_po',            1),
+             ('AN_PO_PI',         N'PO & PI Outstanding',       'AN_DASHBOARD', '/an/po_pi',            2),
+             ('AN_PVR_KPI',       N'PVR KPI',                   'AN_DASHBOARD', '/an/penilaian_pvr',    3),
+             ('AN_PV_KPI',        N'PV KPI',                    'AN_DASHBOARD', '/an/penilaian_pv',     4),
+             ('AN_WB_FRAUD',      N'Weighbridge Fraud Analyst', 'AN_DASHBOARD', '/an/palm_weighbridge', 5),
+             ('AN_TBS',           N'TBS Transaction Analyst',   'AN_DASHBOARD', '/an/penerimaan_tbs',      6),
              ('AN_COST',          N'Transaction Cost Analyst',  'AN_DASHBOARD', '/halaman/AN_COST',     7),
              ('FORM_SECURITY',    N'Security',                  'FORM',  '/weighbridge?view=form&tab=security',  1),
              ('FORM_TIMBANGAN',   N'Timbangan',                 'FORM',  '/weighbridge?view=form&tab=timbangan', 2),
@@ -1298,7 +1298,11 @@ UPDATE dbo.Menu SET AppCode = 'ANALYTICS' WHERE MenuCode LIKE 'AN[_]%';
 -- Halaman yang isinya belum ada (web lain / menyusul) memakai halaman kosong /halaman/<kode>: menu tetap bisa dibuka.
 -- Tickets sementara juga ke halaman kosong (tahap 1); daftar tiket CPOS tetap di /weighbridge?view=list.
 UPDATE dbo.Menu SET Url = '/halaman/' + MenuCode
-WHERE MenuCode IN ('LIST', 'FM_IT_HELPDESK', 'FM_NEW_ITEM', 'RP_PR', 'RP_PO', 'RP_PI', 'RP_GT', 'RP_ITEM');
+WHERE MenuCode IN ('LIST', 'FM_IT_HELPDESK', 'FM_NEW_ITEM', 'RP_PR', 'RP_PO', 'RP_ITEM');
+-- Laporan Analytics (React + FastAPI, folder Analytics\) dibuka di dalam CPOS lewat /an/<id laporan Analytics>
+-- (routes/analytics.py). Hak lihatnya = hak Lihat menu ini di Admin › Hak Akses.
+UPDATE dbo.Menu SET Url = '/an/pi_pvr', AppCode = 'ANALYTICS' WHERE MenuCode = 'RP_PI';
+UPDATE dbo.Menu SET Url = '/an/pi_gt', AppCode = 'ANALYTICS' WHERE MenuCode = 'RP_GT';
 -- Aksi yang berlaku per menu selain View (kolom yang bisa dicentang di Admin › Hak Akses):
 -- 2 Create, 3 Edit, 0 Delete, 5 Approve, 6 Reject, 7 Done. Halaman yang punya anak (FORM, MASTER, FACE_RECOGNITION)
 -- diatur lewat anaknya.

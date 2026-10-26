@@ -75,6 +75,12 @@ def pilihan(nama, bawaan, sah):
     return nilai
 
 
+# ---------- Masuk lewat CPOS (mode gabungan) ----------
+# Diisi = login, sesi, dan hak akses laporan mengikuti CPOS (inti/cpos.py); tabel pengguna & izin di bawah tidak dipakai.
+# Isi alamat CPOS yang bisa dihubungi server ini, mis. http://127.0.0.1:5000. Kosong = Analytics berdiri sendiri seperti semula.
+CPOS_URL = teks("CPOS_URL", "")
+CPOS_COOKIE = teks("CPOS_COOKIE", "wb_sesi")           # nama cookie sesi CPOS (SESSION_COOKIE_NAME di CPOS utils/keamanan.py)
+
 # ---------- Tabel di database aplikasi (tempat akun login) ----------
 TABEL_PENGGUNA = teks("DB_APP_TABEL", "users")
 TABEL_ROLE = teks("DB_APP_TABEL_ROLE", "role")
