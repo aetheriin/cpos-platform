@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% from "partials/layout/_macros.html" import section_header, judul_halaman %}
+{% import "rekapin/_rekapin.html" as r with context %}
+{% block title %}Dashboard RekapIn · CPOS{% endblock %}
+{% block info_bar %}{% endblock %}{% block info_bar_script %}{% endblock %}
+{% block tab_header %}
+{% call judul_halaman('Dashboard RekapIn', 'Ringkasan harga harian dan request operator di perusahaan Anda.', 'fa-chart-simple') %}
+    <span class="kpi-tanggal text-sm px-3 py-1.5"><i class="fa-regular fa-calendar mr-1.5"></i>{{ hari[-1].strftime('%d-%m-%Y') }}</span>
+{% endcall %}
+{% endblock %}
+{% block tab_content %}
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
+  {% for label, nilai, ket, ikon, warna in [('Data Harga', jumlah_harga, 'catatan harga tersimpan', 'fa-chart-line', 'text-emerald-600 bg-emerald-50'),
+      ('Request Aktif', ringkas.Pending + ringkas.Approved, 'menunggu tindak lanjut', 'fa-clipboard-list', 'text-red-600 bg-red-50'),
+      ('Operator', jumlah_operator, 'operator timbangan di area Anda', 'fa-users', 'text-amber-600 bg-amber-50'),
+      ('Kategori Kesalahan', jumlah_kategori, 'kategori aktif', 'fa-triangle-exclamation', 'text-blue-600 bg-blue-50')] %}
+  <div class="stat-card">
+    <div class="flex items-start justify-between"><p class="stat-label">{{ label }}</p><span class="w-9 h-9 rounded-lg inline-flex items-center justify-center {{ warna }}"><i class="fa-solid {{ ikon }}"></i></span></div>
+    <p class="text-3xl font-bold font-mono text-slate-900">{{ nilai }}</p><p class="text-xs text-slate-400 mt-1">{{ ket }}</p>
+  </div>
+  {% endfor %}
+</div>
+
+{% if terbaru %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+  {% for c, h in terbaru %}
+  <div class="stat-card">
+    <div class="flex items-start justify-between gap-2"><div><p class="stat-label">Harga terbaru</p><p class="text-base font-bold text-slate-900">{{ c.id_company }} <span class="text-sm font-medium text-slate-500">· {{ c.nama }}</span></p></div><span class="kpi-tanggal">{{ r.tgl(h.tanggal) }}</span></div>
+    <div class="grid grid-cols-2 gap-3 mt-3">
+      <div class="mini-stat"><p class="mini-stat-label">Harga CPO</p><p class="mini-stat-nilai">Rp {{ r.rp(h.harga_cpo) }}</p></div>
+      <div class="mini-stat"><p class="mini-stat-label">Harga Kernel</p><p class="mini-stat-nilai">Rp {{ r.rp(h.harga_kernel) }}</p></div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% set WARNA = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2'] %}
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-5">
+  {% for kunci, judul in [('cpo', 'Harga CPO'), ('kernel', 'Harga Kernel')] %}
+  {% set semua = [] %}{% for c in seri %}{% for v in seri[c][kunci] if v is not none %}{% set _ = semua.append(v) %}{% endfor %}{% endfor %}
+  <div class="section-box">
+    {{ section_header('tren-' ~ kunci, 'Tren 7 Hari · ' ~ judul) }}
+    <div id="body-tren-{{ kunci }}" class="section-body p-4">
+      {% if semua %}
+      {% set lo = semua|min %}{% set hi = semua|max %}{% set rentang = (hi - lo) or 1 %}
+      <svg viewBox="0 0 560 190" class="block w-full h-auto" role="img" aria-label="Tren {{ judul }}">
+        {% for y in [20, 70, 120, 170] %}<line x1="40" x2="550" y1="{{ y }}" y2="{{ y }}" stroke="#e2e8f0" stroke-dasharray="3 4"/>{% endfor %}
+        <text x="36" y="24" font-size="10" text-anchor="end" fill="#94a3b8">{{ r.rp(hi) }}</text>
+        <text x="36" y="174" font-size="10" text-anchor="end" fill="#94a3b8">{{ r.rp(lo) }}</text>
+        {% for c in seri %}{% set warna = WARNA[loop.index0 % 6] %}
+        <polyline fill="none" stroke="{{ warna }}" stroke-width="2.5" points="{% for v in seri[c][kunci] %}{% if v is not none %}{{ 60 + loop.index0 * 80 }},{{ 170 - (v - lo) / rentang * 150 }} {% endif %}{% endfor %}"/>
+        {% for v in seri[c][kunci] %}{% if v is not none %}<circle cx="{{ 60 + loop.index0 * 80 }}" cy="{{ 170 - (v - lo) / rentang * 150 }}" r="3.5" fill="{{ warna }}"><title>{{ c }} {{ hari[loop.index0].strftime('%d-%m') }}: Rp {{ r.rp(v) }}</title></circle>{% endif %}{% endfor %}
+        {% endfor %}
+        {% for t in hari %}<text x="{{ 60 + loop.index0 * 80 }}" y="187" font-size="10" text-anchor="middle" fill="#94a3b8">{{ t.strftime('%d-%m') }}</text>{% endfor %}
+      </svg>
+      <div class="flex flex-wrap items-center gap-4 text-xs text-slate-600 mt-2">{% for c in seri %}<span class="inline-flex items-center gap-1.5"><svg width="10" height="10"><rect width="10" height="10" rx="2" fill="{{ WARNA[loop.index0 % 6] }}"/></svg>{{ c }}</span>{% endfor %}</div>
+      {% else %}
+      <p class="text-sm text-slate-400 text-center py-10">Belum ada harga dalam 7 hari terakhir.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
+  <div class="section-box xl:col-span-2">
+    {% call section_header('harga-terbaru', 'Harga Terbaru') %}{% if boleh_lihat('RK_HARGA') %}<a href="{{ url_for('rekapin.halaman_harga') }}" class="link-aksi text-blue-600 text-xs" data-henti-klik>Lihat semua <i class="fa-solid fa-arrow-right ml-1"></i></a>{% endif %}{% endcall %}
+    <div id="body-harga-terbaru" class="section-body overflow-x-auto"><table class="w-full text-left text-sm">
+      <thead class="table-header-row"><tr><th class="table-cell">Perusahaan</th><th class="table-cell">Tanggal</th><th class="table-cell text-right">Harga CPO</th><th class="table-cell text-right">Harga Kernel</th><th class="table-cell text-right">OER CPO</th></tr></thead>
+      <tbody class="divide-y divide-slate-100">{% for h in harga %}<tr class="hover:bg-slate-50"><td class="table-cell font-semibold">{{ h.id_company }}</td><td class="table-cell font-mono">{{ r.tgl(h.tanggal) }}</td><td class="table-cell text-right font-mono">{{ r.rp(h.harga_cpo) }}</td><td class="table-cell text-right font-mono">{{ r.rp(h.harga_kernel) }}</td><td class="table-cell text-right"><span class="badge-status bg-emerald-50 text-emerald-700">{{ '%.2f'|format(h.oer_cpo) }}%</span></td></tr>
+      {% else %}<tr><td colspan="5" class="table-cell text-center text-slate-400 py-8">Belum ada data harga</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+  <div class="section-box">
+    {% call section_header('request-menunggu', 'Request Menunggu') %}<span class="badge-status bg-amber-100 text-amber-800">{{ ringkas.Pending }}</span>{% endcall %}
+    <div id="body-request-menunggu" class="section-body divide-y divide-slate-100">
+      {% for q in menunggu %}
+      <div class="flex items-center gap-3 px-4 py-3"><span class="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0"></span>
+        <div class="flex-1 min-w-0"><p class="text-sm font-semibold font-mono text-slate-900 truncate">{{ q.tiket }}</p><p class="text-xs text-slate-500 truncate">{{ q.kategori }} · {{ q.operator }}</p></div></div>
+      {% else %}
+      <p class="px-4 py-8 text-sm text-slate-400 text-center">Tidak ada request yang menunggu</p>
+      {% endfor %}
+      {% if boleh_lihat('RK_REQUEST') %}<a href="{{ url_for('rekapin.halaman_request') }}" class="flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-blue-600">Buka daftar request <i class="fa-solid fa-arrow-right"></i></a>{% endif %}
+    </div>
+  </div>
+</div>
+<div class="note-info flex items-center gap-2"><i class="fa-solid fa-circle-info"></i><span class="flex-1">Grafik menampilkan tujuh hari kalender terakhir.</span><span class="font-semibold">{{ company|map(attribute='id_company')|join(', ') }}</span></div>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "partials/layout/_macros.html" import section_header, judul_halaman, tombol_ekspor %}
+{% block title %}{{ lap.judul }} · CPOS{% endblock %}
+{% block info_bar %}{% endblock %}{% block info_bar_script %}{% endblock %}
+{# Laporan Pembelian TBS: prosedur ERP (modules/rekapin/erp.py), susunan tabel sama dengan RekapIn (laporan_tbs.py) #}
+{% block tab_header %}
+{{ judul_halaman(lap.judul, 'Laporan pembelian TBS dari ERP per perusahaan.', 'fa-file-lines', 'hijau') }}
+{% endblock %}
+{% block tab_content %}
+{% set periode_teks = tgl(awal) if lap.periode == 'daily' else tgl(awal) ~ ' — ' ~ tgl(akhir) %}
+<form method="get" class="filter-bar">
+  <div><label class="field-label" for="tbsCompany">Perusahaan</label>
+    <select id="tbsCompany" name="company" class="input-field w-64" required>{% for c in company %}<option value="{{ c.id_company }}"{% if c.id_company == pilih %} selected{% endif %}>{{ c.id_company }} · {{ c.nama }}</option>{% endfor %}</select></div>
+  {% if lap.periode == 'daily' %}
+  <div><label class="field-label" for="tbsTanggal">Tanggal</label><input type="date" id="tbsTanggal" name="date" value="{{ awal }}" class="input-field w-48" required></div>
+  {% else %}
+  <div><label class="field-label" for="tbsAwal">Tanggal Awal</label><input type="date" id="tbsAwal" name="start_date" value="{{ awal }}" class="input-field w-48" required></div>
+  <div><label class="field-label" for="tbsAkhir">Tanggal Akhir</label><input type="date" id="tbsAkhir" name="end_date" value="{{ akhir }}" class="input-field w-48" required></div>
+  {% endif %}
+  <div class="self-end"><button type="submit" class="btn-primary"><i class="fa-solid fa-filter"></i> Tampilkan</button></div>
+  <div class="flex-1"></div>
+  {% if pilih and not galat %}<span class="self-end text-sm text-slate-500 pb-2"><b class="text-slate-900">{{ pilih }}</b> · {{ periode_teks }}</span>{% endif %}
+</form>
+
+{% if galat %}
+<div class="note-info flex items-center gap-2 mb-4 bg-red-50 text-red-700 border-red-200"><i class="fa-solid fa-triangle-exclamation"></i><span>{{ galat }}</span></div>
+{% elif not tabel %}
+<div class="section-box"><p class="px-4 py-10 text-center text-sm text-slate-400">Tidak ada data untuk perusahaan dan tanggal tersebut.</p></div>
+{% endif %}
+
+<div class="grid grid-cols-1 {% if jenis == 'daily' and tabel|length > 1 %}xl:grid-cols-2{% endif %} gap-4">
+{% for tb in tabel %}
+  {% set id_tb = 'tbs' ~ loop.index %}
+  {% set judul_tb = (pilih ~ ' · ' ~ periode_teks) if tb.title == 'Rincian Pembelian TBS' else tb.title %}
+  <div class="section-box">
+    {% call section_header(id_tb, judul_tb) %}<div data-henti-klik>{{ tombol_ekspor('body-tabel-' ~ id_tb, lap.judul ~ ' ' ~ pilih) }}</div>{% endcall %}
+    <div id="body-{{ id_tb }}" class="section-body overflow-x-auto"><table class="w-full text-left text-sm">
+      <thead class="table-header-row">
+        {% if tb.group_headers %}<tr>{% for g in tb.group_headers %}<th class="table-cell text-center border-b border-slate-200" colspan="{{ g.colspan }}">{{ g.label }}</th>{% endfor %}</tr>{% endif %}
+        <tr>{% for k in tb.headers %}<th class="table-cell whitespace-nowrap">{{ k }}</th>{% endfor %}</tr>
+      </thead>
+      <tbody id="body-tabel-{{ id_tb }}" class="divide-y divide-slate-100">
+      {% for row in tb.rows %}{% set ringkas = row.get('_row_type') == 'summary' %}
+        <tr class="{{ 'bg-slate-50 font-semibold' if ringkas else 'hover:bg-slate-50' }}">
+        {% if tb.kind == 'daily' and ringkas %}
+          {% if row['JENIS HARGA'] == 'TOTAL' %}
+          <td class="table-cell" colspan="4">{{ row['JENIS HARGA'] }}</td>
+          <td class="table-cell text-right font-mono">{{ nilai(row['TONASE'], 'TONASE', row, tb.kind) }}</td>
+          <td class="table-cell text-right font-mono">{{ nilai(row['TONASE CPO'], 'TONASE CPO', row, tb.kind) }}</td>
+          {% else %}
+          <td class="table-cell" colspan="5">{{ row['JENIS HARGA'] }}</td>
+          <td class="table-cell text-right font-mono">{{ nilai(row['TONASE CPO'], 'TONASE CPO', row, tb.kind) }}</td>
+          {% endif %}
+        {% else %}
+          {% for k in tb.headers %}{% set v = row.get(k) %}
+          {% if k|upper == 'ATTENSI' %}
+          <td class="table-cell">{% if v %}<span class="badge-status {{ 'bg-emerald-100 text-emerald-700' if v|string|upper|trim == 'NAIK' else ('bg-red-100 text-red-700' if v|string|upper|trim == 'TURUN' else 'bg-slate-200 text-slate-600') }}">{{ v }}</span>{% else %}—{% endif %}</td>
+          {% else %}
+          <td class="table-cell{{ ' text-right font-mono whitespace-nowrap' if v is number else '' }}">{{ tgl(nilai(v, k, row, tb.kind)) }}</td>
+          {% endif %}
+          {% endfor %}
+        {% endif %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+{% endfor %}
+</div>
+{% endblock %}

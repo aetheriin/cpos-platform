@@ -2361,3 +2361,15 @@ BEGIN
     ORDER BY f.SisaDetik DESC;
 END
 GO
+
+/* ===== Catatan skrip database (CPOS + modul + Analytics) =====
+   Tiap skrip tambahan (folder database di tiap modul, database/perubahan, Analytics/database) mencatat dirinya
+   di sini setelah berhasil, jadi mudah dicek mana yang sudah dijalankan di sebuah server: SELECT * FROM dbo.SchemaLog. */
+CREATE TABLE dbo.SchemaLog (
+    Script       VARCHAR(200)  NOT NULL PRIMARY KEY,
+    App          VARCHAR(20)   NOT NULL,
+    RunBy        NVARCHAR(128) NOT NULL CONSTRAINT DF_SchemaLog_RunBy DEFAULT (SUSER_SNAME()),
+    RunDate      DATETIME      NOT NULL CONSTRAINT DF_SchemaLog_RunDate DEFAULT (GETDATE())
+);
+INSERT INTO dbo.SchemaLog (Script, App) VALUES ('database/schema.sql', 'CPOS');
+GO
