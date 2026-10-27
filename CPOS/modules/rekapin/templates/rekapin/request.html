@@ -45,11 +45,11 @@
       <select id="rkOperator" class="input-field" data-on-change="gantiOperator"><option value="">Pilih operator</option></select></div>
     <div><label class="field-label" for="rkKategori">Kesalahan</label>
       <select id="rkKategori" class="input-field"><option value="">Pilih kesalahan</option>{% for k in kategori %}<option value="{{ k.id }}">{{ k.nama }}</option>{% endfor %}</select></div>
-    <div><label class="field-label" for="rkCariTiket">Nomor Tiket <span class="text-slate-400 font-normal">(7 hari terakhir, perusahaan operator)</span></label>
+    <div><label class="field-label" for="rkCariTiket">Cari tiket <span class="text-slate-400 font-normal">(7 hari terakhir)</span></label>
       <div class="relative"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
         <input type="search" id="rkCariTiket" class="input-field pl-8" placeholder="Ketik nomor tiket, plat, atau produk" autocomplete="off" data-on-input="cariTiket"></div>
       <div id="rkDaftarTiket" class="mt-1 rounded-lg border border-slate-200 divide-y divide-slate-100 text-sm overflow-y-auto max-h-56 hidden"></div>
-      <p id="rkTiketDipilih" class="field-hint mt-1 hidden"></p></div>
+      <div id="rkTiketDipilih" class="mt-3 hidden"></div></div>
     <div><label class="field-label" for="rkCatatan">Remarks</label>
       <textarea id="rkCatatan" rows="3" maxlength="500" class="input-field" placeholder="Jelaskan kendala secara singkat"></textarea></div>
   </div>

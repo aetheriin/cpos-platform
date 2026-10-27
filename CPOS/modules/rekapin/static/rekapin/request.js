@@ -6,6 +6,7 @@ let aksiAktif = null;            // { id, aksi: setujui | tolak | selesai, penga
 let dataOperator = [];
 let tiketDipilih = '';
 let jedaCari = null;
+let hasilTiket = [];             // hasil cari tiket terakhir (dipilih lewat indeks)
 
 const STATUS_RK = { Pending: ['Menunggu', WARNA_BADGE.oranye], Approved: ['Disetujui', WARNA_BADGE.biru],
                     Rejected: ['Ditolak', WARNA_BADGE.merah], Done: ['Selesai', WARNA_BADGE.hijau] };
@@ -115,7 +116,8 @@ async function bukaRequest(id) {
     document.getElementById('rkCatatan').value = r ? (r.catatan || '') : '';
     document.getElementById('rkCariTiket').value = '';
     document.getElementById('rkDaftarTiket').classList.add('hidden');
-    pilihTiket(r ? r.tiket : '', r ? ringkasTiket(r.info_tiket || {}) : '');
+    pilihTiket(r ? r.tiket : '', r ? r.info_tiket : null);
+    if (r) document.getElementById('rkCariTiket').value = r.tiket;
     openModal('modalRkRequest');
 }
 
@@ -125,7 +127,8 @@ function ringkasTiket(x) {
 
 // Ganti operator -> tiket dipilih ulang (tiket dicari di perusahaan operator)
 function gantiOperator() {
-    pilihTiket('', '');
+    pilihTiket('', null);
+    document.getElementById('rkCariTiket').value = '';
     cariTiket();
 }
 
@@ -139,19 +142,32 @@ function cariTiket() {
         const rows = await ambilJson(`/rekapin/api/tiket?operator=${operator}&q=${encodeURIComponent(q)}`);
         daftar.classList.remove('hidden');
         if (rows.error) { daftar.innerHTML = `<p class="px-3 py-2 text-red-600">${escapeHtml(rows.error)}</p>`; return; }
-        daftar.innerHTML = rows.map(r => `<button type="button" class="block w-full text-left px-3 py-2 hover:bg-blue-50${r.TicketNo === tiketDipilih ? ' bg-blue-50' : ''}"
-                data-on-click="pilihTiket" data-arg="${escapeHtml(r.TicketNo)}|${escapeHtml(ringkasTiket(r))}">
+        hasilTiket = rows;
+        daftar.innerHTML = rows.map((r, i) => `<button type="button" class="block w-full text-left px-3 py-2 hover:bg-blue-50${r.TicketNo === tiketDipilih ? ' bg-blue-50' : ''}"
+                data-on-click="pilihTiketHasil" data-arg="${i}">
                 <p class="font-mono font-semibold text-slate-900">${escapeHtml(r.TicketNo)}</p><p class="text-xs text-slate-500">${escapeHtml(ringkasTiket(r))}</p></button>`).join('')
             || `<p class="px-3 py-2 text-slate-400">${t('Tidak ada tiket 7 hari terakhir')}</p>`;
     }, 250);
 }
 
-function pilihTiket(no, ringkas) {
+// Rincian tiket terpilih, susunan sama dengan RekapIn: judul "Tiket <no>" lalu 2 kolom label kecil + nilai
+const RINCIAN_TIKET = [['Tanggal', 'Tanggal'], ['Produk', 'ProductName'], ['Nomor kendaraan', 'VehicleNo'], ['Nama supir', 'NamaSupir'],
+                       ['Bruto', 'Bruto'], ['Tara', 'Tara'], ['Netto', 'Netto'], ['Operator', 'Operator']];
+
+function pilihTiket(no, info) {
     tiketDipilih = no;
-    const info = document.getElementById('rkTiketDipilih');
-    info.classList.toggle('hidden', !no);
-    info.innerHTML = no ? `<i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i>${t('Dipilih')}: <b class="font-mono">${escapeHtml(no)}</b> ${ringkas ? '· ' + escapeHtml(ringkas) : ''}` : '';
+    const kotak = document.getElementById('rkTiketDipilih');
+    kotak.classList.toggle('hidden', !no);
+    kotak.innerHTML = no ? `<p class="text-sm font-semibold text-slate-900">${t('Tiket')} ${escapeHtml(no)}</p>
+        <dl class="mt-2 grid grid-cols-2 gap-x-6 gap-y-2">${RINCIAN_TIKET.map(([label, k]) => `<div>
+            <dt class="text-[11px] text-slate-400">${t(label)}</dt><dd class="text-sm text-slate-800">${escapeHtml((info || {})[k] || '—')}</dd></div>`).join('')}</dl>` : '';
     document.getElementById('rkDaftarTiket').classList.add('hidden');
+}
+
+function pilihTiketHasil(i) {
+    const r = hasilTiket[i];
+    document.getElementById('rkCariTiket').value = r.TicketNo;
+    pilihTiket(r.TicketNo, r);
 }
 
 async function simpanRequest(btn) {

@@ -93,7 +93,8 @@ function pasangPilihCari(sel) {
         input.classList.add('pilih-cari-buka');
         ketik.value = '';
         render('');
-        setTimeout(() => ketik.focus(), 10);
+        ketik.focus();
+        setTimeout(() => { if (terbuka() && document.activeElement === input) ketik.focus(); }, 10);
     }
     // Di bawah tombol; pindah ke atas bila ruang di bawah sempit
     function posisi() {
@@ -134,7 +135,14 @@ function pasangPilihCari(sel) {
     // Tombol terfokus: panah / Enter / Spasi / huruf membuka panel (huruf langsung jadi kata cari)
     input.addEventListener('keydown', e => {
         if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) { e.preventDefault(); buka(); }
-        else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); buka(); setTimeout(() => { ketik.value = e.key; render(e.key); }, 15); }
+        else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            // Huruf yang terketik sebelum kotak cari sempat terfokus tetap masuk ke kata cari
+            e.preventDefault();
+            if (!terbuka()) buka();
+            ketik.value += e.key;
+            ketik.focus();
+            render(ketik.value);
+        }
     });
     ketik.addEventListener('input', () => render(ketik.value));
     ketik.addEventListener('keydown', e => {

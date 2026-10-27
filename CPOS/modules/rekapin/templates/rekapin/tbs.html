@@ -19,13 +19,16 @@
   {% endif %}
   <div class="self-end"><button type="submit" class="btn-primary"><i class="fa-solid fa-filter"></i> Tampilkan</button></div>
   <div class="flex-1"></div>
+  <p class="w-full order-last text-[11px] text-slate-400">Perusahaan yang tampil mengikuti cakupan akun Anda (Admin › Kelola Pengguna › Area / PT yang dikelola).</p>
   {% if pilih and not galat %}<span class="self-end text-sm text-slate-500 pb-2"><b class="text-slate-900">{{ pilih }}</b> · {{ periode_teks }}</span>{% endif %}
 </form>
 
 {% if galat %}
 <div class="note-info flex items-center gap-2 mb-4 bg-red-50 text-red-700 border-red-200"><i class="fa-solid fa-triangle-exclamation"></i><span>{{ galat }}</span></div>
 {% elif not tabel %}
-<div class="section-box"><p class="px-4 py-10 text-center text-sm text-slate-400">Tidak ada data untuk perusahaan dan tanggal tersebut.</p></div>
+<div class="section-box"><p class="px-4 py-10 text-center text-sm text-slate-500">Ascend tidak mengembalikan data untuk kode perusahaan
+    <b class="font-mono">{{ pilih }}</b> pada tanggal tersebut ({{ lap.prosedur }}).<br>
+    <span class="text-xs text-slate-400">Kode perusahaan CPOS (Admin › Organisasi › Perusahaan) harus sama dengan CompName di Main.dbo.Company, mis. YBS, SUN, SJN.</span></p></div>
 {% endif %}
 
 <div class="grid grid-cols-1 {% if jenis == 'daily' and tabel|length > 1 %}xl:grid-cols-2{% endif %} gap-4">
