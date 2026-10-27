@@ -21,8 +21,10 @@ def _connection_string():
     sandi = os.getenv("REKAPIN_ERP_PASSWORD", "")
     login = f"UID={user};PWD={{{sandi.replace('}', '}}')}}};" if user else "Trusted_Connection=yes;"
     driver = os.getenv("DB_DRIVER", "{ODBC Driver 18 for SQL Server}")
+    # Encrypt=no sama dengan RekapIn lama: ODBC Driver 18 memakai enkripsi bawaan dan gagal ke SQL Server lama tanpa TLS
+    enkripsi = os.getenv("REKAPIN_ERP_ENCRYPT", "no").strip() or "no"
     return (f"DRIVER={driver};SERVER={server};DATABASE={os.getenv('REKAPIN_ERP_DB', '').strip()};{login}"
-            "TrustServerCertificate=yes;APP=CPOS-RekapIn;")
+            f"Encrypt={enkripsi};TrustServerCertificate=yes;APP=CPOS-RekapIn;")
 
 
 def _koneksi():

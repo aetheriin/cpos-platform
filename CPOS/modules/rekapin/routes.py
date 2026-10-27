@@ -100,8 +100,7 @@ def _hapus_request(data, id_pengaju, id_penyetuju):
 @lihat_halaman("RK_REQUEST")
 def halaman_request():
     hak = {a: boleh("RK_REQUEST", a) for a in ("tambah", "ubah", "hapus", "selesai")}
-    return _halaman("request", "RK_REQUEST", hak=hak, kategori=db.daftar_kategori(aktif_saja=True),
-                    company=_company_rekap(current_user.id))
+    return _halaman("request", "RK_REQUEST", hak=hak, kategori=db.daftar_kategori(aktif_saja=True))
 
 
 def _bisa_setujui():
@@ -142,25 +141,31 @@ def _cari_tiket(id_company, q):
     return db.tiket_ascend(id_company, q) if erp.terhubung() else db.tiket_cpos(id_company, q)
 
 
+def _company_operator(id_operator):
+    """Tiket dicari di perusahaan operator (sama dengan RekapIn lama). None bila operator di luar cakupan."""
+    return next((o["id_company"] for o in db.daftar_operator(current_user.id) if o["id_user"] == id_operator), None)
+
+
 @rekapin_bp.route("/api/tiket")
 @login_required
 @izin("RK_REQUEST", "tambah", "ubah")
 def api_tiket():
-    id_company = (request.args.get("company") or "").strip().upper()
-    if id_company not in {c["id_company"] for c in _company_rekap(current_user.id)}:
-        return jsonify({"error": "Pilih perusahaan dulu"}), 400
+    id_company = _company_operator(_angka_id(request.args.get("operator")))
+    if not id_company:
+        return jsonify({"error": "Pilih operator dulu"}), 400
     try:
         return jsonify(_cari_tiket(id_company, (request.args.get("q") or "")[:50]))
-    except pyodbc.Error:
+    except pyodbc.Error as e:
         current_app.logger.exception("Cari tiket Ascend gagal")
-        return jsonify({"error": "Tiket Ascend gagal dimuat. Periksa koneksi ERP (REKAPIN_ERP_*) dan dbo.sp_GetTiketH7ByCompany."}), 502
+        detail = str(e.args[1] if len(e.args) > 1 else e)[:300]
+        return jsonify({"error": f"Tiket Ascend gagal dimuat ({detail}). Periksa REKAPIN_ERP_* di CPOS\\.env dan dbo.sp_GetTiketH7ByCompany."}), 502
 
 
 def _isi_request():
     """Baca & periksa isian form request. Kembalikan dict data (dipakai langsung atau disimpan di pengajuan)."""
     f = request.form
     id_operator, id_kategori = _angka_id(f.get("operator")), _angka_id(f.get("kategori"))
-    id_company = (f.get("company") or "").strip().upper()
+    id_company = _company_operator(id_operator)
     tiket = (f.get("tiket") or "").strip()[:50]
     if id_operator not in {o["id_user"] for o in db.daftar_operator(current_user.id)}:
         raise ValueError("Pilih operator")
@@ -169,7 +174,7 @@ def _isi_request():
     if not tiket:
         raise ValueError("Pilih nomor tiket")
     info = None
-    if id_company in {c["id_company"] for c in _company_rekap(current_user.id)}:
+    if id_company:
         # Info tiket diambil ulang dari sumbernya (bukan dari browser) supaya isinya sesuai data timbang
         info = next((t for t in _cari_tiket(id_company, tiket) if t["TicketNo"] == tiket), None)
     return {"id_operator": id_operator, "id_kategori": id_kategori, "tiket": tiket, "info_tiket": info,
@@ -190,7 +195,7 @@ def api_request_simpan():
         lama = db.get_request(id_request) if id_request else None
         if d["info_tiket"] is None:
             if not lama:
-                raise ValueError("Tiket tidak ditemukan di 7 hari terakhir perusahaan itu")
+                raise ValueError("Tiket tidak ditemukan di 7 hari terakhir perusahaan operator")
             d["info_tiket"] = lama["info_tiket"]
         judul = f"Request tiket {d['tiket']}"
         if lama is None:

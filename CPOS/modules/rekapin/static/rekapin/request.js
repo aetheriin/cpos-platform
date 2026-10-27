@@ -111,7 +111,6 @@ async function bukaRequest(id) {
     document.getElementById('rkRequestJudul').textContent = t(r ? 'Ubah Request' : 'Tambah Request');
     document.getElementById('rkRequestId').value = r ? r.id : '';
     pilih.value = r ? r.id_operator : '';
-    if (r && r.id_company) document.getElementById('rkCompany').value = r.id_company;
     document.getElementById('rkKategori').value = r ? r.id_kategori : '';
     document.getElementById('rkCatatan').value = r ? (r.catatan || '') : '';
     document.getElementById('rkCariTiket').value = '';
@@ -124,13 +123,8 @@ function ringkasTiket(x) {
     return [x.VehicleNo, x.ProductName, x.Netto ? `Netto ${x.Netto} kg` : '', x.Tanggal].filter(Boolean).join(' · ');
 }
 
-// Ganti operator -> perusahaan tiket ikut perusahaan operator (masih bisa diganti). Ganti perusahaan -> tiket dipilih ulang.
-function gantiOperator(dariOperator = true) {
-    if (dariOperator) {
-        const o = dataOperator.find(x => String(x.id_user) === document.getElementById('rkOperator').value);
-        const pt = document.getElementById('rkCompany');
-        if (o && [...pt.options].some(x => x.value === o.id_company)) pt.value = o.id_company;
-    }
+// Ganti operator -> tiket dipilih ulang (tiket dicari di perusahaan operator)
+function gantiOperator() {
     pilihTiket('', '');
     cariTiket();
 }
@@ -138,11 +132,11 @@ function gantiOperator(dariOperator = true) {
 function cariTiket() {
     clearTimeout(jedaCari);
     jedaCari = setTimeout(async () => {
-        const company = document.getElementById('rkCompany').value;
+        const operator = document.getElementById('rkOperator').value;
         const daftar = document.getElementById('rkDaftarTiket');
-        if (!company) { daftar.classList.add('hidden'); return; }
+        if (!operator) { daftar.classList.add('hidden'); return; }
         const q = document.getElementById('rkCariTiket').value.trim();
-        const rows = await ambilJson(`/rekapin/api/tiket?company=${encodeURIComponent(company)}&q=${encodeURIComponent(q)}`);
+        const rows = await ambilJson(`/rekapin/api/tiket?operator=${operator}&q=${encodeURIComponent(q)}`);
         daftar.classList.remove('hidden');
         if (rows.error) { daftar.innerHTML = `<p class="px-3 py-2 text-red-600">${escapeHtml(rows.error)}</p>`; return; }
         daftar.innerHTML = rows.map(r => `<button type="button" class="block w-full text-left px-3 py-2 hover:bg-blue-50${r.TicketNo === tiketDipilih ? ' bg-blue-50' : ''}"
@@ -164,7 +158,6 @@ async function simpanRequest(btn) {
     const data = await denganTombol(btn, () => kirimForm('/rekapin/api/request/simpan', {
         id: document.getElementById('rkRequestId').value,
         operator: document.getElementById('rkOperator').value,
-        company: document.getElementById('rkCompany').value,
         kategori: document.getElementById('rkKategori').value,
         tiket: tiketDipilih,
         catatan: document.getElementById('rkCatatan').value.trim() }));

@@ -76,6 +76,16 @@
   .page-header-sub { @apply text-sm text-slate-500; }
   .halaman-judul { @apply flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6 pb-4 border-b border-slate-200; }
   /* Tabel laporan Pembelian TBS (RekapIn): kolom angka rata kanan & lurus (judul ikut), garis antar kolom, baris ringkasan tebal */
+  /* Dropdown dengan pencarian (static/js/pilih_cari.js) */
+  .pilih-cari-tombol { @apply cursor-pointer whitespace-nowrap overflow-hidden; }
+  .pilih-cari-tombol.pilih-cari-buka { @apply ring-2 ring-blue-500 border-blue-500; }
+  .pilih-cari-panel { @apply bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden; }
+  .pilih-cari-kepala { @apply p-2 border-b border-slate-100 bg-slate-50; }
+  .pilih-cari-ketik { @apply block w-full pl-8 pr-3 py-1.5 border border-slate-300 rounded-md text-sm bg-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500; }
+  .pilih-cari-daftar { @apply overflow-y-auto py-1; }
+  .pilih-cari-item { @apply px-3 py-2 text-sm text-slate-700 cursor-pointer flex items-center justify-between gap-2 hover:bg-slate-100; }
+  .pilih-cari-item.pilih-cari-sorot { @apply bg-slate-100; }
+  .pilih-cari-item.pilih-cari-aktif { @apply bg-blue-50 text-blue-700 font-medium; }
   .tbs-tabel { @apply w-full text-sm border-collapse; font-variant-numeric: tabular-nums; }
   .tbs-tabel th { @apply px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 bg-slate-50 border-b border-slate-200 whitespace-nowrap; }
   .tbs-tabel .tbs-grup th { @apply text-center text-slate-600 bg-slate-100 border-x border-slate-200; }
