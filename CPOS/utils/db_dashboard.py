@@ -115,6 +115,28 @@ def arus_hari_ini(id_area=None):
             WHERE t.StatusCode NOT IN ('SELESAI', 'REJECTED', 'VOID'){filter_area}""", *param_area)
         posisi = {k: int(v or 0) for k, v in _rows_to_dicts(cursor)[0].items()}
         ringkas["di_dalam"] = posisi.pop("di_dalam")
+        # Tiket alur dinamis: dihitung ulang dari tahap yang ditunggu (status ringkasnya tidak cukup, mis. Lab sebelum timbang)
+        cursor.execute(f"""SELECT t.TicketNumber AS no_tiket, t.StatusCode AS status, p.Category AS kategori
+                           FROM WeightBridge t JOIN Product p ON p.ProductID = t.ProductID
+                           WHERE t.StatusCode NOT IN ('SELESAI', 'REJECTED', 'VOID')
+                             AND EXISTS (SELECT 1 FROM WeightBridgeStage g WHERE g.TicketNumber = t.TicketNumber){filter_area}""",
+                       *param_area)
+        dinamis = _rows_to_dicts(cursor)
+        if dinamis:
+            from utils.alur import tahap_banyak, tahap_menunggu
+            tahap = tahap_banyak([r["no_tiket"] for r in dinamis])
+            kunci_lama = {"SECURITY_REGISTER": "timbang_1", "TIMBANG_2": "timbang_2",
+                          "TIMBANG_1": None}
+            for r in dinamis:                       # keluarkan hitungan cara lama, masukkan hitungan per tahap
+                k = kunci_lama.get(r["status"], "-")
+                if k is None:
+                    k = "sortasi" if r["kategori"] == "TBS" else "lab"
+                if k in posisi and posisi[k] > 0:
+                    posisi[k] -= 1
+                for kode in tahap_menunggu(tahap.get(r["no_tiket"], [])):
+                    kunci = {"TIMBANG_1": "timbang_1", "TIMBANG_2": "timbang_2", "SORTASI": "sortasi", "LAB": "lab",
+                             "SECURITY_KELUAR": "keluar"}[kode]
+                    posisi[kunci] = posisi.get(kunci, 0) + 1
         return ringkas, distribusi, per_jam, posisi
     finally:
         conn.close()

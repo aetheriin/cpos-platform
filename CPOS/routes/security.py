@@ -117,9 +117,10 @@ def buat_tiket():
     saran = f.get("id_driver_saran", "").strip()
     prev_driver_id = int(saran) if saran.isdigit() and saran != str(id_driver) else None
 
-    # Alur tahap (sortasi / lab) dari produk; penimbangan saja memakai alur TIMBANG_SAJA. Area = area akun security.
+    # Alur tahap: aturan Area + Produk (Admin › Alur Tiket), selain itu alur bawaan produk; penimbangan saja = TIMBANG_SAJA.
+    # Area = area akun security.
     produk = next(p for p in get_semua_produk() if p.id_produk == int(id_produk))
-    id_alur = alur.alur_tiket(jenis, produk.id_alur)
+    id_alur = alur.alur_tiket(jenis, alur.alur_untuk(area_akun(current_user.id), int(id_produk), produk.id_alur))
 
     buat_transaksi_full(no_tiket, no_plat, no_stnk, jenis,
                         int(id_supplier), int(id_produk), id_driver, no_do,

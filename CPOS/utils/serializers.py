@@ -6,6 +6,16 @@ def _tahap(id_alur):
     return tahap_alur(id_alur)
 
 
+def _tahap_tiket(row):
+    """alur_tahap (urutan tahap) + tahap_menunggu. Tiket alur dinamis memakai tahap miliknya sendiri (dibekukan saat
+    tiket dibuat); tiket lama memakai urutan alur produk dan tahap_menunggu = None."""
+    from utils.alur import tahap_banyak, tahap_menunggu
+    tahap = tahap_banyak([row.no_tiket]).get(row.no_tiket)
+    if tahap:
+        return {"alur_tahap": [t["kode_tahap"] for t in tahap], "tahap_menunggu": tahap_menunggu(tahap)}
+    return {"alur_tahap": _tahap(getattr(row, "id_alur", None)), "tahap_menunggu": None}
+
+
 def _angkut(cara, id_pengangkutan):
     """Nilai pilihan Pengangkutan di Form Security: PENGIRIM / PENERIMA / PIHAK_KETIGA:<id mitra>."""
     if cara == "PIHAK_KETIGA":
@@ -20,7 +30,7 @@ def serialisasi_tiket(row):
         "status_alur": row.status_alur,
         "id_supplier": row.id_supplier, "supplier": row.nama_supplier,
         "id_produk": row.id_produk, "produk": row.nama_produk, "kategori_produk": row.kategori,
-        "alur_tahap": _tahap(getattr(row, "id_alur", None)),
+        **_tahap_tiket(row),
         "angkut": _angkut(getattr(row, "cara_angkut", None), getattr(row, "id_pengangkutan", None)),
         "no_plat": row.no_plat, "no_stnk": row.no_stnk,
         "driver": {

@@ -552,6 +552,13 @@ def buat_transaksi_full(no_tiket, no_plat, no_stnk, jenis_transaksi, id_supplier
     if not cursor.fetchone():
         cursor.execute("SELECT COUNT(*) FROM VehicleDriver WHERE IDVehicle = ? AND Active = 1", kendaraan_id)
         _daftarkan_supir(cursor, kendaraan_id, id_driver, cursor.fetchone()[0] == 0, security_id)
+    # Alur dinamis: tahap alur disalin ke tiket (Security langsung selesai); status awal mengikuti tahap pertama yang ditunggu
+    # (mis. Lab dulu -> Inspeksi). Alur yang hanya Security (Pos Security saja) tetap memakai cara lama (selesai saat keluar).
+    from utils import alur
+    if id_alur and len(alur.peta_alur().get(id_alur, {}).get("kelompok", [])) > 1:
+        alur.buat_tahap_tiket(cursor, no_tiket, id_alur, security_id)
+        cursor.execute("UPDATE WeightBridge SET StatusCode = ? WHERE TicketNumber = ?",
+                       alur.status_dari_tahap(alur.tahap_tiket(cursor, no_tiket)), no_tiket)
     from utils import log_aktivitas
     log_aktivitas.catat("TIMELINE", "SECURITY_INIT", tabel="WeightBridge", id_baris=no_tiket, user_id=security_id, cursor=cursor)
     conn.commit()
@@ -591,9 +598,13 @@ def _simpan_penimbangan(cursor, no_tiket, ke, berat, id_jembatan, operator_id):
                    no_tiket, ke, id_jembatan, round(float(berat), 2), operator_id,
                    hitung_hash_timbang(no_tiket, ke, berat, id_jembatan))
 
-def _status_setelah(cursor, no_tiket, kode_tahap):
-    """Status tiket setelah tahap ini, menurut alur tiket (utils/alur.py)."""
-    from utils.alur import status_setelah
+def _status_setelah(cursor, no_tiket, kode_tahap, id_user=None):
+    """Status tiket setelah tahap ini. Tiket alur dinamis: tahap tiket ditandai selesai (utils/alur.lanjut);
+    tiket lama tanpa tahap: urutan alur produk (utils/alur.status_setelah)."""
+    from utils.alur import status_setelah, lanjut
+    status = lanjut(cursor, no_tiket, kode_tahap, id_user)
+    if status is not None:
+        return status
     cursor.execute("""SELECT t.WeightTypeCode AS jenis_transaksi, t.FlowID AS id_alur FROM WeightBridge t
                       WHERE t.TicketNumber = ?""", no_tiket)
     row = cursor.fetchone()
@@ -612,7 +623,7 @@ def simpan_timbang_pertama(no_tiket, berat, operator_id, id_jembatan):
     jenis = cursor.fetchone().jenis_transaksi
     _simpan_penimbangan(cursor, no_tiket, 1, berat, id_jembatan, operator_id)
     cursor.execute("UPDATE WeightBridge SET ScaleID = ?, StatusCode = ? WHERE TicketNumber = ?", id_jembatan,
-                   _status_setelah(cursor, no_tiket, 'TIMBANG_1'), no_tiket)
+                   _status_setelah(cursor, no_tiket, 'TIMBANG_1', operator_id), no_tiket)
     conn.commit()
     conn.close()
     return jenis
@@ -628,7 +639,8 @@ def simpan_timbang_kedua(no_tiket, berat, operator_id, id_jembatan):
         raise ValueError("Timbang keluar harus di jembatan yang sama dengan timbang masuk")
     _simpan_penimbangan(cursor, no_tiket, 2, berat, id_jembatan, operator_id)
     netto = round(abs(float(masuk.berat_kg) - float(berat)), 2)
-    cursor.execute("UPDATE WeightBridge SET StatusCode = 'SELESAI' WHERE TicketNumber = ?", no_tiket)
+    cursor.execute("UPDATE WeightBridge SET StatusCode = ? WHERE TicketNumber = ?",
+                   _status_setelah(cursor, no_tiket, 'TIMBANG_2', operator_id), no_tiket)
     # Potongan sortasi = persen potongan x NETTO (berat buah saja, tanpa truk)
     cursor.execute(f"UPDATE Grading SET DeductionKg = ROUND(? * {SQL_PERSEN_POTONGAN} / 100, 2) WHERE TicketNumber = ?",
                    netto, no_tiket)
@@ -677,6 +689,10 @@ def get_list_tiket_aktif(id_area=None):
     columns = [c[0] for c in cursor.description]
     data = [dict(zip(columns, row)) for row in cursor.fetchall()]
     conn.close()
+    from utils.alur import tahap_banyak, tahap_menunggu
+    tahap = tahap_banyak([r["no_tiket"] for r in data])
+    for r in data:      # alur dinamis: tahap yang sedang ditunggu (dipakai halaman List untuk antrean per tahap)
+        r["tahap_menunggu"] = tahap_menunggu(tahap[r["no_tiket"]]) if r["no_tiket"] in tahap else None
     return data
 
 def get_history_produk(id_produk=None, hari=7, batas=500, id_area=None):
@@ -780,7 +796,7 @@ def simpan_sortasi(no_tiket, mentah, busuk, tangkai, sampah, matang, brondolan, 
                            GradedBy, GradingDate) VALUES (?,?,?,?,?,?,?,?,?,?,GETDATE())""",
                        no_tiket, mentah, busuk, tangkai, sampah, matang, brondolan, total_potongan_kg, catatan, operator_id)
     cursor.execute("UPDATE WeightBridge SET StatusCode = ? WHERE TicketNumber = ?",
-                   _status_setelah(cursor, no_tiket, 'SORTASI'), no_tiket)
+                   _status_setelah(cursor, no_tiket, 'SORTASI', operator_id), no_tiket)
     conn.commit()
     conn.close()
     return total_persen_potongan, total_potongan_kg
@@ -856,7 +872,7 @@ def simpan_lab(no_tiket, ffa, air, kotoran, warna, keputusan, no_coa, operator_i
                           INSERT INTO TicketVoid (TicketNumber, VoidType, Reason, VoidBy) VALUES (?, 'REJECT', ?, ?)""",
                        no_tiket, no_tiket, 'Ditolak Lab', operator_id)
     else:
-        cursor.execute("UPDATE WeightBridge SET StatusCode=? WHERE TicketNumber=?", _status_setelah(cursor, no_tiket, 'LAB'), no_tiket)
+        cursor.execute("UPDATE WeightBridge SET StatusCode=? WHERE TicketNumber=?", _status_setelah(cursor, no_tiket, 'LAB', operator_id), no_tiket)
     conn.commit()
     conn.close()
 

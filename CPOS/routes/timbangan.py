@@ -109,6 +109,10 @@ def timbang_simpan():
 
     berat = status["berat"]
     if data_lama.berat_bruto is None and data_lama.berat_tara is None:
+        # Alur dinamis: timbang 1 hanya bila tahapnya sedang ditunggu (mis. alur Lab dulu -> tunggu hasil lab)
+        _, pesan = alur.cek_tahap(no_tiket, "TIMBANG_1")
+        if pesan:
+            return jsonify({"error": pesan}), 400
         jenis = simpan_timbang_pertama(no_tiket, berat, current_user.id, jembatan["id_jembatan"])
         wajib_kembali_nol(jembatan["id_jembatan"])
         catat_timeline(no_tiket, 'TIMBANG_MASUK', current_user.id)
@@ -120,8 +124,11 @@ def timbang_simpan():
                                    f"Timbang keluar juga harus di {jembatan['kode']}.",
                         "peringatan": _cek_kapasitas(no_tiket)}), 200
 
-    # Timbang kedua hanya setelah inspeksi: sortasi (TBS) atau lab APPROVE (produk PKS)
-    if trx.status_alur != 'TIMBANG_2':
+    # Timbang kedua: alur dinamis -> tahap Timbang 2 sedang ditunggu; tiket lama -> setelah inspeksi (status TIMBANG_2)
+    dinamis, pesan = alur.cek_tahap(no_tiket, "TIMBANG_2")
+    if pesan:
+        return jsonify({"error": pesan.replace("Belum bisa:", "Belum bisa timbang kedua,")}), 400
+    if not dinamis and trx.status_alur != 'TIMBANG_2':
         menunggu = (alur.menunggu(trx.id_alur, trx.status_alur) if trx.id_alur
                     else "sortasi" if trx.kategori == 'TBS' else "hasil lab (Diterima)")
         return jsonify({"error": f"Belum bisa timbang kedua, tiket masih menunggu {menunggu}"}), 400

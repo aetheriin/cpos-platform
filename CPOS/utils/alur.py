@@ -225,3 +225,64 @@ def _ubah(sql, *params):
 
 def id_alur_kode(kode):
     return next((i for i, a in peta_alur().items() if a["kode"] == kode), None)
+
+
+def status_dari_tahap(tahap):
+    """Status ringkas tiket (kolom WeightBridge.StatusCode, dipakai tampilan & laporan) dari tahap yang ditunggu:
+    Registrasi Security = menunggu timbang 1, Inspeksi = sortasi / lab sebelum timbang, Timbang 1 = sortasi / lab setelah
+    timbang 1, Timbang 2 = menunggu timbang 2, Menunggu Keluar = tinggal Security Keluar, Selesai = semua tahap tuntas."""
+    menunggu = tahap_menunggu(tahap)
+    if not menunggu:
+        return "SELESAI"
+    if "TIMBANG_2" in menunggu:
+        return "TIMBANG_2"
+    if "TIMBANG_1" in menunggu:
+        return "SECURITY_REGISTER"
+    if menunggu == [TAHAP_TERAKHIR]:
+        return "MENUNGGU_KELUAR"
+    timbang1 = next((t for t in tahap if t["kode_tahap"] == "TIMBANG_1"), None)
+    return "TIMBANG_1" if timbang1 and timbang1["status"] == "SELESAI" else "INSPEKSI_PROSES"
+
+
+def tahap_banyak(daftar_tiket):
+    """{no_tiket: [tahap]} untuk tiket alur dinamis (tiket lama tanpa tahap tidak ada di hasil)."""
+    daftar_tiket = list(dict.fromkeys(daftar_tiket))
+    hasil = {}
+    for i in range(0, len(daftar_tiket), 500):
+        bagian = daftar_tiket[i:i + 500]
+        for r in _query(f"""SELECT TicketNumber AS no_tiket, StageCode AS kode_tahap, StepNo AS urutan, GroupNo AS grup, Status AS status
+                            FROM WeightBridgeStage WHERE TicketNumber IN ({', '.join('?' * len(bagian))}) ORDER BY TicketNumber, StepNo""",
+                        *bagian):
+            hasil.setdefault(r.pop("no_tiket"), []).append(r)
+    return hasil
+
+
+def cek_tahap(no_tiket, kode_tahap, boleh_ulang=False):
+    """(dinamis, pesan galat). dinamis False = tiket lama tanpa tahap (pemanggil memakai aturan lama).
+    boleh_ulang: tahap yang sudah selesai boleh diisi ulang (koreksi sortasi / lab) selama tiket belum tuntas."""
+    tahap = tahap_banyak([no_tiket]).get(no_tiket)
+    if not tahap:
+        return False, None
+    nama = NAMA_TAHAP.get(kode_tahap, kode_tahap)
+    milik = next((t for t in tahap if t["kode_tahap"] == kode_tahap), None)
+    if milik is None:
+        return True, f"Tahap {nama} tidak ada di alur tiket ini (Admin › Alur Tiket)"
+    menunggu = tahap_menunggu(tahap)
+    if kode_tahap in menunggu or (boleh_ulang and milik["status"] == "SELESAI" and menunggu):
+        return True, None
+    if milik["status"] == "SELESAI":
+        return True, f"Tahap {nama} tiket ini sudah selesai"
+    return True, "Belum bisa: tiket masih menunggu " + " / ".join(NAMA_TAHAP.get(t, t) for t in menunggu)
+
+
+def lanjut(cursor, no_tiket, kode_tahap, id_user):
+    """Tahap tiket alur dinamis selesai -> status ringkas baru. Tahap yang sudah selesai (diisi ulang) tidak berubah.
+    None = tiket lama tanpa tahap (pemanggil memakai aturan lama)."""
+    tahap = tahap_tiket(cursor, no_tiket)
+    if not tahap:
+        return None
+    milik = next((t for t in tahap if t["kode_tahap"] == kode_tahap), None)
+    if milik is not None and milik["status"] != "SELESAI":
+        selesaikan_tahap(cursor, no_tiket, kode_tahap, id_user)
+        milik["status"] = "SELESAI"
+    return status_dari_tahap(tahap)

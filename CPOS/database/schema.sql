@@ -1409,7 +1409,7 @@ INSERT INTO dbo.Status (StatusCode, StatusName, StatusColor, SortOrder) VALUES
     ('SECURITY_REGISTER', N'Registrasi Security', 'oranye', 1), ('SCAN_WAJAH', N'Scan Wajah', 'oranye', 2),
     ('TIMBANG_1', N'Timbang 1', 'biru', 3), ('INSPEKSI_PROSES', N'Inspeksi', 'ungu', 4),
     ('TIMBANG_2', N'Timbang 2', 'biru', 5), ('SELESAI', N'Selesai', 'hijau', 6),
-    ('REJECTED', N'Ditolak', 'merah', 7), ('VOID', N'Dibatalkan', 'abu', 8);
+    ('REJECTED', N'Ditolak', 'merah', 7), ('VOID', N'Dibatalkan', 'abu', 8), ('MENUNGGU_KELUAR', N'Menunggu Keluar', 'kuning', 6);
 INSERT INTO dbo.VehicleType (VehicleTypeCode, NameType) VALUES
     ('TRUK', N'Truk'), ('DUMP_TRUK', N'Dump Truk'), ('TANGKI', N'Truk Tangki'), ('PICKUP', N'Pick-up'), ('LAINNYA', N'Lainnya');
 INSERT INTO dbo.Currency (CurrencyCode, CurrencyName, CurrencyRate) VALUES
@@ -2405,5 +2405,5 @@ CREATE TABLE dbo.SchemaLog (
     RunDate      DATETIME      NOT NULL CONSTRAINT DF_SchemaLog_RunDate DEFAULT (GETDATE())
 );
 INSERT INTO dbo.SchemaLog (Script, App) VALUES ('database/schema.sql', 'CPOS'),
-    ('database/perubahan/001_alur_dinamis.sql', 'CPOS');     -- sudah termasuk di schema ini
+    ('database/perubahan/001_alur_dinamis.sql', 'CPOS'), ('database/perubahan/002_status_keluar.sql', 'CPOS');     -- sudah termasuk
 GO

@@ -24,9 +24,13 @@ def sortasi_simpan():
     trx = cari_transaksi_aktif(no_tiket=no_tiket)
     if trx is None:
         return jsonify({"error": "Tiket tidak ditemukan, sudah selesai, atau ditolak"}), 404
-    if not _tahap_ada(trx, "SORTASI"):
-        return jsonify({"error": "Sortasi tidak ada di alur tiket ini (lihat Admin › Organisasi › Pabrik)"}), 400
-    if trx.status_alur not in ('TIMBANG_1', 'TIMBANG_2'):
+    # Alur dinamis: sortasi saat tahapnya ditunggu (boleh diisi ulang selama tiket berjalan); tiket lama: setelah timbang 1
+    dinamis, pesan = alur.cek_tahap(no_tiket, "SORTASI", boleh_ulang=True)
+    if pesan:
+        return jsonify({"error": pesan}), 400
+    if not dinamis and not _tahap_ada(trx, "SORTASI"):
+        return jsonify({"error": "Sortasi tidak ada di alur tiket ini (lihat Admin › Alur Tiket)"}), 400
+    if not dinamis and trx.status_alur not in ('TIMBANG_1', 'TIMBANG_2'):
         return jsonify({"error": "Sortasi dilakukan setelah timbang pertama"}), 400
     v = {k: float(request.form.get(k) or 0) for k in ['mentah', 'busuk', 'tangkai', 'sampah', 'matang', 'brondolan']}
     persen, kg = simpan_sortasi(no_tiket, v['mentah'], v['busuk'], v['tangkai'], v['sampah'],

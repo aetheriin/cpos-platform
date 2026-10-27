@@ -260,7 +260,9 @@ function tampilkanPosisiTruk(p) {
         kotak('Menunggu Timbang 1', p.timbang_1, 'timbangan', 'text-blue-700') +
         kotak('Sortasi', p.sortasi, 'sortasi', 'text-amber-600') +
         kotak('Laboratorium', p.lab, 'lab', 'text-indigo-700') +
-        kotak('Menunggu Timbang 2', p.timbang_2, 'timbangan', 'text-emerald-700');
+        kotak('Menunggu Timbang 2', p.timbang_2, 'timbangan', 'text-emerald-700') +
+        // Alur dengan tahap Security Keluar (Admin › Alur Tiket): tampil bila ada truk yang menunggu keluar
+        (p.keluar ? kotak('Menunggu Keluar', p.keluar, 'security', 'text-slate-700') : '');
 }
 
 // ===== DASHBOARD SECURITY =====

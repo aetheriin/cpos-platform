@@ -6,9 +6,15 @@
 let daftarTiket = [];
 let tahapAktif = '';
 let tiketSudahDimuat = false;
-const jejakTiket = t => `${t.no_tiket}|${t.status_alur}`;
+const jejakTiket = t => `${t.no_tiket}|${t.status_alur}|${(t.tahap_menunggu || []).join(',')}`;
+const t_ = s => (typeof t === 'function' ? t(s) : s);
+
+// Alur dinamis: server mengirim tahap yang ditunggu (tahap_menunggu); paralel bisa lebih dari satu
+const TAB_TAHAP = { TIMBANG_1: 'timbangan', TIMBANG_2: 'timbangan', SORTASI: 'sortasi', LAB: 'lab', SECURITY_KELUAR: 'security' };
+const NAMA_TAHAP_TIKET = { TIMBANG_1: 'Timbang 1', TIMBANG_2: 'Timbang 2', SORTASI: 'Sortasi', LAB: 'Laboratorium', SECURITY_KELUAR: 'Security Keluar' };
 
 function tahapTiket(t) {
+    if (Array.isArray(t.tahap_menunggu)) return [...new Set(t.tahap_menunggu.map(k => TAB_TAHAP[k]).filter(Boolean))];
     if (t.status_alur === 'SECURITY_REGISTER') return ['timbangan'];
     if (t.status_alur === 'TIMBANG_1') {                     // menunggu inspeksi sesuai alur mill tiket
         const tahap = ['SORTASI', 'LAB'].filter(k => tiketPunyaTahap(t, k)).map(k => k.toLowerCase());
@@ -55,7 +61,9 @@ function tampilkanTiket() {
     document.getElementById('tabelTicketAktif').innerHTML = baris.map(t => {
         // Tab tujuan saat "Buka": tahap yang dipilih, atau tahap berikutnya tiket ini
         const tab = tahapAktif && tahapAktif !== 'security' ? tahapAktif : tahapTiket(t).slice(-1)[0];
-        const menunggu = { SECURITY_REGISTER: 'Timbang 1', TIMBANG_2: 'Timbang 2' }[t.status_alur] || LABEL_TAHAP[tahapTiket(t)[0]];
+        const menunggu = Array.isArray(t.tahap_menunggu)
+            ? t.tahap_menunggu.map(k => t_(NAMA_TAHAP_TIKET[k] || k)).join(' / ')
+            : { SECURITY_REGISTER: 'Timbang 1', TIMBANG_2: 'Timbang 2' }[t.status_alur] || LABEL_TAHAP[tahapTiket(t)[0]];
         return `<tr class="hover:bg-slate-50" data-jejak="${escapeHtml(jejakTiket(t))}">
             <td class="table-cell">${duaBaris(escapeHtml(t.no_tiket), escapeHtml(t.created_at), true)}</td>
             <td class="table-cell">${duaBaris(escapeHtml(t.no_plat), escapeHtml(t.supir), true)}</td>

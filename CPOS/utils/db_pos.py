@@ -118,6 +118,12 @@ def catat_keluar(no_tiket, id_user, id_area):
         if cursor.rowcount == 0:
             conn.rollback()
             return None
+        # Alur dinamis dengan tahap Security Keluar yang sedang ditunggu: tahap itu selesai -> tiket selesai
+        from utils import alur
+        tahap = alur.tahap_tiket(cursor, no_tiket)
+        if alur.TAHAP_TERAKHIR in alur.tahap_menunggu(tahap):
+            alur.selesaikan_tahap(cursor, no_tiket, alur.TAHAP_TERAKHIR, id_user)
+            cursor.execute("UPDATE WeightBridge SET StatusCode = 'SELESAI', IsQRActive = 0 WHERE TicketNumber = ?", no_tiket)
         from utils import log_aktivitas
         log_aktivitas.catat("TIMELINE", "POS_KELUAR", tabel="WeightBridge", id_baris=no_tiket, user_id=id_user, cursor=cursor)
         conn.commit()

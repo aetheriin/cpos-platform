@@ -60,14 +60,18 @@ def lab_simpan():
     trx = cari_transaksi_aktif(no_tiket=no_tiket)
     if trx is None:
         return jsonify({"error": "Tiket tidak ditemukan, sudah selesai, atau ditolak"}), 404
-    if not _tahap_ada(trx, "LAB"):
-        return jsonify({"error": "Pemeriksaan lab tidak ada di alur tiket ini (lihat Admin › Organisasi › Pabrik)"}), 400
-    if trx.status_alur not in ('TIMBANG_1', 'TIMBANG_2'):
+    # Alur dinamis: lab saat tahapnya ditunggu (sebelum / sesudah timbang sesuai alur); tiket lama: setelah timbang 1
+    dinamis, pesan = alur.cek_tahap(no_tiket, "LAB", boleh_ulang=True)
+    if pesan:
+        return jsonify({"error": pesan}), 400
+    if not dinamis and not _tahap_ada(trx, "LAB"):
+        return jsonify({"error": "Pemeriksaan lab tidak ada di alur tiket ini (lihat Admin › Alur Tiket)"}), 400
+    if not dinamis and trx.status_alur not in ('TIMBANG_1', 'TIMBANG_2'):
         return jsonify({"error": "Pemeriksaan lab dilakukan setelah timbang pertama"}), 400
     no_coa = f"COA-{no_tiket}" if keputusan == 'APPROVE' else None
     simpan_lab(no_tiket, f.get("ffa"), f.get("kadar_air"), f.get("kadar_kotoran"),
                f.get("warna_locis"), keputusan, no_coa, current_user.id)
-    lanjut = "lanjut timbang kedua" if keputusan == 'APPROVE' else "tiket ditolak"
+    lanjut = "lanjut ke tahap berikutnya" if keputusan == 'APPROVE' else "tiket ditolak"
     return jsonify({"message": f"Hasil lab berhasil disimpan ({'diterima' if keputusan == 'APPROVE' else 'ditolak'}), {lanjut}", "no_dokumen_coa": no_coa}), 200
 
 @lab_bp.route("/api/history/lab")

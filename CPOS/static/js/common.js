@@ -82,6 +82,8 @@ const LABEL_STATUS_TIKET = {
     SECURITY_REGISTER: ['Registrasi Security', 'bg-amber-100 text-amber-700'],
     TIMBANG_1: ['Timbang 1', 'bg-blue-100 text-blue-700'],
     TIMBANG_2: ['Timbang 2', 'bg-blue-100 text-blue-700'],
+    INSPEKSI_PROSES: ['Inspeksi', 'bg-violet-100 text-violet-700'],
+    MENUNGGU_KELUAR: ['Menunggu Keluar', 'bg-yellow-100 text-yellow-800'],
     SELESAI: ['Selesai', 'bg-emerald-100 text-emerald-700'],
     REJECTED: ['Ditolak', 'bg-red-100 text-red-700'],
     VOID: ['Dibatalkan', 'bg-slate-200 text-slate-500'],
