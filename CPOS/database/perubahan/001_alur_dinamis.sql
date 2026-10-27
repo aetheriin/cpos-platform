@@ -1,6 +1,6 @@
-/* Alur tiket dinamis (tahap 1): alur per Area + Produk, tahap paralel, Security Keluar, tahap milik tiket.
-   Untuk database CPOS yang sudah berjalan (database baru sudah lengkap dari schema.sql). Aman dijalankan ulang.
-   Hanya menambah tabel / kolom / baris; perilaku halaman belum berubah. */
+/* Alur tiket dinamis: alur per Area + Produk, tahap paralel, Security Keluar, tahap milik tiket,
+   status "Menunggu Keluar". Untuk database CPOS yang sudah berjalan (database baru sudah lengkap dari schema.sql).
+   Aman dijalankan ulang. Hanya menambah tabel / kolom / baris. */
 SET NOCOUNT ON;
 USE [CPOS];
 GO
@@ -48,6 +48,10 @@ BEGIN
     );
     CREATE INDEX IX_WBStage_Menunggu ON dbo.WeightBridgeStage (StageCode, Status) INCLUDE (TicketNumber, GroupNo);
 END
+GO
+-- Status ringkas "Menunggu Keluar" (tinggal tahap Security Keluar)
+IF NOT EXISTS (SELECT 1 FROM dbo.Status WHERE StatusCode = 'MENUNGGU_KELUAR')
+    INSERT INTO dbo.Status (StatusCode, StatusName, StatusColor, SortOrder) VALUES ('MENUNGGU_KELUAR', N'Menunggu Keluar', 'kuning', 6);
 GO
 -- Hak akun aplikasi (bila memakai login khusus weighbridge_app)
 IF EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'weighbridge_app')

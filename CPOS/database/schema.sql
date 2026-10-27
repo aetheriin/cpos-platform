@@ -2405,5 +2405,5 @@ CREATE TABLE dbo.SchemaLog (
     RunDate      DATETIME      NOT NULL CONSTRAINT DF_SchemaLog_RunDate DEFAULT (GETDATE())
 );
 INSERT INTO dbo.SchemaLog (Script, App) VALUES ('database/schema.sql', 'CPOS'),
-    ('database/perubahan/001_alur_dinamis.sql', 'CPOS'), ('database/perubahan/002_status_keluar.sql', 'CPOS');     -- sudah termasuk
+    ('database/perubahan/001_alur_dinamis.sql', 'CPOS');     -- sudah termasuk
 GO
