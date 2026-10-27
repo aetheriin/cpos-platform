@@ -66,8 +66,9 @@ def validasi_kelompok(kelompok):
 
 def pilih_aturan(aturan, id_area, id_produk):
     """aturan = [{id_comp_area, id_produk (None = semua produk), id_alur, is_active}]. Yang paling spesifik:
-    Area + Produk, lalu Area + semua produk. None bila area itu tidak punya aturan (pakai alur bawaan produk)."""
-    aktif = [a for a in aturan if a["is_active"] and a["id_comp_area"] == id_area]
+    Area + Produk, lalu Area + semua produk. None bila area itu tidak punya aturan (pakai alur bawaan produk).
+    Aturan yang alurnya dinonaktifkan dilewati."""
+    aktif = [a for a in aturan if a["is_active"] and a.get("alur_aktif", True) and a["id_comp_area"] == id_area]
     tepat = next((a for a in aktif if a["id_produk"] == id_produk), None)
     return tepat or next((a for a in aktif if a["id_produk"] is None), None)
 
@@ -75,7 +76,8 @@ def pilih_aturan(aturan, id_area, id_produk):
 @cache_ttl(60)
 def daftar_aturan():
     return _query("""SELECT r.FlowRuleID AS id_aturan, r.CompAreaID AS id_comp_area, r.ProductID AS id_produk, r.FlowID AS id_alur,
-                            r.Active AS is_active, a.CompID + ' · ' + a.AreaName AS area, p.ProductName AS produk, f.FlowName AS alur
+                            r.Active AS is_active, f.Active AS alur_aktif, a.CompID + ' · ' + a.AreaName AS area,
+                            p.ProductName AS produk, f.FlowName AS alur
                      FROM FlowRule r JOIN CompanyArea a ON a.CompAreaID = r.CompAreaID
                      LEFT JOIN Product p ON p.ProductID = r.ProductID JOIN Flow f ON f.FlowID = r.FlowID
                      ORDER BY a.CompID, a.AreaName, CASE WHEN r.ProductID IS NULL THEN 1 ELSE 0 END, p.ProductName""")
@@ -286,3 +288,157 @@ def lanjut(cursor, no_tiket, kode_tahap, id_user):
         selesaikan_tahap(cursor, no_tiket, kode_tahap, id_user)
         milik["status"] = "SELESAI"
     return status_dari_tahap(tahap)
+
+
+# ===== Admin › Alur Tiket: kelola alur (Flow + FlowStep) dan pemakaiannya (FlowRule) =====
+ALUR_SISTEM = ("TIMBANG_SAJA", "POS_SAJA")      # dipakai kode (Penimbangan saja, Pos Security saja): tidak bisa diubah / dihapus
+
+
+def daftar_tahap():
+    """Pilihan tahap untuk editor alur: [{kode, nama}] urut SortOrder."""
+    return _query("SELECT StageCode AS kode, StageName AS nama FROM FlowStage ORDER BY SortOrder")
+
+
+def daftar_alur_admin():
+    """Semua alur (aktif & nonaktif) + jumlah pemakaian (produk, aturan, tiket)."""
+    pakai = {r["id_alur"]: r for r in _query("""
+        SELECT f.FlowID AS id_alur,
+               (SELECT COUNT(*) FROM Product p WHERE p.FlowID = f.FlowID) AS produk,
+               (SELECT COUNT(*) FROM FlowRule r WHERE r.FlowID = f.FlowID) AS aturan,
+               (SELECT COUNT(*) FROM WeightBridge w WHERE w.FlowID = f.FlowID) AS tiket
+        FROM Flow f""")}
+    hasil = []
+    for i, a in sorted(peta_alur().items(), key=lambda x: (not x[1]["is_active"], x[1]["nama"])):
+        p = pakai.get(i, {})
+        hasil.append({"id_alur": i, "kode": a["kode"], "nama": a["nama"], "keterangan": a["keterangan"],
+                      "is_active": bool(a["is_active"]), "kelompok": a["kelompok"], "sistem": a["kode"] in ALUR_SISTEM,
+                      "dipakai_produk": p.get("produk", 0), "dipakai_aturan": p.get("aturan", 0), "dipakai_tiket": p.get("tiket", 0)})
+    return hasil
+
+
+def _alur_sistem(cursor, id_alur):
+    cursor.execute("SELECT FlowCode FROM Flow WHERE FlowID = ?", id_alur)
+    row = cursor.fetchone()
+    if row is None:
+        raise ValueError("Alur tidak ditemukan")
+    if row[0] in ALUR_SISTEM:
+        raise ValueError("Alur sistem (Penimbangan saja / Pos Security saja) tidak bisa diubah atau dihapus")
+
+
+def simpan_alur(id_alur, nama, keterangan, kelompok):
+    """Tambah / ubah alur; tahap diganti seluruhnya. Tiket alur dinamis yang sedang berjalan tidak terpengaruh
+    (tahapnya sudah disalin ke tiket). Kembalikan id alur."""
+    validasi_kelompok(kelompok)
+    if len(kelompok) < 2:
+        raise ValueError("Tambahkan minimal satu tahap setelah Security")
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT FlowID FROM Flow WHERE LOWER(FlowName) = LOWER(?) AND FlowID <> ISNULL(?, 0)", nama, id_alur)
+        if cursor.fetchone():
+            raise ValueError(f"Nama alur {nama} sudah dipakai")
+        if id_alur:
+            _alur_sistem(cursor, id_alur)
+            cursor.execute("UPDATE Flow SET FlowName = ?, Description = ? WHERE FlowID = ?", nama, keterangan, id_alur)
+            cursor.execute("DELETE FROM FlowStep WHERE FlowID = ?", id_alur)
+        else:
+            # Kode alur dibuat otomatis (ALUR_<id>); kode sementara acak agar unik saat INSERT
+            cursor.execute("""INSERT INTO Flow (FlowCode, FlowName, Description) OUTPUT INSERTED.FlowID
+                              VALUES (LEFT(REPLACE(CONVERT(VARCHAR(36), NEWID()), '-', ''), 20), ?, ?)""", nama, keterangan)
+            id_alur = int(cursor.fetchone()[0])
+            cursor.execute("UPDATE Flow SET FlowCode = 'ALUR_' + CAST(FlowID AS VARCHAR(10)) WHERE FlowID = ?", id_alur)
+        urutan = 0
+        for grup, isi in enumerate(kelompok, 1):
+            for kode in isi:
+                urutan += 1
+                cursor.execute("INSERT INTO FlowStep (FlowID, StepNo, StageCode, GroupNo) VALUES (?, ?, ?, ?)",
+                               id_alur, urutan, kode, grup)
+        conn.commit()
+    finally:
+        conn.close()
+    hapus_cache()
+    return id_alur
+
+
+def set_aktif_alur(id_alur, aktif):
+    if not aktif:
+        a = next((x for x in daftar_alur_admin() if x["id_alur"] == id_alur), None)
+        if a and a["sistem"]:
+            raise ValueError("Alur sistem tidak bisa dinonaktifkan")
+        if a and a["dipakai_produk"]:
+            raise ValueError(f"Alur masih menjadi alur bawaan {a['dipakai_produk']} produk (Data Master › Produk). Ganti dulu alur produknya.")
+    _ubah("UPDATE Flow SET Active = ? WHERE FlowID = ?", 1 if aktif else 0, id_alur)
+
+
+def hapus_alur(id_alur):
+    a = next((x for x in daftar_alur_admin() if x["id_alur"] == id_alur), None)
+    if a is None:
+        raise ValueError("Alur tidak ditemukan")
+    if a["sistem"]:
+        raise ValueError("Alur sistem tidak bisa dihapus")
+    alasan = [f"{a['dipakai_produk']} produk" if a["dipakai_produk"] else "",
+              f"{a['dipakai_aturan']} aturan pemakaian" if a["dipakai_aturan"] else "",
+              f"{a['dipakai_tiket']} tiket" if a["dipakai_tiket"] else ""]
+    alasan = [x for x in alasan if x]
+    if alasan:
+        raise ValueError(f"Alur masih dipakai {', '.join(alasan)}. Nonaktifkan saja bila tidak dipakai lagi.")
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM FlowStep WHERE FlowID = ?", id_alur)
+        cursor.execute("DELETE FROM Flow WHERE FlowID = ?", id_alur)
+        conn.commit()
+    finally:
+        conn.close()
+    hapus_cache()
+
+
+def simpan_aturan(id_aturan, id_area, id_produk, id_alur, id_user):
+    """Pemakaian alur: Area (wajib) + Produk (None = semua produk) -> alur. Satu aturan per Area + Produk."""
+    a = peta_alur().get(id_alur)
+    if a is None or not a["is_active"]:
+        raise ValueError("Pilih alur aktif dari daftar")
+    if a["kode"] in ALUR_SISTEM:
+        raise ValueError("Alur sistem tidak bisa dipakai di aturan")
+    kembar = next((r for r in daftar_aturan() if r["id_comp_area"] == id_area and r["id_produk"] == id_produk
+                   and r["id_aturan"] != id_aturan), None)
+    if kembar:
+        raise ValueError(f"{kembar['area']} · {kembar['produk'] or 'Semua produk'} sudah punya aturan (alur {kembar['alur']}). Ubah aturan itu saja.")
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        if id_aturan:
+            cursor.execute("UPDATE FlowRule SET CompAreaID = ?, ProductID = ?, FlowID = ? WHERE FlowRuleID = ?",
+                           id_area, id_produk, id_alur, id_aturan)
+            if cursor.rowcount == 0:
+                raise ValueError("Aturan tidak ditemukan")
+        else:
+            cursor.execute("""INSERT INTO FlowRule (CompAreaID, ProductID, FlowID, CreateBy) OUTPUT INSERTED.FlowRuleID
+                              VALUES (?, ?, ?, ?)""", id_area, id_produk, id_alur, id_user)
+            id_aturan = int(cursor.fetchone()[0])
+        conn.commit()
+    finally:
+        conn.close()
+    hapus_cache()
+    return id_aturan
+
+
+def set_aktif_aturan(id_aturan, aktif):
+    _ubah("UPDATE FlowRule SET Active = ? WHERE FlowRuleID = ?", 1 if aktif else 0, id_aturan)
+
+
+def hapus_aturan(id_aturan):
+    _ubah("DELETE FROM FlowRule WHERE FlowRuleID = ?", id_aturan)
+
+
+def cek_alur(id_area, id_produk, id_alur_produk):
+    """Alur yang dipakai tiket baru di Area + Produk ini, beserta asalnya (untuk tombol "Cek alur")."""
+    a = pilih_aturan(daftar_aturan(), id_area, id_produk)
+    if a:
+        asal = "AREA_PRODUK" if a["id_produk"] is not None else "AREA_SEMUA"
+        id_alur = a["id_alur"]
+    else:
+        asal, id_alur = "PRODUK", id_alur_produk
+    alur = peta_alur().get(id_alur, {})
+    return {"asal": asal, "id_alur": id_alur, "id_aturan": a["id_aturan"] if a else None,
+            "nama": alur.get("nama"), "kelompok": alur.get("kelompok", [])}

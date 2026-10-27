@@ -183,7 +183,7 @@ const IKON_AKSI = {
     'Tetapkan': 'fa-circle-check', 'Kembalikan': 'fa-rotate-left', 'Isi DO Baru': 'fa-file-pen', 'Ganti Token': 'fa-key',
     'Data mentah': 'fa-wave-square', 'Buka Kunci': 'fa-lock-open',
     'Cek Akses': 'fa-user-check', 'Detail': 'fa-eye', 'Ajukan Hapus': 'fa-trash-can', 'Reject': 'fa-ban', 'Tolak': 'fa-xmark',
-    'Setujui': 'fa-check', 'Selesai': 'fa-check-double', 'Lihat': 'fa-eye', 'Akhiri Sesi': 'fa-right-from-bracket',
+    'Setujui': 'fa-check', 'Selesai': 'fa-check-double', 'Salin': 'fa-copy', 'Lihat': 'fa-eye', 'Akhiri Sesi': 'fa-right-from-bracket',
 };
 // Halaman bahasa EN: teks tombol sudah diterjemahkan (static/js/i18n.js jalan lebih dulu), jadi terjemahannya juga dikenali
 if (window.KAMUS_EN) Object.keys(IKON_AKSI).forEach(k => { const en = window.KAMUS_EN[k]; if (en && !IKON_AKSI[en]) IKON_AKSI[en] = IKON_AKSI[k]; });

@@ -42,6 +42,11 @@ class TestAturan(unittest.TestCase):
         self.assertIsNone(alur.pilih_aturan(self.ATURAN, 2, 5))                     # nonaktif -> bawaan produk
         self.assertIsNone(alur.pilih_aturan(self.ATURAN, 3, 5))                     # area tanpa aturan
 
+    def test_alur_nonaktif_dilewati(self):
+        aturan = [{"id_comp_area": 1, "id_produk": 5, "id_alur": 11, "is_active": True, "alur_aktif": False},
+                  {"id_comp_area": 1, "id_produk": None, "id_alur": 10, "is_active": True, "alur_aktif": True}]
+        self.assertEqual(alur.pilih_aturan(aturan, 1, 5)["id_alur"], 10)
+
 
 class TestMenunggu(unittest.TestCase):
     def tahap(self, *isi):

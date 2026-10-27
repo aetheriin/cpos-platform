@@ -36,6 +36,7 @@ HALAMAN = {
     "menu": ("Kelola Menu", "fa-bars-staggered", "Susunan menu 3 level: nama, induk, urutan, alamat, ikon, aksi yang berlaku, aktif / nonaktif"),
     "hak_akses": ("Hak Akses", "fa-user-shield", "Siapa mendapat menu apa: aturan per menu untuk semua user, peran, jabatan, departemen, atau user tertentu"),
     "persetujuan": ("Alur Persetujuan", "fa-route", "Tahap persetujuan berjenjang per jenis pengajuan & kategori (mis. blacklist Driver)"),
+    "alur_tiket": ("Alur Tiket", "fa-diagram-project", "Urutan tahap tiket (Security, timbang, sortasi, lab, keluar) per Area + Produk, termasuk tahap bersamaan"),
     "organisasi": ("Organisasi", "fa-sitemap", "Perusahaan, area perusahaan, Mill (tipe area), departemen, jabatan, dan status tiket"),
     "sesi": ("Sesi Aktif", "fa-user-clock", "Pengguna yang sedang login, paksa keluar, buka kunci login"),
     "void": ("Pembatalan Tiket", "fa-ban", "Batalkan tiket yang salah input; tiket tidak dihapus, tercatat alasannya"),
@@ -683,6 +684,112 @@ def alur_persetujuan_hapus(id_alur):
     alur_persetujuan.hapus(id_alur)
     _audit("ALUR_PERSETUJUAN_HAPUS", str(id_alur))
     return jsonify({"message": "Alur persetujuan berhasil dihapus. Pengajuan yang sedang berjalan tetap memakai tahap lamanya."})
+
+
+# ===== ALUR TIKET (alur dinamis: Flow + FlowStep + FlowRule) =====
+@admin_bp.route("/api/admin/alur-tiket")
+@_admin
+def alur_tiket_daftar():
+    return jsonify({"alur": alur.daftar_alur_admin(), "aturan": alur.daftar_aturan(), "tahap": alur.daftar_tahap(),
+                    "area": [{"id": a["id_comp_area"], "nama": a["label"]} for a in org.daftar_area() if a["is_active"]],
+                    "produk": [{"id": p["id_produk"], "nama": p["nama_produk"], "id_alur": p["id_alur"]}
+                               for p in db.daftar_produk() if p["is_active"]]})
+
+
+@admin_bp.route("/api/admin/alur-tiket/simpan", methods=["POST"])
+@_admin
+def alur_tiket_simpan():
+    """kelompok = JSON [["SECURITY"], ["TIMBANG_1"], ["SORTASI", "LAB"], ...]; isi satu kelompok = tahap bersamaan."""
+    def aksi():
+        try:
+            kelompok = json.loads(request.form.get("kelompok") or "[]")
+        except ValueError:
+            raise ValueError("Susunan tahap tidak valid") from None
+        if not isinstance(kelompok, list) or not all(isinstance(k, list) and all(isinstance(t, str) for t in k) for k in kelompok):
+            raise ValueError("Susunan tahap tidak valid")
+        nama = _teks("nama")
+        id_alur = alur.simpan_alur(_id_opsional("id_alur"), nama, _teks("keterangan", wajib=False, maks=255) or None, kelompok)
+        _audit("ALUR_TIKET_SIMPAN", nama, " → ".join(" + ".join(k) for k in kelompok))
+        return jsonify({"message": f"Alur {nama} berhasil disimpan.", "id": id_alur})
+    return _jalankan(aksi)
+
+
+@admin_bp.route("/api/admin/alur-tiket/<int:id_alur>/aktif", methods=["POST"])
+@_admin
+def alur_tiket_aktif(id_alur):
+    def aksi():
+        aktif = _aktif_dari_form()
+        alur.set_aktif_alur(id_alur, aktif)
+        _audit(f"ALUR_TIKET_{'AKTIF' if aktif else 'NONAKTIF'}", str(id_alur))
+        return jsonify({"message": f"Alur berhasil {'diaktifkan' if aktif else 'dinonaktifkan'}."})
+    return _jalankan(aksi)
+
+
+@admin_bp.route("/api/admin/alur-tiket/<int:id_alur>/hapus", methods=["POST"])
+@_admin
+def alur_tiket_hapus(id_alur):
+    def aksi():
+        alur.hapus_alur(id_alur)
+        _audit("ALUR_TIKET_HAPUS", str(id_alur))
+        return jsonify({"message": "Alur berhasil dihapus."})
+    return _jalankan(aksi)
+
+
+def _aturan_form():
+    area = {a["id_comp_area"] for a in org.daftar_area() if a["is_active"]}
+    produk = {p["id_produk"] for p in db.daftar_produk() if p["is_active"]}
+    id_area = _id_form("id_comp_area", area, "area")
+    id_produk = _id_opsional("id_produk")
+    if id_produk is not None and id_produk not in produk:
+        raise ValueError("Pilih produk dari daftar")
+    return id_area, id_produk
+
+
+@admin_bp.route("/api/admin/alur-tiket/aturan/simpan", methods=["POST"])
+@_admin
+def alur_tiket_aturan_simpan():
+    def aksi():
+        id_area, id_produk = _aturan_form()
+        id_alur = _id_opsional("id_alur")
+        if id_alur is None:
+            raise ValueError("Pilih alur dari daftar")
+        id_aturan = alur.simpan_aturan(_id_opsional("id_aturan"), id_area, id_produk, id_alur, current_user.id)
+        _audit("ALUR_TIKET_ATURAN_SIMPAN", f"{id_area}/{id_produk or 'SEMUA'}", str(id_alur))
+        return jsonify({"message": "Pemakaian alur berhasil disimpan.", "id": id_aturan})
+    return _jalankan(aksi)
+
+
+@admin_bp.route("/api/admin/alur-tiket/aturan/<int:id_aturan>/aktif", methods=["POST"])
+@_admin
+def alur_tiket_aturan_aktif(id_aturan):
+    def aksi():
+        aktif = _aktif_dari_form()
+        alur.set_aktif_aturan(id_aturan, aktif)
+        _audit(f"ALUR_TIKET_ATURAN_{'AKTIF' if aktif else 'NONAKTIF'}", str(id_aturan))
+        return jsonify({"message": f"Pemakaian alur berhasil {'diaktifkan' if aktif else 'dinonaktifkan'}."})
+    return _jalankan(aksi)
+
+
+@admin_bp.route("/api/admin/alur-tiket/aturan/<int:id_aturan>/hapus", methods=["POST"])
+@_admin
+def alur_tiket_aturan_hapus(id_aturan):
+    def aksi():
+        alur.hapus_aturan(id_aturan)
+        _audit("ALUR_TIKET_ATURAN_HAPUS", str(id_aturan))
+        return jsonify({"message": "Pemakaian alur berhasil dihapus. Tiket baru memakai aturan lain atau alur bawaan produk."})
+    return _jalankan(aksi)
+
+
+@admin_bp.route("/api/admin/alur-tiket/cek", methods=["POST"])
+@_admin
+def alur_tiket_cek():
+    def aksi():
+        id_area, id_produk = _aturan_form()
+        if id_produk is None:
+            raise ValueError("Pilih produk untuk dicek")
+        produk = next(p for p in db.daftar_produk() if p["id_produk"] == id_produk)
+        return jsonify(alur.cek_alur(id_area, id_produk, produk["id_alur"]))
+    return _jalankan(aksi)
 
 
 @admin_bp.route("/api/admin/organisasi/status/simpan", methods=["POST"])

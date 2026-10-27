@@ -1,0 +1,44 @@
+{# Admin › Alur Tiket: urutan tahap tiket (Flow + FlowStep, GroupNo = tahap bersamaan) dan pemakaiannya per Area + Produk
+   (FlowRule). Logika di utils/alur.py, tampilan di js/admin/alur_tiket.js #}
+<div class="note-info mb-4 text-sm leading-relaxed">
+    <p class="font-semibold mb-1">Cara kerja</p>
+    <ul class="list-disc pl-5 space-y-0.5">
+        <li>Setiap alur selalu diawali <b>Security</b>. Tahap berikutnya bebas urutannya (timbang dulu, lab dulu, sortasi dulu, ...). Tahap yang <b>bersamaan</b> boleh dikerjakan dalam urutan apa saja; tahap sesudahnya menunggu semuanya selesai.</li>
+        <li><b>Security Keluar</b> opsional: bila dipakai, tiket baru selesai setelah truk dicatat keluar di Pos Security.</li>
+        <li>Tiket baru memakai alur dari <b>Pemakaian Alur</b>: Area + Produk, lalu Area + semua produk. Bila tidak ada, dipakai alur bawaan produk (Data Master › Produk).</li>
+        <li>Mengubah alur tidak mengubah tiket yang sedang berjalan; tiket memakai tahap saat dibuat.</li>
+    </ul>
+</div>
+<div class="section-box mb-4">
+    <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-slate-100">
+        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Daftar Alur</p>
+        <button type="button" class="btn-primary py-1.5" data-on-click="bukaAlurTiket"><i class="fa-solid fa-plus mr-1"></i> Tambah Alur</button>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+            <thead class="table-header-row">
+                <tr><th class="table-cell">Nama Alur</th><th class="table-cell">Tahap</th><th class="table-cell">Dipakai</th>
+                    <th class="table-cell">Status</th><th class="table-cell text-right">Aksi</th></tr>
+            </thead>
+            <tbody id="tabelAlurTiket" class="divide-y divide-slate-100"></tbody>
+        </table>
+    </div>
+</div>
+<div class="section-box">
+    <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-slate-100">
+        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pemakaian Alur</p>
+        <div class="flex flex-wrap gap-2">
+            <button type="button" class="btn-secondary py-1.5" data-on-click="bukaCekAlur"><i class="fa-solid fa-magnifying-glass mr-1"></i> Cek Alur</button>
+            <button type="button" class="btn-primary py-1.5" data-on-click="bukaAturanAlur"><i class="fa-solid fa-plus mr-1"></i> Tambah Pemakaian</button>
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+            <thead class="table-header-row">
+                <tr><th class="table-cell">Area</th><th class="table-cell">Produk</th><th class="table-cell">Alur</th>
+                    <th class="table-cell">Status</th><th class="table-cell text-right">Aksi</th></tr>
+            </thead>
+            <tbody id="tabelAturanAlur" class="divide-y divide-slate-100"></tbody>
+        </table>
+    </div>
+</div>
