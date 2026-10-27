@@ -122,8 +122,9 @@ def arus_hari_ini(id_area=None):
                              AND EXISTS (SELECT 1 FROM WeightBridgeStage g WHERE g.TicketNumber = t.TicketNumber){filter_area}""",
                        *param_area)
         dinamis = _rows_to_dicts(cursor)
+        terlama = {}                                # menit truk yang paling lama menunggu per posisi (alur dinamis)
         if dinamis:
-            from utils.alur import tahap_banyak, tahap_menunggu
+            from utils.alur import tahap_banyak, tahap_menunggu, durasi_tahap
             tahap = tahap_banyak([r["no_tiket"] for r in dinamis])
             kunci_lama = {"SECURITY_REGISTER": "timbang_1", "TIMBANG_2": "timbang_2",
                           "TIMBANG_1": None}
@@ -133,10 +134,27 @@ def arus_hari_ini(id_area=None):
                     k = "sortasi" if r["kategori"] == "TBS" else "lab"
                 if k in posisi and posisi[k] > 0:
                     posisi[k] -= 1
-                for kode in tahap_menunggu(tahap.get(r["no_tiket"], [])):
+                milik = tahap.get(r["no_tiket"], [])
+                lama = {d["kode"]: d["menit"] for d in durasi_tahap(milik, milik[0]["sekarang"])} if milik else {}
+                for kode in tahap_menunggu(milik):
                     kunci = {"TIMBANG_1": "timbang_1", "TIMBANG_2": "timbang_2", "SORTASI": "sortasi", "LAB": "lab",
                              "SECURITY_KELUAR": "keluar"}[kode]
                     posisi[kunci] = posisi.get(kunci, 0) + 1
-        return ringkas, distribusi, per_jam, posisi
+                    if lama.get(kode) is not None:
+                        terlama[kunci] = max(terlama.get(kunci, 0), lama[kode])
+        posisi["terlama"] = terlama
+
+        # Rata-rata lama tiap tahap yang selesai hari ini (alur dinamis): dari tuntasnya kelompok sebelumnya
+        # sampai tahap itu selesai. Security (pembuatan tiket) tidak dihitung.
+        cursor.execute(f"""SELECT g.StageCode AS kode, COUNT(*) AS jumlah,
+                                  AVG(CAST(DATEDIFF(SECOND, m.mulai, g.FinishDate) AS FLOAT)) / 60 AS rata_menit
+                           FROM WeightBridgeStage g JOIN WeightBridge t ON t.TicketNumber = g.TicketNumber
+                           CROSS APPLY (SELECT MAX(h.FinishDate) AS mulai FROM WeightBridgeStage h
+                                        WHERE h.TicketNumber = g.TicketNumber AND h.GroupNo < g.GroupNo) m
+                           WHERE g.Status = 'SELESAI' AND g.StageCode <> 'SECURITY' AND m.mulai IS NOT NULL
+                             AND g.FinishDate >= CAST(GETDATE() AS DATE){filter_area}
+                           GROUP BY g.StageCode""", *param_area)
+        durasi = {r["kode"]: {"jumlah": r["jumlah"], "rata_menit": round(r["rata_menit"] or 0, 1)} for r in _rows_to_dicts(cursor)}
+        return ringkas, distribusi, per_jam, posisi, durasi
     finally:
         conn.close()

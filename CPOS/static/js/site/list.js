@@ -7,11 +7,12 @@ let daftarTiket = [];
 let tahapAktif = '';
 let tiketSudahDimuat = false;
 const jejakTiket = t => `${t.no_tiket}|${t.status_alur}|${(t.tahap_menunggu || []).join(',')}`;
+const teksMenit = m => m >= 60 ? `${Math.floor(m / 60)} j ${m % 60} m` : `${m} m`;
 const t_ = s => (typeof t === 'function' ? t(s) : s);
 
 // Alur dinamis: server mengirim tahap yang ditunggu (tahap_menunggu); paralel bisa lebih dari satu
 const TAB_TAHAP = { TIMBANG_1: 'timbangan', TIMBANG_2: 'timbangan', SORTASI: 'sortasi', LAB: 'lab', SECURITY_KELUAR: 'security' };
-const NAMA_TAHAP_TIKET = { TIMBANG_1: 'Timbang 1', TIMBANG_2: 'Timbang 2', SORTASI: 'Sortasi', LAB: 'Laboratorium', SECURITY_KELUAR: 'Security Keluar' };
+const NAMA_TAHAP_TIKET = { SECURITY: 'Security', TIMBANG_1: 'Timbang 1', TIMBANG_2: 'Timbang 2', SORTASI: 'Sortasi', LAB: 'Laboratorium', SECURITY_KELUAR: 'Security Keluar' };
 
 function tahapTiket(t) {
     if (Array.isArray(t.tahap_menunggu)) return [...new Set(t.tahap_menunggu.map(k => TAB_TAHAP[k]).filter(Boolean))];
@@ -64,13 +65,17 @@ function tampilkanTiket() {
         const menunggu = Array.isArray(t.tahap_menunggu)
             ? t.tahap_menunggu.map(k => t_(NAMA_TAHAP_TIKET[k] || k)).join(' / ')
             : { SECURITY_REGISTER: 'Timbang 1', TIMBANG_2: 'Timbang 2' }[t.status_alur] || LABEL_TAHAP[tahapTiket(t)[0]];
+        // Lama menunggu tahap berjalan (tahap paralel mulai bersamaan, jadi cukup ambil yang terbesar)
+        const tunggu = Math.max(-1, ...(t.tahap || []).filter(x => x.berjalan && x.menit != null).map(x => x.menit));
         return `<tr class="hover:bg-slate-50" data-jejak="${escapeHtml(jejakTiket(t))}">
             <td class="table-cell">${duaBaris(escapeHtml(t.no_tiket), escapeHtml(t.created_at), true)}</td>
             <td class="table-cell">${duaBaris(escapeHtml(t.no_plat), escapeHtml(t.supir), true)}</td>
             <td class="table-cell">${duaBaris(`<span class="font-semibold">${escapeHtml(t.produk)}</span>`, escapeHtml(labelKode(t.jenis_transaksi)))}</td>
             <td class="table-cell">${duaBaris(escapeHtml(t.supplier), `<span class="font-mono">${escapeHtml(t.no_do || 'Tanpa DO')}</span>`)}</td>
             <td class="table-cell">${badgeStatusTiket(t.status_alur)}</td>
-            <td class="table-cell text-xs font-semibold text-slate-600">${escapeHtml(menunggu)}</td>
+            <td class="table-cell text-xs"><span class="font-semibold text-slate-600">${escapeHtml(menunggu)}</span>${tunggu >= 0
+                ? ` <span class="font-mono ${tunggu >= 60 ? 'text-red-600 font-semibold' : 'text-slate-400'}" title="${escapeHtml(t_('Lama menunggu'))}">· ${teksMenit(tunggu)}</span>` : ''}
+                ${jejakDurasi(t.tahap)}</td>
             <td class="table-cell text-right whitespace-nowrap">
                 <a class="aksi-ikon" title="Buka di form" href="/weighbridge?view=form&tab=${encodeURIComponent(tab)}&plat=${encodeURIComponent(t.no_plat)}"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
                 <a class="aksi-ikon" title="Cetak QR" href="/cetak/tiket/${encodeURIComponent(t.no_tiket)}" target="_blank"><i class="fa-solid fa-print"></i></a>
@@ -80,6 +85,23 @@ function tampilkanTiket() {
         : tahapAktif ? `Tidak ada tiket yang menunggu ${LABEL_TAHAP[tahapAktif]}` : 'Belum ada tiket aktif');
     document.getElementById('infoJumlahTiket').innerHTML = `Menampilkan <b class="text-slate-900">${baris.length}</b> dari ${daftarTiket.length} tiket aktif`;
     saringTabel(document.getElementById('searchTiket').value);
+}
+
+// Jejak tahap tiket alur dinamis: selesai (centang + lamanya), berjalan (kuning + lama sejauh ini), berikutnya (abu).
+// Tahap bersamaan digabung dengan "+". Tiket lama (tanpa tahap) tidak punya jejak.
+function jejakDurasi(tahap) {
+    if (!Array.isArray(tahap) || !tahap.length) return '';
+    const chip = x => {
+        const nama = escapeHtml(t_(NAMA_TAHAP_TIKET[x.kode] || x.kode));
+        const lama = x.menit != null && x.kode !== 'SECURITY' ? ` <span class="font-mono opacity-75">(${teksMenit(x.menit)})</span>` : '';
+        if (x.status === 'SELESAI') return `<span class="text-emerald-700"><i class="fa-solid fa-check text-[9px]"></i> ${nama}${lama}</span>`;
+        if (x.berjalan) return `<span class="rounded bg-amber-50 px-1 text-amber-700 font-semibold">${nama}${lama}</span>`;
+        return `<span class="text-slate-400">${nama}</span>`;
+    };
+    const grup = [];
+    tahap.forEach(x => { if (grup.length && grup[grup.length - 1][0].grup === x.grup) grup[grup.length - 1].push(x); else grup.push([x]); });
+    return `<div class="mt-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[11px] leading-4">${grup.map(g => g.map(chip).join(' + '))
+        .join('<i class="fa-solid fa-angle-right text-[9px] text-slate-300"></i>')}</div>`;
 }
 
 function filterTahap(el) {

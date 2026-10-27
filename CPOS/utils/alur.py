@@ -252,10 +252,29 @@ def tahap_banyak(daftar_tiket):
     hasil = {}
     for i in range(0, len(daftar_tiket), 500):
         bagian = daftar_tiket[i:i + 500]
-        for r in _query(f"""SELECT TicketNumber AS no_tiket, StageCode AS kode_tahap, StepNo AS urutan, GroupNo AS grup, Status AS status
+        for r in _query(f"""SELECT TicketNumber AS no_tiket, StageCode AS kode_tahap, StepNo AS urutan, GroupNo AS grup, Status AS status,
+                                   FinishDate AS selesai, GETDATE() AS sekarang
                             FROM WeightBridgeStage WHERE TicketNumber IN ({', '.join('?' * len(bagian))}) ORDER BY TicketNumber, StepNo""",
                         *bagian):
             hasil.setdefault(r.pop("no_tiket"), []).append(r)
+    return hasil
+
+
+def durasi_tahap(tahap, sekarang):
+    """Lama tiap tahap (menit) untuk tampilan: tahap mulai saat kelompok sebelumnya tuntas (tahap paralel mulai
+    bersamaan), selesai saat FinishDate. Tahap yang sedang ditunggu dihitung sampai sekarang; tahap berikutnya None.
+    tahap = [{kode_tahap, grup, status, selesai}] -> [{kode, status, menit, berjalan}] urut seperti masukan."""
+    menunggu = set(tahap_menunggu(tahap))
+    hasil = []
+    for t in tahap:
+        sebelum = [x["selesai"] for x in tahap if x["grup"] < t["grup"] and x["selesai"] is not None]
+        mulai = max(sebelum) if sebelum else None
+        berjalan = t["kode_tahap"] in menunggu
+        akhir = t["selesai"] if t["status"] == "SELESAI" else (sekarang if berjalan else None)
+        menit = None
+        if mulai is not None and akhir is not None and t["grup"] > 1:
+            menit = max(0, int((akhir - mulai).total_seconds() // 60))
+        hasil.append({"kode": t["kode_tahap"], "status": t["status"], "grup": t["grup"], "menit": menit, "berjalan": berjalan})
     return hasil
 
 

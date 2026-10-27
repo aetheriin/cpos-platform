@@ -191,7 +191,7 @@ async function muatArus() {
         stat('Rata-rata siklus', s.siklus_menit != null ? angka(s.siklus_menit, 0) : '-', 'menit');
 
     document.getElementById('grafikPerJam').innerHTML = grafikPerJam(d.per_jam);
-    tampilkanPosisiTruk(d.posisi);
+    tampilkanPosisiTruk(d.posisi, d.durasi_tahap);
 
     const jembatan = [...d.jembatan].sort((a, b) => a.terhubung - b.terhubung || a.area.localeCompare(b.area) || a.kode.localeCompare(b.kode));
     const online = jembatan.filter(j => j.terhubung).length;
@@ -252,17 +252,28 @@ function grafikPerJam(perJam) {
 }
 
 // Posisi truk yang masih di dalam per tahap; klik membuka List dengan tahap tersebut
-function tampilkanPosisiTruk(p) {
-    const kotak = (label, nilai, tahap, warna) => `<a href="/weighbridge?view=list&tahap=${tahap}" class="mini-stat block hover:border-slate-300 transition">
+const teksMenit = m => { m = Math.round(m); return m >= 60 ? `${Math.floor(m / 60)} j ${m % 60} m` : `${m} m`; };
+
+function tampilkanPosisiTruk(p, durasi = {}) {
+    const terlama = p.terlama || {};
+    const kotak = (label, nilai, tahap, warna, kunci) => `<a href="/weighbridge?view=list&tahap=${tahap}" class="mini-stat block hover:border-slate-300 transition">
         <p class="mini-stat-label">${label}</p>
-        <p class="mini-stat-nilai ${nilai ? warna : ''}">${angka(nilai || 0, 0)} <span class="text-xs font-sans font-normal text-slate-500">truk</span></p></a>`;
+        <p class="mini-stat-nilai ${nilai ? warna : ''}">${angka(nilai || 0, 0)} <span class="text-xs font-sans font-normal text-slate-500">truk</span></p>
+        ${nilai && terlama[kunci] != null ? `<p class="text-[11px] mt-0.5 ${terlama[kunci] >= 60 ? 'text-red-600 font-semibold' : 'text-slate-400'}">Terlama ${teksMenit(terlama[kunci])}</p>` : ''}</a>`;
+    // Rata-rata lama tiap tahap yang selesai hari ini (tiket alur dinamis)
+    const NAMA = [['TIMBANG_1', 'Timbang 1'], ['SORTASI', 'Sortasi'], ['LAB', 'Laboratorium'], ['TIMBANG_2', 'Timbang 2'], ['SECURITY_KELUAR', 'Security Keluar']];
+    const baris = NAMA.filter(([k]) => durasi[k]).map(([k, nama]) => `<div class="flex items-center justify-between gap-2 text-xs">
+        <span class="text-slate-600">${nama}</span>
+        <span class="font-mono text-slate-800">${teksMenit(durasi[k].rata_menit)} <span class="text-slate-400">· ${durasi[k].jumlah} truk</span></span></div>`).join('');
     document.getElementById('posisiTruk').innerHTML =
-        kotak('Menunggu Timbang 1', p.timbang_1, 'timbangan', 'text-blue-700') +
-        kotak('Sortasi', p.sortasi, 'sortasi', 'text-amber-600') +
-        kotak('Laboratorium', p.lab, 'lab', 'text-indigo-700') +
-        kotak('Menunggu Timbang 2', p.timbang_2, 'timbangan', 'text-emerald-700') +
+        kotak('Menunggu Timbang 1', p.timbang_1, 'timbangan', 'text-blue-700', 'timbang_1') +
+        kotak('Sortasi', p.sortasi, 'sortasi', 'text-amber-600', 'sortasi') +
+        kotak('Laboratorium', p.lab, 'lab', 'text-indigo-700', 'lab') +
+        kotak('Menunggu Timbang 2', p.timbang_2, 'timbangan', 'text-emerald-700', 'timbang_2') +
         // Alur dengan tahap Security Keluar (Admin › Alur Tiket): tampil bila ada truk yang menunggu keluar
-        (p.keluar ? kotak('Menunggu Keluar', p.keluar, 'security', 'text-slate-700') : '');
+        (p.keluar ? kotak('Menunggu Keluar', p.keluar, 'security', 'text-slate-700', 'keluar') : '') +
+        (baris ? `<div class="col-span-2 mt-1 rounded-lg border border-slate-200 p-2.5 space-y-1">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Rata-rata lama tahap hari ini</p>${baris}</div>` : '');
 }
 
 // ===== DASHBOARD SECURITY =====

@@ -70,3 +70,21 @@ class TestMenunggu(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDurasi(unittest.TestCase):
+    def test_paralel_dan_berjalan(self):
+        from datetime import datetime
+        j = lambda h, m: datetime(2026, 10, 27, h, m)
+        tahap = [{"kode_tahap": "SECURITY", "grup": 1, "status": "SELESAI", "selesai": j(8, 0)},
+                 {"kode_tahap": "TIMBANG_1", "grup": 2, "status": "SELESAI", "selesai": j(8, 10)},
+                 {"kode_tahap": "SORTASI", "grup": 3, "status": "SELESAI", "selesai": j(8, 40)},
+                 {"kode_tahap": "LAB", "grup": 3, "status": "MENUNGGU", "selesai": None},
+                 {"kode_tahap": "TIMBANG_2", "grup": 4, "status": "MENUNGGU", "selesai": None}]
+        d = {x["kode"]: x for x in alur.durasi_tahap(tahap, j(9, 0))}
+        self.assertIsNone(d["SECURITY"]["menit"])
+        self.assertEqual(d["TIMBANG_1"]["menit"], 10)
+        self.assertEqual(d["SORTASI"]["menit"], 30)                # paralel: mulai setelah timbang 1
+        self.assertEqual(d["LAB"]["menit"], 50)                    # masih berjalan, dihitung sampai sekarang
+        self.assertTrue(d["LAB"]["berjalan"])
+        self.assertIsNone(d["TIMBANG_2"]["menit"])                 # belum mulai

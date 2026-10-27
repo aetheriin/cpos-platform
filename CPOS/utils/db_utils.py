@@ -691,8 +691,11 @@ def get_list_tiket_aktif(id_area=None):
     conn.close()
     from utils.alur import tahap_banyak, tahap_menunggu
     tahap = tahap_banyak([r["no_tiket"] for r in data])
-    for r in data:      # alur dinamis: tahap yang sedang ditunggu (dipakai halaman List untuk antrean per tahap)
-        r["tahap_menunggu"] = tahap_menunggu(tahap[r["no_tiket"]]) if r["no_tiket"] in tahap else None
+    from utils.alur import durasi_tahap
+    for r in data:      # alur dinamis: tahap yang sedang ditunggu (antrean per tahap) + lama tiap tahap (jejak di List)
+        milik = tahap.get(r["no_tiket"])
+        r["tahap_menunggu"] = tahap_menunggu(milik) if milik else None
+        r["tahap"] = durasi_tahap(milik, milik[0]["sekarang"]) if milik else None
     return data
 
 def get_history_produk(id_produk=None, hari=7, batas=500, id_area=None):

@@ -140,7 +140,7 @@ def dashboard_arus():
     if id_area is None or isinstance(id_area, tuple):      # kantor pusat memilih satu site (dalam PT yang dikelola)
         dipilih = request.args.get("area", type=int)
         id_area = dipilih if dipilih and area_cocok(id_area, dipilih) else id_area
-    ringkas, distribusi, per_jam, posisi = arus_hari_ini(id_area)
+    ringkas, distribusi, per_jam, posisi, durasi = arus_hari_ini(id_area)
     try:
         jembatan = [j for j in daftar_jembatan() if j["is_active"] and area_cocok(id_area, j["id_comp_area"])]
     except Exception:       # noqa: BLE001 - tabel jembatan belum ada
@@ -155,6 +155,7 @@ def dashboard_arus():
         "distribusi": [{"produk": r["produk"], "netto": _angka(r["netto"])} for r in distribusi],
         "per_jam": per_jam,
         "posisi": posisi,
+        "durasi_tahap": durasi,
         "jembatan": status,
     })
 
