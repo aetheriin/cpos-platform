@@ -400,6 +400,7 @@ CREATE TABLE dbo.Flow (
     FlowID    INT IDENTITY(1,1) PRIMARY KEY,
     FlowCode       VARCHAR(20)   NOT NULL CONSTRAINT UX_Alur_Kode UNIQUE,
     FlowName       NVARCHAR(100) NOT NULL,
+    Description    NVARCHAR(255) NULL,
     Active  BIT NOT NULL CONSTRAINT DF_Alur_Aktif DEFAULT (1)
 );
 GO
@@ -407,6 +408,7 @@ CREATE TABLE dbo.FlowStep (
     FlowID     INT NOT NULL CONSTRAINT FK_AlurTahap_Alur REFERENCES dbo.Flow (FlowID),
     StepNo      TINYINT NOT NULL,
     StageCode  VARCHAR(20) NOT NULL CONSTRAINT FK_AlurTahap_Tahap REFERENCES dbo.FlowStage (StageCode),
+    GroupNo     TINYINT NOT NULL,          -- tahap dengan GroupNo sama = paralel (boleh dikerjakan dalam urutan bebas)
     CONSTRAINT PK_AlurTahap PRIMARY KEY (FlowID, StepNo),
     CONSTRAINT UX_AlurTahap_Tahap UNIQUE (FlowID, StageCode)
 );
@@ -700,6 +702,33 @@ CREATE INDEX IX_TicketVoid_Date ON dbo.TicketVoid (VoidDate DESC);
 GO
 
 -- Penimbangan: ke-1 masuk, ke-2 keluar di jembatan yang sama; bruto/tara/netto lewat view WeighingSummary
+-- Alur tiket dinamis: alur dipilih per Area + Produk (ProductID NULL = semua produk di area itu).
+-- Tanpa aturan untuk area tiket -> alur bawaan produk (Product.FlowID). Diatur di Admin › Alur Tiket.
+CREATE TABLE dbo.FlowRule (
+    FlowRuleID  INT IDENTITY(1,1) PRIMARY KEY,
+    CompAreaID  BIGINT NOT NULL CONSTRAINT FK_FlowRule_Area REFERENCES dbo.CompanyArea (CompAreaID),
+    ProductID   INT NULL CONSTRAINT FK_FlowRule_Product REFERENCES dbo.Product (ProductID),
+    FlowID      INT NOT NULL CONSTRAINT FK_FlowRule_Flow REFERENCES dbo.Flow (FlowID),
+    Active      BIT NOT NULL CONSTRAINT DF_FlowRule_Active DEFAULT (1),
+    CreateBy    BIGINT NULL CONSTRAINT FK_FlowRule_User REFERENCES dbo.Users (UserID),
+    CreateDate  DATETIME NOT NULL CONSTRAINT DF_FlowRule_Date DEFAULT (GETDATE())
+);
+CREATE UNIQUE INDEX UX_FlowRule_AreaProduct ON dbo.FlowRule (CompAreaID, ProductID) WHERE ProductID IS NOT NULL;
+CREATE UNIQUE INDEX UX_FlowRule_AreaAll ON dbo.FlowRule (CompAreaID) WHERE ProductID IS NULL;
+-- Tahap milik tiket: salinan alur saat tiket dibuat (perubahan alur tidak mengganggu tiket yang berjalan),
+-- sekaligus jejak kapan & siapa menyelesaikan tiap tahap.
+CREATE TABLE dbo.WeightBridgeStage (
+    TicketNumber  VARCHAR(50) NOT NULL CONSTRAINT FK_WBStage_WB REFERENCES dbo.WeightBridge (TicketNumber),
+    StageCode     VARCHAR(20) NOT NULL CONSTRAINT FK_WBStage_Stage REFERENCES dbo.FlowStage (StageCode),
+    StepNo        TINYINT NOT NULL,
+    GroupNo       TINYINT NOT NULL,
+    Status        VARCHAR(10) NOT NULL CONSTRAINT DF_WBStage_Status DEFAULT ('MENUNGGU')
+                  CONSTRAINT CK_WBStage_Status CHECK (Status IN ('MENUNGGU', 'SELESAI', 'DILEWATI')),
+    FinishDate    DATETIME NULL,
+    FinishBy      BIGINT NULL CONSTRAINT FK_WBStage_User REFERENCES dbo.Users (UserID),
+    CONSTRAINT PK_WBStage PRIMARY KEY (TicketNumber, StageCode)
+);
+CREATE INDEX IX_WBStage_Menunggu ON dbo.WeightBridgeStage (StageCode, Status) INCLUDE (TicketNumber, GroupNo);
 CREATE TABLE dbo.Weighing (
     TicketNumber  VARCHAR(50) NOT NULL CONSTRAINT FK_Weighing_WB REFERENCES dbo.WeightBridge (TicketNumber),
     WeighNo       TINYINT NOT NULL CONSTRAINT CK_Weighing_No CHECK (WeighNo IN (1, 2)),
@@ -1390,14 +1419,14 @@ INSERT INTO dbo.ProductType (ProductTypeCode, ProductTypeName) VALUES ('TBS', N'
 -- Alur tahap (migrasi 012; unit timbang dihapus di migrasi 041)
 INSERT INTO dbo.FlowStage (StageCode, StageName, SortOrder) VALUES
     ('SECURITY', N'Security', 1), ('TIMBANG_1', N'Timbang Masuk', 2), ('SORTASI', N'Sortasi', 3),
-    ('LAB', N'Laboratorium', 4), ('TIMBANG_2', N'Timbang Keluar', 5);
+    ('LAB', N'Laboratorium', 4), ('TIMBANG_2', N'Timbang Keluar', 5), ('SECURITY_KELUAR', N'Security Keluar', 6);
 INSERT INTO dbo.Flow (FlowCode, FlowName) VALUES
     ('TBS', N'TBS: timbang - sortasi - timbang'),
     ('PKS', N'Produk PKS: timbang - lab - timbang'),
     ('TIMBANG_SAJA', N'Penimbangan saja (sekali timbang)'),
     ('POS_SAJA', N'Pos Security saja (catat masuk / keluar, tanpa timbang)');      -- migrasi 039
-INSERT INTO dbo.FlowStep (FlowID, StepNo, StageCode)
-SELECT a.FlowID, v.urutan, v.tahap
+INSERT INTO dbo.FlowStep (FlowID, StepNo, StageCode, GroupNo)
+SELECT a.FlowID, v.urutan, v.tahap, v.urutan
 FROM (VALUES ('TBS', 1, 'SECURITY'), ('TBS', 2, 'TIMBANG_1'), ('TBS', 3, 'SORTASI'), ('TBS', 4, 'TIMBANG_2'),
              ('PKS', 1, 'SECURITY'), ('PKS', 2, 'TIMBANG_1'), ('PKS', 3, 'LAB'), ('PKS', 4, 'TIMBANG_2'),
              ('TIMBANG_SAJA', 1, 'SECURITY'), ('TIMBANG_SAJA', 2, 'TIMBANG_1'),
@@ -2375,5 +2404,6 @@ CREATE TABLE dbo.SchemaLog (
     RunBy        NVARCHAR(128) NOT NULL CONSTRAINT DF_SchemaLog_RunBy DEFAULT (SUSER_SNAME()),
     RunDate      DATETIME      NOT NULL CONSTRAINT DF_SchemaLog_RunDate DEFAULT (GETDATE())
 );
-INSERT INTO dbo.SchemaLog (Script, App) VALUES ('database/schema.sql', 'CPOS');
+INSERT INTO dbo.SchemaLog (Script, App) VALUES ('database/schema.sql', 'CPOS'),
+    ('database/perubahan/001_alur_dinamis.sql', 'CPOS');     -- sudah termasuk di schema ini
 GO
