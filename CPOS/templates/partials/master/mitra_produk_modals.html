@@ -44,9 +44,9 @@
             </div>
             <div>
                 <span class="field-label">Berlaku di Perusahaan</span>
-                <div class="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-                    {% for c in company_list %}<label class="flex items-center gap-2"><input type="checkbox" name="company" value="{{ c.id_company }}"> {{ c.kode }}</label>{% endfor %}
-                </div>
+                <div data-pilih-banyak data-semua data-cari="Ketik untuk mencari perusahaan..." data-kosong="Kosong = berlaku di semua perusahaan"><div>
+                    {% for c in company_list %}<label><input type="checkbox" name="company" value="{{ c.id_company }}"> {{ c.kode }} · {{ c.nama }}</label>{% endfor %}
+                </div></div>
                 <p class="field-hint">Kosongkan semua centang bila supplier ini berlaku di semua perusahaan.</p>
             </div>
         </div>

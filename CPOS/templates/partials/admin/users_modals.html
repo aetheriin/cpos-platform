@@ -56,10 +56,10 @@
             {# Hanya untuk user di area kantor pusat: PT yang dikelola. Tidak dicentang semua = semua PT. #}
             <div id="blokPtKelola" class="hidden rounded-lg border border-slate-200 p-3">
                 <p class="field-label mb-1">PT yang dikelola</p>
-                <div class="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-                    {% for c in company_list %}<label class="flex items-center gap-2"><input type="checkbox" name="pt_kelola" value="{{ c.id_company }}"> {{ c.kode }} · {{ c.nama }}</label>{% endfor %}
-                </div>
-                <p class="field-hint">Kosongkan semua centang bila user ini mengelola semua PT.</p>
+                <div data-pilih-banyak data-semua data-cari="Ketik untuk mencari perusahaan..." data-kosong="Perusahaan yang dipilih akan muncul di sini..."><div>
+                    {% for c in company_list %}<label><input type="checkbox" name="pt_kelola" value="{{ c.id_company }}"> {{ c.kode }} · {{ c.nama }}</label>{% endfor %}
+                </div></div>
+                <p class="field-hint">Wajib pilih minimal satu. Mengelola semua PT = pilih semua (tombol Pilih semua).</p>
             </div>
             <div id="blokPasswordUser" class="grid grid-cols-2 gap-3">
                 <div>

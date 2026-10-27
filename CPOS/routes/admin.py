@@ -118,7 +118,7 @@ def admin_halaman(halaman):
                            area_list=[a for a in org.daftar_area() if a["is_active"]] if "area" in perlu else [],
                            company_list=[c for c in org.daftar_company() if c["is_active"]] if "company" in perlu else [],
                            kategori_alur=alur_persetujuan.daftar_kategori() if halaman == "persetujuan" else [],
-                           format_timbangan=FORMAT_TIMBANGAN, jenis_pengajuan=alur_persetujuan.JENIS, password_min=PASSWORD_MIN)
+                           format_timbangan=FORMAT_TIMBANGAN, jenis_pengajuan=alur_persetujuan.JENIS, grup_jenis=alur_persetujuan.GRUP_JENIS, aksi_jenis=alur_persetujuan.AKSI, password_min=PASSWORD_MIN)
 
 
 # ===== KELOLA USER =====
@@ -161,11 +161,18 @@ def _akun_form():
     return peran, id_department, id_area
 
 
-def _simpan_pt_kelola(id_user, id_area):
-    """PT yang dikelola hanya berlaku untuk user di site kantor pusat; selain itu dikosongkan."""
-    pilihan = {v.strip() for v in request.form.getlist("pt_kelola") if v.strip()}
-    semua = {c["id_company"] for c in org.daftar_company()}
-    org.simpan_pt_kelola(id_user, pilihan & semua if id_area in org.area_pusat() else set())
+def _pt_kelola_form(id_area):
+    """PT yang dikelola user kantor pusat (wajib minimal satu; semua PT = semua dicentang). User site: kosong."""
+    if id_area not in org.area_pusat():
+        return set()
+    pilihan = {v.strip() for v in request.form.getlist("pt_kelola") if v.strip()} & {c["id_company"] for c in org.daftar_company()}
+    if not pilihan:
+        raise ValueError("Pilih PT yang dikelola (semua PT: tekan Pilih semua)")
+    return pilihan
+
+
+def _simpan_pt_kelola(id_user, pilihan):
+    org.simpan_pt_kelola(id_user, pilihan)
 
 
 def _password_form(nama="password"):
@@ -219,8 +226,9 @@ def users_tambah():
         if db.username_dipakai(username):
             raise ValueError(f"Username {username} sudah dipakai")
         personel, (level, id_department, id_area), pw = _personel_form(), _akun_form(), _password_form()
+        pt = _pt_kelola_form(id_area)
         id_user = db.tambah_user(username, level["id_level"], id_department, id_area, generate_password_hash(pw), personel)
-        _simpan_pt_kelola(id_user, id_area)
+        _simpan_pt_kelola(id_user, pt)
         _audit("USER_TAMBAH", username, f"jabatan {level['kode']}")
         return jsonify({"message": f"Pengguna {username} berhasil ditambahkan"})
     return _jalankan(aksi)
@@ -245,8 +253,9 @@ def users_ubah(id_user):
                 raise ValueError("Tidak bisa menurunkan level akun sendiri")
             if db.jumlah_admin_aktif(kecuali=id_user) == 0:
                 raise ValueError("Minimal harus ada 1 admin aktif")
+        pt = _pt_kelola_form(id_area)
         db.ubah_user(id_user, level["id_level"], id_department, id_area, personel)
-        _simpan_pt_kelola(id_user, id_area)
+        _simpan_pt_kelola(id_user, pt)
         _audit("USER_UBAH", u["username"], f"level {u['role']} -> {level['kode']}" if ganti_level else "data diubah")
         if ganti_level:
             sesi_aktif.hapus_user(id_user, "ROLE_DIUBAH")

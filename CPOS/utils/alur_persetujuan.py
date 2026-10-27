@@ -2,7 +2,7 @@
 Tiap tahap = satu peran (departemen + jabatan); dipakai utils/persetujuan.py saat pengajuan dibuat."""
 from utils import hak_akses
 from utils.db_utils import get_connection, _rows_to_dicts
-from utils.persetujuan import JENIS, MENU_JENIS
+from utils.persetujuan import AKSI, GRUP_JENIS, JENIS, MENU_JENIS  # noqa: F401 (GRUP_JENIS & AKSI dipakai halaman admin)
 
 KATEGORI_KENDARAAN = ("KENDARAAN", "Kendaraan")
 KATEGORI_SUPPLIER = ("SUPPLIER", "Supplier")

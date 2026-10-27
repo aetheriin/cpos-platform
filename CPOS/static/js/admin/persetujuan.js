@@ -6,8 +6,8 @@ const PILIH_JABATAN = DATA_ALUR.jabatan.map((id, i) => [id, DATA_ALUR.nama_jabat
 let dataAlurSetuju = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('alurJenis').innerHTML = Object.entries(DATA_ALUR.jenis)
-        .map(([k, v]) => `<option value="${escapeHtml(k)}">${escapeHtml(v)}</option>`).join('');
+    document.getElementById('alurGrup').innerHTML = Object.entries(DATA_ALUR.grup)
+        .map(([k, g]) => `<option value="${escapeHtml(k)}">${escapeHtml(g.nama)}</option>`).join('');
     document.getElementById('alurKategori').innerHTML = '<option value="">Semua kategori</option>' +
         DATA_ALUR.kategori.map(k => `<option value="${escapeHtml(k.kode)}">${escapeHtml(k.nama)}</option>`).join('');
     muatAlurSetuju();
@@ -54,13 +54,37 @@ function bukaAlurSetuju(id) {
     const form = document.getElementById('formAlurSetuju');
     form.reset();
     form.elements.id_alur_persetujuan.value = a ? a.id_alur_persetujuan : '';
-    form.elements.jenis.value = a ? a.jenis : 'BLACKLIST_TAMBAH';
+    pilihJenisAlur(a ? a.jenis : 'BLACKLIST_TAMBAH');
     form.elements.kategori.value = a ? (a.kategori || '') : '';
     form.elements.keterangan.value = a ? (a.keterangan || '') : '';
     document.getElementById('judulAlurSetuju').textContent = a ? 'Ubah Alur Persetujuan' : 'Tambah Alur Persetujuan';
     document.getElementById('daftarTahapAlur').innerHTML = '';
     (a ? a.tahap : [{}]).forEach(t => tambahTahapAlur(t.id_department, t.id_jabatan));
     openModal('modalAlurSetuju');
+}
+
+// Jenis pengajuan (grup) + aksi -> kode jenis (input tersembunyi "jenis"), mis. Request Operator + Hapus -> REKAP_HAPUS
+function pilihJenisAlur(kode) {
+    const grup = Object.keys(DATA_ALUR.grup).find(g => Object.values(DATA_ALUR.grup[g].aksi).includes(kode)) || Object.keys(DATA_ALUR.grup)[0];
+    document.getElementById('alurGrup').value = grup;
+    gantiGrupAlur(kode);
+}
+
+function gantiGrupAlur(kode) {
+    const g = DATA_ALUR.grup[document.getElementById('alurGrup').value];
+    const aksi = document.getElementById('alurAksi');
+    const URUT = ['TAMBAH', 'UBAH', 'HAPUS'];        // data dari server terurut abjad; tampilkan Tambah -> Ubah -> Hapus
+    const daftar = Object.entries(g.aksi).sort(([a], [b]) => (URUT.indexOf(a) + 1 || 99) - (URUT.indexOf(b) + 1 || 99));
+    aksi.innerHTML = daftar.map(([a, k]) => `<option value="${escapeHtml(k)}">${escapeHtml(DATA_ALUR.aksi[a] || a)}</option>`).join('');
+    aksi.value = typeof kode === 'string' && Object.values(g.aksi).includes(kode) ? kode : daftar[0][1];
+    // Kategori target (Driver, Kendaraan, ...) hanya untuk jenis yang memakainya (blacklist)
+    document.getElementById('blokKategoriAlur').classList.toggle('hidden', !g.kategori);
+    if (!g.kategori) document.getElementById('alurKategori').value = '';
+    gantiAksiAlur();
+}
+
+function gantiAksiAlur() {
+    document.getElementById('formAlurSetuju').elements.jenis.value = document.getElementById('alurAksi').value;
 }
 
 function tambahTahapAlur(idDept = null, idJabatan = null) {

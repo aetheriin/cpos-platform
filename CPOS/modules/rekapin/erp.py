@@ -48,3 +48,8 @@ def jalankan_prosedur(nama, *params):
         return hasil
     finally:
         conn.close()
+
+
+def terhubung():
+    """Koneksi ERP diisi di .env (bila tidak, data diambil dari database CPOS sendiri)."""
+    return bool(_connection_string())

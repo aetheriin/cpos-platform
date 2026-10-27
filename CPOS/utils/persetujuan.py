@@ -33,6 +33,19 @@ JENIS = {
 MENU_JENIS = {"BLACKLIST_TAMBAH": "BLACKLIST", "BLACKLIST_HAPUS": "BLACKLIST",       # hak Setujui dicek di menu ini
               "KOREKSI_TIKET": "LIST"}
 TAUTAN_MENU = {"BLACKLIST": "/blacklist?tab=persetujuan", "LIST": "/weighbridge?view=list&bagian=koreksi"}
+# Admin › Alur Persetujuan memilih Jenis pengajuan lalu Aksi-nya; tiap pasangan = satu kode di JENIS.
+AKSI = {"TAMBAH": "Tambah", "UBAH": "Ubah / Koreksi", "HAPUS": "Hapus"}
+GRUP_JENIS = {"BLACKLIST": {"nama": "Blacklist", "aksi": {"TAMBAH": "BLACKLIST_TAMBAH", "HAPUS": "BLACKLIST_HAPUS"}, "kategori": True},
+              "TIKET": {"nama": "Tiket timbang", "aksi": {"UBAH": "KOREKSI_TIKET"}, "kategori": False}}
+
+
+def daftarkan_jenis(grup, nama_grup, aksi, kode, nama, menu, tautan_menu=None):
+    """Jenis pengajuan dari modul lain (mis. RekapIn): muncul di Admin › Alur Persetujuan sebagai nama_grup + aksi."""
+    JENIS[kode] = nama
+    MENU_JENIS[kode] = menu
+    if tautan_menu:
+        TAUTAN_MENU[menu] = tautan_menu
+    GRUP_JENIS.setdefault(grup, {"nama": nama_grup, "aksi": {}, "kategori": False})["aksi"][aksi] = kode
 _PELAKSANA, _SAAT_DITOLAK = {}, {}
 
 

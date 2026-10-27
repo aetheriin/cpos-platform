@@ -493,8 +493,23 @@ def weekly_report_summary(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 
+def _angka(v: Any) -> bool:
+    return v is not None and not isinstance(v, bool) and (isinstance(v, (int, float)) or hasattr(v, "as_tuple"))
+
+
+def _tandai_kolom_angka(tabel: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """tabel["angka"] = kolom yang isinya angka: judul & sel kolom itu rata kanan supaya lurus."""
+    for t in tabel:
+        t["angka"] = {k for k in t["headers"] if any(_angka(r.get(k)) for r in t["rows"])}
+    return tabel
+
+
 def susun_tabel(jenis: str, hasil: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
     """Result set prosedur -> daftar tabel yang ditampilkan (sama dengan render_tbs_report RekapIn)."""
+    return _tandai_kolom_angka(_susun_tabel(jenis, hasil))
+
+
+def _susun_tabel(jenis: str, hasil: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
     terisi = [rows for rows in hasil if rows]
     if not terisi:
         return []

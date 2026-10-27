@@ -22,7 +22,7 @@ function tampilkanUser() {
             <td class="table-cell">${escapeHtml(u.nama)}<span class="block text-[11px] text-slate-500">${u.nik ? `NIK ${escapeHtml(u.nik)}` : '<span class="text-amber-700">NIK belum diisi</span>'}${u.email ? ` · ${escapeHtml(u.email)}` : ''}</span></td>
             <td class="table-cell">${badgeRole(u.role, u.nama_level)}${u.jumlah_akses_khusus ? ` <span class="badge-status bg-violet-100 text-violet-800" title="Punya aturan User di ${u.jumlah_akses_khusus} menu (Admin › Hak Akses)">Aturan khusus</span>` : ''}</td>
             <td class="table-cell">${escapeHtml(u.department)}</td>
-            <td class="table-cell">${escapeHtml(u.area)}${u.di_pusat ? `<span class="block text-[11px] text-slate-500">${u.pt_kelola.length ? `Mengelola ${u.pt_kelola.length} PT` : 'Mengelola semua PT'}</span>` : ''}</td>
+            <td class="table-cell">${escapeHtml(u.area)}${u.di_pusat ? `<span class="block text-[11px] text-slate-500">${u.pt_kelola.length && u.pt_kelola.length < document.querySelectorAll('#modalUser [name=pt_kelola]').length ? `Mengelola ${u.pt_kelola.length} PT` : 'Mengelola semua PT'}</span>` : ''}</td>
             <td class="table-cell">${badgeAktif(u.is_active)}</td>
             <td class="table-cell">${escapeHtml(u.last_login || 'Belum pernah')}</td>
             <td class="table-cell">${escapeHtml(u.created_at || '-')}</td>
@@ -121,7 +121,8 @@ function bukaUbahUser(id) {
     aturDeptUser(u.id_department);
     document.getElementById('userLevel').value = u.id_jabatan ?? '';
     aturJabatanUser();
-    form.querySelectorAll('[name=pt_kelola]').forEach(c => { c.checked = u.pt_kelola.includes(c.value); });
+    // Data lama: kosong = semua PT -> tampil semua tercentang
+    form.querySelectorAll('[name=pt_kelola]').forEach(c => { c.checked = !u.pt_kelola.length || u.pt_kelola.includes(c.value); });
     aturPtKelola();
     openModal('modalUser');
 }

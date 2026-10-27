@@ -8,9 +8,12 @@
         <div class="p-6 space-y-4">
             <input type="hidden" name="id_alur_persetujuan">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div><label class="field-label" for="alurJenis">Jenis Pengajuan</label>
-                    <select id="alurJenis" name="jenis" required class="input-field"></select></div>
-                <div><label class="field-label" for="alurKategori">Kategori Target</label>
+                <input type="hidden" name="jenis">
+                <div><label class="field-label" for="alurGrup">Jenis Pengajuan</label>
+                    <select id="alurGrup" required class="input-field" data-tanpa-cari data-on-change="gantiGrupAlur"></select></div>
+                <div><label class="field-label" for="alurAksi">Aksi</label>
+                    <select id="alurAksi" required class="input-field" data-tanpa-cari data-on-change="gantiAksiAlur"></select></div>
+                <div id="blokKategoriAlur"><label class="field-label" for="alurKategori">Kategori Target</label>
                     <select id="alurKategori" name="kategori" class="input-field"></select>
                     <p class="field-hint">Mis. Driver, Security, Karyawan, BHL. "Semua kategori" = cadangan.</p></div>
                 <div class="sm:col-span-2"><label class="field-label" for="alurKet">Keterangan</label>

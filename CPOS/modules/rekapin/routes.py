@@ -9,11 +9,24 @@ from flask_login import login_required, current_user
 
 from modules.rekapin import rekapin_bp, db
 from modules.rekapin import erp, laporan_tbs
-from routes.dashboard import BATAS, _company_harga
+from utils import persetujuan
+from routes.dashboard import BATAS
+from utils.area import company_user
+from utils.db_organisasi import daftar_area, daftar_company
 from utils.db_dashboard import KOLOM, simpan_harga
 from utils.hak_akses import izin, boleh, halaman as lihat_halaman, remah_menu
 
-AKSI_STATUS = {"Approved": "setujui", "Rejected": "tolak", "Done": "selesai"}
+def _company_rekap(user_id):
+    """Perusahaan untuk RekapIn (harga, laporan TBS): semua perusahaan aktif di Admin › Organisasi dalam cakupan user,
+    kecuali perusahaan yang areanya hanya kantor pusat (HO). Kodenya = CompName di Main.dbo.Company (ERP)."""
+    pt = company_user(user_id)
+    area = {}
+    for a in daftar_area():
+        if a["is_active"]:
+            area.setdefault(a["id_company"], []).append(a)
+    hanya_pusat = {c for c, isi in area.items() if all(a["is_pusat"] for a in isi)}
+    return [{"id_company": c["id_company"], "nama": c["nama"]} for c in daftar_company()
+            if c["is_active"] and c["id_company"] not in hanya_pusat and (pt is None or c["id_company"] in pt)]
 
 
 def _halaman(template, kode, **isi):
@@ -38,7 +51,7 @@ def _angka_id(teks):
 @login_required
 @lihat_halaman("RK_DASHBOARD")
 def dashboard():
-    company = _company_harga(current_user.id)
+    company = _company_rekap(current_user.id)
     kode = [c["id_company"] for c in company]
     harga = db.daftar_harga(kode, batas=200)
     terbaru = {}
@@ -58,19 +71,42 @@ def dashboard():
 
 
 # ===== Request Operator =====
+# Persetujuan memakai Admin › Alur Persetujuan, jenis "Request Operator" + aksi:
+#   Tambah = request baru disetujui / ditolak (tanpa alur: satu tahap oleh pemegang hak Setujui menu ini),
+#   Ubah / Koreksi dan Hapus = perubahan request (tanpa alur: langsung, cukup hak Ubah / Hapus).
+for _aksi, _kode, _nama in (("TAMBAH", "REKAP_TAMBAH", "Request operator baru"), ("UBAH", "REKAP_UBAH", "Koreksi request operator"),
+                            ("HAPUS", "REKAP_HAPUS", "Hapus request operator")):
+    persetujuan.daftarkan_jenis("REKAP_REQUEST", "Request Operator", _aksi, _kode, _nama, "RK_REQUEST", "/rekapin/request?tab=persetujuan")
+
+
+@persetujuan.pelaksana("REKAP_TAMBAH", saat_ditolak=lambda d: db.ubah_status(d["id_request"], "Rejected", None, None))
+def _setujui_request(data, id_pengaju, id_penyetuju):
+    db.ubah_status(data["id_request"], "Approved", None, id_penyetuju)
+
+
+@persetujuan.pelaksana("REKAP_UBAH")
+def _ubah_request(data, id_pengaju, id_penyetuju):
+    db.simpan_request(data["id_request"], data["id_operator"], data["id_kategori"], data["tiket"], data["info_tiket"],
+                      data["catatan"], id_pengaju)
+
+
+@persetujuan.pelaksana("REKAP_HAPUS")
+def _hapus_request(data, id_pengaju, id_penyetuju):
+    db.hapus_request(data["id_request"])
+
+
 @rekapin_bp.route("/request")
 @login_required
 @lihat_halaman("RK_REQUEST")
 def halaman_request():
-    hak = {a: boleh("RK_REQUEST", a) for a in ("tambah", "ubah", "hapus", "setujui", "tolak", "selesai")}
-    return _halaman("request", "RK_REQUEST", hak=hak, kategori=db.daftar_kategori(aktif_saja=True))
+    hak = {a: boleh("RK_REQUEST", a) for a in ("tambah", "ubah", "hapus", "selesai")}
+    return _halaman("request", "RK_REQUEST", hak=hak, kategori=db.daftar_kategori(aktif_saja=True),
+                    company=_company_rekap(current_user.id))
 
 
-def _hanya_milik_sendiri():
-    """Operator tanpa hak menindaklanjuti hanya melihat request miliknya."""
-    if db.adalah_operator(current_user.id) and not boleh("RK_REQUEST", "setujui", "tolak", "selesai"):
-        return current_user.id
-    return None
+def _bisa_setujui():
+    """{id pengajuan request yang bisa saya setujui sekarang}"""
+    return {p["id_pengajuan"] for p in persetujuan.daftar(current_user, "menunggu", menu="RK_REQUEST")}
 
 
 @rekapin_bp.route("/api/request")
@@ -78,9 +114,20 @@ def _hanya_milik_sendiri():
 @izin("RK_REQUEST", "lihat")
 def api_request():
     status = request.args.get("status") or None
-    milik = _hanya_milik_sendiri()
-    return jsonify({"data": db.daftar_request(current_user.id, status if status in db.STATUS else None, milik),
-                    "ringkas": db.ringkas_request(current_user.id, milik)})
+    berjalan, bisa = db.pengajuan_berjalan(), _bisa_setujui()
+    # Tanpa hak menindaklanjuti: hanya request tentang dia / yang dia buat / yang menunggu persetujuannya
+    milik = None if boleh("RK_REQUEST", "setujui", "selesai") else current_user.id
+    juga = [i for i, daftar in berjalan.items() if any(p["id_pengajuan"] in bisa for p in daftar)]
+    semua = db.daftar_request(current_user.id, None, milik, juga)
+    ringkas = dict.fromkeys(db.STATUS, 0)
+    for r in semua:
+        ringkas[r["status"]] += 1
+    rows = [r for r in semua if not status or r["status"] == status]
+    for r in rows:
+        r["pengajuan"] = [{"id": p["id_pengajuan"], "jenis": p["jenis"], "nama": persetujuan.JENIS.get(p["jenis"], p["jenis"]),
+                           "langkah": p["langkah"], "total": p["total"], "menunggu": p["menunggu"],
+                           "bisa": p["id_pengajuan"] in bisa} for p in berjalan.get(r["id"], [])]
+    return jsonify({"data": rows, "ringkas": ringkas})
 
 
 @rekapin_bp.route("/api/operator")
@@ -90,77 +137,146 @@ def api_operator():
     return jsonify(db.daftar_operator(current_user.id))
 
 
+def _cari_tiket(id_company, q):
+    """Ascend (dbo.sp_GetTiketH7ByCompany di database ERP) bila koneksi ERP diisi; selain itu tiket CPOS sendiri."""
+    return db.tiket_ascend(id_company, q) if erp.terhubung() else db.tiket_cpos(id_company, q)
+
+
 @rekapin_bp.route("/api/tiket")
 @login_required
 @izin("RK_REQUEST", "tambah", "ubah")
 def api_tiket():
-    id_operator = _angka_id(request.args.get("operator"))
+    id_company = (request.args.get("company") or "").strip().upper()
+    if id_company not in {c["id_company"] for c in _company_rekap(current_user.id)}:
+        return jsonify({"error": "Pilih perusahaan dulu"}), 400
+    try:
+        return jsonify(_cari_tiket(id_company, (request.args.get("q") or "")[:50]))
+    except pyodbc.Error:
+        current_app.logger.exception("Cari tiket Ascend gagal")
+        return jsonify({"error": "Tiket Ascend gagal dimuat. Periksa koneksi ERP (REKAPIN_ERP_*) dan dbo.sp_GetTiketH7ByCompany."}), 502
+
+
+def _isi_request():
+    """Baca & periksa isian form request. Kembalikan dict data (dipakai langsung atau disimpan di pengajuan)."""
+    f = request.form
+    id_operator, id_kategori = _angka_id(f.get("operator")), _angka_id(f.get("kategori"))
+    id_company = (f.get("company") or "").strip().upper()
+    tiket = (f.get("tiket") or "").strip()[:50]
     if id_operator not in {o["id_user"] for o in db.daftar_operator(current_user.id)}:
-        return jsonify({"error": "Pilih operator dulu"}), 400
-    return jsonify(db.tiket_operator(id_operator, (request.args.get("q") or "")[:50]))
+        raise ValueError("Pilih operator")
+    if id_kategori not in {k["id"] for k in db.daftar_kategori(aktif_saja=True)}:
+        raise ValueError("Pilih kesalahan")
+    if not tiket:
+        raise ValueError("Pilih nomor tiket")
+    info = None
+    if id_company in {c["id_company"] for c in _company_rekap(current_user.id)}:
+        # Info tiket diambil ulang dari sumbernya (bukan dari browser) supaya isinya sesuai data timbang
+        info = next((t for t in _cari_tiket(id_company, tiket) if t["TicketNo"] == tiket), None)
+    return {"id_operator": id_operator, "id_kategori": id_kategori, "tiket": tiket, "info_tiket": info,
+            "catatan": (f.get("catatan") or "").strip()[:500]}
 
 
 @rekapin_bp.route("/api/request/simpan", methods=["POST"])
 @login_required
 @izin("RK_REQUEST", "tambah", "ubah")
 def api_request_simpan():
-    f = request.form
-    id_request = _angka_id(f.get("id"))
+    id_request = _angka_id(request.form.get("id"))
     if not boleh("RK_REQUEST", "ubah" if id_request else "tambah"):
         return jsonify({"error": "Anda tidak punya hak untuk aksi ini"}), 403
     if id_request and not db.request_dalam_cakupan(id_request, current_user.id):
         return jsonify({"error": "Request tidak ditemukan"}), 404
-    id_operator, id_kategori = _angka_id(f.get("operator")), _angka_id(f.get("kategori"))
-    tiket = (f.get("tiket") or "").strip()[:50]
-    catatan = (f.get("catatan") or "").strip()[:500]
-    if id_operator not in {o["id_user"] for o in db.daftar_operator(current_user.id)}:
-        return jsonify({"error": "Pilih operator"}), 400
-    if id_kategori not in {k["id"] for k in db.daftar_kategori(aktif_saja=True)}:
-        return jsonify({"error": "Pilih kesalahan"}), 400
-    if not tiket:
-        return jsonify({"error": "Pilih nomor tiket"}), 400
-    # Info tiket diambil ulang dari CPOS (bukan dari browser) supaya isinya sesuai data timbang
-    info = next((t for t in db.tiket_operator(id_operator, tiket) if t["TicketNo"] == tiket), None)
-    if info is None and not id_request:
-        return jsonify({"error": "Tiket tidak ditemukan di 7 hari terakhir perusahaan operator"}), 400
-    if info is None:
-        info = (db.get_request(id_request) or {}).get("info_tiket") or {}
-    return _jalankan(lambda: db.simpan_request(id_request, id_operator, id_kategori, tiket, info, catatan, current_user.id),
-                     "Request berhasil diperbarui" if id_request else "Request berhasil dikirim")
+    try:
+        d = _isi_request()
+        lama = db.get_request(id_request) if id_request else None
+        if d["info_tiket"] is None:
+            if not lama:
+                raise ValueError("Tiket tidak ditemukan di 7 hari terakhir perusahaan itu")
+            d["info_tiket"] = lama["info_tiket"]
+        judul = f"Request tiket {d['tiket']}"
+        if lama is None:
+            id_baru = db.simpan_request(None, d["id_operator"], d["id_kategori"], d["tiket"], d["info_tiket"], d["catatan"], current_user.id)
+            status, siapa = persetujuan.ajukan("REKAP_TAMBAH", f"RQ{id_baru}", judul, d["catatan"], {"id_request": id_baru},
+                                               current_user.id)
+            return jsonify({"message": "Request tersimpan dan langsung disetujui" if status == "DISETUJUI"
+                            else f"Request terkirim, menunggu persetujuan {siapa}" if siapa else "Request terkirim"})
+        if lama["status"] in ("Rejected", "Done"):
+            raise ValueError("Request yang sudah ditolak atau selesai tidak dapat diubah")
+        if persetujuan.tahap_alur("REKAP_UBAH"):
+            status, siapa = persetujuan.ajukan("REKAP_UBAH", f"RQ{id_request}-U", f"Koreksi {judul}", d["catatan"],
+                                               {"id_request": id_request, **d}, current_user.id)
+            return jsonify({"message": "Koreksi request langsung berlaku" if status == "DISETUJUI"
+                            else f"Koreksi diajukan, menunggu persetujuan {siapa}"})
+        db.simpan_request(id_request, d["id_operator"], d["id_kategori"], d["tiket"], d["info_tiket"], d["catatan"], current_user.id)
+        return jsonify({"message": "Request berhasil diperbarui"})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
 
 
 @rekapin_bp.route("/api/request/<int:id_request>/hapus", methods=["POST"])
 @login_required
 @izin("RK_REQUEST", "hapus")
 def api_request_hapus(id_request):
-    if not db.request_dalam_cakupan(id_request, current_user.id):
+    r = db.get_request(id_request) if db.request_dalam_cakupan(id_request, current_user.id) else None
+    if r is None:
         return jsonify({"error": "Request tidak ditemukan"}), 404
-    return _jalankan(lambda: db.hapus_request(id_request), "Request berhasil dihapus")
+    try:
+        if persetujuan.tahap_alur("REKAP_HAPUS"):
+            status, siapa = persetujuan.ajukan("REKAP_HAPUS", f"RQ{id_request}-H", f"Hapus request tiket {r['tiket']}",
+                                               (request.form.get("alasan") or "").strip()[:500], {"id_request": id_request},
+                                               current_user.id)
+            return jsonify({"message": "Request dihapus" if status == "DISETUJUI" else f"Penghapusan diajukan, menunggu persetujuan {siapa}"})
+        db.hapus_request(id_request)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    return jsonify({"message": "Request berhasil dihapus"})
 
 
-@rekapin_bp.route("/api/request/<int:id_request>/status", methods=["POST"])
+@rekapin_bp.route("/api/request/<int:id_request>/selesai", methods=["POST"])
 @login_required
-@izin("RK_REQUEST", "setujui", "tolak", "selesai")
-def api_request_status(id_request):
-    status = request.form.get("status")
-    if status not in AKSI_STATUS or not boleh("RK_REQUEST", AKSI_STATUS[status]):
-        return jsonify({"error": "Anda tidak punya hak untuk aksi ini"}), 403
+@izin("RK_REQUEST", "selesai")
+def api_request_selesai(id_request):
     if not db.request_dalam_cakupan(id_request, current_user.id):
         return jsonify({"error": "Request tidak ditemukan"}), 404
-    if not db.ubah_status(id_request, status, (request.form.get("catatan") or "").strip(), current_user.id):
-        return jsonify({"error": "Status request sudah berubah. Muat ulang daftar."}), 409
-    return jsonify({"message": {"Approved": "Request disetujui", "Rejected": "Request ditolak", "Done": "Request selesai"}[status]})
+    if not db.ubah_status(id_request, "Done", None, current_user.id):
+        return jsonify({"error": "Hanya request yang sudah disetujui yang bisa ditandai selesai"}), 409
+    return jsonify({"message": "Request selesai"})
+
+
+def _pengajuan_request(id_request, id_pengajuan):
+    if not any(p["id_pengajuan"] == id_pengajuan for p in db.pengajuan_berjalan().get(id_request, [])):
+        raise ValueError("Pengajuan ini sudah diproses. Muat ulang daftar.")
+
+
+@rekapin_bp.route("/api/request/<int:id_request>/pengajuan/<int:id_pengajuan>/<any(setujui, tolak):aksi>", methods=["POST"])
+@login_required
+def api_request_putuskan(id_request, id_pengajuan, aksi):
+    """Setujui / tolak satu tahap persetujuan request (hak diperiksa mesin persetujuan: peran tahap berjalan)."""
+    catatan = (request.form.get("catatan") or "").strip()[:255] or None
+    try:
+        _pengajuan_request(id_request, id_pengajuan)
+        pesan = (persetujuan.setujui if aksi == "setujui" else persetujuan.tolak)(id_pengajuan, current_user, catatan)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    db.catat_aksi(id_request, catatan)
+    return jsonify({"message": pesan})
 
 
 @rekapin_bp.route("/api/request/setujui-terpilih", methods=["POST"])
 @login_required
-@izin("RK_REQUEST", "setujui")
 def api_request_setujui_terpilih():
     ids = {int(x) for x in (request.form.get("ids") or "").split(",") if x.strip().isdigit()}
-    n = sum(1 for i in ids if db.request_dalam_cakupan(i, current_user.id) and db.ubah_status(i, "Approved", "", current_user.id))
+    berjalan, bisa, n = db.pengajuan_berjalan(), _bisa_setujui(), 0
+    for i in ids:
+        for p in berjalan.get(i, []):
+            if p["id_pengajuan"] in bisa:
+                try:
+                    persetujuan.setujui(p["id_pengajuan"], current_user)
+                    n += 1
+                except ValueError:
+                    pass
     if not n:
-        return jsonify({"error": "Tidak ada request terpilih yang masih menunggu"}), 400
-    return jsonify({"message": f"{n} request disetujui"})
+        return jsonify({"error": "Tidak ada request terpilih yang menunggu persetujuan Anda"}), 400
+    return jsonify({"message": f"{n} persetujuan diproses"})
 
 
 # ===== Harga CPO & Kernel (dbo.DailyPrice) =====
@@ -168,7 +284,7 @@ def api_request_setujui_terpilih():
 @login_required
 @lihat_halaman("RK_HARGA")
 def halaman_harga():
-    return _halaman("harga", "RK_HARGA", company=_company_harga(current_user.id),
+    return _halaman("harga", "RK_HARGA", company=_company_rekap(current_user.id),
                     hak={a: boleh("RK_HARGA", a) for a in ("tambah", "ubah", "hapus")})
 
 
@@ -176,7 +292,7 @@ def halaman_harga():
 @login_required
 @izin("RK_HARGA", "lihat")
 def api_harga():
-    kode = [c["id_company"] for c in _company_harga(current_user.id)]
+    kode = [c["id_company"] for c in _company_rekap(current_user.id)]
     tanggal = request.args.get("tanggal") or ""
     try:
         tanggal = date.fromisoformat(tanggal) if tanggal else ""
@@ -192,7 +308,7 @@ def api_harga():
 
 
 def _company_boleh(kode):
-    if kode not in {c["id_company"] for c in _company_harga(current_user.id)}:
+    if kode not in {c["id_company"] for c in _company_rekap(current_user.id)}:
         raise ValueError("Perusahaan tidak valid")
     return kode
 
@@ -295,7 +411,7 @@ def api_kategori_aktif(id_kategori):
 @lihat_halaman(lambda r: laporan_tbs.LAPORAN[r.view_args["jenis"]]["menu"])
 def laporan(jenis):
     lap = laporan_tbs.LAPORAN[jenis]
-    company = _company_harga(current_user.id)
+    company = _company_rekap(current_user.id)
     kode = [c["id_company"] for c in company]
     pilih = (request.args.get("company") or "").strip().upper() or (kode[0] if kode else "")
     hari_ini = date.today()

@@ -75,6 +75,16 @@
   .page-header-icon { @apply w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 text-white flex items-center justify-center text-sm shadow-sm shadow-blue-500/20; }
   .page-header-sub { @apply text-sm text-slate-500; }
   .halaman-judul { @apply flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6 pb-4 border-b border-slate-200; }
+  /* Tabel laporan Pembelian TBS (RekapIn): kolom angka rata kanan & lurus (judul ikut), garis antar kolom, baris ringkasan tebal */
+  .tbs-tabel { @apply w-full text-sm border-collapse; font-variant-numeric: tabular-nums; }
+  .tbs-tabel th { @apply px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 bg-slate-50 border-b border-slate-200 whitespace-nowrap; }
+  .tbs-tabel .tbs-grup th { @apply text-center text-slate-600 bg-slate-100 border-x border-slate-200; }
+  .tbs-tabel td { @apply px-3 py-2 border-b border-slate-100 text-slate-700 align-middle; }
+  .tbs-tabel th + th, .tbs-tabel td + td { @apply border-l border-slate-100; }
+  .tbs-tabel .tbs-angka { @apply text-right font-mono whitespace-nowrap; }
+  .tbs-tabel th.tbs-angka { @apply font-sans; }
+  .tbs-tabel tbody tr:hover { @apply bg-slate-50; }
+  .tbs-tabel .tbs-ringkas td { @apply bg-slate-50 font-semibold text-slate-900; }
   /* Laporan Analytics dalam bingkai (templates/analytics/sematan.html): setinggi layar di bawah header */
   .analytics-bingkai { @apply mt-4; height: calc(100vh - 6.5rem); min-height: 480px; }
   .halaman-judul-kartu { @apply bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-0; }
@@ -168,6 +178,12 @@
   .field-label { @apply block text-sm font-semibold text-slate-700 mb-1.5; }
 
   /* Table */
+  /* Tabel di dalam kotak bagian menggulir sendiri (bukan seluruh halaman) dan judul kolomnya tetap terlihat.
+     Berlaku otomatis untuk semua tabel di .section-box (pembungkus .overflow-x-auto / .section-body yang langsung berisi table). */
+  .section-box .overflow-x-auto:has(> table), .section-box .section-body:has(> table) { max-height: 34rem; @apply overflow-auto; }
+  .section-box .overflow-x-auto > table > thead th, .section-box .section-body > table > thead th { @apply sticky top-0 z-[2] bg-slate-50; }
+  .section-box .tbs-tabel > thead > tr.tbs-grup + tr > th { top: 2.25rem; }
+  .tbs-tabel .tbs-grup th { height: 2.25rem; }
   .table-header-row { @apply bg-slate-50 border-b border-slate-200 text-slate-500 text-sm font-semibold; }
   .table-cell { @apply px-4 py-3; }
   /* Kolom Aksi menempel di kanan saat tabel lebar digulir (List Blacklist / List Request) */

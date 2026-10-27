@@ -34,29 +34,29 @@
   {% set judul_tb = (pilih ~ ' · ' ~ periode_teks) if tb.title == 'Rincian Pembelian TBS' else tb.title %}
   <div class="section-box">
     {% call section_header(id_tb, judul_tb) %}<div data-henti-klik>{{ tombol_ekspor('body-tabel-' ~ id_tb, lap.judul ~ ' ' ~ pilih) }}</div>{% endcall %}
-    <div id="body-{{ id_tb }}" class="section-body overflow-x-auto"><table class="w-full text-left text-sm">
-      <thead class="table-header-row">
-        {% if tb.group_headers %}<tr>{% for g in tb.group_headers %}<th class="table-cell text-center border-b border-slate-200" colspan="{{ g.colspan }}">{{ g.label }}</th>{% endfor %}</tr>{% endif %}
-        <tr>{% for k in tb.headers %}<th class="table-cell whitespace-nowrap">{{ k }}</th>{% endfor %}</tr>
+    <div id="body-{{ id_tb }}" class="section-body overflow-x-auto"><table class="tbs-tabel">
+      <thead>
+        {% if tb.group_headers %}<tr class="tbs-grup">{% for g in tb.group_headers %}<th colspan="{{ g.colspan }}">{{ g.label }}</th>{% endfor %}</tr>{% endif %}
+        <tr>{% for k in tb.headers %}<th class="{{ 'tbs-angka' if k in tb.angka }}{{ ' text-center' if k|upper == 'ATTENSI' }}">{{ k }}</th>{% endfor %}</tr>
       </thead>
-      <tbody id="body-tabel-{{ id_tb }}" class="divide-y divide-slate-100">
+      <tbody id="body-tabel-{{ id_tb }}">
       {% for row in tb.rows %}{% set ringkas = row.get('_row_type') == 'summary' %}
-        <tr class="{{ 'bg-slate-50 font-semibold' if ringkas else 'hover:bg-slate-50' }}">
+        <tr class="{{ 'tbs-ringkas' if ringkas }}">
         {% if tb.kind == 'daily' and ringkas %}
           {% if row['JENIS HARGA'] == 'TOTAL' %}
-          <td class="table-cell" colspan="4">{{ row['JENIS HARGA'] }}</td>
-          <td class="table-cell text-right font-mono">{{ nilai(row['TONASE'], 'TONASE', row, tb.kind) }}</td>
-          <td class="table-cell text-right font-mono">{{ nilai(row['TONASE CPO'], 'TONASE CPO', row, tb.kind) }}</td>
+          <td colspan="4">{{ row['JENIS HARGA'] }}</td>
+          <td class="tbs-angka">{{ nilai(row['TONASE'], 'TONASE', row, tb.kind) }}</td>
+          <td class="tbs-angka">{{ nilai(row['TONASE CPO'], 'TONASE CPO', row, tb.kind) }}</td>
           {% else %}
-          <td class="table-cell" colspan="5">{{ row['JENIS HARGA'] }}</td>
-          <td class="table-cell text-right font-mono">{{ nilai(row['TONASE CPO'], 'TONASE CPO', row, tb.kind) }}</td>
+          <td colspan="5">{{ row['JENIS HARGA'] }}</td>
+          <td class="tbs-angka">{{ nilai(row['TONASE CPO'], 'TONASE CPO', row, tb.kind) }}</td>
           {% endif %}
         {% else %}
           {% for k in tb.headers %}{% set v = row.get(k) %}
           {% if k|upper == 'ATTENSI' %}
-          <td class="table-cell">{% if v %}<span class="badge-status {{ 'bg-emerald-100 text-emerald-700' if v|string|upper|trim == 'NAIK' else ('bg-red-100 text-red-700' if v|string|upper|trim == 'TURUN' else 'bg-slate-200 text-slate-600') }}">{{ v }}</span>{% else %}—{% endif %}</td>
+          <td class="text-center">{% if v %}<span class="badge-status {{ 'bg-emerald-100 text-emerald-700' if v|string|upper|trim == 'NAIK' else ('bg-red-100 text-red-700' if v|string|upper|trim == 'TURUN' else 'bg-slate-200 text-slate-600') }}">{{ v }}</span>{% else %}—{% endif %}</td>
           {% else %}
-          <td class="table-cell{{ ' text-right font-mono whitespace-nowrap' if v is number else '' }}">{{ tgl(nilai(v, k, row, tb.kind)) }}</td>
+          <td class="{{ 'tbs-angka' if k in tb.angka }}">{{ tgl(nilai(v, k, row, tb.kind)) }}</td>
           {% endif %}
           {% endfor %}
         {% endif %}
