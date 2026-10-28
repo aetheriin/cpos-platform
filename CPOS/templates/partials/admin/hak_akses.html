@@ -9,16 +9,27 @@
 
 {# ===== TAB: ATURAN PER MENU ===== #}
 <div id="tabAkses-aturan" class="grid grid-cols-1 lg:grid-cols-12 gap-4 akses-tinggi">
-    <div class="lg:col-span-4 xl:col-span-3 section-box flex flex-col min-h-0">
+    <div class="lg:col-span-5 xl:col-span-4 section-box flex flex-col min-h-0">
         <div class="px-4 py-3 border-b border-slate-100 space-y-2">
-            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Menu</p>
+            <div class="flex items-center justify-between gap-2">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Menu</p>
+                <div class="flex items-center gap-1">
+                    <button type="button" class="pohon-tombol" data-on-click="lipatPohon" data-arg="$false" title="Buka semua"><i class="fa-solid fa-angles-down"></i></button>
+                    <button type="button" class="pohon-tombol" data-on-click="lipatPohon" data-arg="$true" title="Lipat semua"><i class="fa-solid fa-angles-up"></i></button>
+                </div>
+            </div>
             <input type="search" id="cariMenuAkses" class="input-field py-1.5" placeholder="Cari menu..." data-on-input="tampilPohonMenu">
         </div>
-        <div id="pohonMenu" class="flex-1 overflow-y-auto py-1"></div>
-        <p class="px-4 py-2 border-t border-slate-100 text-[11px] text-slate-400"><span class="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1"></span>sudah ada aturan</p>
+        <div id="pohonMenu" class="flex-1 overflow-y-auto py-1.5"></div>
+        <div class="px-4 py-2 border-t border-slate-100 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+            <span class="flex items-center gap-1"><span class="pohon-level pohon-level-1">L1</span> grup</span>
+            <span class="flex items-center gap-1"><span class="pohon-level pohon-level-2">L2</span> halaman</span>
+            <span class="flex items-center gap-1"><span class="pohon-level pohon-level-3">L3</span> bagian</span>
+            <span class="flex items-center gap-1"><span class="pohon-aturan">2</span> jumlah aturan</span>
+        </div>
     </div>
 
-    <form id="formAturan" class="lg:col-span-8 xl:col-span-9 section-box flex flex-col min-h-0" autocomplete="off">
+    <form id="formAturan" class="lg:col-span-7 xl:col-span-8 section-box flex flex-col min-h-0" autocomplete="off">
         <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center gap-2">
             <div class="min-w-0 flex-1">
                 <p id="remahMenuAkses" class="text-[11px] text-slate-400 truncate">Pilih menu di kiri</p>

@@ -387,7 +387,7 @@ def pohon_menu():
 
     def tambah(kode_induk):
         for m in anak.get(kode_induk, []):
-            hasil.append({**{k: m[k] for k in ("id_menu", "kode", "nama", "level", "induk", "url", "aplikasi")},
+            hasil.append({**{k: m[k] for k in ("id_menu", "kode", "nama", "level", "induk", "url", "aplikasi", "ikon")},
                           "aksi": aksi_menu(m), "jumlah_aturan": jumlah.get(m["id_menu"], 0)})
             tambah(m["kode"])
     tambah(None)

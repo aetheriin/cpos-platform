@@ -21,6 +21,20 @@ function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('sidebar-collapsed');
 }
 
+// Sidebar: menu Lv2 dropdown (punya bagian Lv3) yang dibuka / ditutup diingat di browser ini.
+// Dropdown yang berisi halaman aktif selalu terbuka.
+document.addEventListener('DOMContentLoaded', () => {
+    let buka = {};
+    try { buka = JSON.parse(localStorage.getItem('sidebar_sub') || '{}'); } catch (e) { buka = {}; }
+    document.querySelectorAll('.sidebar-sub').forEach(d => {
+        if (!d.hasAttribute('data-aktif') && buka[d.dataset.kode] !== undefined) d.open = buka[d.dataset.kode];
+        d.addEventListener('toggle', () => {
+            buka[d.dataset.kode] = d.open;
+            try { localStorage.setItem('sidebar_sub', JSON.stringify(buka)); } catch (e) { /* mode privat */ }
+        });
+    });
+});
+
 // List & Form adalah dua halaman terpisah (List tanpa info bar & tab, Form dengan info bar + tab)
 function setSidebarView(view) {
     window.location.href = `/weighbridge?view=${view}`;

@@ -34,7 +34,27 @@ function pilihTabAkses(tab) {
 // ===== Pohon menu =====
 const menuKode = kode => DATA.menu.find(m => m.kode === kode);
 
+// Cabang yang dilipat (kode menu). Awal: halaman Lv2 yang punya bagian dilipat, grup Lv1 terbuka.
+let pohonDilipat = null;
+const anakMenu = kode => DATA.menu.filter(m => m.induk === kode);
+const IKON_LEVEL = { 1: 'fa-layer-group', 2: 'fa-file-lines', 3: 'fa-circle' };
+// Nama kelas ditulis utuh (bukan dirakit) supaya ikut terbangun di tailwind.css
+const KELAS_IKON = { 1: 'pohon-ikon pohon-ikon-1', 2: 'pohon-ikon pohon-ikon-2', 3: 'pohon-ikon pohon-ikon-3' };
+const KELAS_LEVEL = { 1: 'pohon-level pohon-level-1', 2: 'pohon-level pohon-level-2', 3: 'pohon-level pohon-level-3' };
+const APP_MENU = { ANALYTICS: ['Analytics', 'bg-violet-100 text-violet-700'], REKAPIN: ['RekapIn', 'bg-amber-100 text-amber-700'] };
+
+function lipatPohon(lipat) {
+    pohonDilipat = new Set(lipat ? DATA.menu.filter(m => anakMenu(m.kode).length).map(m => m.kode) : []);
+    tampilPohonMenu();
+}
+
+function lipatCabang(kode) {
+    pohonDilipat.has(kode) ? pohonDilipat.delete(kode) : pohonDilipat.add(kode);
+    tampilPohonMenu();
+}
+
 function tampilPohonMenu() {
+    if (!pohonDilipat) pohonDilipat = new Set(DATA.menu.filter(m => m.level === 2 && anakMenu(m.kode).length).map(m => m.kode));
     const q = (document.getElementById('cariMenuAkses').value || '').trim().toLowerCase();
     let tampil = DATA.menu;
     if (q) {
@@ -43,16 +63,34 @@ function tampilPohonMenu() {
             for (let x = m; x; x = x.induk ? menuKode(x.induk) : null) cocok.add(x.kode);
         });
         tampil = DATA.menu.filter(m => cocok.has(m.kode));
+    } else {
+        // Sembunyikan anak dari cabang yang dilipat (menu aktif tetap terlihat)
+        const tersembunyi = m => { for (let x = m.induk ? menuKode(m.induk) : null; x; x = x.induk ? menuKode(x.induk) : null)
+            if (pohonDilipat.has(x.kode) && !(menuAktif && menuAktif.kode === m.kode)) return true; return false; };
+        tampil = DATA.menu.filter(m => !tersembunyi(m));
     }
-    document.getElementById('pohonMenu').innerHTML = tampil.map(m => `
-        <button type="button" class="w-full flex items-center gap-2 pr-3 py-1.5 text-left text-sm
-            ${menuAktif && menuAktif.id_menu === m.id_menu ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-700'}"
-            style="padding-left:${0.75 + (m.level - 1) * 1.1}rem" data-on-click="pilihMenuAkses" data-arg="${m.id_menu}">
-            <i class="fa-solid ${m.level === 1 ? 'fa-folder' : m.level === 2 ? 'fa-file' : 'fa-angle-right'} w-3 text-[11px] opacity-60"></i>
-            <span class="flex-1 truncate ${m.level === 1 ? 'font-semibold' : ''}">${escapeHtml(m.nama)}</span>
-            ${m.url || m.level === 1 ? '' : '<span class="text-[10px] opacity-60" title="Halamannya belum dibuat">belum ada</span>'}
-            <span class="w-2 h-2 rounded-full flex-shrink-0 ${m.jumlah_aturan ? 'bg-emerald-500' : 'bg-transparent'}"></span>
-        </button>`).join('') || '<p class="p-4 text-sm text-slate-400">Menu tidak ditemukan</p>';
+    const LEBAR = 1.15;   // rem per level
+    document.getElementById('pohonMenu').innerHTML = tampil.map(m => {
+        const aktif = menuAktif && menuAktif.id_menu === m.id_menu;
+        const punyaAnak = anakMenu(m.kode).length;
+        const garis = Array.from({ length: m.level - 1 }, (_, i) => `<span class="pohon-garis" style="left:${1.3 + i * LEBAR}rem"></span>`).join('');
+        // Label aplikasi hanya bila berbeda dari menu induknya (anak Analytical Dashboard tidak perlu diberi label lagi)
+        const app = m.induk && menuKode(m.induk) && menuKode(m.induk).aplikasi === m.aplikasi ? null : APP_MENU[m.aplikasi];
+        return `<div class="pohon-baris ${aktif ? 'pohon-baris-aktif' : ''}" style="padding-left:${0.6 + (m.level - 1) * LEBAR}rem">
+            ${garis}
+            ${punyaAnak && !q ? `<button type="button" class="pohon-caret ${pohonDilipat.has(m.kode) ? 'pohon-caret-tutup' : ''}" data-on-click="lipatCabang" data-arg="${escapeHtml(m.kode)}"
+                title="${pohonDilipat.has(m.kode) ? 'Buka' : 'Lipat'} (${punyaAnak})"><i class="fa-solid fa-chevron-down"></i></button>` : '<span class="w-4 flex-shrink-0"></span>'}
+            <button type="button" class="flex-1 min-w-0 flex items-center gap-2 text-left" data-on-click="pilihMenuAkses" data-arg="${m.id_menu}">
+                <span class="${KELAS_IKON[m.level]}"><i class="fa-solid ${m.level === 3 ? IKON_LEVEL[3] : (m.ikon || IKON_LEVEL[m.level])}"></i></span>
+                <span class="flex-1 min-w-0 truncate ${m.level === 1 ? 'text-[11px] font-bold uppercase tracking-wider' : m.level === 2 ? 'font-semibold' : ''}"
+                      title="${escapeHtml(m.nama)} · ${escapeHtml(m.kode)}">${escapeHtml(m.nama)}</span>
+                ${m.url || m.level === 1 || punyaAnak ? '' : '<span class="text-[9px] italic opacity-60" title="Halamannya belum dibuat">segera</span>'}
+                ${app ? `<span class="pohon-app ${app[1]}">${app[0]}</span>` : ''}
+                <span class="${KELAS_LEVEL[m.level]}">L${m.level}</span>
+                <span class="pohon-aturan ${m.jumlah_aturan ? '' : 'pohon-aturan-kosong'}" title="${m.jumlah_aturan ? `${m.jumlah_aturan} aturan` : 'Belum ada aturan (ikut menu induk)'}">${m.jumlah_aturan || '–'}</span>
+            </button>
+        </div>`;
+    }).join('') || '<p class="p-4 text-sm text-slate-400">Menu tidak ditemukan</p>';
 }
 
 async function pilihMenuAkses(id) {
