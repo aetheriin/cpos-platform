@@ -59,6 +59,8 @@
   .pohon-app { @apply text-[9px] font-bold rounded px-1 py-px flex-shrink-0; }
   .pohon-aturan { @apply min-w-[1.25rem] text-center text-[10px] font-bold rounded-full px-1.5 py-px bg-emerald-100 text-emerald-700 flex-shrink-0; }
   .pohon-aturan-kosong { @apply bg-slate-100 text-slate-400; }
+  .pt-pilih { @apply cursor-pointer select-none rounded border border-slate-200 px-1.5 py-px text-[10px] font-bold text-slate-500 hover:border-utama-300; }
+  .pt-pilih-aktif { @apply border-utama-400 bg-utama-50 text-utama-700; }
   .pohon-baris-aktif .pohon-level, .pohon-baris-aktif .pohon-aturan, .pohon-baris-aktif .pohon-app { @apply bg-white/20 text-white; }
   .pohon-tombol { @apply w-7 h-7 inline-flex items-center justify-center rounded-md text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-800; }
   /* Lv2 dropdown (punya bagian Lv3): klik membuka / menutup daftar bagian, bukan pindah halaman */

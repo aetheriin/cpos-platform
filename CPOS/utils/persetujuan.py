@@ -2,14 +2,14 @@
 
 Berjenjang (Admin › Alur Persetujuan): alur per jenis + kategori target (mis. Tambah blacklist · Driver), tiap
 tahap = satu peran (departemen + jabatan). Tahap disalin ke pengajuan_tahap saat diajukan.
-- Penyetuju tahap = pengguna dengan peran itu di PT pengajuan (kantor pusat: PT yang dikelolanya).
+- Penyetuju tahap = pengguna dengan peran itu di PT pengajuan (sesuai cakupan data di Hak Akses).
 - Tahap yang perannya dipegang pengaju sendiri dilewati otomatis. Ditolak di tahap mana pun -> berhenti.
 - Tahap terakhir disetujui -> pengajuan dijalankan. Setiap tahap naik, peran tahap berikutnya diberi notifikasi.
 
 Tanpa alur untuk jenis/kategori itu (cara lama, satu tahap):
 
 - Penyetuju = siapa pun yang jabatannya punya hak "Setujui" di menu terkait (Admin › Level & Hak Akses), di PT
-  pengajuan (user kantor pusat: PT yang dikelolanya). Tidak ada pengaturan penyetuju terpisah; mengikuti hak akses
+  pengajuan (sesuai cakupan data di Hak Akses). Tidak ada pengaturan penyetuju terpisah; mengikuti hak akses
   terbaru. Yang mengajukan tidak bisa menyetujui pengajuannya sendiri.
 - Belum ada jabatan dengan hak Setujui di menu itu -> pengajuan langsung dijalankan.
 - Notifikasi: ke jabatan yang punya hak Setujui di PT itu saat diajukan, dan ke pengaju saat selesai.

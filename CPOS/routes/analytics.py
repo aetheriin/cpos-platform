@@ -8,7 +8,8 @@ import os
 from flask import Blueprint, render_template, jsonify, session, abort
 from flask_login import login_required, current_user
 
-from utils.area import company_user
+from utils.area import company_menu, company_user
+from utils.db_organisasi import daftar_company
 from utils.hak_akses import boleh_lihat, halaman as lihat_halaman, remah_menu, semua_menu
 
 analytics_bp = Blueprint("analytics", __name__)
@@ -39,7 +40,14 @@ def halaman(laporan):
 def saya():
     """Dipanggil backend Analytics (bukan browser): siapa pemilik sesi ini dan laporan apa saja yang boleh dibukanya."""
     pt = company_user(current_user.id)
+    laporan = {i: m for i, m in _menu_laporan().items() if boleh_lihat(m["kode"])}
+    nama = {c["id_company"]: c["nama"] for c in daftar_company()}
+    # PT yang datanya boleh dilihat per laporan (Admin › Hak Akses › Cakupan data): kode & nama PT, None = semua PT
+    per_laporan = {}
+    for i, m in laporan.items():
+        boleh = company_menu(current_user.id, m["kode"])
+        per_laporan[i] = None if boleh is None else sorted({*boleh, *(nama[k] for k in boleh if k in nama)})
     return jsonify({"id": current_user.id, "username": current_user.username, "nama": current_user.nama_lengkap,
                     "role": current_user.nama_level, "company": sorted(pt) if pt is not None else None,
-                    "laporan": sorted(i for i, m in _menu_laporan().items() if boleh_lihat(m["kode"])),
+                    "laporan": sorted(laporan), "company_laporan": per_laporan,
                     "sid": session.get("_sid")})

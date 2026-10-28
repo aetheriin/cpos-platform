@@ -250,7 +250,8 @@ def _pengguna_cpos(request):
     company = data.get("company")
     return {"id": data["id"], "username": data["username"], "nama": data["nama"], "role": data["role"], "divisi": "",
             "company": ", ".join(company) if company else "Semua", "admin": False, "cpos": True,
-            "laporan": [i for i in LAPORAN if i in set(data["laporan"])], "_sid": pemilik}
+            "laporan": [i for i in LAPORAN if i in set(data["laporan"])], "_sid": pemilik,
+            "_pt_laporan": data.get("company_laporan") or {}}
 
 
 def pengguna_saat_ini(sesi_id: str | None = Cookie(default=None, alias=NAMA_COOKIE), request: Request = None):
@@ -326,7 +327,42 @@ def _dataset(lap, data_id, user):
     ds = gudang.ambil(data_id, _pemilik(user))
     if ds is None or ds.laporan != lap.id:
         raise HTTPException(404, "Data laporan ini sudah tidak ada di server (misalnya server dimulai ulang). Muat ulang periodenya.")
-    return ds
+    return _batasi_pt(ds, _pt_boleh(user, lap.id))
+
+
+def _pt_boleh(user, laporan_id):
+    """Mode CPOS: PT yang boleh dilihat di laporan ini (Admin › Hak Akses › Cakupan data CPOS), huruf kecil. None = semua."""
+    daftar = (user.get("_pt_laporan") or {}).get(laporan_id)
+    return None if daftar is None else frozenset(str(x).strip().casefold() for x in daftar)
+
+
+def _saring_pt(df, boleh):
+    """Buang baris perusahaan di luar cakupan (kolom comp). Data lain (dict / list DataFrame) disaring per bagian."""
+    if isinstance(df, dict):
+        return {k: _saring_pt(v, boleh) for k, v in df.items()}
+    if isinstance(df, (list, tuple)):
+        return type(df)(_saring_pt(v, boleh) for v in df)
+    if hasattr(df, "columns") and "comp" in df.columns:
+        return df[df["comp"].astype(str).str.strip().str.casefold().isin(boleh)]
+    return df
+
+
+class _DatasetPT:
+    """Dataset yang sama, hanya baris PT dalam cakupan pengguna; hasil olahan disimpan terpisah per cakupan."""
+
+    def __init__(self, ds, boleh):
+        self._ds, self.boleh = ds, boleh
+        simpan = ds.hasil.setdefault(("_pt", boleh), {})
+        if "df" not in simpan:
+            simpan["df"] = _saring_pt(ds.df, boleh)
+        self.df, self.hasil = simpan["df"], simpan.setdefault("hasil", {})
+
+    def __getattr__(self, nama):
+        return getattr(self._ds, nama)
+
+
+def _batasi_pt(ds, boleh):
+    return ds if boleh is None else _DatasetPT(ds, boleh)
 
 
 _PARAMETER_UMUM = {"data_id", "jenis", "jumlah_minggu", "minggu", "dari", "sampai", "cari", "urut", "arah", "halaman", "ukuran"}

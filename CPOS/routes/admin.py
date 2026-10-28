@@ -126,11 +126,9 @@ def admin_halaman(halaman):
 @admin_bp.route("/api/admin/users")
 @_admin
 def users_daftar():
-    pt, pusat = org.pt_kelola_semua(), org.area_pusat()
     return jsonify([{**u, "last_login": u["last_login"].strftime("%Y-%m-%d %H:%M") if u["last_login"] else None,
                      "created_at": u["created_at"].strftime("%Y-%m-%d") if u["created_at"] else None,
-                     "is_saya": u["id_user"] == current_user.id, "pt_kelola": pt.get(u["id_user"], []),
-                     "di_pusat": u["id_comp_area"] in pusat}
+                     "is_saya": u["id_user"] == current_user.id}
                     for u in db.daftar_user()])
 
 
@@ -160,20 +158,6 @@ def _akun_form():
     if not peran["is_active"]:
         raise ValueError(f"Peran {peran['nama']} dinonaktifkan")
     return peran, id_department, id_area
-
-
-def _pt_kelola_form(id_area):
-    """PT yang dikelola user kantor pusat (wajib minimal satu; semua PT = semua dicentang). User site: kosong."""
-    if id_area not in org.area_pusat():
-        return set()
-    pilihan = {v.strip() for v in request.form.getlist("pt_kelola") if v.strip()} & {c["id_company"] for c in org.daftar_company()}
-    if not pilihan:
-        raise ValueError("Pilih PT yang dikelola (semua PT: tekan Pilih semua)")
-    return pilihan
-
-
-def _simpan_pt_kelola(id_user, pilihan):
-    org.simpan_pt_kelola(id_user, pilihan)
 
 
 def _password_form(nama="password"):
@@ -227,9 +211,7 @@ def users_tambah():
         if db.username_dipakai(username):
             raise ValueError(f"Username {username} sudah dipakai")
         personel, (level, id_department, id_area), pw = _personel_form(), _akun_form(), _password_form()
-        pt = _pt_kelola_form(id_area)
-        id_user = db.tambah_user(username, level["id_level"], id_department, id_area, generate_password_hash(pw), personel)
-        _simpan_pt_kelola(id_user, pt)
+        db.tambah_user(username, level["id_level"], id_department, id_area, generate_password_hash(pw), personel)
         _audit("USER_TAMBAH", username, f"jabatan {level['kode']}")
         return jsonify({"message": f"Pengguna {username} berhasil ditambahkan"})
     return _jalankan(aksi)
@@ -254,9 +236,7 @@ def users_ubah(id_user):
                 raise ValueError("Tidak bisa menurunkan level akun sendiri")
             if db.jumlah_admin_aktif(kecuali=id_user) == 0:
                 raise ValueError("Minimal harus ada 1 admin aktif")
-        pt = _pt_kelola_form(id_area)
         db.ubah_user(id_user, level["id_level"], id_department, id_area, personel)
-        _simpan_pt_kelola(id_user, pt)
         _audit("USER_UBAH", u["username"], f"level {u['role']} -> {level['kode']}" if ganti_level else "data diubah")
         if ganti_level:
             sesi_aktif.hapus_user(id_user, "ROLE_DIUBAH")
@@ -336,6 +316,7 @@ def level_aktif(id_level):
 def akses_awal():
     """Pohon menu + pilihan sasaran (peran = departemen + jabatan, jabatan, departemen) + widget dashboard."""
     return jsonify({"menu": hak_akses.pohon_menu(), "widget": hak_akses.daftar_widget(),
+                    "company": [{"id": c["id_company"], "nama": c["nama"]} for c in org.daftar_company() if c["is_active"]],
                     "jabatan": [{"id": j["id_jabatan"], "nama": j["nama"]} for j in hak_akses.daftar_jabatan()
                                 if j["is_active"] and not j["is_admin"]],
                     "departemen": [{"id": d["id_department"], "nama": d["nama"]} for d in org.daftar_department() if d["is_active"]],
@@ -349,6 +330,23 @@ def akses_awal():
 @_admin
 def akses_menu(id_menu):
     return jsonify(hak_akses.aturan_menu(id_menu))
+
+
+def _cakupan_dari_json(c):
+    """{"cakupan": AREA / PT / SEMUA / PT_TERTENTU, "pt": [...]} -> dict untuk AccessMenu.MenuDetails, None = area sendiri."""
+    c = c if isinstance(c, dict) else {}
+    jenis = str(c.get("cakupan") or "AREA").upper()
+    if jenis not in hak_akses.JENIS_CAKUPAN:
+        raise ValueError("Cakupan data tidak dikenal")
+    if jenis == "AREA":
+        return None
+    if jenis != "PT_TERTENTU":
+        return {"cakupan": jenis}
+    ada = {x["id_company"] for x in org.daftar_company()}
+    pt = sorted({str(x).strip().upper() for x in (c.get("pt") or [])} & ada)
+    if not pt:
+        raise ValueError("Cakupan PT tertentu: pilih minimal satu PT")
+    return {"cakupan": jenis, "pt": pt}
 
 
 def _aturan_dari_json(m, data):
@@ -388,7 +386,8 @@ def _aturan_dari_json(m, data):
         if not aksi:
             continue
         widget = [w for w in dict.fromkeys(a.get("widget") or []) if w in widget_ada] if m["kode"] == "DASHBOARD" else []
-        hasil.append({"jenis": jenis, "id_target": target, "tolak": tolak, "aksi": aksi, "widget": widget})
+        hasil.append({"jenis": jenis, "id_target": target, "tolak": tolak, "aksi": aksi, "widget": widget,
+                      "cakupan": None if tolak else _cakupan_dari_json(a.get("cakupan"))})
     return hasil
 
 

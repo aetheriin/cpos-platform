@@ -135,6 +135,19 @@ function sasaran(a, i) {
         <i class="fa-solid fa-user mr-1"></i>${escapeHtml(a.id_target ? a.nama_target : 'Pilih user...')}</button>`;
 }
 
+// Cakupan data aturan Izinkan: data PT mana yang terlihat lewat menu ini (digabung bila beberapa aturan cocok)
+const CAKUPAN = [['AREA', 'Area sendiri'], ['PT', 'PT sendiri'], ['SEMUA', 'Semua PT'], ['PT_TERTENTU', 'PT tertentu']];
+
+function selCakupan(a, i) {
+    if (a.tolak) return '<span class="text-slate-300">–</span>';
+    const c = a.cakupan || { cakupan: 'AREA' };
+    const pt = new Set(c.pt || []);
+    return `<select class="input-field py-1 text-xs w-32" data-i="${i}" data-f="cakupan">${opsi(CAKUPAN, c.cakupan || 'AREA')}</select>
+        ${c.cakupan === 'PT_TERTENTU' ? `<div class="flex flex-wrap gap-1 mt-1 max-w-[14rem]">${DATA.company.map(p => `
+            <label class="pt-pilih ${pt.has(p.id) ? 'pt-pilih-aktif' : ''}" title="${escapeHtml(p.nama)}">
+                <input type="checkbox" class="hidden" data-i="${i}" data-f="pt" data-pt="${escapeHtml(p.id)}"${pt.has(p.id) ? ' checked' : ''}>${escapeHtml(p.id)}</label>`).join('')}</div>` : ''}`;
+}
+
 const LABEL_AKSI = { lihat: 'Lihat', tambah: 'Tambah', ubah: 'Ubah', hapus: 'Hapus', setujui: 'Setujui', tolak: 'Tolak', selesai: 'Selesai' };
 
 // Kolom aksi hanya yang berlaku di menu ini (mis. Dashboard: Lihat & Ubah)
@@ -159,6 +172,7 @@ function tampilAturan() {
             <td class="table-cell !px-2">${sasaran(a, i)}</td>
             ${berlaku.map(k => `<td class="table-cell !px-1 text-center"><input type="checkbox" class="w-4 h-4" data-i="${i}" data-f="aksi"
                 data-aksi="${k}" title="${LABEL_AKSI[k]}"${a.aksi[k] ? ' checked' : ''}></td>`).join('')}
+            <td class="table-cell !px-2">${selCakupan(a, i)}</td>
             ${adaWidget() ? `<td class="table-cell !px-2 min-w-[9rem]">${a.tolak ? '<span class="text-slate-300">–</span>'
                 : `<button type="button" class="link-aksi text-blue-600 text-left" data-on-click="bukaWidgetAturan" data-arg="${i}">
                     ${a.widget.length ? a.widget.map(w => escapeHtml(namaWidget[w] || w)).join(', ') : '<span class="text-slate-400">Atur isi</span>'}</button>`}</td>` : ''}
@@ -185,6 +199,12 @@ document.getElementById('tabelAturan').addEventListener('change', e => {
     if (f === 'tolak') a.tolak = el.value === '1';
     else if (f === 'jenis') { a.jenis = el.value; a.id_target = targetAwal(a.jenis); a.nama_target = ''; }
     else if (f === 'id_target') a.id_target = el.value;
+    else if (f === 'cakupan') a.cakupan = { cakupan: el.value, ...(el.value === 'PT_TERTENTU' ? { pt: (a.cakupan && a.cakupan.pt) || [] } : {}) };
+    else if (f === 'pt') {
+        const pt = new Set((a.cakupan && a.cakupan.pt) || []);
+        el.checked ? pt.add(el.dataset.pt) : pt.delete(el.dataset.pt);
+        a.cakupan = { cakupan: 'PT_TERTENTU', pt: [...pt] };
+    }
     else if (f === 'role_dept' || f === 'role_jab') {
         const [d, j] = String(a.id_target || '|').split('|');
         a.id_target = f === 'role_dept' ? `${el.value}|${j}` : `${d}|${el.value}`;
@@ -199,7 +219,8 @@ document.getElementById('tabelAturan').addEventListener('change', e => {
 });
 
 function tambahAturan() {
-    aturan.push({ jenis: 'ROLE', id_target: targetAwal('ROLE'), nama_target: '', tolak: false, aksi: { lihat: true }, widget: [] });
+    aturan.push({ jenis: 'ROLE', id_target: targetAwal('ROLE'), nama_target: '', tolak: false, aksi: { lihat: true }, widget: [],
+                  cakupan: { cakupan: 'AREA' } });
     tandai(true);
     tampilAturan();
 }
@@ -255,8 +276,11 @@ function tempelAturan() {
 document.getElementById('formAturan').addEventListener('submit', async e => {
     e.preventDefault();
     if (aturan.some(a => a.jenis === 'USER' && !a.id_target)) { Notif.peringatan('Ada aturan User yang belum dipilih usernya.'); return; }
+    if (aturan.some(a => !a.tolak && a.cakupan && a.cakupan.cakupan === 'PT_TERTENTU' && !(a.cakupan.pt || []).length)) {
+        Notif.peringatan('Cakupan PT tertentu: pilih minimal satu PT.'); return;
+    }
     const kirim = aturan.map(a => ({ jenis: a.jenis, id_target: a.id_target, tolak: a.tolak,
-                                     aksi: AKSI.filter(k => a.aksi[k]), widget: a.widget }));
+                                     aksi: AKSI.filter(k => a.aksi[k]), widget: a.widget, cakupan: a.cakupan }));
     const btn = document.getElementById('btnSimpanAturan');
     const data = await denganTombol(btn, () => kirimForm(`/api/admin/akses/menu/${menuAktif.id_menu}`, { aturan: JSON.stringify(kirim) }));
     if (!tampilkanHasil(data)) return;

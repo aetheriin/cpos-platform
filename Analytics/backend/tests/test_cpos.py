@@ -58,3 +58,16 @@ def test_login_sendiri_dan_admin_ditutup(mode_cpos):
         api.wajib_admin(api.pengguna_saat_ini(sesi_id=None, request=permintaan()))
     assert e.value.status_code == 403
     assert api.status()["cpos"] is True
+
+
+def test_cakupan_pt_per_laporan_dari_cpos_menyaring_baris_perusahaan(mode_cpos):
+    """Admin › Hak Akses › Cakupan data di CPOS: hanya baris PT yang diizinkan untuk laporan itu yang dihitung."""
+    pd = pytest.importorskip("pandas")
+    mode_cpos["isi"] = {**DARI_CPOS, "company_laporan": {"pr_po": ["YBS", "PT Yuni Bersaudara Sejahtera"], "pi_gt": None}}
+    user = api.pengguna_saat_ini(None, permintaan())
+    assert "_pt_laporan" in user and api._pt_boleh(user, "pi_gt") is None
+    ds = SimpleNamespace(df=pd.DataFrame({"comp": ["YBS", "SUN", " ybs "], "n": [1, 2, 3]}), hasil={}, mulai="2026-01-01")
+    lihat = api._batasi_pt(ds, api._pt_boleh(user, "pr_po"))
+    assert lihat.df["n"].tolist() == [1, 3]
+    assert lihat.mulai == "2026-01-01" and lihat.hasil is not ds.hasil
+    assert api._batasi_pt(ds, None) is ds

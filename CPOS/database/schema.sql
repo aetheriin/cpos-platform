@@ -109,7 +109,10 @@ CREATE TABLE dbo.MenuAction (
 /* Aturan hak menu (Admin › Hak Akses): satu baris per menu x aksi x sasaran.
    TargetType: ALL = semua user, ROLE = peran (LevelDetails: departemen + jabatan), LEVEL = jabatan, DEPT = departemen,
    USER = satu user. Kolom sasaran yang sesuai TargetType yang diisi, sisanya NULL.
-   IsDeny 1 = Larang: aksi itu dicabut untuk sasaran ini; Larang selalu mengalahkan Izinkan. */
+   IsDeny 1 = Larang: aksi itu dicabut untuk sasaran ini; Larang selalu mengalahkan Izinkan.
+   MenuDetails = cakupan data aturan Izinkan (JSON, sama di semua baris aksi satu aturan; NULL = area sendiri):
+     {"cakupan":"AREA"} area pengguna (kantor pusat: semua) · {"cakupan":"PT"} semua area PT pengguna ·
+     {"cakupan":"SEMUA"} semua PT · {"cakupan":"PT_TERTENTU","pt":["YBS","SJN"]}. Beberapa aturan cocok = digabung. */
 CREATE TABLE dbo.AccessMenu (
     AccessMenuID INT IDENTITY(1,1) PRIMARY KEY,
     MenuID       INT         NOT NULL CONSTRAINT FK_AccessMenu_Menu REFERENCES dbo.Menu (MenuID),
@@ -120,6 +123,7 @@ CREATE TABLE dbo.AccessMenu (
     DeptID       VARCHAR(5)  NULL CONSTRAINT FK_AccessMenu_Dept REFERENCES dbo.Department (DeptID),
     UserID       BIGINT      NULL,                       -- FK ke Users ditambahkan setelah tabel Users dibuat
     IsDeny       BIT NOT NULL CONSTRAINT DF_AccessMenu_Deny DEFAULT (0),
+    MenuDetails  NVARCHAR(MAX) NULL CONSTRAINT CK_AccessMenu_Details CHECK (MenuDetails IS NULL OR ISJSON(MenuDetails) = 1),
     Active       BIT NOT NULL CONSTRAINT DF_AccessMenu_Active DEFAULT (1),
     CreateDate   DATETIME NOT NULL CONSTRAINT DF_AccessMenu_Create DEFAULT (GETDATE()),
     CONSTRAINT CK_AccessMenu_Target CHECK (
@@ -209,12 +213,6 @@ CREATE TABLE dbo.PasswordManager (
     Description NVARCHAR(255) NULL
 );
 ALTER TABLE dbo.AccessMenu ADD CONSTRAINT FK_AccessMenu_User FOREIGN KEY (UserID) REFERENCES dbo.Users (UserID);
--- Perusahaan yang dikelola user kantor pusat. Kosong = semua perusahaan
-CREATE TABLE dbo.UserCompany (
-    UserID  BIGINT  NOT NULL CONSTRAINT FK_UserComp_User REFERENCES dbo.Users (UserID),
-    CompID  VARCHAR(5) NOT NULL CONSTRAINT FK_UserComp_Company REFERENCES dbo.Company (CompID),
-    CONSTRAINT PK_UserCompany PRIMARY KEY (UserID, CompID)
-);
 GO
 
 /* SIM (License + LicenseDetail), wajah (FaceRecog), kunjungan tamu (VisitPurpose + Guest) */
@@ -2045,7 +2043,7 @@ WITH siapa AS (
     WHERE lv.IsAdmin = 0
       AND ((@UserID IS NULL AND ld.LevelDetID = @LevelDetID) OR (@UserID IS NOT NULL AND u.UserID IS NOT NULL))
 )
-SELECT a.AccessMenuID, a.MenuID, a.ActionID, a.TargetType, a.IsDeny, a.LevelDetID, a.LevelID, a.DeptID, a.UserID
+SELECT a.AccessMenuID, a.MenuID, a.ActionID, a.TargetType, a.IsDeny, a.LevelDetID, a.LevelID, a.DeptID, a.UserID, a.MenuDetails
 FROM dbo.AccessMenu a CROSS JOIN siapa s
 WHERE a.Active = 1
   AND (a.TargetType = 'ALL'
@@ -2210,19 +2208,17 @@ BEGIN
       AND s.LastActive >= DATEADD(MINUTE, -@idle, GETDATE()) AND s.LoginDate >= DATEADD(HOUR, -@maks, GETDATE());
 END
 GO
-/* Cakupan data user (area yang boleh dilihat):
+/* Cakupan data user (area yang boleh dilihat), bawaan:
    - akun di area biasa: hanya areanya;
-   - akun di area bertipe Mill kantor pusat (Mill.IsHeadOffice): semua area, atau hanya area milik PT di UserCompany bila diisi;
-   - akun tanpa area (admin sistem): semua area.
-   fn_UserScopeInfo = 1 baris ringkasan; fn_UserScope = daftar area. Contoh di prosedur laporan:
-     WHERE t.CompAreaID IN (SELECT CompAreaID FROM dbo.fn_UserScope(@UserID)) */
+   - akun di area bertipe Mill kantor pusat (Mill.IsHeadOffice) dan akun tanpa area (admin sistem): semua area.
+   Per menu (fn_UserMenuScope): gabungan cakupan aturan Izinkan-Lihat menu itu yang cocok dengan user (AccessMenu.MenuDetails).
+   fn_UserScopeInfo = 1 baris ringkasan; fn_UserScope = daftar area bawaan. Contoh di prosedur laporan:
+     WHERE t.CompAreaID IN (SELECT CompAreaID FROM dbo.fn_UserMenuScope(@UserID, 'RK_TBS_DAILY')) */
 CREATE OR ALTER FUNCTION dbo.fn_UserScopeInfo (@UserID BIGINT)
 RETURNS TABLE AS RETURN
 SELECT u.UserID, u.CompAreaID AS OwnAreaID, a.CompID AS OwnCompID,
        CAST(ISNULL(m.IsHeadOffice, 0) AS BIT) AS IsHeadOffice,
-       CAST(CASE WHEN u.CompAreaID IS NULL
-                   OR (m.IsHeadOffice = 1 AND NOT EXISTS (SELECT 1 FROM dbo.UserCompany uc WHERE uc.UserID = u.UserID))
-                 THEN 1 ELSE 0 END AS BIT) AS AllAreas
+       CAST(CASE WHEN u.CompAreaID IS NULL OR m.IsHeadOffice = 1 THEN 1 ELSE 0 END AS BIT) AS AllAreas
 FROM dbo.Users u
 LEFT JOIN dbo.CompanyArea a ON a.CompAreaID = u.CompAreaID
 LEFT JOIN dbo.Mill m ON m.MillID = a.MillID
@@ -2233,19 +2229,43 @@ RETURNS TABLE AS RETURN
 SELECT a.CompAreaID, a.AreaCode, a.AreaName, a.CompID, c.CompName, a.Active,
        CAST(CASE WHEN a.CompAreaID = i.OwnAreaID THEN 1 ELSE 0 END AS BIT) AS IsOwnArea
 FROM dbo.fn_UserScopeInfo(@UserID) i
-JOIN dbo.CompanyArea a ON i.AllAreas = 1
-     OR (i.IsHeadOffice = 1 AND a.CompID IN (SELECT uc.CompID FROM dbo.UserCompany uc WHERE uc.UserID = i.UserID))
-     OR (i.IsHeadOffice = 0 AND a.CompAreaID = i.OwnAreaID)
+JOIN dbo.CompanyArea a ON i.AllAreas = 1 OR a.CompAreaID = i.OwnAreaID
 JOIN dbo.Company c ON c.CompID = a.CompID;
 GO
+CREATE OR ALTER FUNCTION dbo.fn_UserMenuScope (@UserID BIGINT, @MenuCode VARCHAR(40))
+RETURNS TABLE AS RETURN
+WITH aturan AS (
+    SELECT ISNULL(JSON_VALUE(r.MenuDetails, '$.cakupan'), 'AREA') AS Cakupan, r.MenuDetails
+    FROM dbo.fn_AccessRules(@UserID, NULL) r
+    JOIN dbo.Menu m ON m.MenuID = r.MenuID
+    WHERE m.MenuCode = @MenuCode AND r.ActionID = 1 AND r.IsDeny = 0
+)
+SELECT a.CompAreaID, a.AreaCode, a.AreaName, a.CompID, c.CompName, a.Active,
+       CAST(CASE WHEN a.CompAreaID = i.OwnAreaID THEN 1 ELSE 0 END AS BIT) AS IsOwnArea
+FROM dbo.fn_UserScopeInfo(@UserID) i
+JOIN dbo.CompanyArea a ON EXISTS (
+         SELECT 1 FROM aturan t
+         WHERE t.Cakupan = 'SEMUA'
+            OR (t.Cakupan = 'PT' AND a.CompID = i.OwnCompID)
+            OR (t.Cakupan = 'PT_TERTENTU' AND a.CompID IN (SELECT j.value FROM OPENJSON(t.MenuDetails, '$.pt') j))
+            OR (t.Cakupan = 'AREA' AND (i.AllAreas = 1 OR a.CompAreaID = i.OwnAreaID)))
+JOIN dbo.Company c ON c.CompID = a.CompID;
+GO
+/* @MenuCode NULL = cakupan bawaan; diisi = cakupan menu itu (Admin › Hak Akses › Cakupan data). */
 CREATE OR ALTER PROCEDURE dbo.sp_UserScope
-    @UserID BIGINT
+    @UserID   BIGINT,
+    @MenuCode VARCHAR(40) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
-    SELECT s.*, i.IsHeadOffice, i.AllAreas
-    FROM dbo.fn_UserScope(@UserID) s CROSS JOIN dbo.fn_UserScopeInfo(@UserID) i
-    ORDER BY s.CompID, s.AreaCode, s.AreaName;
+    IF @MenuCode IS NULL
+        SELECT s.*, i.IsHeadOffice, i.AllAreas
+        FROM dbo.fn_UserScope(@UserID) s CROSS JOIN dbo.fn_UserScopeInfo(@UserID) i
+        ORDER BY s.CompID, s.AreaCode, s.AreaName;
+    ELSE
+        SELECT s.*, i.IsHeadOffice, i.AllAreas
+        FROM dbo.fn_UserMenuScope(@UserID, @MenuCode) s CROSS JOIN dbo.fn_UserScopeInfo(@UserID) i
+        ORDER BY s.CompID, s.AreaCode, s.AreaName;
 END
 GO
 /* =========================== DATA WIDGET DASHBOARD ===========================

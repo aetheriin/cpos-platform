@@ -5,10 +5,11 @@ boleh dilihat (aturan induk menjadi gerbang). Peran admin (Level.IsAdmin) hanya 
 Aturan hak efektif ada di database (dbo.fn_UserAccess / sp_UserMenu / sp_CekAkses) agar CPOS, Analytics & RekapIn memakai
 aturan yang sama; aksi yang berlaku per menu = MenuAction. Dibaca dari cache memori 30 detik per pengguna
 (tidak menambah query per request); disimpan ulang -> hapus_cache()."""
+import json
 import re
 from functools import wraps
 
-from flask import abort, jsonify, redirect, request
+from flask import abort, g, jsonify, redirect, request
 from flask_login import current_user
 
 from utils.cache import cache_ttl
@@ -156,6 +157,8 @@ def hapus_cache():
     widget_user.hapus()
     semua_menu.hapus()
     anak_menu.hapus()
+    from utils.db_organisasi import area_menu_user
+    area_menu_user.hapus()
 
 
 def jabatan_dengan(kode_menu, aksi):
@@ -211,6 +214,7 @@ def halaman(kode_menu):
                 if awal and awal.split("?")[0] != request.path:
                     return redirect(awal)
                 abort(403)
+            g.kode_menu = kode          # cakupan data (utils/area.py) mengikuti menu ini
             return f(*args, **kwargs)
         return wrapped
     return dekorator
@@ -244,10 +248,12 @@ def izin(kode_menu, *aksi):
                 return jsonify({"error": "Belum login"}), 401
             kode = kode_menu() if callable(kode_menu) else kode_menu
             daftar_kode = kode if isinstance(kode, (tuple, list)) else (kode,)
-            if not any(boleh(k, *aksi) for k in daftar_kode):
+            cocok = next((k for k in daftar_kode if boleh(k, *aksi)), None)
+            if cocok is None:
                 from utils.keamanan import log_keamanan
                 log_keamanan("AKSES_DITOLAK", f"level {current_user.role} ke {f.__name__} ({request.path})")
                 return jsonify({"error": "Level Anda tidak memiliki akses untuk tindakan ini"}), 403
+            g.kode_menu = cocok         # cakupan data (utils/area.py) mengikuti menu ini
             return f(*args, **kwargs)
         return wrapped
     return dekorator
@@ -371,6 +377,8 @@ def simpan_halaman_awal(id_level, halaman_awal):
 
 # ===== Admin › Hak Akses: aturan per menu =====
 JENIS_TARGET = ("ALL", "ROLE", "LEVEL", "DEPT", "USER")
+# Cakupan data aturan Izinkan (AccessMenu.MenuDetails): area sendiri (bawaan), PT sendiri, semua PT, PT tertentu
+JENIS_CAKUPAN = ("AREA", "PT", "SEMUA", "PT_TERTENTU")
 KOLOM_TARGET = {"ROLE": "LevelDetID", "LEVEL": "LevelID", "DEPT": "DeptID", "USER": "UserID"}
 
 
@@ -406,7 +414,7 @@ def aturan_menu(id_menu):
                                  WHEN 'LEVEL' THEN lv.LevelName WHEN 'DEPT' THEN d.DeptName
                                  ELSE u.Nama + ISNULL(N' · ' + u.UserName, N'') END AS nama_target,
                             (SELECT STRING_AGG(w.WidgetCode, ',') WITHIN GROUP (ORDER BY w.SortOrder)
-                             FROM AccessMenuWidget w WHERE w.AccessMenuID = a.AccessMenuID) AS widget
+                             FROM AccessMenuWidget w WHERE w.AccessMenuID = a.AccessMenuID) AS widget, a.MenuDetails
                      FROM AccessMenu a
                      LEFT JOIN LevelDetails ld ON ld.LevelDetID = a.LevelDetID LEFT JOIN Level lv ON lv.LevelID = a.LevelID
                      LEFT JOIN Department d ON d.DeptID = a.DeptID LEFT JOIN Users u ON u.UserID = a.UserID
@@ -416,7 +424,12 @@ def aturan_menu(id_menu):
     for r in rows:
         kunci = (r["jenis"], r["id_target"], bool(r["tolak"]))
         baris = per.setdefault(kunci, {"jenis": r["jenis"], "id_target": r["id_target"], "nama_target": r["nama_target"],
-                                       "tolak": bool(r["tolak"]), "aksi": _kosong(), "widget": []})
+                                       "tolak": bool(r["tolak"]), "aksi": _kosong(), "widget": [], "cakupan": {"cakupan": "AREA"}})
+        if r["MenuDetails"] and r["ActionID"] == 1:
+            try:
+                baris["cakupan"] = json.loads(r["MenuDetails"])
+            except ValueError:
+                pass
         if r["ActionID"] in NAMA_AKSI:
             baris["aksi"][NAMA_AKSI[r["ActionID"]]] = True
         if r["widget"]:
@@ -425,7 +438,7 @@ def aturan_menu(id_menu):
 
 
 def simpan_aturan_menu(id_menu, aturan):
-    """Ganti semua aturan menu ini. aturan = [{jenis, id_target, tolak, aksi: [nama aksi], widget: [kode]}];
+    """Ganti semua aturan menu ini. aturan = [{jenis, id_target, tolak, aksi: [nama aksi], widget: [kode], cakupan: dict / None}];
     aksi di luar MenuAction diabaikan, widget hanya untuk baris Izinkan + Lihat."""
     m = next((x for x in semua_menu() if x["id_menu"] == id_menu), None)
     if m is None:
@@ -437,10 +450,11 @@ def simpan_aturan_menu(id_menu, aturan):
         cursor.execute("DELETE FROM AccessMenu WHERE MenuID = ?", id_menu)
         for a in aturan:
             kolom = KOLOM_TARGET.get(a["jenis"])
+            rinci = json.dumps(a["cakupan"]) if a.get("cakupan") and not a["tolak"] else None
             for nama in [x for x in AKSI_SEMUA if x in a["aksi"] and x in boleh_aksi]:
-                cursor.execute(f"""SET NOCOUNT ON; INSERT INTO AccessMenu (MenuID, ActionID, TargetType, IsDeny{', ' + kolom if kolom else ''})
-                                   VALUES (?, ?, ?, ?{', ?' if kolom else ''}); SELECT CAST(SCOPE_IDENTITY() AS INT)""",
-                               id_menu, ID_AKSI[nama], a["jenis"], 1 if a["tolak"] else 0, *([a["id_target"]] if kolom else []))
+                cursor.execute(f"""SET NOCOUNT ON; INSERT INTO AccessMenu (MenuID, ActionID, TargetType, IsDeny, MenuDetails{', ' + kolom if kolom else ''})
+                                   VALUES (?, ?, ?, ?, ?{', ?' if kolom else ''}); SELECT CAST(SCOPE_IDENTITY() AS INT)""",
+                               id_menu, ID_AKSI[nama], a["jenis"], 1 if a["tolak"] else 0, rinci, *([a["id_target"]] if kolom else []))
                 id_baris = cursor.fetchone()[0]
                 if nama == "lihat" and not a["tolak"]:
                     for urut, w in enumerate(a.get("widget") or [], 1):

@@ -1,6 +1,6 @@
 """RekapIn: data request operator & kategori (schema rekap), harga harian (dbo.DailyPrice), tiket timbang (Ascend / CPOS).
 
-"Operator" = orang yang melakukan kesalahan: karyawan mana pun dalam cakupan area user yang login (dbo.fn_UserScope),
+"Operator" = orang yang melakukan kesalahan: karyawan mana pun dalam cakupan data menu Request Operator (dbo.fn_UserMenuScope),
 jadi aturan sama dengan halaman CPOS lain. Persetujuan request memakai Alur Persetujuan CPOS (jenis REKAP_*)."""
 import json
 from datetime import date, timedelta
@@ -72,7 +72,7 @@ def daftar_operator(id_user):
                             a.CompID + ' · ' + a.AreaName AS area
                      FROM Users u JOIN CompanyArea a ON a.CompAreaID = u.CompAreaID
                      WHERE u.Active = 1 AND u.CategoryCode = 'EMPLOYEE'
-                       AND u.CompAreaID IN (SELECT CompAreaID FROM dbo.fn_UserScope(?))
+                       AND u.CompAreaID IN (SELECT CompAreaID FROM dbo.fn_UserMenuScope(?, 'RK_REQUEST'))
                      ORDER BY u.Nama""", id_user)
 
 
@@ -156,7 +156,7 @@ _SELECT_REQ = """SELECT r.RequestID AS id, r.OperatorID AS id_operator, o.Nama A
 def daftar_request(id_user, status=None, hanya_operator=None, juga_id=()):
     """Request dalam cakupan area user. hanya_operator = id user: hanya request tentang dia / yang dia buat
     (ditambah juga_id: request yang menunggu persetujuannya)."""
-    syarat, args = ["o.CompAreaID IN (SELECT CompAreaID FROM dbo.fn_UserScope(?))"], [id_user]
+    syarat, args = ["o.CompAreaID IN (SELECT CompAreaID FROM dbo.fn_UserMenuScope(?, 'RK_REQUEST'))"], [id_user]
     if status:
         syarat.append("r.Status = ?")
         args.append(status)
@@ -218,7 +218,7 @@ def ubah_status(id_request, status, catatan, id_user):
 
 def ringkas_request(id_user, hanya_operator=None):
     hasil = dict.fromkeys(STATUS, 0)
-    syarat = "o.CompAreaID IN (SELECT CompAreaID FROM dbo.fn_UserScope(?))" + (" AND (r.OperatorID = ? OR r.CreateBy = ?)" if hanya_operator else "")
+    syarat = "o.CompAreaID IN (SELECT CompAreaID FROM dbo.fn_UserMenuScope(?, 'RK_REQUEST'))" + (" AND (r.OperatorID = ? OR r.CreateBy = ?)" if hanya_operator else "")
     for r in _query(f"""SELECT r.Status, COUNT(*) AS n FROM rekap.OperatorRequest r JOIN Users o ON o.UserID = r.OperatorID
                         WHERE {syarat} GROUP BY r.Status""", id_user, *([hanya_operator] * 2 if hanya_operator else [])):
         hasil[r["Status"]] = r["n"]
@@ -277,7 +277,7 @@ def tren_harga(companies, hari=7):
 def request_dalam_cakupan(id_request, id_user):
     """Request ada dan operatornya di area yang boleh diurus user."""
     return bool(_query("""SELECT 1 AS x FROM rekap.OperatorRequest r JOIN Users o ON o.UserID = r.OperatorID
-                          WHERE r.RequestID = ? AND o.CompAreaID IN (SELECT CompAreaID FROM dbo.fn_UserScope(?))""",
+                          WHERE r.RequestID = ? AND o.CompAreaID IN (SELECT CompAreaID FROM dbo.fn_UserMenuScope(?, 'RK_REQUEST'))""",
                        id_request, id_user))
 
 

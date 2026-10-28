@@ -86,7 +86,6 @@ def simpan_company(id_company, kode, nama, alamat):
     finally:
         conn.close()
     _hapus_cache_area()
-    pt_kelola.hapus()
 
 
 def set_aktif_company(id_company, aktif):
@@ -136,44 +135,15 @@ def area_pusat():
 
 
 def cakupan_user(id_user):
-    """Ringkasan cakupan data dari dbo.fn_UserScopeInfo + daftar area (tuple id) bila kantor pusat dibatasi PT.
-    None = user tidak ditemukan / nonaktif."""
-    rows = _query("""SELECT i.OwnAreaID, i.OwnCompID, i.IsHeadOffice, i.AllAreas,
-                            CASE WHEN i.IsHeadOffice = 1 AND i.AllAreas = 0 THEN
-                                 (SELECT STRING_AGG(CAST(s.CompAreaID AS VARCHAR(20)), ',') FROM dbo.fn_UserScope(?) s) END AS Areas
-                     FROM dbo.fn_UserScopeInfo(?) i""", id_user, id_user)
-    if not rows:
-        return None
-    r = rows[0]
-    r["areas"] = tuple(sorted(int(x) for x in (r.pop("Areas") or "").split(",") if x))
-    return r
+    """Ringkasan cakupan data bawaan dari dbo.fn_UserScopeInfo. None = user tidak ditemukan / nonaktif."""
+    rows = _query("SELECT OwnAreaID, OwnCompID, IsHeadOffice, AllAreas FROM dbo.fn_UserScopeInfo(?)", id_user)
+    return rows[0] if rows else None
 
 
 @cache_ttl(30)
-def pt_kelola(id_user):
-    """Kode perusahaan yang dikelola user kantor pusat (tabel UserCompany). Kosong = semua PT."""
-    return frozenset(r["CompID"] for r in _query("SELECT CompID FROM UserCompany WHERE UserID = ?", id_user))
-
-
-def pt_kelola_semua():
-    """{id_user: [kode perusahaan, ...]} untuk tabel Kelola Pengguna."""
-    hasil = {}
-    for r in _query("SELECT UserID, CompID FROM UserCompany"):
-        hasil.setdefault(r["UserID"], []).append(r["CompID"])
-    return hasil
-
-
-def simpan_pt_kelola(id_user, daftar_company):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM UserCompany WHERE UserID = ?", id_user)
-        for id_c in sorted(set(daftar_company)):
-            cursor.execute("INSERT INTO UserCompany (UserID, CompID) VALUES (?, ?)", id_user, id_c)
-        conn.commit()
-    finally:
-        conn.close()
-    pt_kelola.hapus()
+def area_menu_user(id_user, kode_menu):
+    """id area dalam cakupan data aturan menu itu (dbo.fn_UserMenuScope), frozenset."""
+    return frozenset(r["CompAreaID"] for r in _query("SELECT CompAreaID FROM dbo.fn_UserMenuScope(?, ?)", id_user, kode_menu))
 
 
 @cache_ttl(60)
