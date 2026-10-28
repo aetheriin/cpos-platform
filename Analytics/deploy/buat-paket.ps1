@@ -21,7 +21,8 @@ New-Item -ItemType Directory -Force $isi | Out-Null
 Copy-Item (Join-Path $akar 'frontend\dist') (Join-Path $isi 'web') -Recurse
 $kecuali = @('venv', 'tests', 'log_aktivitas', '__pycache__', '.pytest_cache')
 $berkasKecuali = @('.env', 'pengaturan.json', 'requirements-dev.txt')
-Get-ChildItem (Join-Path $akar 'backend') | Where-Object { $kecuali -notcontains $_.Name -and $berkasKecuali -notcontains $_.Name } |
+# pytest-cache-files-*: folder sementara sisa pytest, sering terkunci dan tidak perlu di server
+Get-ChildItem (Join-Path $akar 'backend') | Where-Object { $kecuali -notcontains $_.Name -and $berkasKecuali -notcontains $_.Name -and $_.Name -notlike 'pytest-cache-files-*' } |
     ForEach-Object { Copy-Item $_.FullName (Join-Path $isi "backend\$($_.Name)") -Recurse -Force }
 Get-ChildItem (Join-Path $isi 'backend') -Recurse -Directory -Filter '__pycache__' | Remove-Item -Recurse -Force
 New-Item -ItemType Directory -Force (Join-Path $isi 'deploy') | Out-Null

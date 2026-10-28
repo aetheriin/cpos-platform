@@ -46,6 +46,13 @@
    muncul atau hilang. */
 .gulir-halus { scrollbar-gutter: stable; }
 
+/* Sidebar: scrollbar hanya terlihat saat kursor di atasnya. Ruangnya tetap disisakan supaya menu tidak bergeser saat scrollbar muncul. */
+.gulir-sembunyi { scrollbar-gutter: stable; scrollbar-color: transparent transparent; }
+.gulir-sembunyi:hover { scrollbar-color: var(--color-slate-300) transparent; }
+.gulir-sembunyi::-webkit-scrollbar-thumb { background-color: transparent; }
+.gulir-sembunyi:hover::-webkit-scrollbar-thumb { background-color: var(--color-slate-300); }
+.gulir-sembunyi:hover::-webkit-scrollbar-thumb:hover { background-color: var(--color-slate-400); }
+
 /* Tata letak padat (KisiGrafik), layar lg ke atas: tinggi baris ditentukan kartu tertinggi, lalu grafik di kartu lain memanjang mengisi
    sisa tingginya supaya tidak ada ruang kosong di bawah. Ditulis di sini, bukan di tiap komponen grafik, karena hanya mengubah
    pembungkus grafik (kelas h-52 sampai h-80 di folder grafik); tinggi bawaannya menjadi tinggi minimum. */
@@ -58,6 +65,14 @@
   .kisi-padat section .h-64 { height: auto; flex: 1 1 auto; min-height: 13rem; }
   .kisi-padat section .h-52 { height: auto; flex: 1 1 auto; min-height: 10rem; max-height: 16rem; }
 }
+
+/* GrafikBesar: grafik mengisi tinggi jendela. Pembungkus tinggi tetap (h-52 sampai h-80) memanjang, dan semua pembungkus di atasnya
+   dijadikan kolom flex supaya tingginya sampai ke grafik. */
+.grafik-besar,
+.grafik-besar div:has(:is(.h-52, .h-64, .h-72, .h-80)) { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.grafik-besar :is(.h-52, .h-64, .h-72, .h-80) { height: auto; flex: 1 1 auto; min-height: 16rem; }
+.grafik-besar .latar-sumbu { fill: white; }
+[data-tema="gelap"] .grafik-besar .latar-sumbu { fill: #121a2b; }
 
 /* Mode gelap (html[data-tema="gelap"], diatur tombol di bilah atas).
    Skala slate dibalik lewat variabel warna Tailwind, jadi teks, garis, dan latar abu-abu di semua komponen ikut tanpa kelas dark: satu per satu.

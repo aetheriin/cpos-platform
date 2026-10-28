@@ -12,6 +12,7 @@ FILTER = [
     ("perusahaan", "Perusahaan", "comp"),
     ("pembuat", "Pembuat PVR", "pembuat"),
     ("kategori", "Kategori", "kategori"),
+    ("bulan", "Bulan", "bulan"),   # YYYY-MM; diisi dengan klik bulan di grafik Penilaian
 ]
 DIM = {k: kolom for k, _, kolom in FILTER}
 
@@ -40,24 +41,28 @@ def _pilihan(df, dinilai):
         # Pembuat yang dinilai selalu ada di pilihan, supaya tampilan awal tetap sah walau salah satunya belum membuat voucher
         "pembuat": sorted(set(df["pembuat"]) | {n.title() for n in dinilai}, key=str.casefold),
         "kategori": sorted(set(df["kategori"]) - {KOSONG}, key=str.casefold),   # voucher tanpa kategori punya tab sendiri
+        "bulan": sorted(set(df["tanggal"].dt.strftime("%Y-%m"))),
     }
 
 
-def _siapkan(df, ds, filt, dinilai):
+def _siapkan(df, ds, filt, dinilai, lewati=None):
+    """lewati: filter yang diabaikan (grafik dan rekap per bulan mengabaikan filter bulan supaya semua bulan tetap tampil)."""
     dari, sampai = rentang_tampil(ds)
     pilihan = _pilihan(df, dinilai)
     filt = {k: kanonik((filt or {}).get(k), pilihan[k], judul) for k, judul, _ in FILTER}
-    d = saring(df[(df["tanggal"] >= dari) & (df["tanggal"] <= sampai)], filt, DIM)
+    d = df[(df["tanggal"] >= dari) & (df["tanggal"] <= sampai)]
+    d = saring(d.assign(bulan=d["tanggal"].dt.strftime("%Y-%m")), filt, DIM, lewati=lewati)
     return d, pilihan, dari, sampai
 
 
 def bangun(df, ds, filt=None, dinilai=konfigurasi.PVR_PENILAIAN_PEMBUAT):
     d, pilihan, dari, sampai = _siapkan(df, ds, filt, dinilai)
+    semua_bulan, *_ = _siapkan(df, ds, filt, dinilai, lewati="bulan")
     return {
         "periode": {"mulai": tgl(dari), "akhir": tgl(sampai)},
         "rentang": {"dari": tgl(dari), "sampai": tgl(sampai), "satuan": "hari", "bawaan": None},
         "kpi": U.kpi(d),
-        "rekap": U.rekap(d),
+        "rekap": U.rekap(semua_bulan),
         "kategori": U.per_kategori(d[d["kategori"] != KOSONG]),
         "jumlah": {"dinilai": int((d["kategori"] != KOSONG).sum()), "kosong": int((d["kategori"] == KOSONG).sum())},
         "pilihan": pilihan,

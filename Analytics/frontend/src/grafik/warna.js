@@ -1,4 +1,4 @@
-export const WARNA = { awal: '#7dd3fc', akhir: '#0369a1', pr: '#f59e0b', po: '#10b981' }
+export const WARNA = { awal: '#7dd3fc', akhir: '#0369a1', pr: '#d97706', po: '#0d9488' }
 
 export const GARIS_PR_PO = [
   { kunci: 'new_pr', nama: 'New PR', warna: WARNA.pr },

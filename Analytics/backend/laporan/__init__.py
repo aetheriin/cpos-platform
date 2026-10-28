@@ -13,5 +13,6 @@ from .pi_pvr import LAPORAN as _pi_pvr
 from .po_pi import LAPORAN as _po_pi
 from .pr_po import LAPORAN as _pr_po
 from .tbs import LAPORAN as _tbs
+from .tbs_mingguan import LAPORAN as _tbs_mingguan
 
-SEMUA = {l.id: l for l in (_pr_po, _po_pi, _pi_gt, _penilaian_pvr, _penilaian_pv, _palm, _tbs, _pi_pvr)}
+SEMUA = {l.id: l for l in (_pr_po, _po_pi, _pi_gt, _penilaian_pvr, _penilaian_pv, _palm, _tbs_mingguan, _tbs, _pi_pvr)}

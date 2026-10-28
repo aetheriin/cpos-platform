@@ -7,6 +7,7 @@ import LaporanPiPvr from './pi_pvr/LaporanPiPvr'
 import DashboardPoPi from './po_pi/DashboardPoPi'
 import DashboardPrPo from './pr_po/DashboardPrPo'
 import DashboardTbs from './tbs/DashboardTbs'
+import DashboardTbsMingguan from './tbs_mingguan/DashboardTbsMingguan'
 
 export const DASHBOARD = {
   pr_po: DashboardPrPo,
@@ -16,5 +17,6 @@ export const DASHBOARD = {
   penilaian_pv: DashboardPvKpi,
   palm_weighbridge: DashboardPalm,
   penerimaan_tbs: DashboardTbs,
+  tbs_mingguan: DashboardTbsMingguan,
   pi_pvr: LaporanPiPvr,
 }

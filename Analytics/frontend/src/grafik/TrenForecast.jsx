@@ -4,7 +4,7 @@ import { lintasTahun, persen, tgl, tglLengkap } from '../lib/data'
 import { kgRingkas, rupiah, sumbu } from './tbs'
 
 const WARNA_AKTUAL = '#0369a1'
-const WARNA_FORECAST = '#ea580c'
+const WARNA_FORECAST = '#d97706'
 
 function Petunjuk({ active, payload, ukuran }) {
   const d = active && payload?.[0]?.payload

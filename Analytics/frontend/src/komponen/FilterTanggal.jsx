@@ -6,8 +6,8 @@ const tambahHari = (iso, n) => {
   t.setUTCDate(t.getUTCDate() + n)
   return t.toISOString().slice(0, 10)
 }
-// Jumat pada atau sebelum tanggal itu (minggu laporan: Jumat sampai Kamis)
-const awalMinggu = (iso) => tambahHari(iso, -((new Date(iso + 'T00:00:00Z').getUTCDay() + 2) % 7))
+// Jumat pada atau sebelum tanggal itu (minggu laporan: Jumat sampai Kamis). senin: minggu Senin sampai Minggu (Pembelian TBS Mingguan).
+const awalMinggu = (iso, senin = false) => tambahHari(iso, -((new Date(iso + 'T00:00:00Z').getUTCDay() + (senin ? 6 : 2)) % 7))
 const hariIniIso = () => {
   const t = new Date()
   return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
@@ -16,15 +16,17 @@ const PINTASAN = { minggu: [5, 8, 12], hari: [7, 30, 90] } // cukup satu baris d
 
 // Mempersempit tampilan di dalam data yang sudah dimuat, tanpa SQL. dari/sampai null = rentang bawaan dari server;
 // efektif: rentang yang sedang tampil. satuan: 'minggu' (Jumat-Kamis) atau 'hari'.
-export default function FilterTanggal({ dari, sampai, efektif, dataset, satuan, bawaan, onUbah }) {
+export default function FilterTanggal({ dari, sampai, efektif, dataset, satuan, bawaan, onUbah, mingguSenin = false }) {
   const min = dataset.mulai
   const maks = dataset.akhir
   const ujung = maks < hariIniIso() ? maks : hariIniIso() < min ? min : hariIniIso() // data sampai hari ini; tanggal setelahnya belum ada isinya
-  const awalPintasan = (n) => (satuan === 'minggu' ? tambahHari(awalMinggu(ujung), -7 * (n - 1)) : tambahHari(ujung, -(n - 1)))
+  const awalPintasan = (n) => (satuan === 'minggu' ? tambahHari(awalMinggu(ujung, mingguSenin), -7 * (n - 1)) : tambahHari(ujung, -(n - 1)))
   const pilihan = satuan === 'minggu' ? 'mgg' : 'hari'
 
   const opsi = [
-    ...PINTASAN[satuan]
+    // Rentang bawaan laporan selalu jadi salah satu pintasan, walau bukan 5, 8, atau 12
+    ...[...new Set([...PINTASAN[satuan], ...(typeof bawaan === 'number' ? [bawaan] : [])])]
+      .sort((a, b) => a - b)
       .filter((n) => awalPintasan(n) > min)
       .map((n) => ({ nilai: n, label: `${n} ${pilihan}`, judul: `${n} ${satuan} terakhir${n === bawaan ? ' (bawaan)' : ''}` })),
     { nilai: 'semua', label: 'Semua', judul: 'Seluruh periode yang dimuat' },

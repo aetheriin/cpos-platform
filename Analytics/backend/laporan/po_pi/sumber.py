@@ -85,6 +85,10 @@ def bersihkan(raw):
     d.loc[_bool(raw["ISCLOSE"]) | _bool(raw["POISCLOSE"]), "status"] = "Closed"
     d.loc[_bool(raw["ISCOMPLETE"]), "status"] = "Completed"
     d.loc[_bool(raw["ISVOID"]), "status"] = "Void"
+    # Aging dari SP dihitung dari tanggal order; yang benar dari Created Date. Label (COMPLETED, VOID, CLOSED) dibiarkan.
+    hari = (pd.Timestamp.today().normalize() - d["cd"]).dt.days
+    angka = pd.to_numeric(d["aging"], errors="coerce").notna() & hari.notna()
+    d.loc[angka, "aging"] = hari[angka].astype(int).astype(str)
     d["umur"] = d["aging"].map(kategori_umur)
 
     # PARTIAL: PI lebih dari satu nomor yang berbeda (nomor sama yang tertulis dua kali dihitung satu)

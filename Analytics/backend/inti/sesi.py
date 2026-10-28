@@ -94,6 +94,12 @@ class Sesi:
         self._umumkan([(kode, item[0])])
         return None
 
+    def masih_ada(self, kode):
+        """Seperti ambil, tetapi tidak mencatat aktivitas (untuk pekerjaan latar belakang) dan tidak mengakhiri sesi."""
+        with self._kunci:
+            item = self._data.get(kode)
+            return item[0] if item and item[1] > self._jam() and not self._idle_habis(kode) else None
+
     def _idle_habis(self, kode):
         info = self._info.get(kode)
         return bool(self.idle and info and self._jam() - info["terakhir"] >= self.idle)

@@ -474,7 +474,7 @@ def test_pemeriksaan_awal_memperingatkan_tabel_role_dan_role_tanpa_aturan():
         c.execute("INSERT INTO users (username, password_hash, full_name, role) VALUES ('mgr12345', ?, 'Mgr', 'Manager')", (ks.hash_sandi("rahasia123"),))
         c.commit()
         api.periksa_pengguna_awal()
-        assert any("belum punya akses ke laporan apa pun" in m and "Manager" in m for m in pesan) and not any("Tabel role" in m for m in pesan)
+        assert any("belum punya akses ke halaman apa pun" in m and "Manager" in m for m in pesan) and not any("Tabel role" in m for m in pesan)
         assert not any("Operator" in m for m in pesan)                              # role yang sudah punya hak tidak diperingatkan
         c.execute("DROP TABLE role")
         c.commit()

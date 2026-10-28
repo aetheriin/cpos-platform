@@ -6,7 +6,8 @@ import Select from './Select'
 
 const teksHak = (boleh) => (boleh ? 'Akses' : '–')
 
-const jumlahAkses = (role, laporan) => laporan.filter((l) => role.izin[l.id]).length
+const jumlahAkses = (role, laporan, halaman) =>
+  laporan.filter((l) => (halaman.some((h) => h.id === l.id) ? role.izin_halaman?.[l.id] : role.izin[l.id])).length
 
 // Berlaku langsung, tanpa pengguna harus login ulang. Role admin selalu penuh.
 export default function HalamanIzin() {
@@ -31,6 +32,7 @@ export default function HalamanIzin() {
 
   const role = data?.role.find((r) => r.nama === pilih)
   const namaAdmin = data?.role.find((r) => r.admin)?.nama
+  const semuaHalaman = [...(data?.laporan ?? []), ...(data?.halaman ?? [])]
 
   // Tampilan baru berubah setelah server menyimpan, jadi yang terlihat selalu yang tersimpan.
   const ubah = async (lap, nilai) => {
@@ -39,7 +41,13 @@ export default function HalamanIzin() {
     setPesan('')
     try {
       const h = await aturIzin({ role: role.nama, laporan: lap.id, akses: nilai })
-      setData((d) => ({ ...d, role: d.role.map((r) => (r.id === role.id ? { ...r, izin: { ...r.izin, [lap.id]: h.akses } } : r)) }))
+      const izinHalaman = semuaHalaman.some((h) => h.id === lap.id)
+      setData((d) => ({
+        ...d,
+        role: d.role.map((r) => (r.id !== role.id ? r : izinHalaman
+          ? { ...r, izin_halaman: { ...r.izin_halaman, [lap.id]: h.akses } }
+          : { ...r, izin: { ...r.izin, [lap.id]: h.akses } })),
+      }))
       setPesan(`Akses ${role.nama} ke ${lap.nama} ${h.akses ? 'diizinkan' : 'dicabut'}.`)
     } catch (e) {
       setGalat(e.message)
@@ -91,7 +99,7 @@ export default function HalamanIzin() {
                 <div>
                   <p className="text-sm font-medium">{role.nama}</p>
                   <p className="text-xs text-slate-500">
-                    {role.admin ? 'Akses penuh ke semua laporan' : `${jumlahAkses(role, data.laporan)} dari ${data.laporan.length} laporan aktif`}
+                    {role.admin ? 'Akses penuh ke semua halaman' : `${jumlahAkses(role, semuaHalaman, data.halaman ?? [])} dari ${semuaHalaman.length} halaman aktif`}
                   </p>
                 </div>
               </div>
@@ -103,7 +111,7 @@ export default function HalamanIzin() {
               <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
                   <p className="text-xs font-medium text-slate-500">Konfigurasi hak akses</p>
-                  <h2 className="text-lg font-semibold">Hak per laporan</h2>
+                  <h2 className="text-lg font-semibold">Hak per halaman</h2>
                 </div>
                 <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
                   <IkonKunci className="h-3.5 w-3.5" />
@@ -112,8 +120,8 @@ export default function HalamanIzin() {
               </div>
 
               <ul className="divide-y divide-slate-100">
-                {data.laporan.map((l) => {
-                  const boleh = Boolean(role.izin[l.id])
+                {semuaHalaman.map((l) => {
+                  const boleh = Boolean(data.halaman?.some((h) => h.id === l.id) ? role.izin_halaman?.[l.id] : role.izin[l.id])
                   return (
                     <li key={l.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                       <div className="flex min-w-0 items-center gap-3">
@@ -144,7 +152,7 @@ export default function HalamanIzin() {
               <p className="mt-3 flex items-start gap-2 border-t border-slate-100 pt-3 text-xs text-slate-500">
                 <IkonInfo className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
-                  {namaAdmin ? `Role ${namaAdmin}` : 'Role admin'} selalu memiliki akses penuh dan tidak bisa dibatasi dari halaman ini. Laporan baru tertutup bagi semua role lain sampai
+                  {namaAdmin ? `Role ${namaAdmin}` : 'Role admin'} selalu memiliki akses penuh dan tidak bisa dibatasi dari halaman ini. Halaman baru tertutup bagi semua role lain sampai
                   diberi akses di sini.
                 </span>
               </p>
@@ -159,7 +167,7 @@ export default function HalamanIzin() {
                 <thead className="border-b border-slate-200 text-xs text-slate-500">
                   <tr>
                     <th className="px-2 py-2">Role</th>
-                    {data.laporan.map((l) => (
+                    {semuaHalaman.map((l) => (
                       <th key={l.id} className="px-2 py-2">
                         {l.nama}
                       </th>
@@ -170,9 +178,9 @@ export default function HalamanIzin() {
                   {data.role.map((r) => (
                     <tr key={r.id} className="border-b border-slate-100">
                       <td className="px-2 py-2 font-medium">{r.nama}</td>
-                      {data.laporan.map((l) => (
-                        <td key={l.id} className={'px-2 py-2 ' + (r.izin[l.id] ? 'text-slate-800' : 'text-slate-400')}>
-                          {teksHak(r.izin[l.id])}
+                      {semuaHalaman.map((l) => (
+                        <td key={l.id} className={'px-2 py-2 ' + ((data.halaman?.some((h) => h.id === l.id) ? r.izin_halaman?.[l.id] : r.izin[l.id]) ? 'text-slate-800' : 'text-slate-400')}>
+                          {teksHak(data.halaman?.some((h) => h.id === l.id) ? r.izin_halaman?.[l.id] : r.izin[l.id])}
                         </td>
                       ))}
                     </tr>

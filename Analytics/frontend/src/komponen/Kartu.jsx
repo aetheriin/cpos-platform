@@ -1,10 +1,14 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useTataLetak } from '../lib/tampilan'
+import GrafikBesar from './GrafikBesar'
+import { IkonPerbesar } from './Ikon'
 import Info from './Info'
 
 // aksi: kontrol kecil di kanan judul. Di tata letak padat, petunjuk pindah ke tooltip (i) supaya kartu lebih pendek.
-export function KartuGrafik({ judul, petunjuk, aksi, children }) {
+// perbesar: tombol untuk membuka grafik selebar layar dengan zoom dan geser (grafik deret waktu yang utama).
+export function KartuGrafik({ judul, petunjuk, aksi, perbesar = false, children }) {
   const padat = useTataLetak()[0] === 'padat'
+  const [besar, setBesar] = useState(false)
   return (
     <section className={'flex h-full flex-col rounded-xl border border-slate-200 bg-white ' + (padat ? 'p-3' : 'p-4')}>
       <div className={'flex flex-wrap items-start justify-between gap-x-3 gap-y-1 ' + (padat ? 'mb-2' : '')}>
@@ -12,10 +16,23 @@ export function KartuGrafik({ judul, petunjuk, aksi, children }) {
           {judul}
           {padat && petunjuk && <Info teks={petunjuk} label={judul} />}
         </h2>
-        {aksi}
+        <div className="flex items-center gap-2">
+          {aksi}
+          {perbesar && (
+            <button type="button" onClick={() => setBesar(true)} title="Buka besar, bisa zoom dan geser" aria-label={`Buka besar ${judul}`}
+              className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700">
+              <IkonPerbesar className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
       {!padat && petunjuk && <p className="mb-2 text-xs text-slate-500">{petunjuk}</p>}
       <div className="min-h-0 flex-1">{children}</div>
+      {besar && (
+        <GrafikBesar judul={judul} onTutup={() => setBesar(false)}>
+          {children}
+        </GrafikBesar>
+      )}
     </section>
   )
 }

@@ -37,7 +37,8 @@ export default function GarisSeri({ mingguan, seri, warnaSeri, terpilihSeri = []
         {seri.map((s) => {
           const aktif = terpilihSeri.includes(s.nama)
           const redup = terpilihSeri.length > 0 && !aktif
-          const jumlah = s.nilai.reduce((a, b) => a + b, 0)
+          // Angka di tombol mengikuti minggu (atau bulan) yang dipilih; tanpa pilihan, jumlah seluruh rentang
+          const jumlah = minggu != null ? s.nilai[minggu] ?? 0 : s.nilai.reduce((a, b) => a + b, 0)
           return (
             <button
               key={s.nama}

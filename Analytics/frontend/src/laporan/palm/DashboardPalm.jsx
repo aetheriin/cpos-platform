@@ -86,7 +86,7 @@ export default function DashboardPalm({ dataId, onDataHilang }) {
             <KisiGrafik>
               <Petak padat="lg:order-1 lg:col-span-8">
                 <KartuGrafik
-                  judul="Tren Harian Transaksi Berisiko"
+                  judul="Tren Harian Transaksi Berisiko" perbesar
                   petunjuk={tren.length > 0 ? `${tglLengkap(tren[0].hari)} sampai ${tglLengkap(tren.at(-1).hari)}` : null}
                 >
                   <TrenHarian data={tren} indikator={data.indikator} terpilih={terpilih('tanggal')} onPilih={pilih.tanggal} />

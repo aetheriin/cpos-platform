@@ -1305,7 +1305,8 @@ FROM (VALUES ('AN_PR_PO',         N'PR & PO Outstanding',       'AN_DASHBOARD', 
              ('AN_PV_KPI',        N'PV KPI',                    'AN_DASHBOARD', '/an/penilaian_pv',     4),
              ('AN_WB_FRAUD',      N'Weighbridge Fraud Analyst', 'AN_DASHBOARD', '/an/palm_weighbridge', 5),
              ('AN_TBS',           N'TBS Transaction Analyst',   'AN_DASHBOARD', '/an/penerimaan_tbs',      6),
-             ('AN_COST',          N'Transaction Cost Analyst',  'AN_DASHBOARD', '/halaman/AN_COST',     7),
+             ('AN_TBS_MINGGUAN',  N'Pembelian TBS Mingguan',    'AN_DASHBOARD', '/an/tbs_mingguan',     7),
+             ('AN_COST',          N'Transaction Cost Analyst',  'AN_DASHBOARD', '/halaman/AN_COST',     8),
              ('FORM_SECURITY',    N'Security',                  'FORM',  '/weighbridge?view=form&tab=security',  1),
              ('FORM_TIMBANGAN',   N'Timbangan',                 'FORM',  '/weighbridge?view=form&tab=timbangan', 2),
              ('FORM_SORTASI',     N'Sortasi',                   'FORM',  '/weighbridge?view=form&tab=sortasi',   3),
@@ -2406,5 +2407,6 @@ CREATE TABLE dbo.SchemaLog (
 );
 INSERT INTO dbo.SchemaLog (Script, App) VALUES ('database/schema.sql', 'CPOS'),
     ('database/perubahan/001_alur_dinamis.sql', 'CPOS'),
-    ('database/perubahan/002_item_request.sql', 'CPOS');     -- sudah termasuk
+    ('database/perubahan/002_item_request.sql', 'CPOS'),
+    ('database/perubahan/003_tbs_mingguan.sql', 'CPOS');     -- sudah termasuk
 GO

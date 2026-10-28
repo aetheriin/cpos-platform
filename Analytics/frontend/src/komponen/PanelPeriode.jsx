@@ -29,7 +29,7 @@ function IsianPeriode({ mulai, akhir, onMulai, onAkhir, galat, maksHari }) {
       </div>
 
       <p className={'mt-2 min-h-5 text-xs ' + (galat ? 'text-red-600' : 'text-slate-500')}>
-        {galat ?? `Rentang ${hari} hari${maksHari ? ` (maksimal ${maksHari} hari)` : ''}.`}
+        {galat ?? `Rentang ${hari} hari.`}
       </p>
     </>
   )

@@ -57,7 +57,7 @@ false, no, nonaktif, inactive dianggap nonaktif; kosong dianggap aktif). Kolom `
 keduanya dikenali, dan akun baru disimpan dengan cara yang sama dengan akun yang sudah ada (`ROLE_DISIMPAN=auto`; boleh dipaksa `nama` atau
 `id`). Huruf besar-kecil dan spasi pada nama role diabaikan ("Software Engineer" sama dengan "SoftwareEngineer").
 
-**Hak akses laporan (menu Permission Control).** Siapa boleh membuka laporan apa **tidak tertulis di kode**, tetapi dibaca dari tabel izin yang sudah ada dan dipakai
+**Hak akses halaman (menu Permission Control).** Siapa boleh membuka laporan **tidak tertulis di kode**, tetapi dibaca dari tabel izin yang sudah ada dan dipakai
 bersama aplikasi lain (`DB_APP_TABEL_IZIN`, bawaan `PERMISSIONS`; kolom `role, page_key, can_access, can_edit, can_delete, can_approve, can_reject, can_done`).
 Untuk laporan, `page_key` berisi id laporan (mis. `pr_po`) dan hanya kolom `can_access` yang dipakai; baris halaman lain tidak pernah disentuh. System Administrator
 mengaturnya lewat menu **Administrasi → Permission Control**: pilih role, lalu nyalakan saklar **Akses** untuk tiap laporan. Perubahan berlaku **langsung** pada

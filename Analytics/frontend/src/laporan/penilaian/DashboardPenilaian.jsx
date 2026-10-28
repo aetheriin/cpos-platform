@@ -9,6 +9,7 @@ import PanelFilter from '../../komponen/PanelFilter'
 import RekapPvr from '../../grafik/RekapPvr'
 import TabelDetail from '../../komponen/TabelDetail'
 import TrenPenilaian from '../../grafik/TrenPenilaian'
+import { labelBulan } from '../../grafik/pigt'
 
 const skor = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 })
 
@@ -16,7 +17,7 @@ const skor = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 })
 // supaya filter awal tetap objek yang sama.
 // voucher: 'PVR' atau 'PV'. dinilai: nama pembuat tampilan awal, sama dengan *_PENILAIAN_PEMBUAT di backend. Nama lain lewat panel filter.
 export default function buatDashboardPenilaian({ laporanId, judul, voucher, tabelBobot, dinilai }) {
-  const FILTER_AWAL = { dari: null, sampai: null, perusahaan: [], pembuat: dinilai, kategori: [] }
+  const FILTER_AWAL = { dari: null, sampai: null, perusahaan: [], pembuat: dinilai, kategori: [], bulan: [] }
   const JENIS = [
     { kunci: 'perusahaan', nama: 'Perusahaan' },
     { kunci: 'pembuat', nama: `Pembuat ${voucher}` },
@@ -28,7 +29,7 @@ export default function buatDashboardPenilaian({ laporanId, judul, voucher, tabe
     const pilihDari = (jenis) => (nilai, e) => ubah({ [jenis]: ubahPilihan(filter[jenis], nilai, tambahDariEvent(e)) })
     // Klik nama pembuat: hanya orang itu; klik lagi: kembali ke tampilan awal
     const pilihPembuat = (nama) => ubah({ pembuat: filter.pembuat.length === 1 && filter.pembuat[0] === nama ? dinilai : [nama] })
-    const aktif = [...chipRentang(filter), ...chipDaftar(JENIS, terpilih)]
+    const aktif = [...chipRentang(filter), ...chipDaftar([...JENIS, { kunci: 'bulan', nama: 'Bulan' }], terpilih, (k, v) => (k === 'bulan' ? labelBulan(v) : v))]
     const kpi = data?.kpi
 
     const tab = data
@@ -56,8 +57,8 @@ export default function buatDashboardPenilaian({ laporanId, judul, voucher, tabe
 
               <KisiGrafik>
                 <Petak panjang="md:col-span-10" padat="lg:col-span-8">
-                  <KartuGrafik judul={`${voucher} Penilaian`} petunjuk="Skor (jumlah bobot) per bulan untuk tiap pembuat. Klik nama di legenda untuk melihat satu orang saja.">
-                    <TrenPenilaian data={data.rekap} voucher={voucher} onPilih={pilihPembuat} />
+                  <KartuGrafik judul={`${voucher} Penilaian`} perbesar petunjuk="Skor (jumlah bobot) per bulan untuk tiap pembuat. Klik nama di legenda untuk melihat satu orang saja. Klik bulan untuk memfilter kartu, Bobot, dan tabel ke bulan itu; tahan Ctrl untuk memilih lebih dari satu bulan.">
+                    <TrenPenilaian data={data.rekap} voucher={voucher} onPilih={pilihPembuat} terpilihBulan={filter.bulan} onPilihBulan={pilihDari('bulan')} />
                   </KartuGrafik>
                 </Petak>
                 <Petak panjang="md:col-span-10" padat="lg:col-span-4">

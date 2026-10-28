@@ -83,7 +83,7 @@ export default function DashboardPoPi({ dataId, onDataHilang }) {
           {/* Urutan padat: ringkasan mingguan dan kategori outstanding, lalu dua donat dengan outstanding per pembuat, lalu tiga grafik garis */}
           <KisiGrafik>
             <Petak padat="lg:order-1 lg:col-span-8">
-              <KartuGrafik judul="Ringkasan Mingguan" petunjuk="Klik bar atau tanggal untuk fokus ke satu minggu.">
+              <KartuGrafik judul="Ringkasan Mingguan" perbesar petunjuk="Klik bar atau tanggal untuk fokus ke satu minggu.">
                 <WeeklyChart data={data.mingguan} minggu={filter.minggu} onPilihMinggu={pilihMinggu} garis={GARIS_PO_PI} />
               </KartuGrafik>
             </Petak>

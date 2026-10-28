@@ -65,7 +65,7 @@ export default function DashboardTbs({ dataId, onDataHilang }) {
             <KisiGrafik>
               <Petak padat="lg:order-1 lg:col-span-8">
                 <KartuGrafik
-                  judul="Netto & Forecast"
+                  judul="Netto & Forecast" perbesar
                   petunjuk={tren.length > 0 ? `${tglLengkap(tren[0].hari)} sampai ${tglLengkap(tren.at(-1).hari)}${fc ? `, lalu ${fc.hari.length} hari ke depan` : ''}` : null}
                 >
                   <TrenForecast tren={tren} forecast={fc} terpilih={terpilih('tanggal')} onPilih={pilih.tanggal} />
@@ -105,7 +105,7 @@ export default function DashboardTbs({ dataId, onDataHilang }) {
                     data={data.per_grup.data}
                     terpilih={terpilih('grup')}
                     onPilih={pilih.grup}
-                    warna="#6d28d9"
+                    warna="#1e3a8a"
                     keterangan={data.per_grup.jumlah > data.per_grup.data.length ? `${data.per_grup.data.length} business group dengan netto terbesar dari ${angka.format(data.per_grup.jumlah)}.` : null}
                   />
                 </KartuGrafik>

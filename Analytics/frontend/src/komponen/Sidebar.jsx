@@ -107,7 +107,7 @@ export default function Sidebar({ nama = '', laporan, aktif, status, onPilih, ad
         <span className="truncate text-sm font-semibold text-slate-900">{nama}</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 py-4">
+      <div className="gulir-sembunyi flex-1 overflow-y-auto px-3 py-4">
         {tanpaAkses ? (
           <p className="px-3 text-sm text-slate-500">Tidak ada menu yang bisa diakses.</p>
         ) : (

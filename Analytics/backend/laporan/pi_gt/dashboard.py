@@ -90,7 +90,10 @@ def bangun(df, dari, sampai, bulan=None, filt=None):
     gt_semua_pembuat = saring(df[df["gt_number"] != ""], filt, DIM, lewati="pembuat")
     urut_pembuat = U.gt_dalam(gt_semua_pembuat, daftar[0][0], daftar[-1][1])["gt_by"].value_counts().index
     tampil_pembuat = [n for n in urut_pembuat if n in filt["pembuat"]] if filt["pembuat"] else list(urut_pembuat)
-    urut_comp = U.gt_dalam(gt, daftar[0][0], daftar[-1][1])["comp"].value_counts().index
+    # Grafik per perusahaan juga tidak disaring perusahaannya sendiri: yang tidak dipilih diredupkan di layar, bukan hilang
+    pi_semua_comp = saring(df[(df["pi_number"] != "") & df["perlu_gt"]], filt, DIM, lewati=(*KHUSUS_GT, "perusahaan"))
+    gt_semua_comp = saring(df[df["gt_number"] != ""], filt, DIM, lewati="perusahaan")
+    urut_comp = U.gt_dalam(gt_semua_comp, daftar[0][0], daftar[-1][1])["comp"].value_counts().index
     return {
         "filter": {"minggu": bulan, **filt},
         "periode": {"mulai": tgl(ws), "akhir": tgl(we), "jumlah_bulan": len(daftar)},
@@ -99,11 +102,11 @@ def bangun(df, dari, sampai, bulan=None, filt=None):
         "kpi": U.kpi(pi, gt, ws, we),
         "temuan": U.temuan(dalam, out, gt[U.mask_belum_diterima(gt, we)], we),
         "bulanan": U.per_periode(pi, gt, daftar, tgl),
-        "outstanding_perusahaan": U.outstanding_per(pi, "comp", ws, we),
-        "gt_per_perusahaan": U.gt_per(gt, "comp", list(urut_comp), daftar),
+        "outstanding_perusahaan": U.outstanding_per(pi_semua_comp, "comp", ws, we),
+        "gt_per_perusahaan": U.gt_per(gt_semua_comp, "comp", list(urut_comp), daftar),
         "gt_per_pembuat": U.gt_per(gt_semua_pembuat, "gt_by", tampil_pembuat, daftar),
         "durasi_rute": U.durasi_per(dalam, ["dari_gudang", "ke_gudang"], "lead_logistik"),
-        "durasi_perusahaan": U.durasi_per(dalam, "comp", "lead_pengadaan"),
+        "durasi_perusahaan": U.durasi_per(U.gt_dalam(gt_semua_comp, ws, we), "comp", "lead_pengadaan"),
         "jumlah": {"outstanding": len(out), "gt": len(dalam), "belum_diterima": int(U.mask_belum_diterima(gt, we).sum())},
         "pilihan": {**pilihan, "pembuat_semua": pilihan["pembuat"]},
     }

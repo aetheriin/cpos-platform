@@ -154,6 +154,7 @@ class Gudang:
             ada = self.dataset.get((laporan, mulai, akhir))
             if ada and not segarkan and (pemilik is None or pemilik in ada.pemilik):
                 self.dataset.move_to_end((laporan, mulai, akhir))
+                self._lepas_periode_lain(laporan, (laporan, mulai, akhir), pemilik_baru)
                 p = Pekerjaan(uuid.uuid4().hex[:12], laporan, mulai, akhir, "selesai", "Memakai data yang sudah dimuat", ada.id, pemilik=set(pemilik_baru))
                 p.selesai_pada = p.dibuat
                 self.pekerjaan[p.id] = p
@@ -187,6 +188,7 @@ class Gudang:
                     self.alias[lama.id] = d.id
                 self.dataset[kunci_data] = d
                 self.dataset.move_to_end(kunci_data)
+                self._lepas_periode_lain(p.laporan, kunci_data, d.pemilik)
                 while len(self.dataset) > self.maks_dataset:
                     self.dataset.popitem(last=False)
                 self._rapikan_alias()
@@ -247,6 +249,20 @@ class Gudang:
         for p in hentikan:
             p.kendali.batalkan()
         return dihapus, len(hentikan)
+
+    def _lepas_periode_lain(self, laporan, kunci_baru, pemilik):
+        """Di dalam kunci. Tiap sesi hanya menyimpan satu periode per laporan: setelah periode baru siap, periode lain laporan itu dilepas
+        sesi-sesi ini, dan dibuang kalau tidak ada sesi lain yang memakainya. Kembali ke periode lama berarti memuat ulang dari SQL.
+        Dilepas setelah data baru siap (bukan saat mulai memuat), supaya kalau pemuatan gagal atau dibatalkan tampilan lama tetap jalan."""
+        if not pemilik:
+            return
+        for kunci in [k for k, d in self.dataset.items() if d.laporan == laporan and k != kunci_baru and d.pemilik & pemilik]:
+            d = self.dataset[kunci]
+            d.pemilik -= pemilik
+            if not d.pemilik:
+                del self.dataset[kunci]
+                log.info("Data %s %s..%s dibuang: diganti periode lain", d.laporan, d.mulai, d.akhir)
+        self._rapikan_alias()
 
     def _rapikan_alias(self):
         """Di dalam kunci."""

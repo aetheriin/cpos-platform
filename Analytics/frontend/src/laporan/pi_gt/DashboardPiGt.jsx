@@ -100,49 +100,49 @@ export default function DashboardPiGt({ dataId, onDataHilang }) {
           <div className={memuat ? 'space-y-4 opacity-60 transition-opacity' : 'space-y-4 transition-opacity'}>
             <Ringkasan kpi={kpi} ambang={data.ambang} periode={data.periode} />
             <GridKartu kolom={4}>
-              <Kartu judul="GT dibuat" nilai={angka.format(kpi.new_gt)} catatan={`dokumen, berisi ${angka.format(kpi.barang_gt)} barang`}
+              <Kartu judul="GT Dibuat" nilai={angka.format(kpi.new_gt)} catatan={`dokumen, berisi ${angka.format(kpi.barang_gt)} barang`}
                 info="ikut filter pembuat dan gudang" />
               <Kartu judul="Procurement Lead Time" nilai={hari(kpi.lead_pengadaan)} catatan={rata(kpi.lead_pengadaan)}
                 info="hari dari PI sampai GT dibuat, nilai tengah. GT tanpa PI tidak dihitung" />
               <Kartu judul="Logistics Lead Time" nilai={hari(kpi.lead_logistik)} catatan={rata(kpi.lead_logistik)}
                 info="hari dari GT sampai diterima, nilai tengah. GT yang belum diterima dihitung sampai hari ini" />
-              <Kartu judul="GT belum diterima" nilai={angka.format(kpi.belum_diterima)} catatan="dokumen" />
+              <Kartu judul="GT Belum Diterima" nilai={angka.format(kpi.belum_diterima)} catatan="dokumen" info="GT yang barangnya belum dicatat diterima di gudang tujuan" />
             </GridKartu>
 
             <Temuan data={data.temuan} aksi={(t) => (t.rute ? { label: 'Lihat rute ini', onKlik: () => pilihRute(...t.rute) } : null)} />
 
             <KisiGrafik>
               <Petak padat="lg:col-span-8">
-                <KartuGrafik judul="Barang menunggu GT, tiap bulan" petunjuk="Kalau garis Barang di-PI di atas Barang di-GT, antrean GT bertambah. Klik bulan untuk melihat bulan itu saja.">
+                <KartuGrafik judul="Antrean GT per Bulan" perbesar petunjuk="Barang menunggu GT di awal dan akhir tiap bulan, dengan barang di-PI dan di-GT. Kalau garis Barang di-PI di atas Barang di-GT, antrean bertambah. Klik bulan untuk melihat bulan itu saja.">
                   <WeeklyChart data={data.bulanan} minggu={filter.minggu} onPilihMinggu={pilihMinggu} garis={GARIS_PI_GT} />
                 </KartuGrafik>
               </Petak>
               <Petak padat="lg:col-span-4">
-                <KartuGrafik judul="Perusahaan mana yang paling banyak menunggu GT?">
+                <KartuGrafik judul="Menunggu GT per Perusahaan" petunjuk="Barang yang belum di-GT per perusahaan peminta, di awal dan akhir periode. Klik perusahaan untuk memfilter.">
                   <KategoriOutstandingChart daftar={data.outstanding_perusahaan} terpilih={filter.perusahaan} onPilih={pilihDari('perusahaan')} />
                 </KartuGrafik>
               </Petak>
 
               <Petak panjang="md:col-span-5" padat="lg:col-span-6">
-                <KartuGrafik judul="GT dibuat tiap bulan, per perusahaan">
+                <KartuGrafik judul="GT per Perusahaan" petunjuk="Jumlah GT dibuat tiap bulan untuk tiap perusahaan. Klik nama untuk memfilter.">
                   <GarisSeri mingguan={data.bulanan} seri={data.gt_per_perusahaan} warnaSeri={warnaPerusahaan} terpilihSeri={filter.perusahaan}
                     minggu={filter.minggu} onPilihSeri={pilihDari('perusahaan')} onPilihMinggu={pilihMinggu} />
                 </KartuGrafik>
               </Petak>
               <Petak panjang="md:col-span-5" padat="lg:col-span-6">
-                <KartuGrafik judul="GT dibuat tiap bulan, per orang" petunjuk="Awalnya hanya tim Logistik. Nama lain bisa ditambah di filter Pembuat GT.">
+                <KartuGrafik judul="GT per Pembuat" petunjuk="Jumlah GT dibuat tiap bulan oleh tiap orang. Awalnya hanya tim Logistik; nama lain bisa ditambah di filter Pembuat GT.">
                   <GarisSeri mingguan={data.bulanan} seri={data.gt_per_pembuat} warnaSeri={warnaPembuat} terpilihSeri={filter.pembuat.length === 1 ? filter.pembuat : []}
                     minggu={filter.minggu} onPilihSeri={pilihPembuat} onPilihMinggu={pilihMinggu} />
                 </KartuGrafik>
               </Petak>
 
               <Petak panjang="md:col-span-5" padat="lg:col-span-6">
-                <KartuGrafik judul="Berapa hari GT sampai diterima, per rute?" petunjuk="Batang jauh melewati garis tegak berarti ada beberapa GT yang sangat lama.">
+                <KartuGrafik judul="Logistics Lead Time per Rute" petunjuk="Hari dari GT dibuat sampai diterima, per rute gudang. Batang: rata-rata; garis tegak: nilai tengah. Batang jauh melewati garis berarti ada beberapa GT yang sangat lama.">
                   <DurasiBatang data={data.durasi_rute} kosong="Belum ada GT pada periode ini" />
                 </KartuGrafik>
               </Petak>
               <Petak panjang="md:col-span-5" padat="lg:col-span-6">
-                <KartuGrafik judul="Berapa hari dari PI sampai GT, per perusahaan?" petunjuk="GT tanpa PI tidak dihitung.">
+                <KartuGrafik judul="Procurement Lead Time per Perusahaan" petunjuk="Hari dari PI sampai GT dibuat, per perusahaan. Batang: rata-rata; garis tegak: nilai tengah. GT tanpa PI tidak dihitung.">
                   <DurasiBatang data={data.durasi_perusahaan} terpilih={filter.perusahaan} onPilih={pilihDari('perusahaan')} kosong="Belum ada GT dari PI pada periode ini" />
                 </KartuGrafik>
               </Petak>

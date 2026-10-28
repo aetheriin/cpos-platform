@@ -142,6 +142,14 @@ TBS_TOP_SUPPLIER = angka("TBS_TOP_SUPPLIER", 10)
 TBS_TOP_TIPE = angka("TBS_TOP_TIPE", 10)
 TBS_TOP_TIPE_HARGA = angka("TBS_TOP_TIPE_HARGA", 10)
 
+# Pembelian TBS Mingguan: atensi per business group pada minggu lengkap terakhir
+SP_TBS_MINGGUAN = nama_sp("SP_TBS_MINGGUAN", "dbo.tbsdetailybsweekly")   # parameter: company, tanggal awal, tanggal akhir
+TBS_MINGGUAN_MULAI = tanggal("TBS_MINGGUAN_MULAI", "2026-01-01")           # tanggal tarikan bawaan
+TBS_MINGGUAN_MINGGU_TAMPIL = angka("TBS_MINGGUAN_MINGGU_TAMPIL", 13)      # rentang tampilan bawaan: 13 minggu terakhir (12 minggu lengkap)
+TBS_MINGGUAN_TARGET_TON = angka("TBS_MINGGUAN_TARGET_TON", 4000)           # target per minggu, sementara tetap
+TBS_MINGGUAN_BATAS_SD = float(teks("TBS_MINGGUAN_BATAS_SD", "1.5"))       # di luar rata-rata ± sekian SD: atensi
+TBS_MINGGUAN_MIN_MINGGU = angka("TBS_MINGGUAN_MIN_MINGGU", 3)              # kurang dari ini minggu lengkap: tanpa atensi
+
 
 def _simulasi(teks_env):
     hasil = []
@@ -166,7 +174,8 @@ LOGIN_BERSAMAAN = pilihan("LOGIN_BERSAMAAN", "ganti", ("ganti", "izinkan"))   # 
 # ---------- Batas laporan ----------
 TANGGAL_MULAI_BAWAAN = tanggal("LAPORAN_MULAI_BAWAAN", "2025-10-01")
 MAKS_HARI = angka("MAKS_HARI_PERIODE", 1100)           # sekitar 3 tahun
-MAKS_DATASET = angka("MAKS_DATASET", 6)                # data laporan di memori sekaligus
+PRAMUAT = teks("PRAMUAT", "1") != "0"                          # 1: setelah login, semua laporan yang boleh dibuka langsung dimuat
+MAKS_DATASET = angka("MAKS_DATASET", 1000)               # data laporan di memori sekaligus, semua pengguna (satu per laporan dan periode)
 SIMPAN_PEKERJAAN_DETIK = angka("SIMPAN_PEKERJAAN_DETIK", 3600)
 MAKS_BARIS_EKSPOR = angka("MAKS_BARIS_EKSPOR", 100_000)   # batas berkas Excel sendiri 1.048.576 baris
 

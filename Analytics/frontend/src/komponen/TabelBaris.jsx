@@ -5,6 +5,8 @@ const WARNA_STATUS = {
   Completed: 'bg-emerald-100 text-emerald-800',
   Closed: 'bg-slate-200 text-slate-700',
   Void: 'bg-red-100 text-red-700',
+  NAIK: 'bg-emerald-100 text-emerald-800',   // atensi Pembelian TBS Mingguan
+  TURUN: 'bg-red-100 text-red-700',
 }
 
 // Kolom bertulisan panjang dipotong dengan titik-titik; isi lengkap ada di tooltip.

@@ -6,6 +6,7 @@ saja (tanpa banyak worker). Isi .env dijelaskan di README.
 import asyncio
 import logging
 import os
+import threading
 import time
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
@@ -42,6 +43,10 @@ NAMA_COOKIE = "sesi"
 COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "0") == "1"
 SESI_JAM = float(os.environ.get("SESI_JAM", "8"))
 log = logging.getLogger("dashboard")
+
+
+def _ids_hak_akses():
+    return [*LAPORAN]
 
 gudang = Gudang()
 log_aktivitas = LogAktivitas(konfigurasi.AKTIVITAS_FOLDER, konfigurasi.AKTIVITAS_SIMPAN_HARI)
@@ -119,17 +124,17 @@ def periksa_izin_awal():
     try:
         penyimpan_pengguna.periksa_izin()
     except PenyimpanTidakTersedia as e:
-        log.warning("Tabel izin '%s' tidak bisa dibaca, jadi akun selain %s belum bisa melihat laporan apa pun. Periksa DB_APP_TABEL_IZIN dan kolomnya "
+        log.warning("Tabel izin '%s' tidak bisa dibaca, jadi akun selain %s belum bisa melihat laporan atau aplikasi apa pun. Periksa DB_APP_TABEL_IZIN dan kolomnya "
                     "(role, page_key, can_access, can_edit, can_delete, can_approve, can_reject, can_done). Detail: %s", penyimpan_pengguna.tabel_izin, konfigurasi.ROLE_ADMIN, e)
         return
     try:
         tanpa = sorted({p.role for p in penyimpan_pengguna.daftar()
-                        if p.role and not adalah_admin(p.role) and not _laporan_boleh(p)})
+                        if p.role and not adalah_admin(p.role) and not _hak_halaman_boleh(p)})
     except PenyimpanTidakTersedia as e:
         log.warning("Hak akses tidak bisa diperiksa saat server menyala: %s", e)
         return
     if tanpa:
-        log.warning("Role ini punya akun tetapi belum punya akses ke laporan apa pun (atur di menu Permission Control): %s", ", ".join(tanpa))
+        log.warning("Role ini punya akun tetapi belum punya akses ke halaman apa pun (atur di menu Permission Control): %s", ", ".join(tanpa))
 
 
 # Mode CPOS: sesi dipegang CPOS, jadi data laporan milik sesi CPOS yang sudah lama tidak memanggil Analytics dibuang di sini
@@ -190,17 +195,23 @@ app.add_middleware(
 )
 
 
-def _laporan_boleh(p):
-    """Admin: semua laporan. Lainnya menurut tabel izin; kalau tabel itu tidak terbaca, IzinTidakTerbaca dilempar."""
+def _hak_halaman_boleh(p):
+    """Hak laporan dan aplikasi mandiri; tabel izin yang tidak terbaca tidak pernah dianggap terbuka."""
     if adalah_admin(p.role):
-        return list(LAPORAN)
+        return _ids_hak_akses()
     izin = penyimpan_pengguna.izin_role(p.role)
-    return [i for i in LAPORAN if i.casefold() in izin]
+    return [i for i in _ids_hak_akses() if i.casefold() in izin]
+
+
+def _laporan_boleh(p):
+    return [i for i in _hak_halaman_boleh(p) if i in LAPORAN]
 
 
 def _info_pengguna(p):
+    hak = _hak_halaman_boleh(p)
     return {"id": p.id, "username": p.username, "nama": p.nama, "role": p.role, "divisi": p.divisi, "company": p.company,
-            "admin": adalah_admin(p.role), "laporan": _laporan_boleh(p)}
+            "admin": adalah_admin(p.role), "laporan": [i for i in hak if i in LAPORAN],
+            "halaman": [i for i in hak if i not in LAPORAN]}
 
 
 # Database tidak terbaca selalu dijawab 503, bukan 401/403: pengguna tidak boleh dikira salah password atau tidak punya akses.
@@ -400,13 +411,31 @@ def masuk(perm: PermintaanLogin, response: Response, request: Request = None):
         _tak_terbaca("pengguna", e)
     ip = _ip(request)     # di belakang proxy, ini alamat proxy-nya
     asal = f"IP {ip}" if ip else None
+    sid = sesi_login.buat(p.username, asal=asal)
     response.set_cookie(
-        NAMA_COOKIE, sesi_login.buat(p.username, asal=asal), httponly=True, samesite="strict", secure=COOKIE_SECURE,
+        NAMA_COOKIE, sid, httponly=True, samesite="strict", secure=COOKIE_SECURE,
         max_age=int(SESI_JAM * 3600), path="/",
     )
     log.info("Masuk: %s (role %s)%s", p.username, p.role, f" dari {asal}" if asal else "")
     _catat("masuk", info, request)
+    if konfigurasi.PRAMUAT and info["laporan"]:
+        threading.Thread(target=_pramuat, args=(sid, p.username, info["laporan"]), daemon=True).start()
     return info
+
+
+def _pramuat(sid, username, ids):
+    """Setelah login, semua laporan yang boleh dibuka mulai dimuat bersamaan dengan periode bawaannya. Saat menu dibuka, permintaan muat
+    yang sama ikut menunggu pemuatan ini atau langsung memakai hasilnya. Sesi yang berakhir menghentikan pemuatannya (Gudang.lepas)."""
+    if sesi_login.masih_ada(sid) != username:
+        return
+    for i in ids:
+        lap = LAPORAN.get(i)
+        if lap is not None:
+            gudang.mulai_muat(lap.id, *_periode_bawaan(lap), lap.pemuat, sid)
+    if sesi_login.masih_ada(sid) != username:     # keluar saat pramuat baru didaftarkan: pemuatannya ikut dibuang
+        gudang.lepas(sid)
+        return
+    log.info("Pramuat %s: %d laporan mulai dimuat bersamaan", username, len(ids))
 
 
 @app.post("/api/auth/keluar")
@@ -719,7 +748,7 @@ def _izin_halaman_gagal(e):
 
 @app.get("/api/admin/izin")
 def daftar_izin(user=Depends(wajib_admin)):
-    ids = list(LAPORAN)
+    ids = _ids_hak_akses()
     try:
         role = penyimpan_pengguna.izin_semua_role(ids)
     except PenyimpanTidakTersedia as e:
@@ -731,13 +760,17 @@ def daftar_izin(user=Depends(wajib_admin)):
         admin = adalah_admin(r["nama"])
         hasil.append({"id": r["id"], "nama": r["nama"], "admin": admin,
                       "izin": {i: True for i in ids} if admin else r["izin"]})
-    return {"laporan": [{"id": l.id, "nama": l.nama, "deskripsi": l.deskripsi} for l in LAPORAN.values()], "role": hasil}
+    return {
+        "laporan": [{"id": l.id, "nama": l.nama, "deskripsi": l.deskripsi} for l in LAPORAN.values()],
+        "halaman": [],
+        "role": hasil,
+    }
 
 
 @app.put("/api/admin/izin")
 def atur_izin(perm: PermintaanIzin, request: Request = None, user=Depends(wajib_admin)):
     """Berlaku pada permintaan berikutnya, tanpa pengguna harus masuk lagi."""
-    if perm.laporan not in LAPORAN:
+    if perm.laporan not in _ids_hak_akses():
         raise HTTPException(422, f"Laporan '{perm.laporan}' tidak dikenal.")
     try:
         nama = kanonik_role(perm.role, [r["nama"] for r in penyimpan_pengguna.daftar_role()])
@@ -760,22 +793,26 @@ def atur_izin(perm: PermintaanIzin, request: Request = None, user=Depends(wajib_
     return hasil
 
 
+def _periode_bawaan(l):
+    """(mulai, akhir) ISO yang dimuat saat laporan dibuka; sama untuk menu dan pramuat, supaya pramuat bisa dipakai ulang."""
+    hari_ini = date.today()
+    if getattr(l, "awal_tahun", False):
+        mulai = date(hari_ini.year, 1, 1).isoformat()
+    else:
+        hari = getattr(l, "hari_bawaan", None)
+        mulai = (hari_ini - timedelta(days=hari - 1)).isoformat() if hari else l.mulai_bawaan
+    return mulai, hari_ini.isoformat()
+
+
 @app.get("/api/laporan")
 def daftar_laporan(user=Depends(pengguna_saat_ini)):
-    hari_ini = date.today()
-
-    def mulai(l):
-        if getattr(l, "awal_tahun", False):
-            return date(hari_ini.year, 1, 1).isoformat()
-        hari = getattr(l, "hari_bawaan", None)
-        return (hari_ini - timedelta(days=hari - 1)).isoformat() if hari else l.mulai_bawaan
-
-    return [
-        {"id": l.id, "nama": l.nama, "grup": getattr(l, "grup", "Analytical Dashboard"), "deskripsi": l.deskripsi, "mulai_bawaan": mulai(l),
-         "akhir_bawaan": hari_ini.isoformat(), "maks_hari": MAKS_HARI}
+    hasil = [
+        {"id": l.id, "nama": l.nama, "grup": getattr(l, "grup", "Analytical Dashboard"), "deskripsi": l.deskripsi, "mulai_bawaan": _periode_bawaan(l)[0],
+         "akhir_bawaan": _periode_bawaan(l)[1], "maks_hari": MAKS_HARI}
         for l in LAPORAN.values()
         if l.id in user["laporan"]
     ]
+    return hasil
 
 
 @app.post("/api/laporan/{laporan_id}/muat")

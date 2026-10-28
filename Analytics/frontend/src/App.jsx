@@ -6,6 +6,7 @@ import HalamanIzin from './komponen/HalamanIzin'
 import HalamanPengguna from './komponen/HalamanPengguna'
 import HalamanStruktur from './komponen/HalamanStruktur'
 import KembaliKeAtas from './komponen/KembaliKeAtas'
+import TandaMemuat from './komponen/TandaMemuat'
 import { IkonBulan, IkonKunci, IkonMatahari, IkonMenu } from './komponen/Ikon'
 import Login from './komponen/Login'
 import MenuAkun from './komponen/MenuAkun'
@@ -14,7 +15,7 @@ import { keLoginCpos, SEMATAN } from './lib/cpos'
 import { hariIni, salam } from './lib/data'
 import { useJagaIdle } from './lib/idle'
 import { idDariAlamat, keLogin, keluarDariLogin, pindahAlamat } from './lib/rute'
-import { kembaliKeBawaan, useTataLetak } from './lib/tampilan'
+import { kembaliKeBawaan } from './lib/tampilan'
 import { useTema } from './lib/tema'
 import { DASHBOARD } from './laporan'
 
@@ -28,7 +29,6 @@ export default function App() {
   const [laporan, setLaporan] = useState(null)
   const [galat, setGalat] = useState(null)
   const [aktif, setAktif] = useState(null)
-  const [tataLetak] = useTataLetak(aktif) // lebar halaman mengikuti tata letak laporan yang sedang dibuka
   const [dibuka, setDibuka] = useState([]) // laporan yang pernah dibuka. Tetap terpasang agar tidak dimuat ulang
   const [status, setStatus] = useState({})
   const [menu, setMenu] = useState(true)
@@ -197,7 +197,7 @@ export default function App() {
     )
   }
 
-  const tanpaAkses = laporan !== null && laporan.length === 0 && !galat && !pengguna.admin
+  const tanpaAkses = laporan !== null && laporan.length === 0 && !galat && !pengguna.admin && !pengguna.halaman?.length
   const laporanAktif = laporan?.find((l) => l.id === aktif)
   const halaman =
     aktif === ID_PENGGUNA ? { bagian: 'Administrasi', nama: 'Pengguna' }
@@ -253,8 +253,8 @@ export default function App() {
         </header>
         )}
 
-        {/* Tata letak padat memakai seluruh lebar layar dengan tepi tipis; halaman administrasi tetap selebar biasa */}
-        <main className={tataLetak === 'padat' && !ID_ADMIN.includes(aktif) ? 'p-3 sm:px-4' : 'mx-auto max-w-6xl p-4 sm:p-6'}>
+        {/* Laporan (padat maupun memanjang) memakai seluruh lebar layar dengan tepi tipis; halaman administrasi tetap selebar biasa */}
+        <main className={!ID_ADMIN.includes(aktif) ? 'p-3 sm:px-4' : 'mx-auto max-w-6xl p-4 sm:p-6'}>
           {galat && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               Daftar laporan tidak bisa dimuat: {galat.message}
@@ -298,6 +298,7 @@ export default function App() {
         </main>
       </div>
       <KembaliKeAtas />
+      <TandaMemuat />
     </div>
   )
 }
