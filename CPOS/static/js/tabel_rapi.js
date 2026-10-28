@@ -7,7 +7,7 @@
 //   <table data-tanpa-urut> / <th data-tanpa-urut> = tidak bisa diurutkan (pohon menu, jadwal harian, dll.);
 //   tabel laporan berbaris ringkasan (.tbs-tabel, RekapIn Pembelian TBS) juga tidak.
 //   Urutan tetap berlaku saat data dimuat ulang. Baris satu sel (kosong / catatan batas) selalu di bawah.
-// - Tanggal: teks "2026-10-28" / "2026-10-28 14:00" di sel tabel ditampilkan "28-10-2026" / "28-10-2026 14:00".
+// - Tanggal: teks "2026-10-28" / "2026-10-28 14:00" di sel tabel & teks data ditampilkan "28-10-2026" / "28-10-2026 14:00".
 
 const KERANGKA_BARIS = 3;
 const KERANGKA_MAKS_MS = 15000;
@@ -32,11 +32,13 @@ function pasangKerangkaTerlihat() {
 }
 
 // ---------- tanggal ----------
+// Sel tabel, daftar keterangan (dd), teks data (.font-mono, mis. "Tanggal DO" di kartu Kontrak), [data-tgl]
+const PILIH_TGL = 'td, dd, .font-mono, [data-tgl]';
 const POLA_TGL_ISO = /(^|[^\w\-/])((?:19|20)\d{2})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])(?![\w\-/])/g;
 
 function rapikanTanggal(akar) {
-    const sel = akar.matches && akar.matches('td, dd, [data-tgl]') ? [akar] : [];
-    (akar.querySelectorAll ? [...sel, ...akar.querySelectorAll('td, dd, [data-tgl]')] : []).forEach(el => {
+    const sel = akar.matches && akar.matches(PILIH_TGL) ? [akar] : [];
+    (akar.querySelectorAll ? [...sel, ...akar.querySelectorAll(PILIH_TGL)] : []).forEach(el => {
         const jalan = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
         for (let n = jalan.nextNode(); n; n = jalan.nextNode()) {
             if (!/\d{4}-\d{2}-\d{2}/.test(n.data)) continue;
