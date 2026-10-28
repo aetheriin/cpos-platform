@@ -17,8 +17,22 @@ function setUrlParam(key, value) {
     window.history.replaceState({}, '', url);
 }
 
+// Layar lebar: menu samping disembunyikan / ditampilkan. Layar tablet (< 1280px): laci di atas isi (CSS .sidebar-buka).
+const LAYAR_TABLET = window.matchMedia('(max-width: 1279px)');
+
 function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('sidebar-collapsed');
+    const sidebar = document.getElementById('sidebar');
+    if (!LAYAR_TABLET.matches) { sidebar.classList.toggle('sidebar-collapsed'); return; }
+    const buka = !sidebar.classList.contains('sidebar-buka');
+    sidebar.classList.toggle('sidebar-buka', buka);
+    let latar = document.getElementById('sidebarLatar');
+    if (buka && !latar) {
+        latar = document.createElement('div');
+        latar.id = 'sidebarLatar';
+        latar.className = 'sidebar-latar';
+        latar.addEventListener('click', toggleSidebar);
+        sidebar.insertAdjacentElement('afterend', latar);
+    } else if (!buka && latar) latar.remove();
 }
 
 // Sidebar: menu Lv2 dropdown (punya bagian Lv3) yang dibuka / ditutup diingat di browser ini.
@@ -83,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Baris isi pertama yang lengkap menjadi patokan; berlaku juga untuk tabel yang diisi ulang lewat JavaScript.
 function samakanPerataanTabel(tabel) {
     const kepala = tabel.tHead && tabel.tHead.rows[tabel.tHead.rows.length - 1];
-    const baris = [...(tabel.tBodies[0]?.rows || [])].find(r => r.cells.length === kepala?.cells.length && !r.querySelector('[colspan]'));
+    const baris = [...(tabel.tBodies[0]?.rows || [])].find(r => r.cells.length === kepala?.cells.length && !r.querySelector('[colspan]') && !r.classList.contains('baris-kerangka'));
     if (!kepala || !baris) return;
     [...kepala.cells].forEach((th, i) => {
         const td = baris.cells[i];

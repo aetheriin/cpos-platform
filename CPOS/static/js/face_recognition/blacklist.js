@@ -299,7 +299,7 @@ async function simpanBlacklist(btn) {
     if (punyaAlias && !alias) { Notif.peringatan('Nama alias wajib diisi'); return; }
     const idSupplier = document.getElementById('blCustomerTerkait').value;
     if (tipeBlacklistBaru === 'PERSONEL' && targetBlacklist.kategori === 'DRIVER' && !idSupplier) {
-        Notif.peringatan('Asal supplier wajib diisi untuk Driver'); return;
+        Notif.peringatan('Asal supplier wajib diisi untuk supir'); return;
     }
     if (!!noSurat !== !!file) { Notif.peringatan('Isi No. surat dan file surat sekaligus, atau kosongkan keduanya bila surat menyusul'); return; }
     const nama = { PERSONEL: targetBlacklist.nama_personel, KENDARAAN: targetBlacklist.no_plat,

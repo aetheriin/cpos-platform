@@ -181,8 +181,7 @@ function tampilAturan() {
                 <button type="button" class="px-1.5 text-slate-400 hover:text-red-600" title="Deny all baris ini" data-on-click="aksiBaris" data-arg="${i}|$false"><i class="fa-solid fa-ban"></i></button>
                 <button type="button" class="px-1.5 text-slate-400 hover:text-red-600" title="Hapus aturan" data-on-click="hapusAturan" data-arg="${i}"><i class="fa-solid fa-trash-can"></i></button>
             </td>
-        </tr>`).join('') || `<tr><td colspan="12" class="table-cell text-center text-slate-400 py-10">Belum ada aturan: menu ini tidak terlihat oleh siapa pun.
-            <button type="button" class="link-aksi text-blue-600 ml-1" data-on-click="tambahAturan">Tambah aturan</button></td></tr>`;
+        </tr>`).join('') || barisKosong(12, 'Belum ada aturan: menu ini tidak terlihat oleh siapa pun.', { fungsi: 'tambahAturan', label: 'Tambah aturan' });
 }
 
 function targetAwal(jenis) {

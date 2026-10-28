@@ -11,6 +11,7 @@ from flask_login import current_user, login_required
 
 from utils import cctv_gateway as gw, db_cctv as db, log_aktivitas
 from utils.area import area_data
+from utils.galat_isian import GalatIsian, isi_galat
 from utils.area_filter import area_cocok
 from utils.hak_akses import admin_required, halaman as lihat_halaman, izin
 
@@ -112,7 +113,7 @@ def admin_daftar():
 def _teks(nama, maks, wajib=True):
     v = (request.form.get(nama) or "").strip()[:maks]
     if wajib and not v:
-        raise ValueError(f"Isi {nama.replace('_', ' ')}")
+        raise GalatIsian(f"Isi {nama.replace('_', ' ')}", nama)
     return v or None
 
 
@@ -120,7 +121,7 @@ def _angka(nama, wajib=True):
     v = (request.form.get(nama) or "").strip()
     if not v.isdigit():
         if wajib:
-            raise ValueError(f"Pilih {nama.replace('id_', '').replace('_', ' ')}")
+            raise GalatIsian(f"Pilih {nama.replace('id_', '').replace('_', ' ')}", nama)
         return None
     return int(v)
 
@@ -129,7 +130,7 @@ def _jalankan(fn):
     try:
         return fn()
     except (ValueError, gw.GatewayGagal) as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify(isi_galat(e)), 400
 
 
 @cctv_bp.route("/api/admin/cctv/gateway", methods=["POST"])
@@ -139,7 +140,7 @@ def admin_gateway():
     def aksi():
         url = _teks("url", 255)
         if not re.match(r"^https?://[\w.\-]+(:\d+)?/?$", url):
-            raise ValueError("Alamat gateway contoh: http://192.168.10.5:1984")
+            raise GalatIsian("Alamat gateway contoh: http://192.168.10.5:1984", "url")
         db.simpan_gateway(_angka("id_gateway", False), _teks("nama", 100), url.rstrip("/"), _angka("id_comp_area"),
                           request.form.get("is_active", "1") == "1")
         return jsonify({"message": "Gateway video disimpan"})
@@ -169,14 +170,14 @@ def admin_kamera():
              "stream_ringan": _teks("stream_ringan", 100, False), "ai": f.get("ai") or "NONE",
              "urutan": _angka("urutan", False) or 0, "is_active": f.get("is_active", "1") == "1"}
         if not POLA_KODE.match(d["kode"]):
-            raise ValueError("Kode kamera: huruf besar, angka, - atau _ (mis. CAM-01)")
+            raise GalatIsian("Kode kamera: huruf besar, angka, - atau _ (mis. CAM-01)", "kode")
         if d["titik"] not in db.TITIK or d["peran"] not in db.PERAN or d["ai"] not in db.AI:
             raise ValueError("Pilih titik, peran, dan AI dari daftar")
         if not all(POLA_STREAM.match(s) for s in (d["stream_utama"], d["stream_ringan"] or "x")):
             raise ValueError("Nama stream: huruf, angka, titik, - atau _ (sama dengan nama di konfigurasi gateway)")
         g = next((x for x in db.daftar_gateway() if x["id_gateway"] == d["id_gateway"]), None)
         if not g or g["id_comp_area"] != d["id_comp_area"]:
-            raise ValueError("Gateway harus berada di area yang sama dengan kamera")
+            raise GalatIsian("Gateway harus berada di area yang sama dengan kamera", "id_gateway")
         db.simpan_kamera(_angka("id_kamera", False), d)
         return jsonify({"message": f"Kamera {d['kode']} disimpan"})
     return _jalankan(aksi)

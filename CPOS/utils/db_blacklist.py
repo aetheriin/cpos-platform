@@ -28,7 +28,7 @@ def get_riwayat_blacklist(tipe=None, cari=None, batas=200, status="AKTIF", pt=No
                p.UserID AS id_personel, p.UserCode AS kode_personel, p.Nama AS nama_personel, k.NoVehicle AS no_plat, b.NoVehicle AS no_plat_terkait,
                c.SupplierName AS customer_terkait, a.SupplierName AS pengangkutan_terkait,
                b.RevokeDate AS dicabut_at, b.RevokeReason AS alasan_cabut, uc.Nama AS dicabut_oleh, p.NoKTP AS nik, b.AliasName AS nama_alias, b.CategoryCode AS kategori,
-               CASE b.TargetType WHEN 'KENDARAAN' THEN 'Kendaraan' WHEN 'SUPPLIER' THEN 'Supplier' ELSE CASE b.CategoryCode WHEN 'KARYAWAN' THEN N'Karyawan' WHEN 'DRIVER' THEN N'Driver' WHEN 'TAMU' THEN N'Tamu' END END AS nama_kategori,
+               CASE b.TargetType WHEN 'KENDARAAN' THEN 'Kendaraan' WHEN 'SUPPLIER' THEN 'Supplier' ELSE CASE b.CategoryCode WHEN 'KARYAWAN' THEN N'Karyawan' WHEN 'DRIVER' THEN N'Supir' WHEN 'TAMU' THEN N'Tamu' END END AS nama_kategori,
                sb.SupplierID AS id_supplier, sb.SupplierCode AS kode_supplier, sb.SupplierName AS nama_supplier,
                arb.AreaName AS lokasi_blacklist, cb.CompID AS company_blacklist,
                COALESCE(sp.waktu, sk.waktu) AS scan_terakhir, sca.AreaName AS lokasi_scan, csa.CompID AS company_scan,
@@ -89,7 +89,7 @@ def get_riwayat_blacklist(tipe=None, cari=None, batas=200, status="AKTIF", pt=No
 # Bukan supir / belum pernah membawa truk -> kolom transaksi NULL (form blacklist tidak menampilkannya).
 _SELECT_PERSONEL = """
     SELECT {top} p.UserID AS id_target, p.UserCode AS kode_personel, p.Nama AS nama_personel, p.NoKTP AS nik, p.LicenseNumber AS no_sim, p.PersonType AS kategori,
-           CASE p.PersonType WHEN 'KARYAWAN' THEN N'Karyawan' WHEN 'DRIVER' THEN N'Driver' WHEN 'TAMU' THEN N'Tamu' END AS nama_kategori, p.PhotoPath AS foto_path, p.IsBlacklisted AS is_blacklisted, tr.no_plat AS plat_terakhir,
+           CASE p.PersonType WHEN 'KARYAWAN' THEN N'Karyawan' WHEN 'DRIVER' THEN N'Supir' WHEN 'TAMU' THEN N'Tamu' END AS nama_kategori, p.PhotoPath AS foto_path, p.IsBlacklisted AS is_blacklisted, tr.no_plat AS plat_terakhir,
            tr.id_supplier AS id_customer_terakhir, tr.customer AS customer_terakhir,
            tr.id_pengangkutan AS id_pengangkutan_terakhir, tr.pengangkutan AS pengangkutan_terakhir,
            tr.produk AS produk_terakhir, tr.created_at AS waktu_terakhir

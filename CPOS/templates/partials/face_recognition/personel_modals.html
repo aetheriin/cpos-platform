@@ -122,21 +122,3 @@
         </div>
     </div>
 </div>
-
-<!-- MODAL: Hapus Personel (soft delete) -->
-<div id="modalHapusPersonel" class="modal-overlay">
-    <div class="modal-box">
-        <div class="modal-header">
-            <h3 class="font-bold">Hapus Orang</h3>
-            <button type="button" data-on-click="closeModal" data-arg="modalHapusPersonel" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div class="p-6 space-y-4">
-            <div id="hapusTarget" class="border border-slate-200 bg-slate-50 rounded-lg p-3 text-sm"></div>
-            <p class="text-sm text-slate-700">Hapus orang ini? Wajahnya tidak lagi dikenali saat scan. Riwayat scan & tiket tetap tersimpan.</p>
-            <div class="flex gap-3">
-                <button type="button" data-on-click="closeModal" data-arg="modalHapusPersonel" class="btn-secondary flex-1">Batal</button>
-                <button type="button" id="btnKonfirmasiHapus" data-on-click="konfirmasiHapusPersonel" class="btn-danger flex-1">Hapus</button>
-            </div>
-        </div>
-    </div>
-</div>

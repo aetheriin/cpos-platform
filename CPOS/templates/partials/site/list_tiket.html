@@ -1,4 +1,3 @@
-{% from "partials/layout/_macros.html" import tombol_ekspor %}
 {# Halaman List: kartu filter, tiket aktif per tahap, riwayat 7 hari per produk. Logika di static/js/site/list.js #}
 <div class="card p-4 mb-5">
     <div class="flex flex-col lg:flex-row lg:items-center gap-3">
@@ -25,7 +24,6 @@
         <div>
             <h2 class="text-sm font-bold text-slate-900">Tiket Aktif</h2>
         </div>
-        {{ tombol_ekspor('tabelTicketAktif', 'Tiket Aktif') }}
     </div>
     <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
@@ -34,9 +32,7 @@
                     <th class="table-cell">Customer &amp; DO</th><th class="table-cell">Status</th>
                     <th class="table-cell">Menunggu</th><th class="table-cell text-right">Aksi</th></tr>
             </thead>
-            <tbody data-per-halaman="20" data-sorot id="tabelTicketAktif" class="divide-y divide-slate-100">
-                <tr><td colspan="7" class="table-cell text-slate-400 text-center py-8">Memuat data...</td></tr>
-            </tbody>
+            <tbody data-judul-ekspor="Tiket Aktif" data-per-halaman="20" data-sorot id="tabelTicketAktif" class="divide-y divide-slate-100"></tbody>
         </table>
     </div>
 </div>
@@ -51,7 +47,6 @@
             <option value="">Semua produk</option>
             {% for p in produk_list %}<option value="{{ p.id_produk }}">{{ p.nama_produk }}</option>{% endfor %}
         </select>
-        {{ tombol_ekspor('tabelHistoryProduk', 'Riwayat Penimbangan') }}
         </div>
     </div>
     <div class="overflow-x-auto">
@@ -62,7 +57,7 @@
                     <th class="table-cell text-right">Tara (kg)</th><th class="table-cell text-right">Netto (kg)</th>
                     <th class="table-cell">Lama di Dalam</th><th class="table-cell">Status</th><th class="table-cell text-right">Aksi</th></tr>
             </thead>
-            <tbody data-per-halaman="20" id="tabelHistoryProduk" data-boleh-periksa="{{ 1 if boleh_periksa else 0 }}" data-boleh-koreksi="{{ 1 if boleh_koreksi else 0 }}" class="divide-y divide-slate-100"></tbody>
+            <tbody data-judul-ekspor="Riwayat Penimbangan" data-per-halaman="20" id="tabelHistoryProduk" data-boleh-periksa="{{ 1 if boleh_periksa else 0 }}" data-boleh-koreksi="{{ 1 if boleh_koreksi else 0 }}" class="divide-y divide-slate-100"></tbody>
         </table>
     </div>
 </div>

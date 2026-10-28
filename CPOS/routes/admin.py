@@ -15,6 +15,7 @@ from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from extensions import BASE_DIR, UPLOAD_FOLDER
+from utils.galat_isian import GalatIsian, isi_galat
 from utils.versi import versi_aplikasi
 from utils.hak_akses import admin_required
 from utils.dokumen import simpan_file, hapus_file_info
@@ -35,7 +36,7 @@ HALAMAN = {
     "users": ("Kelola Pengguna", "fa-users", "Tambah akun, ubah level / departemen / area, atur ulang password, aktif / nonaktif"),
     "menu": ("Kelola Menu", "fa-bars-staggered", "Susunan menu 3 level: nama, induk, urutan, alamat, ikon, aksi yang berlaku, aktif / nonaktif"),
     "hak_akses": ("Hak Akses", "fa-user-shield", "Siapa mendapat menu apa: aturan per menu untuk semua user, peran, jabatan, departemen, atau user tertentu"),
-    "persetujuan": ("Alur Persetujuan", "fa-route", "Tahap persetujuan berjenjang per jenis pengajuan & kategori (mis. blacklist Driver)"),
+    "persetujuan": ("Alur Persetujuan", "fa-route", "Tahap persetujuan berjenjang per jenis pengajuan & kategori (mis. blacklist Supir)"),
     "alur_tiket": ("Alur Tiket", "fa-diagram-project", "Urutan tahap tiket (Security, timbang, sortasi, lab, keluar) per Area + Produk, termasuk tahap bersamaan"),
     "organisasi": ("Organisasi", "fa-sitemap", "Perusahaan, area perusahaan, Mill (tipe area), departemen, jabatan, dan status tiket"),
     "sesi": ("Sesi Aktif", "fa-user-clock", "Pengguna yang sedang login, paksa keluar, buka kunci login"),
@@ -79,9 +80,9 @@ def _audit(aksi, target=None, detail=None):
 def _teks(nama, wajib=True, maks=100):
     nilai = (request.form.get(nama) or "").strip()
     if wajib and not nilai:
-        raise ValueError(f"{nama.replace('_', ' ').capitalize()} wajib diisi")
+        raise GalatIsian(f"{nama.replace('_', ' ').capitalize()} wajib diisi", nama)
     if len(nilai) > maks:
-        raise ValueError(f"{nama.replace('_', ' ').capitalize()} maksimal {maks} karakter")
+        raise GalatIsian(f"{nama.replace('_', ' ').capitalize()} maksimal {maks} karakter", nama)
     return nilai
 
 
@@ -94,7 +95,7 @@ def _jalankan(fn):
     try:
         return fn()
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify(isi_galat(e)), 400
 
 
 # ===== HALAMAN =====
@@ -163,9 +164,9 @@ def _akun_form():
 def _password_form(nama="password"):
     pw = request.form.get(nama) or ""
     if len(pw) < PASSWORD_MIN:
-        raise ValueError(f"Password minimal {PASSWORD_MIN} karakter")
+        raise GalatIsian(f"Password minimal {PASSWORD_MIN} karakter", nama)
     if pw != (request.form.get("password_ulang") or ""):
-        raise ValueError("Ulangi password tidak sama")
+        raise GalatIsian("Ulangi password tidak sama", "password_ulang")
     return pw
 
 
@@ -176,20 +177,20 @@ def _personel_form(user_lama=None):
     Akun lama yang belum punya NIK boleh disimpan tanpa NIK."""
     nama, nik = _teks("nama"), (request.form.get("nik") or "").strip()
     if nik and not nik_valid(nik):
-        raise ValueError("NIK harus 16 digit angka.")
+        raise GalatIsian("NIK harus 16 digit angka.", "nik")
     if not nik and (user_lama is None or user_lama["nik"]):
-        raise ValueError("NIK wajib diisi.")
+        raise GalatIsian("NIK wajib diisi.", "nik")
     id_personel = user_lama["id_personel"] if user_lama else None
     if nik and user_lama is None:
         ada = db.personel_untuk_nik(nik)
         if ada:
             if ada["akun"]:
-                raise ValueError(f"NIK ini sudah dipakai akun {ada['akun']}.")
+                raise GalatIsian(f"NIK ini sudah dipakai akun {ada['akun']}.", "nik")
             if not ada["boleh_akun"]:
-                raise ValueError(f"NIK ini terdaftar sebagai {ada['nama_kategori'] or ada['kategori']} dan tidak bisa dibuatkan akun.")
+                raise GalatIsian(f"NIK ini terdaftar sebagai {ada['nama_kategori'] or ada['kategori']} dan tidak bisa dibuatkan akun.", "nik")
             id_personel = ada["id_personel"]
     elif nik and cek_nik_ada(nik, exclude_id=id_personel):
-        raise ValueError("NIK sudah terdaftar pada personel lain.")
+        raise GalatIsian("NIK sudah terdaftar pada personel lain.", "nik")
     return {"id_personel": id_personel, "nama": nama, "nik": nik or None}
 
 
@@ -207,9 +208,9 @@ def users_tambah():
     def aksi():
         username = _teks("username", maks=50).lower()
         if not POLA_USERNAME.match(username):
-            raise ValueError("Username 3-50 karakter: huruf kecil, angka, titik, garis bawah")
+            raise GalatIsian("Username 3-50 karakter: huruf, angka, titik, garis bawah", "username")
         if db.username_dipakai(username):
-            raise ValueError(f"Username {username} sudah dipakai")
+            raise GalatIsian(f"Username {username} sudah dipakai", "username")
         personel, (level, id_department, id_area), pw = _personel_form(), _akun_form(), _password_form()
         db.tambah_user(username, level["id_level"], id_department, id_area, generate_password_hash(pw), personel)
         _audit("USER_TAMBAH", username, f"jabatan {level['kode']}")

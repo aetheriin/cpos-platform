@@ -46,7 +46,7 @@ function renderSupirTruk(list) {
                 <button data-on-click="lepasSupirTruk" data-arg="${Number(s.id_driver)}" class="text-red-600 hover:underline text-xs">Lepas</button>
             </td>
         </tr>`).join('')
-        || `<tr><td colspan="4" class="table-cell text-slate-400 text-center py-6">Belum ada supir terdaftar untuk truk ini</td></tr>`;
+        || barisKosong(4, 'Belum ada supir terdaftar untuk truk ini');
     supirTrukTerakhir = list;
 }
 let supirTrukTerakhir = [];
@@ -66,7 +66,7 @@ function renderKontrakTruk(list) {
             <td class="table-cell text-right">${bisaDiakhiri
                 ? `<button data-on-click="akhiriKontrak" data-arg="${Number(k.id_kontrak)}" class="text-red-600 hover:underline text-xs">Akhiri</button>` : ''}</td>
         </tr>`;
-    }).join('') || `<tr><td colspan="6" class="table-cell text-slate-400 text-center py-6">Belum ada kontrak</td></tr>`;
+    }).join('') || barisKosong(6, 'Belum ada kontrak');
 }
 
 function pastikanTrukDipilih() {

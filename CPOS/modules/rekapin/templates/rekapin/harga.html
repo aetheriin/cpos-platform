@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/layout/_macros.html" import section_header, judul_halaman, tombol_ekspor %}
+{% from "partials/layout/_macros.html" import section_header, judul_halaman %}
 {% block title %}Harga CPO & Kernel · CPOS{% endblock %}
 {% block info_bar %}{% endblock %}{% block info_bar_script %}{% endblock %}
 {% block tab_header %}
@@ -23,11 +23,11 @@
     <p class="text-[11px] text-slate-400">Sumber: <span class="font-mono">{{ sumber_harga }}</span></p></div>
 </div>
 <div class="section-box">
-  {% call section_header('daftar-harga', 'Daftar Harga') %}<div class="flex items-center gap-3" data-henti-klik>{{ tombol_ekspor('tabelRkHarga', 'Harga CPO & Kernel') }}</div>{% endcall %}
+  {% call section_header('daftar-harga', 'Daftar Harga') %}{% endcall %}
   <div id="body-daftar-harga" class="section-body overflow-x-auto"><table class="w-full text-left text-sm">
     <thead class="table-header-row"><tr><th class="table-cell">Perusahaan</th><th class="table-cell">Tanggal</th><th class="table-cell text-right">Harga CPO</th><th class="table-cell text-right">Harga Kernel</th>
       <th class="table-cell text-right">OER CPO</th><th class="table-cell text-right">Biaya Olah</th><th class="table-cell text-right">Qty RSI</th><th class="table-cell">Diubah</th><th class="table-cell text-right">Aksi</th></tr></thead>
-    <tbody id="tabelRkHarga" class="divide-y divide-slate-100" data-per-halaman="20" data-hak="{{ hak|tojson|forceescape }}"></tbody>
+    <tbody data-judul-ekspor="Harga CPO &amp; Kernel" id="tabelRkHarga" class="divide-y divide-slate-100" data-per-halaman="20" data-hak="{{ hak|tojson|forceescape }}"></tbody>
   </table></div>
   <div class="flex justify-between px-4 py-2.5 border-t border-slate-100 text-xs text-slate-500"><span>Satu baris per perusahaan per tanggal</span><span>Nilai dalam rupiah kecuali dinyatakan lain</span></div>
 </div>

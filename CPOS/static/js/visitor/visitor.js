@@ -28,7 +28,7 @@ window.addEventListener('orangDisimpan', () => { if (scanDimuat) muatScan(); });
 async function muatScan() {
     const [r, dalam] = await Promise.all([ambilJson('/api/visitor/ringkasan'), ambilJson('/api/visitor/di-dalam')]);
     if (!r.error) {
-        const kartu = [['Karyawan masuk', r.karyawan, 'fa-user-tie'], ['Driver masuk', r.driver, 'fa-truck'], ['Tamu masuk', r.tamu, 'fa-user'],
+        const kartu = [['Karyawan masuk', r.karyawan, 'fa-user-tie'], ['Supir masuk', r.driver, 'fa-truck'], ['Tamu masuk', r.tamu, 'fa-user'],
                        ['Masih di dalam', r.di_dalam, 'fa-door-open'], ['Tidak dikenali / ditolak', r.tidak_dikenali + r.ditolak, 'fa-triangle-exclamation']];
         document.getElementById('kartuRingkasan').innerHTML = kartu.map(([j, n, ik]) => `
             <div class="section-box p-3 flex items-center gap-3"><span class="judul-ikon judul-ikon-biru"><i class="fa-solid ${ik}"></i></span>

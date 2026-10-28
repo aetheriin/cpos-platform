@@ -7,7 +7,7 @@ Di database: view dbo.UserProfile.PersonType. Blacklist & Alur Persetujuan menyi
 
 JENIS = {
     "KARYAWAN": {"kode": "KARYAWAN", "nama": "Karyawan", "wajib_sim": False, "prefix_kode": "KRY", "boleh_akun": True},
-    "DRIVER": {"kode": "DRIVER", "nama": "Driver", "wajib_sim": True, "prefix_kode": "DRV", "boleh_akun": False},
+    "DRIVER": {"kode": "DRIVER", "nama": "Supir", "wajib_sim": True, "prefix_kode": "DRV", "boleh_akun": False},
     "TAMU": {"kode": "TAMU", "nama": "Tamu", "wajib_sim": False, "prefix_kode": "TMU", "boleh_akun": False},
 }
 VISITOR = ("DRIVER", "TAMU")

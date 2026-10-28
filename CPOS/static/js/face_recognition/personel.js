@@ -10,7 +10,6 @@ let modePersonel = 'tambah';
 let idPersonelEdit = null;
 let fotoPersonel = null;              
 let sumberFotoPersonel = 'UPLOAD';
-let idPersonelHapus = null;
 let adaAkunPersonel = false;          // karyawan ber-akun: jabatan diatur di Kelola Pengguna
 
 // Data Master > Supir: hanya satu jenis (tanpa chip filter, jenis di modal terkunci)
@@ -316,22 +315,13 @@ async function simpanPersonel() {
     window.dispatchEvent(new CustomEvent('orangDisimpan', { detail: data }));
 }
 
-// ===== MODAL HAPUS =====
-function bukaHapusPersonel(id) {
+// ===== HAPUS (dialog konfirmasi standar) =====
+async function bukaHapusPersonel(id) {
     const p = daftarPersonel.find(x => x.id_personel === id);
     if (!p) return;
-    idPersonelHapus = id;
-    document.getElementById('hapusTarget').innerHTML = `
-        <p class="font-semibold text-slate-800">${escapeHtml(p.nama_personel)}</p>
-        <p class="text-xs text-slate-500">${p.kode_personel ? escapeHtml(p.kode_personel) : 'Belum ada kode'} · ${escapeHtml((LABEL_KATEGORI[p.kategori] || [p.kategori])[0])}</p>`;
-    openModal('modalHapusPersonel');
-}
-
-async function konfirmasiHapusPersonel() {
-    const btn = document.getElementById('btnKonfirmasiHapus');
-    const data = await denganTombol(btn, () => kirimForm(`/api/personel/${idPersonelHapus}/hapus`, {}), 'Menghapus...');
-    if (tampilkanHasil(data)) {
-        closeModal('modalHapusPersonel');
-        muatPersonel();
-    }
+    const ok = await Dialog.konfirmasi({ judul: 'Hapus orang?', teksYa: 'Hapus', bahaya: true,
+        pesan: `${p.nama_personel} (${p.kode_personel || 'belum ada kode'} · ${(LABEL_KATEGORI[p.kategori] || [p.kategori])[0]})\n`
+            + 'Wajahnya tidak lagi dikenali saat scan. Riwayat scan & tiket tetap tersimpan.' });
+    if (!ok) return;
+    if (tampilkanHasil(await kirimForm(`/api/personel/${id}/hapus`, {}))) muatPersonel();
 }

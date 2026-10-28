@@ -1,5 +1,5 @@
 // ===== EKSPOR TABEL KE EXCEL (.xlsx) / PDF =====
-// <button data-on-click="eksporTabel" data-arg="idTbody|xlsx|Judul File">  (format: xlsx / pdf)
+// Tombol Excel / PDF dipasang otomatis di kaki tabel (halaman.js); eksporTabel(idTbody, 'xlsx' | 'pdf', judul).
 // Yang diekspor = baris yang sedang lolos pencarian/filter di layar, SEMUA halaman (bukan hanya halaman aktif).
 // Kolom "Aksi" (atau <th data-tanpa-ekspor>) dan kolom yang disembunyikan dilewati. Sel dua baris digabung dengan " · ".
 // Excel: file .xlsx dibuat langsung di browser (tanpa library); angka "20.800" / "16.240 kg" jadi angka asli.
@@ -14,7 +14,7 @@ function dataTabel(idTbody) {
         && !['aksi', 'action', 'actions'].includes(h.textContent.trim().toLowerCase()));
     const kepala = th.filter((_, i) => pakai[i]).map(h => h.textContent.trim());
     const baris = [...tbody.rows]
-        .filter(tr => tr.cells.length > 1 && !tr.classList.contains('hidden'))
+        .filter(tr => tr.cells.length > 1 && !tr.classList.contains('hidden') && !tr.classList.contains('baris-kerangka'))
         .map(tr => [...tr.cells].filter((_, i) => pakai[i]).map(teksSel));
     return { kepala, baris };
 }

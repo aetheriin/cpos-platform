@@ -43,7 +43,7 @@
             <button type="button" class="btn-primary btn-sm" data-on-click="tambahAturan" data-perlu-menu disabled><i class="fa-solid fa-plus mr-1"></i>Aturan</button>
         </div>
         <div class="flex-1 overflow-auto min-h-0">
-            <table class="w-full text-left text-sm">
+            <table data-tanpa-urut class="w-full text-left text-sm">
                 <thead id="kepalaAturan" class="table-header-row sticky top-0 z-10">
                     <tr><th class="table-cell !px-2">Efek</th><th class="table-cell !px-2">Diberikan ke</th><th class="table-cell !px-2">Sasaran</th>
                         <th class="table-cell !px-1 text-center text-[11px] kolom-aksi" colspan="7">Aksi</th>
@@ -79,7 +79,7 @@
                 <thead class="table-header-row sticky top-0 z-10">
                     <tr><th class="table-cell">Menu</th><th class="table-cell">Hak</th><th class="table-cell">Asal aturan</th></tr>
                 </thead>
-                <tbody id="tabelCek" class="divide-y divide-slate-100"></tbody>
+                <tbody data-tanpa-kerangka id="tabelCek" class="divide-y divide-slate-100"></tbody>
             </table>
         </div>
     </div>
@@ -93,7 +93,7 @@
     <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
             <thead class="table-header-row"><tr><th class="table-cell">Peran</th><th class="table-cell text-right">User</th><th class="table-cell">Halaman awal</th></tr></thead>
-            <tbody id="tabelHalamanAwal" class="divide-y divide-slate-100"></tbody>
+            <tbody data-per-halaman="20" id="tabelHalamanAwal" class="divide-y divide-slate-100"></tbody>
         </table>
     </div>
 </div>

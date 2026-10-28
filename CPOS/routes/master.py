@@ -5,6 +5,7 @@ from flask_login import login_required, current_user
 
 from utils import db_master as db, db_admin, alur, log_aktivitas, kolom_wajib, db_referensi as ref
 from utils.plat_utils import normalisasi_plat
+from utils.galat_isian import GalatIsian, isi_galat
 from utils.hak_akses import izin, boleh, boleh_lihat, halaman as lihat_halaman
 from utils.db_personel import daftar_jenis_sim, daftar_kategori
 from utils.db_organisasi import daftar_company
@@ -93,9 +94,9 @@ def kendaraan_aktif(id_kendaraan):
 def _teks(nama, label, maks=100):
     nilai = (request.form.get(nama) or "").strip()
     if not nilai:
-        raise ValueError(f"{label} wajib diisi")
+        raise GalatIsian(f"{label} wajib diisi", nama)
     if len(nilai) > maks:
-        raise ValueError(f"{label} maksimal {maks} karakter")
+        raise GalatIsian(f"{label} maksimal {maks} karakter", nama)
     return nilai
 
 
@@ -103,7 +104,7 @@ def _jalankan(fn):
     try:
         return fn()
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify(isi_galat(e)), 400
 
 
 def _catat(aksi, target, detail=None):

@@ -105,7 +105,7 @@ def _terkait(f, kategori):
             raise ValueError(f"{label} tidak ditemukan")
         hasil[kunci] = nilai
     if kategori == "DRIVER" and not hasil["id_customer"]:
-        raise ValueError("Asal supplier wajib diisi untuk Driver")
+        raise ValueError("Asal supplier wajib diisi untuk supir")
     return hasil
 
 

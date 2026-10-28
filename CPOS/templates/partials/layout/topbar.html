@@ -4,6 +4,8 @@
 {% if halaman == 'site' %}{% set judul_halaman = 'Stasiun Timbang' if view == 'form' else 'Daftar Tiket' %}
 {% elif admin_aktif %}{% set judul_halaman = judul %}
 {% else %}{% set judul_halaman = JUDUL.get(halaman, '') %}{% endif %}
+{# Breadcrumb halaman biasa = jalur menu di sidebar (Grup / Menu), supaya polanya sama di semua halaman #}
+{% if not remah and not admin_aktif and menu_aktif %}{% set remah = remah_menu(menu_aktif) %}{% endif %}
 <header class="topbar">
     <div class="flex items-center gap-3 min-w-0">
         <button type="button" data-on-click="toggleSidebar" class="sidebar-ikon-btn" title="Tampilkan / sembunyikan menu">
@@ -27,7 +29,7 @@
     <div class="flex items-center gap-2.5 text-sm">
         {% if not current_user.is_admin %}
         {% if boleh('FORM_SECURITY', 'tambah') %}
-        <a href="{{ url_for('main.weighbridge', view='form', tab='security') }}" class="btn-primary btn-sm"><i class="fa-solid fa-scale-balanced"></i> Tiket Baru</a>
+        <a href="{{ url_for('main.weighbridge', view='form', tab='security') }}" class="btn-primary btn-sm whitespace-nowrap"><i class="fa-solid fa-scale-balanced"></i> Tiket Baru</a>
         {% endif %}
         {# Notifikasi (mis. DO melebihi kuota) untuk level yang punya hak menu terkait; diisi notifikasi.js #}
         <div class="relative" data-henti-klik>

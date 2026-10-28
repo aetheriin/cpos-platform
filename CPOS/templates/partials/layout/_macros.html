@@ -34,7 +34,8 @@
 </div>
 {% endmacro %}
 
-{# Tombol ekspor tabel (static/js/ekspor.js): Excel (.xlsx) dan PDF dari <tbody id=id_tbody> #}
+{# Tombol ekspor untuk tabel laporan TANPA pembagian halaman (mis. RekapIn Pembelian TBS). Tabel daftar biasa
+   (<tbody data-per-halaman>) tidak memakai ini: tombol Excel / PDF-nya ada di kaki tabel (static/js/halaman.js). #}
 {% macro tombol_ekspor(id_tbody, judul) %}
 <div class="flex items-center gap-1.5">
     <button type="button" class="btn-secondary btn-sm" data-on-click="eksporTabel" data-arg="{{ id_tbody }}|xlsx|{{ judul }}" title="Unduh Excel (semua baris yang tampil)"><i class="fa-regular fa-file-excel text-emerald-600"></i> Excel</button>
