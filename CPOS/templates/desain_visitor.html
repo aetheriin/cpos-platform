@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% from "partials/layout/_macros.html" import judul_halaman %}
+{% block title %}Visitor & Staff Logs · CPOS{% endblock %}
+{% block info_bar %}{% endblock %}{% block info_bar_script %}{% endblock %}
+{% block tab_header %}{{ judul_halaman('Visitor & Staff Logs', 'Scan wajah semua orang yang masuk / keluar: internal (karyawan, security, BHL) dan visitor (tamu, supir)', 'fa-id-card') }}{% endblock %}
+{% block tab_content %}
+<div class="seg mb-4">
+  <button type="button" class="chip chip-active"><i class="fa-solid fa-camera mr-1"></i> Scan Wajah</button>
+  <button type="button" class="chip"><i class="fa-solid fa-list-ul mr-1"></i> Logs</button>
+  <button type="button" class="chip"><i class="fa-solid fa-address-book mr-1"></i> Data Orang</button>
+</div>
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-4 mb-6">
+  {# Kamera #}
+  <div class="xl:col-span-4 section-box p-4">
+    <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Kamera Pos</p>
+    <div class="aspect-[4/3] rounded-xl bg-slate-800 flex items-center justify-center relative overflow-hidden">
+      <div class="w-36 h-44 rounded-[45%] border-4 border-utama-500/80 border-dashed"></div>
+      <span class="absolute bottom-3 left-3 text-[11px] font-semibold text-white/80"><i class="fa-solid fa-circle text-red-500 text-[8px] mr-1"></i>LIVE · Pos Utama</span>
+    </div>
+    <div class="flex gap-2 mt-3"><button class="btn-primary flex-1"><i class="fa-solid fa-expand"></i> Scan Wajah</button>
+      <button class="btn-secondary"><i class="fa-solid fa-keyboard"></i> Cari NIK / Nama</button></div>
+    <p class="text-[11px] text-slate-400 mt-2">Wajah dicocokkan ke semua orang terdaftar (karyawan, security, BHL, supir, tamu). Blacklist dicek otomatis.</p>
+  </div>
+  {# Tiga kemungkinan hasil scan #}
+  <div class="xl:col-span-8 grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="section-box p-4 border-t-4 border-t-utama-600">
+      <p class="text-[11px] font-bold uppercase tracking-wider text-utama-700 mb-3">Hasil A · Dikenali: Internal</p>
+      <div class="flex items-center gap-3"><div class="w-14 h-14 rounded-full bg-slate-200 flex items-center justify-center text-slate-500"><i class="fa-solid fa-user text-xl"></i></div>
+        <div><p class="font-bold text-slate-900">Rudi Hartono</p><p class="text-xs text-slate-500">KRY-00012 · Timbangan · Staff</p>
+          <span class="badge-status bg-utama-100 text-utama-700 mt-1">INTERNAL · Karyawan</span></div></div>
+      <dl class="mt-3 text-xs space-y-1 text-slate-600"><div class="flex justify-between"><dt>Status</dt><dd class="font-semibold text-emerald-700">Belum masuk hari ini</dd></div>
+        <div class="flex justify-between"><dt>Jadwal</dt><dd>07:00 - 16:00</dd></div><div class="flex justify-between"><dt>Kemiripan wajah</dt><dd>97%</dd></div></dl>
+      <button class="btn-primary w-full mt-4"><i class="fa-solid fa-right-to-bracket"></i> Catat Masuk</button>
+      <p class="text-[11px] text-slate-400 mt-2">Sekali klik. Scan berikutnya = Catat Pulang. Tercatat juga sebagai absensi.</p>
+    </div>
+    <div class="section-box p-4 border-t-4 border-t-amber-500">
+      <p class="text-[11px] font-bold uppercase tracking-wider text-amber-700 mb-3">Hasil B · Dikenali: Visitor</p>
+      <div class="flex items-center gap-3"><div class="w-14 h-14 rounded-full bg-slate-200 flex items-center justify-center text-slate-500"><i class="fa-solid fa-user text-xl"></i></div>
+        <div><p class="font-bold text-slate-900">Bambang Prasetyo</p><p class="text-xs text-slate-500">DRV-00231 · CV Sawit Makmur</p>
+          <span class="badge-status bg-amber-100 text-amber-800 mt-1">VISITOR · Supir</span></div></div>
+      <div class="mt-3 space-y-2 text-xs">
+        <div><label class="field-label">Keperluan</label><div class="input-field py-1.5">Antar TBS</div></div>
+        <div><label class="field-label">Orang / bagian dituju</label><div class="input-field py-1.5">Timbangan</div></div>
+        <div><label class="field-label">No. kendaraan</label><div class="input-field py-1.5 font-mono">BM 8888 UJ</div></div></div>
+      <button class="btn-primary w-full mt-4"><i class="fa-solid fa-right-to-bracket"></i> Catat Kunjungan Masuk</button>
+      <p class="text-[11px] text-slate-400 mt-2">Kunjungan terakhir terisi otomatis; tinggal ubah bila perlu.</p>
+    </div>
+    <div class="section-box p-4 border-t-4 border-t-slate-400">
+      <p class="text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-3">Hasil C · Wajah belum terdaftar</p>
+      <div class="rounded-lg bg-slate-50 border border-dashed border-slate-300 p-3 text-xs text-slate-600 mb-3"><i class="fa-solid fa-circle-question mr-1"></i>Tidak ada yang cocok. Daftarkan dulu, foto wajah diambil dari scan ini.</div>
+      <label class="field-label">Daftar sebagai</label>
+      <div class="grid grid-cols-3 gap-1.5 mb-2 text-xs font-semibold">
+        <span class="chip chip-active justify-center">Tamu</span><span class="chip justify-center">Supir</span><span class="chip justify-center">Internal</span></div>
+      <div class="space-y-2 text-xs"><div class="input-field py-1.5 text-slate-400">NIK / No. KTP</div><div class="input-field py-1.5 text-slate-400">Nama lengkap</div>
+        <div class="input-field py-1.5 text-slate-400">Asal perusahaan / instansi</div></div>
+      <button class="btn-primary w-full mt-4"><i class="fa-solid fa-user-plus"></i> Daftar &amp; Catat Masuk</button>
+      <p class="text-[11px] text-slate-400 mt-2">Internal: hanya untuk orang yang sudah ada di data HR, atau masuk sebagai <b>menunggu verifikasi</b>.</p>
+    </div>
+  </div>
+</div>
+{# Logs #}
+<div class="section-box">
+  <div class="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-slate-100">
+    <p class="text-sm font-bold text-slate-900 mr-2">Logs Hari Ini</p>
+    <span class="chip chip-active">Semua <b class="ml-1">14</b></span><span class="chip">Internal <b class="ml-1">8</b></span><span class="chip">Visitor <b class="ml-1">6</b></span>
+    <span class="chip">Masih di dalam <b class="ml-1">5</b></span>
+    <div class="flex-1"></div><div class="input-field w-56 py-1.5 text-slate-400">Cari nama / NIK / plat...</div>
+  </div>
+  <table class="w-full text-left text-sm"><thead class="table-header-row"><tr><th class="table-cell">Masuk</th><th class="table-cell">Keluar</th><th class="table-cell">Nama</th>
+    <th class="table-cell">Jenis</th><th class="table-cell">Asal / Bagian</th><th class="table-cell">Keperluan · Dituju</th><th class="table-cell">Petugas</th></tr></thead>
+  <tbody class="divide-y divide-slate-100">
+  {% for masuk, keluar, nama, jenis, kat, asal, perlu, petugas in [
+      ('07:02', '—', 'Rudi Hartono', 'INTERNAL', 'Karyawan', 'Timbangan', '—', 'Scan mandiri'),
+      ('07:15', '—', 'Siti Aminah', 'INTERNAL', 'Security', 'Pos Utama', '—', 'Scan mandiri'),
+      ('08:41', '09:55', 'Bambang Prasetyo', 'VISITOR', 'Supir', 'CV Sawit Makmur', 'Antar TBS · Timbangan', 'Andi (Security)'),
+      ('09:10', '—', 'Dewi Lestari', 'VISITOR', 'Tamu', 'PT Agro Audit', 'Audit · Manager HO', 'Andi (Security)'),
+      ('09:30', '—', 'Joko', 'INTERNAL', 'BHL', 'Lapangan', '—', 'Scan mandiri')] %}
+  <tr class="hover:bg-slate-50"><td class="table-cell font-mono">{{ masuk }}</td><td class="table-cell font-mono">{% if keluar == '—' %}<span class="badge-status bg-emerald-100 text-emerald-700">Di dalam</span>{% else %}{{ keluar }}{% endif %}</td>
+    <td class="table-cell font-semibold text-slate-800">{{ nama }}</td>
+    <td class="table-cell"><span class="badge-status {{ 'bg-utama-100 text-utama-700' if jenis == 'INTERNAL' else 'bg-amber-100 text-amber-800' }}">{{ jenis }} · {{ kat }}</span></td>
+    <td class="table-cell text-slate-600">{{ asal }}</td><td class="table-cell text-slate-600">{{ perlu }}</td><td class="table-cell text-xs text-slate-500">{{ petugas }}</td></tr>
+  {% endfor %}
+  </tbody></table>
+</div>
+{% endblock %}

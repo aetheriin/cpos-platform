@@ -290,3 +290,10 @@ def halaman_kosong(kode):
     if not menu or current_user.is_admin or not boleh_lihat(menu["kode"]):
         abort(404)
     return render_template("halaman_kosong.html", halaman="kosong", menu=menu, remah=remah_menu(menu["kode"]))
+
+
+# ===== PROTOTIPE DESAIN (branch desain-sidebar, belum disetujui): Visitor & Staff Logs konsep baru =====
+@main_bp.route("/desain/visitor")
+@login_required
+def desain_visitor():
+    return render_template("desain_visitor.html", halaman="desain", kode_aktif="KUNJUNGAN")

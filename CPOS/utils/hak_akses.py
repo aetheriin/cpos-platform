@@ -133,7 +133,8 @@ def navbar(user, kode_aktif=None, alamat=None):
                    for c in anak.get(m["kode"], []) if boleh(c["kode"], "lihat", user=user)]
             # Lv2 tanpa alamat sendiri (mis. Analytical Dashboard) membuka bagian Lv3 pertamanya
             url = m["url"] or next((c["url"] for c in sub if c["url"]), None)
-            isi.append({**m, "url": url, "aktif": m["kode"] == kode_aktif, "anak": sub})
+            # dropdown: Lv2 tanpa halaman sendiri yang punya bagian (mis. Analytical Dashboard) dibuka sebagai daftar pilihan
+            isi.append({**m, "url": url, "aktif": m["kode"] == kode_aktif, "anak": sub, "dropdown": not m["url"] and bool(sub)})
         if isi:
             hasil.append({**g, "anak": isi, "buka": any(m["aktif"] for m in isi)})
     return hasil

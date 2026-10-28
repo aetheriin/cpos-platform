@@ -7,12 +7,11 @@ document.addEventListener('DOMContentLoaded', muatMenuKelola);
 
 // Gaya per level sama dengan pohon Hak Akses (nama kelas utuh supaya ikut terbangun di tailwind.css)
 const KELAS_IKON_MENU = { 1: 'pohon-ikon pohon-ikon-1', 2: 'pohon-ikon pohon-ikon-2', 3: 'pohon-ikon pohon-ikon-3' };
-const KELAS_LEVEL_MENU = { 1: 'pohon-level pohon-level-1', 2: 'pohon-level pohon-level-2', 3: 'pohon-level pohon-level-3' };
 
 async function muatMenuKelola() {
     const data = await ambilJson('/api/admin/menu');
     const tbody = document.getElementById('tabelMenuKelola');
-    if (data.error) { tbody.innerHTML = barisKosong(7, data.error); return false; }
+    if (data.error) { tbody.innerHTML = barisKosong(6, data.error); return false; }
     DATA_MENU = data;
     tampilMenuKelola();
 }
@@ -37,10 +36,8 @@ function tampilMenuKelola() {
             <td class="table-cell relative" style="padding-left:${0.75 + (m.level - 1) * 1.6}rem">
                 ${Array.from({ length: m.level - 1 }, (_, n) => `<span class="pohon-garis" style="left:${1.5 + n * 1.6}rem"></span>`).join('')}
                 <div class="flex items-center gap-2.5"><span class="${KELAS_IKON_MENU[m.level]}"><i class="fa-solid ${escapeHtml(m.level === 3 ? 'fa-circle' : (m.ikon || (m.level === 1 ? 'fa-layer-group' : 'fa-file-lines')))}"></i></span>
-                <div class="min-w-0"><p class="${m.level === 1 ? 'font-bold uppercase text-xs tracking-wider' : m.level === 2 ? 'font-semibold' : 'text-slate-600'}">${escapeHtml(m.nama)}</p>
-                <p class="flex items-center gap-1.5 text-[11px] font-mono text-slate-400"><span class="${KELAS_LEVEL_MENU[m.level]}">L${m.level}</span>${escapeHtml(m.kode)}</p></div></div></td>
+                <p class="min-w-0 ${m.level === 1 ? 'font-bold uppercase text-xs tracking-wider' : m.level === 2 ? 'font-semibold' : 'text-slate-600'}" title="${escapeHtml(m.kode)}">${escapeHtml(m.nama)}</p></div></td>
             <td class="table-cell font-mono text-xs">${m.url ? escapeHtml(m.url) : '<span class="text-slate-400">belum ada</span>'}</td>
-            <td class="table-cell text-xs">${escapeHtml(m.aplikasi)}</td>
             <td class="table-cell text-xs">${m.aksi.map(namaAksi).join(', ') || '<span class="text-slate-400">Lihat saja</span>'}</td>
             <td class="table-cell text-right font-mono">${m.jumlah_aturan}</td>
             <td class="table-cell">${badgeAktif(m.is_active)}</td>
@@ -50,7 +47,7 @@ function tampilMenuKelola() {
                 <button type="button" class="link-aksi text-blue-600 ml-2" data-on-click="bukaMenuKelola" data-arg="${m.id_menu}">Ubah</button>
                 <button type="button" class="link-aksi ${m.is_active ? 'text-red-600' : 'text-emerald-600'} ml-2" data-on-click="aktifMenuKelola" data-arg="${m.id_menu}">${m.is_active ? 'Nonaktifkan' : 'Aktifkan'}</button>
             </td></tr>`;
-    }).join('') || barisKosong(7, 'Menu tidak ditemukan');
+    }).join('') || barisKosong(6, 'Menu tidak ditemukan');
 }
 
 async function geserMenuKelola(id, arah) {

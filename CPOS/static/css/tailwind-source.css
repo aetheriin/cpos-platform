@@ -3,6 +3,13 @@
 @tailwind utilities;
 
 @layer base {
+  /* ===== WARNA UTAMA CPOS: ganti di sini saja (angka R G B), lalu build ulang tailwind.css =====
+     Contoh biru (seperti logo). Hijau: 50 240 253 244 / 100 220 252 231 / 200 187 247 208 / 500 34 197 94 /
+     600 22 163 74 / 700 21 128 61 / 800 22 101 52 */
+  :root {
+    --utama-50: 236 246 253;  --utama-100: 212 236 251; --utama-200: 168 214 245;
+    --utama-500: 41 151 214;  --utama-600: 18 124 191;  --utama-700: 13 102 160; --utama-800: 14 84 130;
+  }
   html { font-size: 81.25%; }               /* 13px: padat untuk layar operator, tetap terbaca */
   /* Monitor lebar (22"-24", >= 1800px): huruf & jarak sedikit lebih besar supaya seimbang */
   @media (min-width: 1800px) { html { font-size: 87.5%; } }
@@ -19,26 +26,30 @@
   .sidebar-logo { @apply w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm shadow-blue-500/20; }
   .sidebar-ikon-btn { @apply w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition flex-shrink-0; }
   .sidebar-nav { @apply flex-1 overflow-y-auto px-3 py-3 space-y-0.5; }
-  .sidebar-section { @apply px-3 pt-1 pb-2 text-[10px] font-bold tracking-widest text-slate-400 uppercase; }
+  .sidebar-section { @apply px-3 pt-1 pb-1.5 text-[10px] font-extrabold tracking-widest text-slate-500 uppercase; }
   .sidebar-link { @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition whitespace-nowrap; }
-  .sidebar-link-active { @apply bg-slate-900 text-white shadow-sm hover:bg-slate-900 hover:text-white; }
+  .sidebar-link-active { @apply bg-utama-600 text-white shadow-sm shadow-utama-600/30 hover:bg-utama-600 hover:text-white; }
   /* Navbar 3 level: grup (Lv1) bisa dilipat, bagian (Lv3) di bawah halaman aktif, halaman belum ada tampil redup */
   .sidebar-grup + .sidebar-grup { @apply mt-1; }
   .sidebar-grup-judul { @apply flex items-center justify-between cursor-pointer select-none list-none pt-3 hover:text-slate-600; }
   .sidebar-grup-judul::-webkit-details-marker { display: none; }
   .sidebar-grup-panah { @apply text-[9px] transition-transform; }
   .sidebar-grup:not([open]) .sidebar-grup-panah { @apply -rotate-90; }
-  .sidebar-sublink { @apply ml-[1.4rem] pl-4 pr-2 py-1.5 flex text-[13px] font-medium text-slate-500 border-l-2 border-slate-200 hover:text-slate-900 hover:border-slate-400; }
-  .sidebar-sublink-aktif { @apply text-slate-900 font-bold border-amber-500 bg-amber-50/60 rounded-r-md hover:border-amber-500; }
+  .sidebar-grup > a.sidebar-link, .sidebar-grup > details { @apply ml-2.5 w-auto; }
+  /* Lv3: titik kecil + latar lembut saat aktif (tanpa garis panjang) */
+  .sidebar-sublink { @apply ml-6 mr-1 px-3 py-1.5 flex items-center gap-2.5 rounded-md text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-50; }
+  .sidebar-sublink::before { content: ''; @apply w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0; }
+  .sidebar-sublink-aktif { @apply text-utama-700 font-bold bg-utama-50 hover:bg-utama-50 hover:text-utama-700; }
+  .sidebar-sublink-aktif::before { @apply bg-utama-600 ring-4 ring-utama-100; }
   /* Pohon menu (Admin › Hak Akses / Kelola Menu): ikon & label per level, garis bantu, bisa dilipat */
   .pohon-baris { @apply relative w-full flex items-center gap-2 pr-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50 transition; }
-  .pohon-baris-aktif { @apply bg-slate-900 text-white hover:bg-slate-900; }
+  .pohon-baris-aktif { @apply bg-utama-600 text-white hover:bg-utama-600; }
   .pohon-garis { @apply absolute top-0 bottom-0 border-l border-dashed border-slate-200; }
   .pohon-caret { @apply w-4 h-4 flex items-center justify-center text-[9px] text-slate-400 rounded hover:bg-slate-200 hover:text-slate-700 flex-shrink-0 transition-transform; }
   .pohon-caret-tutup { @apply -rotate-90; }
   .pohon-ikon { @apply w-6 h-6 rounded-md flex items-center justify-center text-[11px] flex-shrink-0; }
-  .pohon-ikon-1 { @apply bg-slate-900 text-white; }
-  .pohon-ikon-2 { @apply bg-blue-50 text-blue-600 ring-1 ring-blue-100; }
+  .pohon-ikon-1 { @apply bg-utama-700 text-white; }
+  .pohon-ikon-2 { @apply bg-utama-50 text-utama-600 ring-1 ring-utama-100; }
   .pohon-ikon-3 { @apply w-5 h-5 bg-slate-100 text-slate-400 text-[7px]; }
   .pohon-baris-aktif .pohon-ikon { @apply bg-white/15 text-white ring-0; }
   .pohon-level { @apply font-mono text-[9px] font-bold rounded px-1 py-px leading-none flex-shrink-0; }
@@ -53,8 +64,8 @@
   /* Lv2 dropdown (punya bagian Lv3): klik membuka / menutup daftar bagian, bukan pindah halaman */
   .sidebar-sub-judul { @apply cursor-pointer select-none list-none whitespace-normal; }
   .sidebar-sub-judul::-webkit-details-marker { display: none; }
-  .sidebar-sub-judul-aktif { @apply text-slate-900 bg-slate-100; }
-  .sidebar-sub-judul-aktif .sidebar-link-ikon { @apply text-slate-700; }
+  .sidebar-sub-judul-aktif { @apply text-utama-700 bg-utama-50; }
+  .sidebar-sub-judul-aktif .sidebar-link-ikon { @apply text-utama-600; }
   .sidebar-sub-jumlah { @apply ml-auto text-[10px] font-bold text-slate-400 bg-slate-100 rounded-md px-1.5 py-0.5; }
   .sidebar-sub-judul-aktif .sidebar-sub-jumlah { @apply bg-white; }
   .sidebar-sub-panah { @apply text-[9px] text-slate-400 transition-transform; }
@@ -67,7 +78,7 @@
   .sidebar-badge-hijau { @apply text-emerald-700 bg-emerald-50 border-emerald-200; }
   .sidebar-link-active .sidebar-badge { @apply bg-white/20 text-white border-transparent; }
   .sidebar-profil { @apply flex items-center gap-2.5 p-4 border-t border-slate-100 flex-shrink-0; }
-  .avatar { @apply w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs flex-shrink-0; }
+  .avatar { @apply w-8 h-8 rounded-full bg-utama-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0; }
   .main-area { @apply flex-1 flex flex-col overflow-y-auto; }
   .main-area > * { flex-shrink: 0; }
   .topbar { @apply sticky top-0 z-30 h-16 bg-white/95 backdrop-blur border-b border-slate-200 px-5 flex items-center justify-between gap-4; }
@@ -94,7 +105,7 @@
   /* Tab = kontrol segmen */
   .tab-header { @apply flex gap-1 bg-white border border-slate-200 shadow-sm mt-5 rounded-xl p-1; }
   .tab-btn { @apply flex-1 py-2 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition text-center; }
-  .tab-btn-active { @apply bg-slate-900 text-white shadow-sm hover:bg-slate-900 hover:text-white; }
+  .tab-btn-active { @apply bg-utama-600 text-white shadow-sm hover:bg-utama-600 hover:text-white; }
   .tab-body { @apply mt-5 mb-10; }
   /* Admin › Hak Akses: tiap panel bergulir sendiri, halaman tidak ikut bergulir (layar lebar) */
   .akses-tinggi { @apply lg:h-[calc(100vh-15rem)] lg:min-h-[28rem]; }
@@ -135,7 +146,7 @@
   .judul-ikon-merah { @apply bg-red-50 text-red-600 border border-red-100; }
   .judul-ikon-kuning { @apply bg-amber-50 text-amber-600 border border-amber-100; }
   .judul-ikon-hijau { @apply bg-emerald-50 text-emerald-600 border border-emerald-100; }
-  .judul-ikon-gelap { @apply bg-slate-900 text-white; }
+  .judul-ikon-gelap { @apply bg-utama-600 text-white; }
   /* Isi mengikuti lebar layar (tidak dikunci ke tengah); dibatasi hanya di layar sangat lebar */
   .konten { @apply w-full max-w-[150rem] mx-auto px-6 2xl:px-8; }
   .halaman-judul h1 { @apply text-xl font-bold text-slate-900 tracking-tight; }
@@ -174,7 +185,7 @@
   .section-body-hidden { @apply hidden; }
 
   /* Buttons */
-  .btn-primary { @apply inline-flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm shadow-blue-500/20 transition disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed; }
+  .btn-primary { @apply inline-flex items-center justify-center gap-1.5 bg-utama-600 hover:bg-utama-700 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm shadow-blue-500/20 transition disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed; }
   .btn-secondary { @apply inline-flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold px-4 py-2 rounded-lg text-sm shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed; }
   .btn-light { @apply inline-flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg text-sm transition; }
   .btn-success { @apply inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm shadow-emerald-500/20 transition disabled:bg-slate-300 disabled:cursor-not-allowed; }
@@ -187,12 +198,12 @@
 
   /* Kartu putih di dalam section / tab body */
   .card { @apply bg-white rounded-xl border border-slate-200 shadow-sm p-5; }
-  .langkah-nomor { @apply w-6 h-6 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center flex-shrink-0; }
+  .langkah-nomor { @apply w-6 h-6 rounded-full bg-utama-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0; }
   .card-title { @apply text-sm font-bold text-slate-900 mb-4 pb-2.5 border-b border-slate-100; }
 
   /* Filter chip & segmented control (menu Face Recognition) */
   .chip { @apply px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition; }
-  .chip-active { @apply bg-slate-900 border-slate-900 text-white hover:bg-slate-900; }
+  .chip-active { @apply bg-utama-600 border-utama-600 text-white hover:bg-utama-600; }
   .seg { @apply inline-flex bg-slate-100 border border-slate-200 rounded-lg p-1 gap-1; }
   .seg-item { @apply px-4 py-1.5 rounded-md text-xs font-medium text-slate-500 transition; }
   .seg-item-active { @apply bg-white text-blue-700 font-semibold shadow-sm; }
