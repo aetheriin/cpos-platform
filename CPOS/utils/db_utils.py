@@ -9,40 +9,64 @@ from utils.cache import cache_ttl
 
 load_dotenv()
 
-# Connection pooling ODBC: koneksi yang di-close() dikembalikan ke pool, bukan diputus.
-# Harus di-set sebelum koneksi pertama dibuat.
+# Pool ODBC bawaan driver tetap aktif untuk koneksi lain (ERP, Item Request). Koneksi database CPOS sendiri memakai
+# kumpulan koneksi aplikasi (utils/kolam_db.py) yang menghemat bolak-balik ke server. DB_KOLAM=0 di .env = cara lama.
 pyodbc.pooling = True
 
 QUERY_TIMEOUT_DETIK = int(os.getenv("DB_QUERY_TIMEOUT", "15"))
+PAKAI_KOLAM = os.getenv("DB_KOLAM", "1") != "0"
+
+
+def _koneksi_baru():
+    conn = pyodbc.connect(get_connection_string(), timeout=10)
+    conn.timeout = QUERY_TIMEOUT_DETIK          # query tertahan (lock / server sibuk) -> error, bukan menunggu lama
+    return conn
+
+
+from utils.kolam_db import Kolam, Koneksi   # noqa: E402
+kolam = Kolam(_koneksi_baru)
 
 
 def get_connection():
-    """Koneksi baru (dari pool ODBC). Waktu buka koneksi dicatat per request untuk log LAMBAT."""
+    """Koneksi database CPOS (pinjaman dari kolam). Jumlah & waktu buka koneksi dicatat per request untuk log LAMBAT.
+    Pengguna & IP request ini diteruskan ke SESSION_CONTEXT untuk trigger log perubahan data (migrasi 034)."""
     mulai = time.perf_counter()
-    conn = pyodbc.connect(get_connection_string(), timeout=10)
-    conn.timeout = QUERY_TIMEOUT_DETIK          # query tertahan (lock / server sibuk) -> error, bukan menunggu lama
+    konteks, ada_request = None, False
     try:
         from flask import g, has_request_context
-        if has_request_context():
-            g.db_koneksi = getattr(g, "db_koneksi", 0) + 1
-            g.db_buka_ms = getattr(g, "db_buka_ms", 0) + (time.perf_counter() - mulai) * 1000
-            _isi_konteks(conn)
+        ada_request = has_request_context()
+        if ada_request:
+            konteks = _konteks_request()
     except ImportError:
         pass
+    if PAKAI_KOLAM:
+        fisik, baru = kolam.ambil()
+        conn = Koneksi(kolam, fisik, konteks)
+    else:
+        conn, baru = _koneksi_baru(), True
+        if konteks:
+            _isi_konteks(conn, konteks)
+    if ada_request:
+        g.db_koneksi = getattr(g, "db_koneksi", 0) + 1
+        if baru:
+            g.db_buka_ms = getattr(g, "db_buka_ms", 0) + (time.perf_counter() - mulai) * 1000
     return conn
 
-def _isi_konteks(conn):
-    """Pengguna & IP request ini untuk trigger log perubahan data (migrasi 034). Gagal -> dicatat tanpa pengguna."""
-    # Hanya user yang sudah dimuat flask-login (g._login_user): memanggil current_user di sini bisa berulang
-    # karena memuat user juga membuka koneksi.
+
+def _konteks_request():
+    """(id_user, ip) pengguna request ini, atau None. Hanya user yang sudah dimuat flask-login (g._login_user):
+    memanggil current_user di sini bisa berulang karena memuat user juga membuka koneksi."""
     from flask import g, request
     user = g.get("_login_user")
     id_user = getattr(user, "id", None) if getattr(user, "is_authenticated", False) else None
-    if id_user is None:
-        return
+    return (id_user, request.remote_addr or "") if id_user is not None else None
+
+
+def _isi_konteks(conn, konteks):
+    """Cara lama (DB_KOLAM=0): SESSION_CONTEXT diisi dengan perintah sendiri. Gagal -> dicatat tanpa pengguna."""
     try:
         conn.cursor().execute("EXEC sp_set_session_context N'id_user', ?; EXEC sp_set_session_context N'ip', ?",
-                              id_user, (request.remote_addr or "")[:45] or None)
+                              konteks[0], (konteks[1] or "")[:45] or None)
     except pyodbc.Error:
         pass
 
