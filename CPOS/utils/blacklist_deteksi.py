@@ -15,7 +15,7 @@ from utils.db_utils import get_connection, _rows_to_dicts
 
 log = logging.getLogger(__name__)
 
-SUMBER = {"SCAN_WAJAH": "Scan wajah Form Security", "ABSENSI": "Scan absensi", "TAMU": "Scan tamu",
+SUMBER = {"SCAN_WAJAH": "Scan wajah Form Security", "VISITOR": "Scan Visitor & Staff Logs", "ABSENSI": "Scan absensi", "TAMU": "Scan tamu",
           "TAMU_MASUK": "Tamu dicatat masuk", "TIKET": "Tiket tetap dibuat", "TAMBAH_SUPIR": "Tambah supir",
           "PENDAFTARAN": "Pendaftaran personel", "PLAT": "Cek plat di info bar",
           "POS_MASUK": "Kendaraan masuk di Pos Security", "LAINNYA": "Lainnya"}
@@ -32,7 +32,7 @@ def catat(details, user_id, no_tiket=None):
 
 
 def _catat(d, user_id, no_tiket):
-    from utils.db_kunjungan import area_akun
+    from utils.db_aktivitas import area_akun
     sumber = d.get("sumber") if d.get("sumber") in SUMBER else "LAINNYA"
     tindakan = d.get("tindakan") if d.get("tindakan") in TINDAKAN else "PERINGATAN"
     target = []
@@ -107,12 +107,12 @@ def log_hari(tanggal, id_area):
     rows = _query(f"""SELECT d.DetectionID AS id_deteksi, d.DetectDate AS waktu, d.CompAreaID AS id_comp_area, d.UserID AS id_personel, d.IDVehicle AS id_kendaraan, d.NoVehicle AS no_plat, d.Source AS sumber,
                              d.Action AS tindakan, d.FaceDistance AS jarak_wajah, d.Description AS keterangan, d.TicketNumber AS no_tiket, u.Nama AS petugas,
                              c.CompID + ' · ' + ar.AreaName AS site, c.CompID AS company,
-                             p.UserCode AS kode_personel, p.Nama AS nama_personel, p.CategoryCode AS kategori, k.NoVehicle AS plat_kendaraan
+                             p.UserCode AS kode_personel, p.Nama AS nama_personel, p.PersonType AS kategori, k.NoVehicle AS plat_kendaraan
                       FROM BlacklistDetection d
                       LEFT JOIN Users u ON u.UserID = d.CreateBy
                       LEFT JOIN CompanyArea ar ON ar.CompAreaID = d.CompAreaID
                       LEFT JOIN Company c ON c.CompID = ar.CompID
-                      LEFT JOIN Users p ON p.UserID = d.UserID
+                      LEFT JOIN UserProfile p ON p.UserID = d.UserID
                       LEFT JOIN DetailVehicle k ON k.IDVehicle = d.IDVehicle
                       WHERE d.DetectDate >= ? AND d.DetectDate < ?{f_area}
                       ORDER BY d.DetectDate""", awal, awal + timedelta(days=1), *a_area)

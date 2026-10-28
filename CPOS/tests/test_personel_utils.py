@@ -36,13 +36,13 @@ class TestValidasiPersonel(unittest.TestCase):
         self.assertIn("SIM", validasi_personel(self.NIK, "Budi", "DRIVER", None))
 
     def test_non_driver_boleh_tanpa_sim(self):
-        self.assertIsNone(validasi_personel(self.NIK, "Siti", "EMPLOYEE", None))
+        self.assertIsNone(validasi_personel(self.NIK, "Siti", "KARYAWAN", None))
 
     def test_nik_16_digit(self):
-        self.assertIn("16 digit", validasi_personel("12345", "Budi", "SECURITY", None))
+        self.assertIn("16 digit", validasi_personel("12345", "Budi", "KARYAWAN", None))
 
     def test_kategori_tidak_valid(self):
-        self.assertIn("Kategori", validasi_personel(self.NIK, "Budi", "HO", None))
+        self.assertIn("Jenis orang", validasi_personel(self.NIK, "Budi", "HO", None))
 
 
 class TestDaftarPerubahan(unittest.TestCase):
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     unittest.main()
 
 
-class TestKategoriDinamis(unittest.TestCase):
+class TestJenisDinamis(unittest.TestCase):
     NIK = "1471021203850004"
 
     def test_tamu_tanpa_sim(self):
@@ -66,4 +66,4 @@ class TestKategoriDinamis(unittest.TestCase):
         kategori = {"DRIVER": {}, "OPERATOR_ALAT": {}}
         self.assertIn("SIM", validasi_personel(self.NIK, "Andi", "OPERATOR_ALAT", None, kategori, ["OPERATOR_ALAT"]))
         self.assertIsNone(validasi_personel(self.NIK, "Andi", "DRIVER", None, kategori, ["OPERATOR_ALAT"]))
-        self.assertIn("Kategori", validasi_personel(self.NIK, "Andi", "TAMU", None, kategori, []))
+        self.assertIn("Jenis orang", validasi_personel(self.NIK, "Andi", "TAMU", None, kategori, []))

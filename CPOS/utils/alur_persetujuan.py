@@ -1,6 +1,7 @@
-"""Admin › Alur Persetujuan (migrasi 043): susunan tahap persetujuan per jenis pengajuan + kategori target.
+"""Admin › Alur Persetujuan (migrasi 043): susunan tahap persetujuan per jenis pengajuan + jenis target (jenis orang /
+kendaraan / supplier).
 Tiap tahap = satu peran (departemen + jabatan); dipakai utils/persetujuan.py saat pengajuan dibuat."""
-from utils import hak_akses
+from utils import hak_akses, jenis_orang
 from utils.db_utils import get_connection, _rows_to_dicts
 from utils.persetujuan import AKSI, GRUP_JENIS, JENIS, MENU_JENIS  # noqa: F401 (GRUP_JENIS & AKSI dipakai halaman admin)
 
@@ -20,17 +21,16 @@ def _query(sql, *params):
 
 
 def daftar_kategori():
-    """Pilihan kategori target: kategori personel aktif + Kendaraan."""
-    return ([{"kode": r["kode"], "nama": r["nama"]}
-             for r in _query("SELECT CategoryCode AS kode, CategoryName AS nama FROM UserCategory WHERE Active = 1 ORDER BY CategoryName")]
+    """Pilihan jenis target: jenis orang + Kendaraan + Supplier."""
+    return ([{"kode": k, "nama": v["nama"]} for k, v in jenis_orang.JENIS.items()]
             + [{"kode": k, "nama": n} for k, n in (KATEGORI_KENDARAAN, KATEGORI_SUPPLIER)])
 
 
 def daftar():
     """Semua alur beserta tahapnya (peran, jumlah pengguna aktif, peran boleh membuka menu pengajuan)."""
-    alur = _query("""SELECT a.ApprovalFlowID AS id_alur_persetujuan, a.RequestType AS jenis, a.CategoryCode AS kategori, a.Description AS keterangan, a.Active AS is_active, kp.CategoryName AS nama_kategori
-                     FROM ApprovalFlow a LEFT JOIN UserCategory kp ON kp.CategoryCode = a.CategoryCode
-                     ORDER BY a.RequestType, CASE WHEN a.CategoryCode IS NULL THEN 1 ELSE 0 END, kp.CategoryName, a.CategoryCode""")
+    alur = _query("""SELECT a.ApprovalFlowID AS id_alur_persetujuan, a.RequestType AS jenis, a.CategoryCode AS kategori, a.Description AS keterangan, a.Active AS is_active
+                     FROM ApprovalFlow a
+                     ORDER BY a.RequestType, CASE WHEN a.CategoryCode IS NULL THEN 1 ELSE 0 END, a.CategoryCode""")
     tahap = _query("""SELECT t.ApprovalFlowID AS id_alur_persetujuan, t.StepNo AS urutan, t.LevelDetID AS id_level, l.LevelDetName AS nama, l.DeptID AS id_department, l.LevelID AS id_jabatan,
                              (SELECT COUNT(*) FROM Users u WHERE u.UserLevelID = l.LevelDetID AND u.Active = 1) AS jumlah_user
                       FROM ApprovalFlowStep t JOIN LevelDetails l ON l.LevelDetID = t.LevelDetID ORDER BY t.ApprovalFlowID, t.StepNo""")
@@ -41,8 +41,8 @@ def daftar():
     for a in alur:
         menu = MENU_JENIS.get(a["jenis"], "")
         a["nama_jenis"] = JENIS.get(a["jenis"], a["jenis"])
-        if a["kategori"] in (KATEGORI_KENDARAAN[0], KATEGORI_SUPPLIER[0]):
-            a["nama_kategori"] = dict((KATEGORI_KENDARAAN, KATEGORI_SUPPLIER))[a["kategori"]]
+        a["nama_kategori"] = dict((KATEGORI_KENDARAAN, KATEGORI_SUPPLIER)).get(a["kategori"]) or (
+            jenis_orang.nama(a["kategori"]) if a["kategori"] else None)
         a["tahap"] = [{**t, "bisa_lihat": bool(akses.get(t["id_level"], {}).get(menu, {}).get("lihat"))}
                       for t in per_alur.get(a["id_alur_persetujuan"], [])]
     return alur

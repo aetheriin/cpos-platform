@@ -197,8 +197,8 @@ def daftar_driver_aktif():
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("""SELECT UserID AS id_personel, UserCode AS kode_personel, Nama AS nama_personel, NoKTP AS nik FROM Users
-                          WHERE CategoryCode = 'DRIVER' AND Active = 1 AND CAST(CASE WHEN BlacklistID IS NULL THEN 0 ELSE 1 END AS BIT) = 0
+        cursor.execute("""SELECT UserID AS id_personel, UserCode AS kode_personel, Nama AS nama_personel, NoKTP AS nik FROM UserProfile
+                          WHERE PersonType = 'DRIVER' AND Active = 1 AND IsBlacklisted = 0
                           ORDER BY Nama""")
         return _rows_to_dicts(cursor)
     finally:

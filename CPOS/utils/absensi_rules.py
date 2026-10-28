@@ -7,7 +7,7 @@ def _menit(t):
 
 
 def tentukan_jenis(sudah_masuk_hari_ini):
-    return "PULANG" if sudah_masuk_hari_ini else "MASUK"
+    return "KELUAR" if sudah_masuk_hari_ini else "MASUK"
 
 
 def is_duplikat(waktu_scan_terakhir, sekarang, menit=JEDA_DUPLIKAT_MENIT):

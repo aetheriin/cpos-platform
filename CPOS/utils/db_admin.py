@@ -3,6 +3,7 @@ import pyodbc
 
 from utils.cache import cache_ttl
 from utils.db_utils import get_connection, _rows_to_dicts, get_semua_supplier, get_semua_produk, get_user_by_id
+from utils import jenis_orang
 from utils.db_absensi import get_jadwal_kerja
 
 PERAN_SUPPLIER = ("CUSTOMER", "PENGANGKUTAN")    # satu mitra boleh keduanya (tabel mitra_peran)
@@ -37,7 +38,7 @@ _SELECT_USER = """SELECT u.UserID AS id_user, u.UserName AS username, u.Nama AS 
                          ld.LevelDetCode AS role, ld.LevelDetName AS nama_level, lv.IsAdmin AS is_admin, ld.LevelID AS id_jabatan,
                          dd.DeptID AS id_department, ISNULL(d.DeptName, 'Admin sistem') AS department, u.CompAreaID AS id_comp_area,
                          a.CompID + ' · ' + a.AreaName AS area, u.Active AS is_active, u.LastLogin AS last_login,
-                         u.CreateDate AS created_at, u.UserID AS id_personel, u.UserCode AS kode_personel, u.NoKTP AS nik, u.Email AS email, u.CategoryCode AS kategori,
+                         u.CreateDate AS created_at, u.UserID AS id_personel, u.UserCode AS kode_personel, u.NoKTP AS nik, u.Email AS email,
                          (SELECT COUNT(DISTINCT x.MenuID) FROM AccessMenu x WHERE x.TargetType = 'USER' AND x.UserID = u.UserID) AS jumlah_akses_khusus
                   FROM Users u JOIN LevelDetails ld ON ld.LevelDetID = u.UserLevelID JOIN Level lv ON lv.LevelID = ld.LevelID
                   LEFT JOIN DepartmentDetails dd ON dd.DeptDetailID = u.UserDeptID
@@ -67,9 +68,9 @@ def jumlah_admin_aktif(kecuali=None):
 
 def personel_untuk_nik(nik):
     """Personel dengan NIK ini (untuk dihubungkan ke akun baru) beserta akunnya bila sudah punya."""
-    rows = _query("""SELECT p.UserID AS id_personel, p.Nama AS nama_personel, p.CategoryCode AS kategori, k.CategoryName AS nama_kategori, k.CanLogin AS boleh_akun,
-                            p.UserName AS akun
-                     FROM Users p LEFT JOIN UserCategory k ON k.CategoryCode = p.CategoryCode WHERE p.NoKTP = ?""", nik)
+    rows = _query(f"""SELECT p.UserID AS id_personel, p.Nama AS nama_personel, p.PersonType AS kategori,
+                             {jenis_orang.sql_nama('p.PersonType')} AS nama_kategori, CAST(1 AS BIT) AS boleh_akun, p.UserName AS akun
+                      FROM UserProfile p WHERE p.NoKTP = ?""", nik)
     return rows[0] if rows else None
 
 
@@ -86,7 +87,7 @@ def _dept_detail(cursor, id_department, id_comp_area):
 
 def tambah_user(username, id_level, id_department, id_comp_area, password_hash, personel):
     """personel = {id_personel (None = buat baru), nama, nik}. Orang yang sudah terdaftar (dicari dari NIK) diberi login
-    di barisnya sendiri; orang baru berkategori Karyawan. Password pertama wajib diganti saat login."""
+    di barisnya sendiri (jadi Karyawan karena punya jabatan). Password pertama wajib diganti saat login."""
     from utils.db_utils import simpan_password, user_id_baru
     conn = get_connection()
     try:
@@ -94,7 +95,7 @@ def tambah_user(username, id_level, id_department, id_comp_area, password_hash, 
         id_user = personel.get("id_personel")
         if not id_user:
             id_user = user_id_baru(cursor)
-            cursor.execute("INSERT INTO Users (UserID, Nama, NoKTP, CategoryCode) VALUES (?, ?, ?, 'EMPLOYEE')",
+            cursor.execute("INSERT INTO Users (UserID, Nama, NoKTP) VALUES (?, ?, ?)",
                            id_user, personel["nama"], personel.get("nik"))
         cursor.execute("""UPDATE Users SET UserName = ?, Nama = ?, NoKTP = ?, UserLevelID = ?, UserDeptID = ?, CompAreaID = ?,
                                  Active = 1, UpdateDate = GETDATE()

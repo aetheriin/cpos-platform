@@ -17,7 +17,7 @@ from utils.audit_utils import catat_security_audit
 from utils.db_admin import supplier_boleh
 from utils.db_blacklist import supplier_diblacklist
 from utils.db_kontrak import daftar_mitra, id_pengangkutan_dari_nama
-from utils.db_kunjungan import area_akun
+from utils.db_aktivitas import area_akun
 from utils.db_master import stnk_dipakai, daftar_jenis_kendaraan
 from utils.db_utils import (get_semua_supplier, get_semua_produk, get_driver_by_id, cari_transaksi_aktif,
                             buat_transaksi_full, generate_no_tiket)

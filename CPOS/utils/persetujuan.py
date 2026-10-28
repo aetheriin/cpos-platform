@@ -21,22 +21,26 @@ from datetime import datetime
 from utils import hak_akses, notifikasi
 from utils.area import company_user
 from utils.cache import cache_ttl
-from utils.db_kunjungan import area_akun
+from utils.db_aktivitas import area_akun
 from utils.db_organisasi import company_area
 from utils.db_utils import get_connection, _rows_to_dicts
+from utils import jenis_orang
 
 JENIS = {
     "BLACKLIST_TAMBAH": "Tambah blacklist",
     "BLACKLIST_HAPUS": "Hapus blacklist",
     "KOREKSI_TIKET": "Koreksi tiket",
+    "ORANG_TAMBAH": "Pendaftaran orang",
 }
 MENU_JENIS = {"BLACKLIST_TAMBAH": "BLACKLIST", "BLACKLIST_HAPUS": "BLACKLIST",       # hak Setujui dicek di menu ini
-              "KOREKSI_TIKET": "LIST"}
-TAUTAN_MENU = {"BLACKLIST": "/blacklist?tab=persetujuan", "LIST": "/weighbridge?view=list&bagian=koreksi"}
+              "KOREKSI_TIKET": "LIST", "ORANG_TAMBAH": "PERSONEL"}
+TAUTAN_MENU = {"BLACKLIST": "/blacklist?tab=persetujuan", "LIST": "/weighbridge?view=list&bagian=koreksi",
+               "PERSONEL": "/visitor-logs?tab=orang"}
 # Admin › Alur Persetujuan memilih Jenis pengajuan lalu Aksi-nya; tiap pasangan = satu kode di JENIS.
 AKSI = {"TAMBAH": "Tambah", "UBAH": "Ubah / Koreksi", "HAPUS": "Hapus"}
 GRUP_JENIS = {"BLACKLIST": {"nama": "Blacklist", "aksi": {"TAMBAH": "BLACKLIST_TAMBAH", "HAPUS": "BLACKLIST_HAPUS"}, "kategori": True},
-              "TIKET": {"nama": "Tiket timbang", "aksi": {"UBAH": "KOREKSI_TIKET"}, "kategori": False}}
+              "TIKET": {"nama": "Tiket timbang", "aksi": {"UBAH": "KOREKSI_TIKET"}, "kategori": False},
+              "ORANG": {"nama": "Data orang (Visitor & Staff Logs)", "aksi": {"TAMBAH": "ORANG_TAMBAH"}, "kategori": True}}
 
 
 def daftarkan_jenis(grup, nama_grup, aksi, kode, nama, menu, tautan_menu=None):
@@ -449,11 +453,10 @@ def daftar(user, mode="menunggu", batas=200, menu=None):
             syarat.append("p.Status = 'MENUNGGU'")
     rows = _query(f"""SELECT TOP ({int(batas)}) p.RequestID AS id_pengajuan, p.RequestType AS jenis, p.Status AS status, p.CurrentStep AS langkah, p.TotalSteps AS total_langkah, p.Title AS judul, p.Reason AS alasan,
                              p.Data AS data, p.CompID AS id_company, p.RequestBy AS diajukan_oleh, p.CreateDate AS created_at, p.FinishDate AS selesai_at, p.CategoryCode AS kategori, u.Nama AS pengaju,
-                             c.CompID AS kode_company, ar.AreaName AS site, kp.CategoryName AS nama_kategori
+                             c.CompID AS kode_company, ar.AreaName AS site, {jenis_orang.sql_nama('p.CategoryCode')} AS nama_kategori
                       FROM ApprovalRequest p JOIN Users u ON u.UserID = p.RequestBy
                       JOIN Company c ON c.CompID = p.CompID
                       JOIN CompanyArea ar ON ar.CompAreaID = p.CompAreaID
-                      LEFT JOIN UserCategory kp ON kp.CategoryCode = p.CategoryCode
                       WHERE {' AND '.join(syarat)} ORDER BY CASE p.Status WHEN 'MENUNGGU' THEN 0 ELSE 1 END, p.CreateDate DESC""",
                   *args)
     tahap = _tahap_pengajuan([r["id_pengajuan"] for r in rows])

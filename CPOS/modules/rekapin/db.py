@@ -71,7 +71,7 @@ def daftar_operator(id_user):
     return _query("""SELECT u.UserID AS id_user, u.Nama AS nama, u.UserCode AS nik, a.CompID AS id_company,
                             a.CompID + ' · ' + a.AreaName AS area
                      FROM Users u JOIN CompanyArea a ON a.CompAreaID = u.CompAreaID
-                     WHERE u.Active = 1 AND u.CategoryCode = 'EMPLOYEE'
+                     WHERE u.Active = 1 AND u.UserLevelID IS NOT NULL
                        AND u.CompAreaID IN (SELECT CompAreaID FROM dbo.fn_UserMenuScope(?, 'RK_REQUEST'))
                      ORDER BY u.Nama""", id_user)
 

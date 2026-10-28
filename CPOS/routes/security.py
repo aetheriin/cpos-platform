@@ -24,7 +24,7 @@ from utils.hak_akses import izin
 from utils.db_personel import sim_dipakai
 from utils import alur
 from utils.db_master import stnk_dipakai
-from utils.db_kunjungan import area_akun
+from utils.db_aktivitas import area_akun
 
 security_bp = Blueprint('security', __name__)
 

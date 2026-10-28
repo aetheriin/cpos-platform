@@ -1305,8 +1305,7 @@ TABEL_LOG_DATA = {
     "LevelDetails": "Jabatan", "Supplier": "Supplier", "Product": "Produk & Standar Mutu", "DetailVehicle": "Kendaraan",
     "VehicleType": "Jenis Kendaraan", "Contract": "Kontrak", "DeliveryOrder": "DO", "Scale": "Jembatan Timbang",
     "DailyPrice": "Harga Harian", "Setting": "Pengaturan", "SettingArea": "Pengaturan Area",
-    "Status": "Status Tiket", "UserCategory": "Kategori Personel", "License": "Jenis SIM",
-    "VisitPurpose": "Keperluan Kunjungan", "WeightBridge": "Tiket",
+    "Status": "Status", "License": "Jenis SIM", "WeightBridge": "Tiket",
 }
 
 

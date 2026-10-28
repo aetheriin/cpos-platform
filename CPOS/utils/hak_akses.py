@@ -123,11 +123,11 @@ def navbar(user, kode_aktif=None, alamat=None):
         return boleh_lihat(m["kode"], user)
 
     hasil = []
-    for g in anak.get(None, []):
-        if g["level"] != 1 or not terlihat(g):
+    for grup in anak.get(None, []):
+        if grup["level"] != 1 or not terlihat(grup):
             continue
         isi = []
-        for m in anak.get(g["kode"], []):
+        for m in anak.get(grup["kode"], []):
             if not terlihat(m):
                 continue
             sub = [{**c, "aktif": bool(alamat and c["url"] and c["url"] == alamat)}
@@ -137,7 +137,7 @@ def navbar(user, kode_aktif=None, alamat=None):
             # dropdown: Lv2 tanpa halaman sendiri yang punya bagian (mis. Analytical Dashboard) dibuka sebagai daftar pilihan
             isi.append({**m, "url": url, "aktif": m["kode"] == kode_aktif, "anak": sub, "dropdown": not m["url"] and bool(sub)})
         if isi:
-            hasil.append({**g, "anak": isi, "buka": any(m["aktif"] for m in isi)})
+            hasil.append({**grup, "anak": isi, "buka": any(m["aktif"] for m in isi)})
     return hasil
 
 

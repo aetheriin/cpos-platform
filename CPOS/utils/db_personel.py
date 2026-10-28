@@ -1,14 +1,21 @@
+"""Data orang (Visitor & Staff Logs › Data Orang, Data Master › Driver): karyawan, driver, tamu.
+Jenis orang dibaca dari relasi (utils/jenis_orang.py): karyawan = punya jabatan (peran + departemen + area),
+driver / tamu = punya profil visitor (Guest), driver = punya SIM aktif. Satu wajah terdaftar per orang (Users)."""
 from datetime import datetime
 
-import pyodbc
 from utils.db_utils import get_connection, _rows_to_dicts, hitung_hash_driver, user_id_baru
+from utils import jenis_orang
 from utils.personel_utils import PREFIX_KODE, kode_berikutnya
 from utils.face_cache import invalidate as reset_cache_wajah
 from utils import log_aktivitas
 
-KOLOM_PERSONEL = """p.UserID AS id_personel, p.UserCode AS kode_personel, p.NoKTP AS nik, p.Nama AS nama_personel, p.LicenseNumber AS no_sim, p.CategoryCode AS kategori,
+KOLOM_PERSONEL = """p.UserID AS id_personel, p.UserCode AS kode_personel, p.NoKTP AS nik, p.Nama AS nama_personel, p.LicenseNumber AS no_sim, p.PersonType AS kategori,
                     p.LicenseID AS id_jenis_sim, p.LicenseCode AS kode_jenis_sim, p.ExpiredSIM AS sim_berlaku_sampai,
-                    p.IsBlacklisted AS is_blacklisted, p.PhotoPath AS foto_path, p.PhotoSource AS foto_sumber, p.IsUpload AS is_updated, p.Active AS is_active, p.UpdateDate AS updated_at"""
+                    p.IsBlacklisted AS is_blacklisted, p.BlacklistID AS id_blacklist, p.PhotoPath AS foto_path, p.IsUpload AS is_updated, p.Active AS is_active, p.UpdateDate AS updated_at,
+                    p.CompanyFrom AS asal_perusahaan, p.VisitorNeeds AS keperluan, p.UserName AS akun, p.CompAreaID AS id_comp_area,
+                    ld.DeptID AS id_department, ld.LevelID AS id_jabatan, ld.LevelDetName AS peran, ar.CompID + ' · ' + ar.AreaName AS area"""
+FROM_PERSONEL = """FROM UserProfile p LEFT JOIN LevelDetails ld ON ld.LevelDetID = p.UserLevelID
+                   LEFT JOIN CompanyArea ar ON ar.CompAreaID = p.CompAreaID"""
 
 
 def _normalisasi(r):
@@ -23,10 +30,10 @@ def _normalisasi(r):
 
 
 def get_daftar_personel(kategori=None, cari=None, hanya_blacklist=False, batas=200):
-    sql = f"SELECT TOP (?) {KOLOM_PERSONEL} FROM UserProfile p WHERE p.Active = 1"
+    sql = f"SELECT TOP (?) {KOLOM_PERSONEL} {FROM_PERSONEL} WHERE p.Active = 1"
     params = [batas]
     if kategori:
-        sql += " AND p.CategoryCode = ?"
+        sql += " AND p.PersonType = ?"
         params.append(kategori)
     if hanya_blacklist:
         sql += " AND p.IsBlacklisted = 1"
@@ -46,7 +53,7 @@ def get_daftar_personel(kategori=None, cari=None, hanya_blacklist=False, batas=2
 def get_personel(id_personel):
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute(f"SELECT {KOLOM_PERSONEL} FROM UserProfile p WHERE p.UserID = ?", id_personel)
+    cursor.execute(f"SELECT {KOLOM_PERSONEL} {FROM_PERSONEL} WHERE p.UserID = ?", id_personel)
     data = _rows_to_dicts(cursor)
     conn.close()
     return _normalisasi(data[0]) if data else None
@@ -63,8 +70,8 @@ def cek_kode_ada(kode, exclude_id=None):
 
 
 def prefix_kategori(kategori):
-    """'DRV-' untuk kategori dengan prefix (Admin › Organisasi › Kategori Personel), selain itu PREFIX_KODE lama."""
-    prefix = ((daftar_kategori(semua=True).get(kategori or "") or {}).get("prefix_kode") or "").strip().upper()
+    """'DRV-' / 'KRY-' / 'TMU-' per jenis orang, selain itu PREFIX_KODE lama."""
+    prefix = ((jenis_orang.JENIS.get(kategori or "") or {}).get("prefix_kode") or "").strip().upper()
     return f"{prefix}-" if prefix else PREFIX_KODE
 
 
@@ -123,11 +130,40 @@ def simpan_sim(cursor, id_personel, no_sim, id_jenis_sim=None, berlaku_sampai=No
 
 
 def simpan_wajah(cursor, id_personel, embedding_binary, foto_path, sumber, user_id=None):
-    """Wajah baru menjadi wajah utama; wajah lama dinonaktifkan (tidak dikenali lagi, riwayat & foto tetap)."""
-    cursor.execute("UPDATE FaceRecog SET IsMain = 0, Active = 0 WHERE UserID = ? AND Active = 1",
-                   id_personel)
-    cursor.execute("""INSERT INTO FaceRecog (UserID, FaceDet, PhotoPath, Source, CreateBy)
-                      VALUES (?, ?, ?, ?, ?)""", id_personel, embedding_binary, foto_path, sumber, user_id)
+    """Wajah terdaftar orang ini (satu per orang) diganti; perubahan dicatat di Log (foto lama tetap ada di disk)."""
+    cursor.execute("SELECT UploadPath FROM Users WHERE UserID = ?", id_personel)
+    lama = cursor.fetchone()
+    cursor.execute("UPDATE Users SET FaceEmbeddingData = ?, UploadPath = ?, UpdateDate = GETDATE() WHERE UserID = ?",
+                   embedding_binary, foto_path, id_personel)
+    log_aktivitas.catat("PERSONEL", "WAJAH", tabel="Users", id_baris=id_personel, user_id=user_id, cursor=cursor,
+                        lama={"foto": lama[0] if lama else None}, baru={"foto": foto_path, "sumber": sumber})
+
+
+def simpan_profil(cursor, id_personel, kategori, profil):
+    """Jenis orang lewat relasinya. profil: KARYAWAN {id_level, id_dept_detail, id_comp_area};
+    DRIVER / TAMU {asal_perusahaan, keperluan} (profil visitor di Guest)."""
+    profil = profil or {}
+    if profil.get("tetap"):
+        return
+    cursor.execute("SELECT GuestID, NoKTP, UserName FROM Users WHERE UserID = ?", id_personel)
+    r = cursor.fetchone()
+    if kategori == "KARYAWAN":
+        if not profil.get("id_level"):
+            raise ValueError("Karyawan: pilih departemen dan jabatan")
+        cursor.execute("UPDATE Users SET UserLevelID = ?, UserDeptID = ?, CompAreaID = ? WHERE UserID = ?",
+                       profil["id_level"], profil.get("id_dept_detail"), profil.get("id_comp_area"), id_personel)
+        return
+    if r.UserName:
+        raise ValueError("Orang ini punya akun login, jadi tetap Karyawan. Ubah lewat Admin › Kelola Pengguna")
+    cursor.execute("UPDATE Users SET UserLevelID = NULL, UserDeptID = NULL WHERE UserID = ?", id_personel)
+    asal, perlu = (profil.get("asal_perusahaan") or None), (profil.get("keperluan") or None)
+    if r.GuestID:
+        cursor.execute("UPDATE Guest SET CompanyFrom = ?, VisitorNeeds = ?, NoKTP = ?, Active = 1 WHERE GuestID = ?",
+                       asal, perlu, r.NoKTP, r.GuestID)
+    else:
+        cursor.execute("""INSERT INTO Guest (CompanyFrom, VisitorNeeds, NoKTP) OUTPUT INSERTED.GuestID VALUES (?, ?, ?)""",
+                       asal, perlu, r.NoKTP)
+        cursor.execute("UPDATE Users SET GuestID = ? WHERE UserID = ?", cursor.fetchone()[0], id_personel)
 
 
 def _data_lama(cursor, id_personel):
@@ -137,41 +173,51 @@ def _data_lama(cursor, id_personel):
 
 
 def insert_personel(nik, nama, no_sim, kategori, kode, embedding_binary, foto_path, foto_sumber, user_id,
-                    id_jenis_sim=None, sim_berlaku=None):
+                    id_jenis_sim=None, sim_berlaku=None, profil=None):
     conn = get_connection()
-    cursor = conn.cursor()
-    id_personel = user_id_baru(cursor)
-    cursor.execute("""INSERT INTO Users (UserID, UserCode, NoKTP, Nama, CategoryCode, CurrentHash)
-                      VALUES (?, ?, ?, ?, ?, ?)""",
-                   id_personel, kode or None, nik, nama, kategori, hitung_hash_driver(nik, nama, no_sim, datetime.now()))
-    simpan_sim(cursor, id_personel, no_sim or None, id_jenis_sim, sim_berlaku, user_id)
-    if embedding_binary is not None:
-        simpan_wajah(cursor, id_personel, embedding_binary, foto_path, foto_sumber, user_id)
-    if user_id:
-        _catat_audit(cursor, id_personel, "TAMBAH", None,
-                     {"kode_personel": kode or None, "nik": nik, "nama": nama, "no_sim": no_sim or None}, user_id)
-    conn.commit()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        id_personel = user_id_baru(cursor)
+        cursor.execute("""INSERT INTO Users (UserID, UserCode, NoKTP, Nama, CurrentHash) VALUES (?, ?, ?, ?, ?)""",
+                       id_personel, kode or None, nik, nama, hitung_hash_driver(nik, nama, no_sim, datetime.now()))
+        simpan_profil(cursor, id_personel, kategori, profil)
+        simpan_sim(cursor, id_personel, no_sim or None, id_jenis_sim, sim_berlaku, user_id)
+        if embedding_binary is not None:
+            simpan_wajah(cursor, id_personel, embedding_binary, foto_path, foto_sumber, user_id)
+        if user_id:
+            _catat_audit(cursor, id_personel, "TAMBAH", None,
+                         {"kode_personel": kode or None, "nik": nik, "nama": nama, "no_sim": no_sim or None}, user_id)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
     reset_cache_wajah()
     return id_personel
 
 
 def update_personel(id_personel, kode, nik, nama, no_sim, kategori, user_id,
-                    embedding_binary=None, foto_path=None, foto_sumber=None, id_jenis_sim=None, sim_berlaku=None):
+                    embedding_binary=None, foto_path=None, foto_sumber=None, id_jenis_sim=None, sim_berlaku=None, profil=None):
     conn = get_connection()
-    cursor = conn.cursor()
-    lama = _data_lama(cursor, id_personel)
-    baru = {"kode_personel": kode or None, "nik": nik, "nama": nama, "no_sim": no_sim or None}
-    hash_baru = hitung_hash_driver(nik, nama, no_sim, datetime.now())
-    cursor.execute("""UPDATE Users SET UserCode = ?, NoKTP = ?, Nama = ?, CategoryCode = ?,
-                      IsUpload = 1, CurrentHash = ?, UpdateDate = GETDATE()
-                      WHERE UserID = ?""", kode or None, nik, nama, kategori, hash_baru, id_personel)
-    simpan_sim(cursor, id_personel, no_sim or None, id_jenis_sim, sim_berlaku, user_id)
-    if embedding_binary is not None:
-        simpan_wajah(cursor, id_personel, embedding_binary, foto_path, foto_sumber, user_id)
-    _catat_audit(cursor, id_personel, "UPDATE", lama, baru, user_id)
-    conn.commit()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        lama = _data_lama(cursor, id_personel)
+        baru = {"kode_personel": kode or None, "nik": nik, "nama": nama, "no_sim": no_sim or None}
+        hash_baru = hitung_hash_driver(nik, nama, no_sim, datetime.now())
+        cursor.execute("""UPDATE Users SET UserCode = ?, NoKTP = ?, Nama = ?, IsUpload = 1, CurrentHash = ?, UpdateDate = GETDATE()
+                          WHERE UserID = ?""", kode or None, nik, nama, hash_baru, id_personel)
+        simpan_profil(cursor, id_personel, kategori, profil)
+        simpan_sim(cursor, id_personel, no_sim or None, id_jenis_sim, sim_berlaku, user_id)
+        if embedding_binary is not None:
+            simpan_wajah(cursor, id_personel, embedding_binary, foto_path, foto_sumber, user_id)
+        _catat_audit(cursor, id_personel, "UPDATE", lama, baru, user_id)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
     if embedding_binary is not None:
         reset_cache_wajah()
 
@@ -224,23 +270,10 @@ def get_riwayat_perubahan_personel(hari=7, batas=300):
     return data
 
 
-# ===== MASTER KATEGORI & JENIS SIM =====
-# Kategori personel tetap (Supir, Karyawan, Security, Tamu): terikat aturan program, tidak diatur dari Admin.
-def daftar_kategori(semua=False):
-    """{kode: {kode, nama, wajib_sim, boleh_akun, prefix_kode, is_active}}; bawaan hanya yang aktif.
-    Sebelum migrasi 020 (tanpa prefix_kode) tetap jalan dengan prefix kosong."""
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        try:
-            cursor.execute("SELECT CategoryCode AS kode, CategoryName AS nama, RequireLicense AS wajib_sim, CanLogin AS boleh_akun, CodePrefix AS prefix_kode, Active AS is_active FROM UserCategory")
-        except pyodbc.Error:
-            cursor.execute("SELECT CategoryCode AS kode, CategoryName AS nama, RequireLicense AS wajib_sim, CanLogin AS boleh_akun, NULL AS prefix_kode, Active AS is_active FROM UserCategory")
-        return {r["kode"]: {**r, "wajib_sim": bool(r["wajib_sim"]), "boleh_akun": bool(r["boleh_akun"]),
-                            "is_active": bool(r["is_active"])}
-                for r in _rows_to_dicts(cursor) if semua or r["is_active"]}
-    finally:
-        conn.close()
+# ===== JENIS ORANG & JENIS SIM =====
+def daftar_kategori(semua=False):  # noqa: ARG001 - jenis orang tetap (utils/jenis_orang.py)
+    """{kode: {kode, nama, wajib_sim, boleh_akun, prefix_kode, is_active}} untuk pilihan Jenis di form."""
+    return {k: {**v, "is_active": True} for k, v in jenis_orang.JENIS.items()}
 
 
 def daftar_jenis_sim():

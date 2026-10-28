@@ -42,11 +42,11 @@ function formatNamaPersonel(kode, id, nama) {
     return kode ? `${kode} · ${nama}` : `ID ${formatIdPersonel(id)} · ${nama}`;
 }
 
+// Jenis orang (utils/jenis_orang.py)
 const LABEL_KATEGORI = {
-    DRIVER: ['SUPIR', 'bg-blue-100 text-blue-700'],
-    SECURITY: ['SECURITY', 'bg-slate-900 text-white'],
-    EMPLOYEE: ['KARYAWAN HO', 'bg-slate-200 text-slate-600'],
-    TAMU: ['TAMU', 'bg-amber-100 text-amber-700'],
+    KARYAWAN: ['Karyawan', 'bg-slate-200 text-slate-700'],
+    DRIVER: ['Driver', 'bg-utama-100 text-utama-700'],
+    TAMU: ['Tamu', 'bg-amber-100 text-amber-700'],
 };
 
 const WARNA_BADGE = {

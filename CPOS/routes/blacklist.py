@@ -1,5 +1,5 @@
 """Menu Blacklist: List Blacklist, List Request, ajukan tambah & ajukan hapus (cabut). Keduanya lewat persetujuan
-berjenjang (Admin › Alur Persetujuan, per kategori target: Driver, Security, Karyawan, BHL, Kendaraan, Supplier); tanpa alur:
+berjenjang (Admin › Alur Persetujuan, per jenis target: Karyawan, Driver, Tamu, Kendaraan, Supplier); tanpa alur:
 hak Setujui, tanpa penyetuju sama sekali langsung berlaku. Data blacklist tidak pernah dihapus."""
 from datetime import date
 from flask import Blueprint, request, jsonify
@@ -14,7 +14,7 @@ from utils.face_utils import extract_embedding_tunggal
 from utils.face_cache import slot_proses_wajah, cari_terdekat
 from utils.plat_utils import normalisasi_plat
 from utils import pengaturan
-from utils.db_kunjungan import area_akun
+from utils.db_aktivitas import area_akun
 from utils.upload_utils import simpan_upload, hapus_file
 from utils.hak_akses import izin, halaman as lihat_halaman
 from utils.dokumen import simpan_file, hapus_file_info

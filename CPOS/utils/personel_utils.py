@@ -2,7 +2,7 @@
 import re
 
 PREFIX_KODE = "PRGBS-"      # format sementara (keputusan 4), tidak dikunci CHECK di database
-KATEGORI_VALID = ("DRIVER", "SECURITY", "EMPLOYEE", "TAMU")     # = isi awal tabel kategori_personel
+KATEGORI_VALID = ("KARYAWAN", "DRIVER", "TAMU")     # utils/jenis_orang.py
 WAJIB_SIM = ("DRIVER",)
 
 # kolom audit -> label yang ditampilkan di menu Log Audit
@@ -36,13 +36,13 @@ def nik_valid(nik):
 
 
 def validasi_personel(nik, nama, kategori, no_sim, kategori_valid=KATEGORI_VALID, wajib_sim=WAJIB_SIM):
-    """Kembalikan pesan error, atau None kalau data valid. kategori_valid / wajib_sim dari tabel kategori_personel."""
+    """Kembalikan pesan error, atau None kalau data valid. kategori = jenis orang (utils/jenis_orang.py)."""
     if not nik or not nama:
         return "NIK dan nama wajib diisi"
     if not nik_valid(nik):
         return "NIK harus 16 digit angka"
     if kategori not in kategori_valid:
-        return "Kategori tidak valid"
+        return "Jenis orang tidak valid"
     if kategori in wajib_sim and not no_sim:
         return f"No. SIM wajib untuk {kategori}"
     return None

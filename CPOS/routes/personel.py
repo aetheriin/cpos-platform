@@ -1,4 +1,7 @@
-"""Menu Pengenalan Wajah > Personel & Data Master > Driver: daftar, tambah, update, hapus (soft delete)."""
+"""Visitor & Staff Logs › Data Orang & Data Master › Driver: daftar, tambah, ubah, hapus (soft delete).
+Jenis orang (Karyawan / Driver / Tamu) disimpan lewat relasinya: karyawan = departemen + jabatan + area,
+driver / tamu = profil visitor (asal perusahaan, keperluan), driver = SIM. Pendaftaran orang baru bisa memerlukan
+persetujuan (Admin › Alur Persetujuan › Data orang · Tambah, per jenis): selama menunggu, orangnya belum aktif."""
 from datetime import date
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
@@ -11,7 +14,9 @@ from utils.personel_utils import validasi_personel, format_nama_personel
 from utils.upload_utils import simpan_upload, hapus_file
 from utils.audit_utils import catat_security_audit
 from utils.face_cache import slot_proses_wajah
-from utils.hak_akses import izin, boleh
+from utils.hak_akses import izin, boleh, peran_untuk
+from utils import persetujuan
+from utils.db_utils import get_connection
 
 personel_bp = Blueprint('personel', __name__)
 
@@ -65,6 +70,32 @@ def _data_form():
     if data["foto_sumber"] not in SUMBER_VALID:
         data["foto_sumber"] = "UPLOAD"
     return data
+
+
+def _profil(kategori, lama=None):
+    """Relasi jenis orang dari form. Karyawan ber-akun: jabatannya diatur di Admin › Kelola Pengguna (tidak diubah di sini)."""
+    f = request.form
+    if kategori != "KARYAWAN":
+        return {"asal_perusahaan": (f.get("asal_perusahaan") or "").strip()[:255] or None,
+                "keperluan": (f.get("keperluan") or "").strip()[:255] or None}
+    if lama and lama.get("akun"):
+        return {"tetap": True}
+    from utils.db_organisasi import daftar_area, department_di_area
+    dept = (f.get("id_department") or "").strip().upper()
+    jab, area = (f.get("id_jabatan") or "").strip(), (f.get("id_comp_area") or "").strip()
+    if not dept or not jab.isdigit() or not area.isdigit():
+        raise ValueError("Karyawan: pilih area, departemen, dan jabatan")
+    area = int(area)
+    if area not in {a["id_comp_area"] for a in daftar_area() if a["is_active"]}:
+        raise ValueError("Pilih area dari daftar")
+    if not department_di_area(dept, area):
+        raise ValueError("Departemen ini tidak ada di area yang dipilih (Admin › Organisasi › Departemen)")
+    conn = get_connection()
+    try:
+        row = conn.cursor().execute("SELECT DeptDetailID FROM DepartmentDetails WHERE DeptID = ? AND CompAreaID = ?", dept, area).fetchone()
+    finally:
+        conn.close()
+    return {"id_level": peran_untuk(dept, int(jab)), "id_dept_detail": row[0] if row else None, "id_comp_area": area}
 
 
 def _cek_role_kategori(aksi, *kategori):
@@ -164,6 +195,10 @@ def personel_tambah():
     if error:
         return jsonify({"error": error}), 400
     try:
+        profil = _profil(data["kategori"])
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    try:
         hasil, embedding, path_disk, relatif = _cek_foto(request.files.get("foto"))
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -172,11 +207,45 @@ def personel_tambah():
         _catat_jika_blacklist(hasil)
         return jsonify({"error": hasil["pesan"], "cek": hasil}), 400
 
-    id_baru = insert_personel(data["nik"], data["nama"], data["no_sim"], data["kategori"], data["kode"],
-                              embedding_to_binary(embedding), relatif, data["foto_sumber"], current_user.id,
-                              data["id_jenis_sim"], data["sim_berlaku"])
-    return jsonify({"message": f"Personel {data['nama']} berhasil ditambahkan dengan ID {id_baru:03d}",
-                    "id_personel": id_baru, "cek": hasil})
+    try:
+        id_baru = insert_personel(data["nik"], data["nama"], data["no_sim"], data["kategori"], data["kode"],
+                                  embedding_to_binary(embedding), relatif, data["foto_sumber"], current_user.id,
+                                  data["id_jenis_sim"], data["sim_berlaku"], profil)
+    except ValueError as e:
+        hapus_file(path_disk)
+        return jsonify({"error": str(e)}), 400
+    status = _ajukan_pendaftaran(id_baru, data)
+    pesan = (f"{data['nama']} terdaftar dan menunggu persetujuan ({status[1]})" if status[0] == "MENUNGGU"
+             else f"{data['nama']} berhasil didaftarkan")
+    return jsonify({"message": pesan, "id_personel": id_baru, "cek": hasil, "menunggu": status[0] == "MENUNGGU"})
+
+
+def _ajukan_pendaftaran(id_baru, data):
+    """Orang baru belum aktif sampai pendaftarannya disetujui (tanpa alur / pengaju berhak = langsung aktif)."""
+    _set_aktif(id_baru, False)
+    try:
+        return persetujuan.ajukan("ORANG_TAMBAH", f"PERSONEL:{id_baru}", f"Pendaftaran {data['nama']} ({data['kategori'].title()})",
+                                  None, {"id_personel": id_baru, "nama": data["nama"], "nik": data["nik"], "kategori": data["kategori"]},
+                                  current_user.id, kategori=data["kategori"])
+    except Exception:
+        _set_aktif(id_baru, True)       # pengajuan gagal dibuat: jangan biarkan orangnya tertahan
+        raise
+
+
+def _set_aktif(id_personel, aktif):
+    conn = get_connection()
+    try:
+        conn.cursor().execute("UPDATE Users SET Active = ?, UpdateDate = GETDATE() WHERE UserID = ?", 1 if aktif else 0, id_personel)
+        conn.commit()
+    finally:
+        conn.close()
+    from utils.face_cache import invalidate
+    invalidate()
+
+
+@persetujuan.pelaksana("ORANG_TAMBAH")
+def _pendaftaran_disetujui(data, _pengaju, _penyetuju):
+    _set_aktif(int(data["id_personel"]), True)
 
 
 @personel_bp.route("/api/personel/<int:id_personel>/update", methods=["POST"])
@@ -194,6 +263,10 @@ def personel_update(id_personel):
     error = _validasi(data, exclude_id=id_personel)
     if error:
         return jsonify({"error": error}), 400
+    try:
+        profil = _profil(data["kategori"], lama)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
 
     embedding_binary = relatif = None
     file = request.files.get("foto")
@@ -208,10 +281,13 @@ def personel_update(id_personel):
             return jsonify({"error": hasil["pesan"], "cek": hasil}), 400
         embedding_binary = embedding_to_binary(embedding)
 
-    update_personel(id_personel, data["kode"], data["nik"], data["nama"], data["no_sim"], data["kategori"],
-                    current_user.id, embedding_binary, relatif, data["foto_sumber"] if relatif else None,
-                    data["id_jenis_sim"], data["sim_berlaku"])
-    return jsonify({"message": f"Data {data['nama']} berhasil diperbarui dan tercatat di Log Audit",
+    try:
+        update_personel(id_personel, data["kode"], data["nik"], data["nama"], data["no_sim"], data["kategori"],
+                        current_user.id, embedding_binary, relatif, data["foto_sumber"] if relatif else None,
+                        data["id_jenis_sim"], data["sim_berlaku"], profil)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    return jsonify({"message": f"Data {data['nama']} berhasil diperbarui",
                     "personel": get_personel(id_personel)})
 
 
