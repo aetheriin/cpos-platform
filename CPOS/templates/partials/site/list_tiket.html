@@ -24,7 +24,6 @@
     <div class="px-5 py-3.5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
         <div>
             <h2 class="text-sm font-bold text-slate-900">Tiket Aktif</h2>
-            <p class="text-xs text-slate-500">Truk yang masih di dalam, beserta tahap yang ditunggu · diperbarui otomatis tiap 15 detik</p>
         </div>
         {{ tombol_ekspor('tabelTicketAktif', 'Tiket Aktif') }}
     </div>
@@ -46,7 +45,6 @@
     <div class="px-5 py-3.5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
         <div>
             <h2 class="text-sm font-bold text-slate-900">Riwayat Penimbangan (7 Hari Terakhir)</h2>
-            <p class="text-xs text-slate-500">Bruto, tara, netto, dan lama truk di dalam</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
         <select id="filterProdukHistory" data-simpan="produk_history" class="input-field w-52" data-on-change="muatHistoryProduk">
@@ -75,7 +73,6 @@
     <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div>
             <h2 class="text-sm font-bold text-slate-900">Pengajuan Koreksi Tiket</h2>
-            <p class="text-xs text-slate-500">Koreksi customer, produk, supir, atau kendaraan berlaku setelah disetujui</p>
         </div>
         <div class="seg flex-wrap">
             {% if boleh_periksa %}<button type="button" class="chip chip-active" data-mode="menunggu" data-on-click="pilihModePersetujuan" data-arg="$el">Perlu persetujuan saya <span id="jmlMenunggu" class="ml-1"></span></button>{% endif %}

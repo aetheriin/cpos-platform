@@ -4,11 +4,13 @@
 
 @layer base {
   /* ===== WARNA UTAMA CPOS: ganti di sini saja (angka R G B), lalu build ulang tailwind.css =====
-     Contoh biru (seperti logo). Hijau: 50 240 253 244 / 100 220 252 231 / 200 187 247 208 / 500 34 197 94 /
+     Contoh biru (seperti logo). Hijau: 50 240 253 244 / 100 220 252 231 / 200 187 247 208 / 300 134 239 172 / 400 74 222 128 / 500 34 197 94 /
      600 22 163 74 / 700 21 128 61 / 800 22 101 52 */
   :root {
-    --utama-50: 236 246 253;  --utama-100: 212 236 251; --utama-200: 168 214 245;
+    --utama-50: 236 246 253;  --utama-100: 212 236 251; --utama-200: 168 214 245; --utama-300: 125 190 236; --utama-400: 80 170 225;
     --utama-500: 41 151 214;  --utama-600: 18 124 191;  --utama-700: 13 102 160; --utama-800: 14 84 130;
+    /* Lebar menu samping (sidebar). Nama menu tidak turun ke baris kedua; perbesar bila ada nama menu yang lebih panjang */
+    --lebar-sidebar: 19rem;
   }
   html { font-size: 81.25%; }               /* 13px: padat untuk layar operator, tetap terbaca */
   /* Monitor lebar (22"-24", >= 1800px): huruf & jarak sedikit lebih besar supaya seimbang */
@@ -20,7 +22,7 @@
 @layer components {
   /* ===== Kerangka: sidebar putih + header putih + isi abu muda ===== */
   .app-shell { @apply flex h-screen overflow-hidden bg-slate-50; }
-  .sidebar { @apply bg-white border-r border-slate-200 w-72 flex-shrink-0 flex flex-col transition-all duration-200 overflow-hidden; }
+  .sidebar { @apply bg-white border-r border-slate-200 w-[var(--lebar-sidebar)] flex-shrink-0 flex flex-col transition-all duration-200 overflow-hidden; }
   .sidebar-collapsed { @apply w-0 border-r-0; }
   .sidebar-brand { @apply h-16 flex items-center justify-between gap-2 px-4 border-b border-slate-100 flex-shrink-0; }
   .sidebar-logo { @apply w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm shadow-blue-500/20; }
@@ -37,7 +39,7 @@
   .sidebar-grup:not([open]) .sidebar-grup-panah { @apply -rotate-90; }
   .sidebar-grup > a.sidebar-link, .sidebar-grup > details { @apply ml-2.5 w-auto; }
   /* Lv3: titik kecil + latar lembut saat aktif (tanpa garis panjang) */
-  .sidebar-sublink { @apply ml-6 mr-1 px-3 py-1.5 flex items-center gap-2.5 rounded-md text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-50; }
+  .sidebar-sublink { @apply ml-6 mr-1 px-3 py-1.5 flex items-center gap-2.5 rounded-md text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-50 whitespace-nowrap; }
   .sidebar-sublink::before { content: ''; @apply w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0; }
   .sidebar-sublink-aktif { @apply text-utama-700 font-bold bg-utama-50 hover:bg-utama-50 hover:text-utama-700; }
   .sidebar-sublink-aktif::before { @apply bg-utama-600 ring-4 ring-utama-100; }
@@ -83,6 +85,8 @@
   .avatar { @apply w-8 h-8 rounded-full bg-utama-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0; }
   .main-area { @apply flex-1 flex flex-col overflow-y-auto; }
   .main-area > * { flex-shrink: 0; }
+  /* Tombol kembali ke atas: muncul setelah halaman digulir ke bawah (base.js) */
+  .tombol-ke-atas { @apply fixed bottom-6 right-6 z-30 w-11 h-11 flex items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-utama-500 transition-opacity; }
   .topbar { @apply sticky top-0 z-30 h-16 bg-white/95 backdrop-blur border-b border-slate-200 px-5 flex items-center justify-between gap-4; }
   .topbar-cari { @apply hidden md:flex items-center gap-3 w-72 lg:w-96 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-500 text-left transition; }
   .topbar-kbd { @apply text-[10px] font-mono bg-white border border-slate-200 rounded px-1.5 py-0.5 text-slate-500; }
@@ -238,7 +242,9 @@
   .section-box .tbs-tabel > thead > tr.tbs-grup + tr > th { top: 2.25rem; }
   .tbs-tabel .tbs-grup th { height: 2.25rem; }
   .table-header-row { @apply bg-slate-50 border-b border-slate-200 text-slate-500 text-sm font-semibold; }
-  .table-cell { @apply px-4 py-3; }
+  .table-cell { @apply px-4 py-3 align-middle; }
+  /* Judul kolom satu baris & sejajar dengan isinya (perataan kanan / tengah disalin dari isi oleh base.js) */
+  th.table-cell { @apply whitespace-nowrap; }
   /* Kolom Aksi menempel di kanan saat tabel lebar digulir (List Blacklist / List Request) */
   .tabel-aksi-lekat tbody tr > td:last-child:not([colspan]) { @apply sticky right-0 bg-white; box-shadow: -8px 0 8px -8px rgb(15 23 42 / 0.18); }
   .tabel-aksi-lekat thead tr > th:last-child { @apply sticky right-0 bg-slate-50; box-shadow: -8px 0 8px -8px rgb(15 23 42 / 0.18); }

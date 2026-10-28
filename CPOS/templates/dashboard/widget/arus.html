@@ -4,7 +4,6 @@
         <div class="flex flex-wrap items-start justify-between gap-3 pb-3 border-b border-slate-100">
             <div>
                 <h2 class="text-sm font-bold text-slate-900">Arus Penimbangan Hari Ini</h2>
-                <p class="text-xs text-slate-500">{{ 'Tiket yang dibuat hari ini, semua area atau per area' if is_pusat else 'Tiket yang dibuat hari ini di area Anda' }}</p>
             </div>
             {# HO: pilih site (juga menyaring Status Jembatan Timbang); akun site: hanya site sendiri #}
             {% if is_pusat %}
@@ -40,7 +39,6 @@
             <div class="pb-3 border-b border-slate-100 flex items-start justify-between gap-2">
                 <div>
                     <h2 class="text-sm font-bold text-slate-900">Status Jembatan Timbang</h2>
-                    <p class="text-xs text-slate-500">Yang terputus ditampilkan paling atas</p>
                 </div>
                 <span id="ringkasJembatan" class="kpi-tanggal font-mono whitespace-nowrap"></span>
             </div>

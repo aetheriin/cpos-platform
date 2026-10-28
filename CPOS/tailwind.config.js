@@ -7,7 +7,8 @@ module.exports = {
       colors: {
         utama: {
           50: 'rgb(var(--utama-50) / <alpha-value>)', 100: 'rgb(var(--utama-100) / <alpha-value>)',
-          200: 'rgb(var(--utama-200) / <alpha-value>)', 500: 'rgb(var(--utama-500) / <alpha-value>)',
+          200: 'rgb(var(--utama-200) / <alpha-value>)', 300: 'rgb(var(--utama-300) / <alpha-value>)',
+          400: 'rgb(var(--utama-400) / <alpha-value>)', 500: 'rgb(var(--utama-500) / <alpha-value>)',
           600: 'rgb(var(--utama-600) / <alpha-value>)', 700: 'rgb(var(--utama-700) / <alpha-value>)',
           800: 'rgb(var(--utama-800) / <alpha-value>)',
         },

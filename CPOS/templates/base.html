@@ -46,6 +46,7 @@
 </div>
 
 {% block modals %}{% endblock %}
+<button type="button" id="tombolKeAtas" class="tombol-ke-atas hidden" title="Kembali ke atas" aria-label="Kembali ke atas"><i class="fa-solid fa-arrow-up"></i></button>
 {% include "partials/layout/notifikasi.html" %}
 {% if current_user.is_authenticated %}{% include "partials/layout/cari.html" %}{% endif %}
 
