@@ -9,12 +9,18 @@
 {% endblock %}
 {% block tab_content %}
 <div class="filter-bar">
-  <div><label class="field-label" for="rkFilterTanggal">Tanggal</label><input type="date" id="rkFilterTanggal" class="input-field w-48" data-on-change="muatHarga"></div>
+  <div><label class="field-label" for="rkFilterTanggal">Tanggal</label><input type="date" id="rkFilterTanggal" class="input-field w-48" data-on-enter="tampilkanHarga"></div>
   <div><label class="field-label" for="rkFilterCompany">Perusahaan</label>
-    <select id="rkFilterCompany" class="input-field w-64" data-on-change="muatHarga"><option value="">Semua perusahaan</option>
+    <select id="rkFilterCompany" class="input-field w-64"><option value="">Semua perusahaan</option>
       {% for c in company %}<option value="{{ c.id_company }}">{{ c.id_company }} · {{ c.nama }}</option>{% endfor %}</select></div>
-  <div class="self-end"><button type="button" class="link-aksi text-slate-500 px-2 pb-2" data-on-click="resetFilterHarga">Reset</button></div>
-  <div class="flex-1"></div><span class="self-end text-sm text-slate-500 pb-2"><b id="rkJumlahHarga" class="text-slate-900 font-mono">-</b> data</span>
+  <div class="self-end flex items-center gap-1">
+    <button type="button" id="rkTombolTampilkan" class="btn-primary" data-on-click="tampilkanHarga"><i class="fa-solid fa-magnifying-glass"></i> Tampilkan</button>
+    <button type="button" class="link-aksi text-slate-500 px-2" data-on-click="resetFilterHarga">Reset</button></div>
+  <div class="flex-1"></div>
+  <div class="self-end text-right pb-1">
+    <span class="text-sm text-slate-500"><b id="rkJumlahHarga" class="text-slate-900 font-mono">-</b> data</span>
+    <p id="rkStatusHarga" class="text-xs text-slate-400" aria-live="polite"></p>
+    <p class="text-[11px] text-slate-400">Sumber: <span class="font-mono">{{ sumber_harga }}</span></p></div>
 </div>
 <div class="section-box">
   {% call section_header('daftar-harga', 'Daftar Harga') %}<div class="flex items-center gap-3" data-henti-klik>{{ tombol_ekspor('tabelRkHarga', 'Harga CPO & Kernel') }}</div>{% endcall %}

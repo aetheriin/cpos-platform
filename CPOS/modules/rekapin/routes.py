@@ -9,6 +9,7 @@ from flask_login import login_required, current_user
 
 from modules.rekapin import rekapin_bp, db
 from modules.rekapin import erp, laporan_tbs
+from utils import harga_sumber
 from utils import persetujuan
 from routes.dashboard import BATAS
 from utils.area import company_user
@@ -284,18 +285,20 @@ def api_request_setujui_terpilih():
     return jsonify({"message": f"{n} persetujuan diproses"})
 
 
-# ===== Harga CPO & Kernel (dbo.DailyPrice) =====
+# ===== Harga CPO & Kernel (dbo.DailyPrice atau tabel luar Main.dbo.HARGA: utils/harga_sumber) =====
 @rekapin_bp.route("/harga")
 @login_required
 @lihat_halaman("RK_HARGA")
 def halaman_harga():
     return _halaman("harga", "RK_HARGA", company=_company_rekap(current_user.id),
-                    hak={a: boleh("RK_HARGA", a) for a in ("tambah", "ubah", "hapus")})
+                    hak={a: boleh("RK_HARGA", a) for a in ("tambah", "ubah", "hapus")},
+                    sumber_harga=harga_sumber.nama_sumber())
 
 
 @rekapin_bp.route("/api/harga")
 @login_required
 @izin("RK_HARGA", "lihat")
+@harga_sumber.tangani_galat
 def api_harga():
     kode = [c["id_company"] for c in _company_rekap(current_user.id)]
     tanggal = request.args.get("tanggal") or ""
@@ -321,6 +324,7 @@ def _company_boleh(kode):
 @rekapin_bp.route("/api/harga/simpan", methods=["POST"])
 @login_required
 @izin("RK_HARGA", "tambah", "ubah")
+@harga_sumber.tangani_galat
 def api_harga_simpan():
     f = request.form
     try:
@@ -354,6 +358,7 @@ def api_harga_simpan():
 @rekapin_bp.route("/api/harga/hapus", methods=["POST"])
 @login_required
 @izin("RK_HARGA", "hapus")
+@harga_sumber.tangani_galat
 def api_harga_hapus():
     try:
         id_company = _company_boleh((request.form.get("company") or "").strip().upper())

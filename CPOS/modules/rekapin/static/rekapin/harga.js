@@ -1,15 +1,35 @@
-// ===== REKAPIN: Harga CPO & Kernel (dbo.DailyPrice, /rekapin/api/harga*) =====
+// ===== REKAPIN: Harga CPO & Kernel (dbo.DailyPrice atau Main.dbo.HARGA, /rekapin/api/harga*) =====
 let dataHarga = [];
 const KOLOM_HARGA = ['harga_cpo', 'harga_kernel', 'oer_cpo', 'biaya_olah', 'qty_rsi'];
 const rpHarga = v => v == null ? '—' : Number(v).toLocaleString('id-ID', { maximumFractionDigits: 2 });
 const tglHarga = s => s ? s.split('-').reverse().join('-') : '';
 
-document.addEventListener('DOMContentLoaded', muatHarga);
+document.addEventListener('DOMContentLoaded', tampilkanHarga);
 
 function resetFilterHarga() {
     document.getElementById('rkFilterTanggal').value = '';
     document.getElementById('rkFilterCompany').value = '';
-    muatHarga();
+    tampilkanHarga();
+}
+
+// Tombol Tampilkan: filter tanggal & perusahaan baru dijalankan saat diklik; status di kanan menunjukkan hasilnya
+async function tampilkanHarga() {
+    const tombol = document.getElementById('rkTombolTampilkan');
+    const status = document.getElementById('rkStatusHarga');
+    status.textContent = t('Memuat...');
+    status.className = 'text-xs text-slate-400';
+    const hasil = await denganTombol(tombol, muatHarga);
+    const jam = new Date().toLocaleTimeString('id-ID');
+    if (hasil && hasil.error) {
+        status.textContent = `${t('Gagal')}: ${hasil.error}`;
+        status.className = 'text-xs text-red-600';
+        return;
+    }
+    const tgl = document.getElementById('rkFilterTanggal').value;
+    const comp = document.getElementById('rkFilterCompany').value;
+    const saring = [comp || t('semua perusahaan'), tgl ? tglHarga(tgl) : t('semua tanggal')].join(' · ');
+    status.textContent = `${t('Dimuat')} ${jam} (${saring})`;
+    status.className = 'text-xs text-emerald-700';
 }
 
 async function muatHarga() {
@@ -18,7 +38,11 @@ async function muatHarga() {
     const q = new URLSearchParams({ tanggal: document.getElementById('rkFilterTanggal').value,
                                     company: document.getElementById('rkFilterCompany').value });
     const rows = await ambilJson(`/rekapin/api/harga?${q}`);
-    if (rows.error) { tbody.innerHTML = barisKosong(9, rows.error); return; }
+    if (rows.error) {
+        tbody.innerHTML = barisKosong(9, rows.error);
+        document.getElementById('rkJumlahHarga').textContent = '-';
+        return rows;
+    }
     dataHarga = rows;
     document.getElementById('rkJumlahHarga').textContent = rows.length;
     tbody.innerHTML = rows.map((r, i) => `<tr class="hover:bg-slate-50">
@@ -56,12 +80,12 @@ async function simpanHarga(btn) {
     const data = await denganTombol(btn, () => kirimForm('/rekapin/api/harga/simpan', isi));
     if (!tampilkanHasil(data)) return;
     closeModal('modalRkHarga');
-    muatHarga();
+    tampilkanHarga();
 }
 
 async function hapusHarga(i) {
     const r = dataHarga[i];
     if (!await Dialog.konfirmasi({ judul: 'Hapus harga?', teksYa: 'Hapus', bahaya: true,
         pesan: `Harga ${r.id_company} tanggal ${tglHarga(r.tanggal)} akan dihapus.` })) return;
-    if (tampilkanHasil(await kirimForm('/rekapin/api/harga/hapus', { company: r.id_company, tanggal: r.tanggal }))) muatHarga();
+    if (tampilkanHasil(await kirimForm('/rekapin/api/harga/hapus', { company: r.id_company, tanggal: r.tanggal }))) tampilkanHarga();
 }

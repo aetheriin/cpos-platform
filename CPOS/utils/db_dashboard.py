@@ -1,4 +1,5 @@
 """Dashboard: harga CPO, harga kernel, OER CPO, biaya olah, qty RSI per perusahaan per tanggal (diisi HO)."""
+from utils import harga_sumber
 from utils.db_utils import get_connection, _rows_to_dicts
 
 KOLOM = ("harga_cpo", "harga_kernel", "oer_cpo", "biaya_olah")
@@ -16,14 +17,25 @@ WIDGET_HARGA = {"harga", "riwayat"}       # widget yang memakai tombol Isi Harga
 
 def riwayat_harga(id_user, id_company, hari=30):
     """Data widget harga dari dbo.sp_DashboardHarga (sama dengan aplikasi lain): harga harian + harga TBS per tanggal,
-    hanya perusahaan dalam cakupan user."""
+    hanya perusahaan dalam cakupan user. Harga harian di tabel luar (Main.dbo.HARGA, utils/harga_sumber): harga TBS tetap
+    dari prosedur, harga harian dari tabel itu."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
         cursor.execute("EXEC dbo.sp_DashboardHarga @UserID = ?, @CompID = ?, @Days = ?", id_user, id_company, int(hari))
-        return _rows_to_dicts(cursor) if cursor.description else []
+        rows = _rows_to_dicts(cursor) if cursor.description else []
     finally:
         conn.close()
+    if not harga_sumber.aktif():
+        return rows
+    from datetime import date, timedelta
+    dari = date.today() - timedelta(days=int(hari) - 1)
+    tbs = {r["PriceDate"]: r["TBSPrice"] for r in rows if r["TBSPrice"] is not None}
+    harian = {r["tanggal"]: r for r in harga_sumber.daftar([id_company], dari=dari, batas=1000)}
+    return [{"PriceDate": t, "CPOPrice": harian.get(t, {}).get("harga_cpo"), "KernelPrice": harian.get(t, {}).get("harga_kernel"),
+             "OERCPO": harian.get(t, {}).get("oer_cpo"), "ProcessingCost": harian.get(t, {}).get("biaya_olah"),
+             "RSIQty": harian.get(t, {}).get("qty_rsi"), "TBSPrice": tbs.get(t), "UpdateByName": None, "HasDaily": t in harian}
+            for t in sorted(set(tbs) | set(harian))]
 
 
 def ringkas_security(id_area):
@@ -48,6 +60,8 @@ def ringkas_security(id_area):
 
 def simpan_harga(id_company, tanggal, nilai, qty_rsi, user_id):
     """Satu baris per perusahaan per tanggal: yang sudah ada diperbarui."""
+    if harga_sumber.aktif():
+        return harga_sumber.simpan(id_company, tanggal, nilai, qty_rsi)
     conn = get_connection()
     try:
         conn.cursor().execute("""

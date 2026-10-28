@@ -5,6 +5,7 @@ jadi aturan sama dengan halaman CPOS lain. Persetujuan request memakai Alur Pers
 import json
 from datetime import date, timedelta
 
+from utils import harga_sumber
 from utils.db_utils import get_connection, _rows_to_dicts
 
 STATUS = ("Pending", "Approved", "Rejected", "Done")
@@ -224,9 +225,11 @@ def ringkas_request(id_user, hanya_operator=None):
     return hasil
 
 
-# ===== Harga harian (dbo.DailyPrice, sama dengan Isi Harga di Dashboard CPOS) =====
+# ===== Harga harian (dbo.DailyPrice, atau Main.dbo.HARGA bila diatur di .env: utils/harga_sumber; sama dengan Dashboard CPOS) =====
 def daftar_harga(companies, id_company="", tanggal="", batas=500):
     """companies: daftar CompID yang boleh dilihat (None = semua)."""
+    if harga_sumber.aktif():
+        return harga_sumber.daftar(companies, id_company, tanggal, batas=batas)
     syarat, args = [], []
     if companies is not None:
         if not companies:
@@ -248,10 +251,14 @@ def daftar_harga(companies, id_company="", tanggal="", batas=500):
 
 
 def harga_ada(id_company, tanggal):
+    if harga_sumber.aktif():
+        return harga_sumber.ada(id_company, tanggal)
     return bool(_query("SELECT 1 AS x FROM DailyPrice WHERE CompID = ? AND PriceDate = ?", id_company, tanggal))
 
 
 def hapus_harga(id_company, tanggal):
+    if harga_sumber.aktif():
+        return harga_sumber.hapus(id_company, tanggal)
     if not _ubah("DELETE FROM DailyPrice WHERE CompID = ? AND PriceDate = ?", id_company, tanggal):
         raise ValueError("Data harga tidak ditemukan")
 

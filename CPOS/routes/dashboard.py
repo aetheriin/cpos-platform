@@ -5,6 +5,7 @@ from functools import wraps
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
 
+from utils import harga_sumber
 from utils.area import area_data, company_user
 from utils.area_filter import area_cocok
 from utils.db_dashboard import KOLOM, WIDGET, WIDGET_HARGA, riwayat_harga, simpan_harga, arus_hari_ini, ringkas_security
@@ -79,6 +80,7 @@ def dashboard_halaman():
 @dashboard_bp.route("/api/dashboard/harga")
 @login_required
 @izin_widget("harga", "riwayat")
+@harga_sumber.tangani_galat
 def dashboard_harga():
     """?company=<kode> (kosong = perusahaan pertama yang boleh dilihat)."""
     hari = min(max(request.args.get("hari", 30, type=int), 7), 365)
@@ -99,6 +101,7 @@ def dashboard_harga():
 @login_required
 @izin_widget("harga", "riwayat")
 @izin("DASHBOARD", "ubah")
+@harga_sumber.tangani_galat
 def dashboard_harga_simpan():
     try:
         id_company = _company_dipilih(current_user.id, (request.form.get("company") or "").strip().upper())
