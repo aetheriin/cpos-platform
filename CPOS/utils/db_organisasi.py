@@ -55,7 +55,13 @@ def _ganti_kode(cursor, tabel, kolom, lama, baru, kolom_unik=None):
 
 # ===== COMPANY (CompID = kode perusahaan, mis. YBS) =====
 def daftar_company():
-    """Perusahaan + nama area-areanya (label 'OFFICE, REFINERY')."""
+    """Perusahaan + nama area-areanya (label 'OFFICE, REFINERY'). Salinan dari cache (dipakai hampir di setiap
+    halaman); cache dibersihkan saat perusahaan / area / Mill diubah (_hapus_cache_area)."""
+    return [dict(r) for r in _daftar_company()]
+
+
+@cache_ttl(60)
+def _daftar_company():
     rows = _query("""SELECT c.CompID AS id_company, c.CompID AS kode, c.CompName AS nama, c.CompAddress AS alamat,
                             c.Active AS is_active,
                             (SELECT COUNT(*) FROM CompanyArea a WHERE a.CompID = c.CompID AND a.Active = 1) AS jumlah_area
@@ -120,11 +126,12 @@ def simpan_lokasi(id_lokasi, kode, nama, keterangan, is_pusat):
         conn.commit()
     finally:
         conn.close()
-    area_pusat.hapus()
+    _hapus_cache_area()
 
 
 def set_aktif_lokasi(id_lokasi, aktif):
     _ubah("UPDATE Mill SET Active = ? WHERE MillID = ?", 1 if aktif else 0, id_lokasi)
+    _hapus_cache_area()
 
 
 @cache_ttl(60)
@@ -134,8 +141,10 @@ def area_pusat():
         "SELECT a.CompAreaID FROM CompanyArea a JOIN Mill m ON m.MillID = a.MillID WHERE m.IsHeadOffice = 1"))
 
 
+@cache_ttl(30)
 def cakupan_user(id_user):
-    """Ringkasan cakupan data bawaan dari dbo.fn_UserScopeInfo. None = user tidak ditemukan / nonaktif."""
+    """Ringkasan cakupan data bawaan dari dbo.fn_UserScopeInfo. None = user tidak ditemukan / nonaktif.
+    Dipakai hampir setiap request (area_data), jadi disimpan 30 detik; dibersihkan saat organisasi / hak / user diubah."""
     rows = _query("SELECT OwnAreaID, OwnCompID, IsHeadOffice, AllAreas FROM dbo.fn_UserScopeInfo(?)", id_user)
     return rows[0] if rows else None
 
@@ -163,7 +172,13 @@ def company_area():
 
 # ===== AREA PERUSAHAAN (CompanyArea) =====
 def daftar_area():
-    """Area milik perusahaan (dipakai akun, jembatan, pos, tiket). label = "YBS · REFINERY"."""
+    """Area milik perusahaan (dipakai akun, jembatan, pos, tiket). label = "YBS · REFINERY".
+    Salinan dari cache; dibersihkan saat organisasi / pengguna diubah."""
+    return [dict(r) for r in _daftar_area()]
+
+
+@cache_ttl(30)
+def _daftar_area():
     return _query("""SELECT a.CompAreaID AS id_comp_area, a.AreaCode AS kode, a.AreaName AS nama, a.AreaDesc AS keterangan,
                             a.Active AS is_active, a.CompID AS id_company, c.CompName AS company, c.CompID AS kode_company,
                             a.MillID AS id_lokasi, m.MillName AS mill, ISNULL(m.IsHeadOffice, 0) AS is_pusat,
@@ -207,7 +222,15 @@ def _hapus_cache_area():
     area_pusat.hapus()
     area_per_company.hapus()
     company_area.hapus()
+    _daftar_company.hapus()
+    hapus_cache_user()
     hapus_cache()
+
+
+def hapus_cache_user():
+    """Pengguna ditambah / diubah / dinonaktifkan: cakupan data & jumlah user per area ikut diperbarui."""
+    cakupan_user.hapus()
+    _daftar_area.hapus()
 
 
 def _salin_dari_area_pertama():

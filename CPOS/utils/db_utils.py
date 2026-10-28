@@ -256,6 +256,19 @@ def _rows_to_dicts(cursor):
     columns = [c[0] for c in cursor.description]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
+
+def ambil_banyak(cursor, bagian):
+    """Beberapa SELECT yang saling lepas dikirim dalam SATU kali kirim (satu bolak-balik ke server), hasilnya
+    [baris dict query 1, baris dict query 2, ...]. bagian = [(sql, [parameter]), ...]."""
+    sql = "SET NOCOUNT ON;\n" + ";\n".join(q for q, _ in bagian)
+    cursor.execute(sql, *[p for _, ps in bagian for p in ps])
+    hasil = []
+    for i in range(len(bagian)):
+        if i:
+            cursor.nextset()
+        hasil.append(_rows_to_dicts(cursor))
+    return hasil
+
 # ----- Truk <-> Supir (tabel kendaraan_driver) -----
 
 def get_supir_kendaraan(id_kendaraan):

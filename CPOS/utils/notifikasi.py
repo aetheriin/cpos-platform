@@ -74,30 +74,33 @@ def _syarat_lama(user, id_area):
 
 
 def daftar(user, batas=30, id_area=None):
-    """(daftar notifikasi terbaru, jumlah belum dibaca) untuk user ini."""
+    """(daftar notifikasi terbaru, jumlah belum dibaca) untuk user ini. Daftar & jumlah diambil dalam satu kali kirim
+    (dipanggil otomatis tiap menit di setiap layar)."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
         for buat_syarat in (_syarat, _syarat_lama):
             syarat, args = buat_syarat(user, id_area)
             try:
-                cursor.execute(f"""SELECT TOP ({int(batas)}) n.NotificationID AS id_notifikasi, n.Title AS judul, n.Message AS isi, n.Link AS tautan, n.CreateDate AS waktu, ar.AreaName AS area,
+                cursor.execute(f"""SET NOCOUNT ON;
+                                   SELECT TOP ({int(batas)}) n.NotificationID AS id_notifikasi, n.Title AS judul, n.Message AS isi, n.Link AS tautan, n.CreateDate AS waktu, ar.AreaName AS area,
                                           CASE WHEN b.UserID IS NULL THEN 0 ELSE 1 END AS dibaca
                                    FROM Notification n
                                    LEFT JOIN NotificationRead b ON b.NotificationID = n.NotificationID AND b.UserID = ?
                                    LEFT JOIN CompanyArea ar ON ar.CompAreaID = n.CompAreaID
                                    WHERE {syarat} AND n.CreateDate >= DATEADD(DAY, -{HARI_SIMPAN}, GETDATE())
-                                   ORDER BY n.CreateDate DESC""", user.id, *args)
+                                   ORDER BY n.CreateDate DESC;
+                                   SELECT COUNT(*) FROM Notification n
+                                   WHERE {syarat} AND n.CreateDate >= DATEADD(DAY, -{HARI_SIMPAN}, GETDATE())
+                                     AND NOT EXISTS (SELECT 1 FROM NotificationRead b
+                                                     WHERE b.NotificationID = n.NotificationID AND b.UserID = ?)""",
+                               user.id, *args, *args, user.id)
                 break
             except pyodbc.Error:
                 if buat_syarat is _syarat_lama:
                     raise
         rows = _rows_to_dicts(cursor)
-        cursor.execute(f"""SELECT COUNT(*) FROM Notification n
-                           WHERE {syarat} AND n.CreateDate >= DATEADD(DAY, -{HARI_SIMPAN}, GETDATE())
-                             AND NOT EXISTS (SELECT 1 FROM NotificationRead b
-                                             WHERE b.NotificationID = n.NotificationID AND b.UserID = ?)""",
-                       *args, user.id)
+        cursor.nextset()
         belum = cursor.fetchone()[0]
     finally:
         conn.close()

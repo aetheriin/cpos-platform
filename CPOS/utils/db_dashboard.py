@@ -80,7 +80,7 @@ def simpan_harga(id_company, tanggal, nilai, qty_rsi, user_id):
 def arus_hari_ini(id_area=None):
     """Ringkasan penimbangan hari ini (id_area None = semua area): angka, distribusi per produk,
     jumlah truk masuk / selesai per jam, dan posisi truk yang masih di dalam per tahap."""
-    from utils.db_utils import _filter_area
+    from utils.db_utils import _filter_area, ambil_banyak
     filter_area, param_area = _filter_area(id_area)
     conn = get_connection()
     try:
@@ -91,34 +91,26 @@ def arus_hari_ini(id_area=None):
             LEFT JOIN WeighingSummary tb ON tb.TicketNumber = t.TicketNumber
             OUTER APPLY (SELECT MAX(pn.WeighDate) AS keluar FROM Weighing pn WHERE pn.TicketNumber = t.TicketNumber) w
             WHERE t.TicketDate >= CAST(GETDATE() AS DATE) AND t.StatusCode <> 'VOID'{filter_area}"""
-        cursor.execute(f"""SELECT COUNT(*) AS masuk,
-                                  SUM(CASE WHEN t.StatusCode = 'SELESAI' THEN 1 ELSE 0 END) AS selesai,
-                                  SUM(CASE WHEN p.Category = 'TBS' AND t.StatusCode = 'SELESAI'
-                                           THEN COALESCE(tb.Netto, t.SplitWeight) ELSE 0 END) AS tbs_kg,
-                                  AVG(CASE WHEN t.StatusCode = 'SELESAI' AND w.keluar IS NOT NULL
-                                           THEN CAST(DATEDIFF(MINUTE, t.TicketDate, w.keluar) AS FLOAT) END) AS siklus_menit
-                           {dasar}""", *param_area)
-        ringkas = _rows_to_dicts(cursor)[0]
-        cursor.execute(f"""SELECT p.ProductName AS produk, SUM(COALESCE(tb.Netto, t.SplitWeight)) AS netto
-                           {dasar} AND COALESCE(tb.Netto, t.SplitWeight) IS NOT NULL
-                           GROUP BY p.ProductName ORDER BY netto DESC""", *param_area)
-        distribusi = _rows_to_dicts(cursor)
-
-        # Per jam: masuk = jam tiket dibuat; selesai = jam timbang terakhir tiket yang sudah SELESAI
-        per_jam = [{"jam": j, "masuk": 0, "selesai": 0} for j in range(24)]
-        cursor.execute(f"SELECT DATEPART(HOUR, t.TicketDate) AS jam, COUNT(*) AS n {dasar} GROUP BY DATEPART(HOUR, t.TicketDate)",
-                       *param_area)
-        for jam, n in cursor.fetchall():
-            per_jam[jam]["masuk"] = n
-        cursor.execute(f"""SELECT DATEPART(HOUR, w.keluar) AS jam, COUNT(*) AS n {dasar}
-                           AND t.StatusCode = 'SELESAI' AND w.keluar IS NOT NULL GROUP BY DATEPART(HOUR, w.keluar)""",
-                       *param_area)
-        for jam, n in cursor.fetchall():
-            per_jam[jam]["selesai"] = n
-
-        # Posisi truk yang masih di dalam (semua tiket aktif, tidak hanya yang dibuat hari ini).
-        # Setelah timbang 1: TBS ke Sortasi, produk lain ke Laboratorium.
-        cursor.execute(f"""SELECT
+        # Semua query di bawah saling lepas: dikirim sekali jalan (ambil_banyak), bukan 7 kali bolak-balik
+        p = list(param_area)
+        (ringkas, distribusi, jam_masuk, jam_selesai, posisi_rows, dinamis, durasi_rows) = ambil_banyak(cursor, [
+            (f"""SELECT COUNT(*) AS masuk,
+                        SUM(CASE WHEN t.StatusCode = 'SELESAI' THEN 1 ELSE 0 END) AS selesai,
+                        SUM(CASE WHEN p.Category = 'TBS' AND t.StatusCode = 'SELESAI'
+                                 THEN COALESCE(tb.Netto, t.SplitWeight) ELSE 0 END) AS tbs_kg,
+                        AVG(CASE WHEN t.StatusCode = 'SELESAI' AND w.keluar IS NOT NULL
+                                 THEN CAST(DATEDIFF(MINUTE, t.TicketDate, w.keluar) AS FLOAT) END) AS siklus_menit
+                 {dasar}""", p),
+            (f"""SELECT p.ProductName AS produk, SUM(COALESCE(tb.Netto, t.SplitWeight)) AS netto
+                 {dasar} AND COALESCE(tb.Netto, t.SplitWeight) IS NOT NULL
+                 GROUP BY p.ProductName ORDER BY netto DESC""", p),
+            # Per jam: masuk = jam tiket dibuat; selesai = jam timbang terakhir tiket yang sudah SELESAI
+            (f"SELECT DATEPART(HOUR, t.TicketDate) AS jam, COUNT(*) AS n {dasar} GROUP BY DATEPART(HOUR, t.TicketDate)", p),
+            (f"""SELECT DATEPART(HOUR, w.keluar) AS jam, COUNT(*) AS n {dasar}
+                 AND t.StatusCode = 'SELESAI' AND w.keluar IS NOT NULL GROUP BY DATEPART(HOUR, w.keluar)""", p),
+            # Posisi truk yang masih di dalam (semua tiket aktif, tidak hanya yang dibuat hari ini).
+            # Setelah timbang 1: TBS ke Sortasi, produk lain ke Laboratorium.
+            (f"""SELECT
                 SUM(CASE WHEN t.StatusCode = 'SECURITY_REGISTER' AND ISNULL(a.FlowCode, '') <> 'POS_SAJA' THEN 1 ELSE 0 END) AS timbang_1,
                 SUM(CASE WHEN t.StatusCode = 'TIMBANG_1' AND p.Category = 'TBS' THEN 1 ELSE 0 END) AS sortasi,
                 SUM(CASE WHEN t.StatusCode = 'TIMBANG_1' AND p.Category <> 'TBS' THEN 1 ELSE 0 END) AS lab,
@@ -126,16 +118,31 @@ def arus_hari_ini(id_area=None):
                 COUNT(*) AS di_dalam
             FROM WeightBridge t JOIN Product p ON p.ProductID = t.ProductID
             LEFT JOIN Flow a ON a.FlowID = t.FlowID
-            WHERE t.StatusCode NOT IN ('SELESAI', 'REJECTED', 'VOID'){filter_area}""", *param_area)
-        posisi = {k: int(v or 0) for k, v in _rows_to_dicts(cursor)[0].items()}
+            WHERE t.StatusCode NOT IN ('SELESAI', 'REJECTED', 'VOID'){filter_area}""", p),
+            # Tiket alur dinamis: dihitung ulang dari tahap yang ditunggu (status ringkasnya tidak cukup, mis. Lab sebelum timbang)
+            (f"""SELECT t.TicketNumber AS no_tiket, t.StatusCode AS status, p.Category AS kategori
+                 FROM WeightBridge t JOIN Product p ON p.ProductID = t.ProductID
+                 WHERE t.StatusCode NOT IN ('SELESAI', 'REJECTED', 'VOID')
+                   AND EXISTS (SELECT 1 FROM WeightBridgeStage g WHERE g.TicketNumber = t.TicketNumber){filter_area}""", p),
+            # Rata-rata lama tiap tahap yang selesai hari ini (alur dinamis): dari tuntasnya kelompok sebelumnya
+            # sampai tahap itu selesai. Security (pembuatan tiket) tidak dihitung.
+            (f"""SELECT g.StageCode AS kode, COUNT(*) AS jumlah,
+                        AVG(CAST(DATEDIFF(SECOND, m.mulai, g.FinishDate) AS FLOAT)) / 60 AS rata_menit
+                 FROM WeightBridgeStage g JOIN WeightBridge t ON t.TicketNumber = g.TicketNumber
+                 CROSS APPLY (SELECT MAX(h.FinishDate) AS mulai FROM WeightBridgeStage h
+                              WHERE h.TicketNumber = g.TicketNumber AND h.GroupNo < g.GroupNo) m
+                 WHERE g.Status = 'SELESAI' AND g.StageCode <> 'SECURITY' AND m.mulai IS NOT NULL
+                   AND g.FinishDate >= CAST(GETDATE() AS DATE){filter_area}
+                 GROUP BY g.StageCode""", p),
+        ])
+        ringkas = ringkas[0]
+        per_jam = [{"jam": j, "masuk": 0, "selesai": 0} for j in range(24)]
+        for r in jam_masuk:
+            per_jam[r["jam"]]["masuk"] = r["n"]
+        for r in jam_selesai:
+            per_jam[r["jam"]]["selesai"] = r["n"]
+        posisi = {k: int(v or 0) for k, v in posisi_rows[0].items()}
         ringkas["di_dalam"] = posisi.pop("di_dalam")
-        # Tiket alur dinamis: dihitung ulang dari tahap yang ditunggu (status ringkasnya tidak cukup, mis. Lab sebelum timbang)
-        cursor.execute(f"""SELECT t.TicketNumber AS no_tiket, t.StatusCode AS status, p.Category AS kategori
-                           FROM WeightBridge t JOIN Product p ON p.ProductID = t.ProductID
-                           WHERE t.StatusCode NOT IN ('SELESAI', 'REJECTED', 'VOID')
-                             AND EXISTS (SELECT 1 FROM WeightBridgeStage g WHERE g.TicketNumber = t.TicketNumber){filter_area}""",
-                       *param_area)
-        dinamis = _rows_to_dicts(cursor)
         terlama = {}                                # menit truk yang paling lama menunggu per posisi (alur dinamis)
         if dinamis:
             from utils.alur import tahap_banyak, tahap_menunggu, durasi_tahap
@@ -158,17 +165,7 @@ def arus_hari_ini(id_area=None):
                         terlama[kunci] = max(terlama.get(kunci, 0), lama[kode])
         posisi["terlama"] = terlama
 
-        # Rata-rata lama tiap tahap yang selesai hari ini (alur dinamis): dari tuntasnya kelompok sebelumnya
-        # sampai tahap itu selesai. Security (pembuatan tiket) tidak dihitung.
-        cursor.execute(f"""SELECT g.StageCode AS kode, COUNT(*) AS jumlah,
-                                  AVG(CAST(DATEDIFF(SECOND, m.mulai, g.FinishDate) AS FLOAT)) / 60 AS rata_menit
-                           FROM WeightBridgeStage g JOIN WeightBridge t ON t.TicketNumber = g.TicketNumber
-                           CROSS APPLY (SELECT MAX(h.FinishDate) AS mulai FROM WeightBridgeStage h
-                                        WHERE h.TicketNumber = g.TicketNumber AND h.GroupNo < g.GroupNo) m
-                           WHERE g.Status = 'SELESAI' AND g.StageCode <> 'SECURITY' AND m.mulai IS NOT NULL
-                             AND g.FinishDate >= CAST(GETDATE() AS DATE){filter_area}
-                           GROUP BY g.StageCode""", *param_area)
-        durasi = {r["kode"]: {"jumlah": r["jumlah"], "rata_menit": round(r["rata_menit"] or 0, 1)} for r in _rows_to_dicts(cursor)}
+        durasi = {r["kode"]: {"jumlah": r["jumlah"], "rata_menit": round(r["rata_menit"] or 0, 1)} for r in durasi_rows}
         return ringkas, distribusi, per_jam, posisi, durasi
     finally:
         conn.close()

@@ -213,6 +213,7 @@ def users_tambah():
             raise GalatIsian(f"Username {username} sudah dipakai", "username")
         personel, (level, id_department, id_area), pw = _personel_form(), _akun_form(), _password_form()
         db.tambah_user(username, level["id_level"], id_department, id_area, generate_password_hash(pw), personel)
+        org.hapus_cache_user()                  # area / jabatan berubah: cakupan data langsung ikut
         _audit("USER_TAMBAH", username, f"jabatan {level['kode']}")
         return jsonify({"message": f"Pengguna {username} berhasil ditambahkan"})
     return _jalankan(aksi)
@@ -238,6 +239,7 @@ def users_ubah(id_user):
             if db.jumlah_admin_aktif(kecuali=id_user) == 0:
                 raise ValueError("Minimal harus ada 1 admin aktif")
         db.ubah_user(id_user, level["id_level"], id_department, id_area, personel)
+        org.hapus_cache_user()                  # area / jabatan berubah: cakupan data langsung ikut
         _audit("USER_UBAH", u["username"], f"level {u['role']} -> {level['kode']}" if ganti_level else "data diubah")
         if ganti_level:
             sesi_aktif.hapus_user(id_user, "ROLE_DIUBAH")
@@ -274,6 +276,7 @@ def users_aktif(id_user):
             if u["is_admin"] and db.jumlah_admin_aktif(kecuali=id_user) == 0:
                 raise ValueError("Minimal harus ada 1 admin aktif")
         db.set_aktif_user(id_user, aktif)
+        org.hapus_cache_user()                  # area / jabatan berubah: cakupan data langsung ikut
         sesi_aktif.hapus_user(id_user, "NONAKTIF")
         _audit("USER_AKTIF" if aktif else "USER_NONAKTIF", u["username"])
         return jsonify({"message": f"Pengguna {u['username']} berhasil {'diaktifkan' if aktif else 'dinonaktifkan'}"})

@@ -157,8 +157,9 @@ def hapus_cache():
     widget_user.hapus()
     semua_menu.hapus()
     anak_menu.hapus()
-    from utils.db_organisasi import area_menu_user
+    from utils.db_organisasi import area_menu_user, cakupan_user
     area_menu_user.hapus()
+    cakupan_user.hapus()
 
 
 def jabatan_dengan(kode_menu, aksi):
