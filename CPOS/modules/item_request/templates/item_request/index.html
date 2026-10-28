@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "partials/layout/_macros.html" import section_header, judul_halaman %}
+{% block title %}New Item Request · CPOS{% endblock %}
+{% block info_bar %}{% endblock %}{% block info_bar_script %}{% endblock %}
+{# Sama dengan aplikasi Item Similarity Search: cari item paling mirip + tebak kategori + pembelian terakhir. Mesin di mesin.py #}
+{% block tab_header %}
+{% call judul_halaman('New Item Request', 'Masukkan nama item untuk mencari item yang paling mirip dan menentukan category', 'fa-box-open') %}{% endcall %}
+{% endblock %}
+{% block tab_content %}
+<div id="irStatus" class="hidden mb-4 rounded-lg border px-4 py-3 text-sm" role="status"></div>
+<form id="formCariItem" class="section-box p-4 mb-4" autocomplete="off">
+  <div class="flex flex-col md:flex-row gap-2">
+    <input type="text" id="irItem" name="item" required class="input-field flex-1" placeholder="Contoh: SURVEY JASA INSTALASI CCTV" aria-label="Nama item">
+    <select id="irCompany" name="company" class="input-field md:w-48" aria-label="Perusahaan" data-tanpa-cari><option value="SEMUA">ALL COMP</option></select>
+    <button type="submit" id="irTombolCari" class="btn-primary" disabled><i class="fa-solid fa-magnifying-glass"></i> CARI</button>
+  </div>
+</form>
+<div id="irKategori" class="hidden mb-4 rounded-lg border border-emerald-300 bg-emerald-50 px-5 py-4">
+  <p class="text-xs font-bold uppercase tracking-wider text-emerald-700">Predicted Category</p>
+  <p id="irKategoriNilai" class="text-xl font-bold text-emerald-900 mt-0.5"></p>
+</div>
+<div id="irHasil" class="hidden section-box">
+  {% call section_header('hasil-item', 'Hasil Pencarian') %}<span id="irInfo" class="text-xs text-slate-500" data-henti-klik></span>{% endcall %}
+  <div id="body-hasil-item" class="section-body overflow-x-auto"><table class="w-full text-left text-sm">
+    <thead class="table-header-row"><tr><th class="table-cell">Similarity</th><th class="table-cell">COMP</th><th class="table-cell">Item Code</th>
+      <th class="table-cell">Item Name</th><th class="table-cell">Category</th><th class="table-cell">Last Purchase No</th>
+      <th class="table-cell">Tanggal</th><th class="table-cell text-right">Qty</th><th class="table-cell text-right">Price</th></tr></thead>
+    <tbody id="tabelItem" class="divide-y divide-slate-100"></tbody>
+  </table></div>
+  <p class="px-4 py-2.5 border-t border-slate-100 text-xs text-slate-500">{{ top_n }} item teratas; pembelian terakhir untuk {{ top_beli }} item teratas.</p>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script defer src="{{ url_for('item_request.static', filename='item_request/item.js') }}"></script>
+{% endblock %}

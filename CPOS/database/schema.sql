@@ -1277,7 +1277,7 @@ FROM (VALUES ('DASHBOARD',       N'Dashboard',                  'G_DASHBOARD',  
              ('KELEBIHAN_DO',    N'Kelebihan DO',               'G_MILLS',      '/kelebihan-do',          'fa-scale-unbalanced', 'CPOS', 50),
              ('KUNJUNGAN',       N'Visitor & Staff Logs',       'G_FORMS',      '/tamu',                  'fa-id-card',          'CPOS', 10),
              ('FM_IT_HELPDESK',  N'IT Helpdesk',                'G_FORMS',      NULL, 'fa-headset',    'CPOS', 20),
-             ('FM_NEW_ITEM',     N'New Item Request',           'G_FORMS',      NULL, 'fa-box-open',   'CPOS', 30),
+             ('FM_NEW_ITEM',     N'New Item Request',           'G_FORMS',      '/item-request', 'fa-box-open', 'CPOS', 30),
              ('RP_PR',           N'Purchase Request',           'G_REPORTS',    NULL, 'fa-file-invoice', 'ANALYTICS', 10),
              ('RP_PO',           N'Purchase Orders',            'G_REPORTS',    NULL, 'fa-file-invoice', 'ANALYTICS', 20),
              ('RP_PI',           N'Purchase Invoice',           'G_REPORTS',    NULL, 'fa-file-invoice', 'ANALYTICS', 30),
@@ -1327,7 +1327,7 @@ UPDATE dbo.Menu SET AppCode = 'ANALYTICS' WHERE MenuCode LIKE 'AN[_]%';
 -- Halaman yang isinya belum ada (web lain / menyusul) memakai halaman kosong /halaman/<kode>: menu tetap bisa dibuka.
 -- Tickets sementara juga ke halaman kosong (tahap 1); daftar tiket CPOS tetap di /weighbridge?view=list.
 UPDATE dbo.Menu SET Url = '/halaman/' + MenuCode
-WHERE MenuCode IN ('LIST', 'FM_IT_HELPDESK', 'FM_NEW_ITEM', 'RP_PR', 'RP_PO', 'RP_ITEM');
+WHERE MenuCode IN ('LIST', 'FM_IT_HELPDESK', 'RP_PR', 'RP_PO', 'RP_ITEM');
 -- Laporan Analytics (React + FastAPI, folder Analytics\) dibuka di dalam CPOS lewat /an/<id laporan Analytics>
 -- (routes/analytics.py). Hak lihatnya = hak Lihat menu ini di Admin › Hak Akses.
 UPDATE dbo.Menu SET Url = '/an/pi_pvr', AppCode = 'ANALYTICS' WHERE MenuCode = 'RP_PI';
@@ -2405,5 +2405,6 @@ CREATE TABLE dbo.SchemaLog (
     RunDate      DATETIME      NOT NULL CONSTRAINT DF_SchemaLog_RunDate DEFAULT (GETDATE())
 );
 INSERT INTO dbo.SchemaLog (Script, App) VALUES ('database/schema.sql', 'CPOS'),
-    ('database/perubahan/001_alur_dinamis.sql', 'CPOS');     -- sudah termasuk
+    ('database/perubahan/001_alur_dinamis.sql', 'CPOS'),
+    ('database/perubahan/002_item_request.sql', 'CPOS');     -- sudah termasuk
 GO
