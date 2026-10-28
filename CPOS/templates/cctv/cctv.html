@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "partials/layout/_macros.html" import judul_halaman %}
+{% block title %}Monitoring CCTV · CPOS{% endblock %}
+
+{# Mills Operation › Monitoring CCTV (routes/cctv.py). Kamera yang tampil = area dalam cakupan data Hak Akses menu MON_CCTV. #}
+{% block info_bar %}{% endblock %}
+{% block info_bar_script %}{% endblock %}
+
+{% block tab_header %}
+    {{ judul_halaman('Monitoring CCTV', 'Pantau kamera per area secara langsung', 'fa-video') }}
+{% endblock %}
+
+{% block tab_content %}
+<div class="filter-bar">
+    <div id="chipTitik" class="seg flex-wrap">
+        <button type="button" class="chip chip-active" data-titik="" data-on-click="pilihTitik" data-arg="$el">Semua lokasi</button>
+        {% for k, n in titik.items() %}<button type="button" class="chip hidden" data-titik="{{ k }}" data-on-click="pilihTitik" data-arg="$el">{{ n }}</button>{% endfor %}
+    </div>
+    <div class="flex-1"></div>
+    <select id="pilihArea" class="input-field w-56 hidden" data-on-change="tampilKamera" data-tanpa-cari><option value="">Semua area</option></select>
+    <div class="seg">
+        <button type="button" class="chip" data-kolom="1" data-on-click="pilihGrid" data-arg="$el" title="1 kamera"><i class="fa-solid fa-square"></i></button>
+        <button type="button" class="chip chip-active" data-kolom="2" data-on-click="pilihGrid" data-arg="$el" title="4 kamera"><i class="fa-solid fa-table-cells-large"></i></button>
+        <button type="button" class="chip" data-kolom="3" data-on-click="pilihGrid" data-arg="$el" title="9 kamera"><i class="fa-solid fa-table-cells"></i></button>
+    </div>
+</div>
+<div id="ringkasCctv" class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4"></div>
+<div id="gridCctv" class="grid gap-3 grid-cols-1 md:grid-cols-2"></div>
+{% endblock %}
+
+{% block modals %}
+<div id="modalLive" class="modal-overlay">
+    <div class="modal-box max-w-6xl w-full">
+        <div class="modal-header">
+            <h3 class="font-bold"><span id="judulLive"></span> <span id="subLive" class="font-normal text-slate-400"></span></h3>
+            <div class="flex items-center gap-3">
+                <a id="unduhLive" class="text-slate-500 hover:text-slate-900" title="Simpan foto" download><i class="fa-solid fa-camera"></i></a>
+                <button type="button" data-on-click="tutupLive" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        </div>
+        <div class="bg-black aspect-video flex items-center justify-center relative">
+            <img id="gambarLive" alt="" class="max-w-full max-h-full">
+            <p id="pesanLive" class="absolute text-sm text-slate-300 hidden"></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script defer src="{{ url_for('static', filename='js/cctv/cctv.js') }}"></script>
+{% endblock %}

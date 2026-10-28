@@ -349,6 +349,18 @@ SET @aju = SCOPE_IDENTITY();
 INSERT INTO dbo.ApprovalRequestStep (RequestID, StepNo, LevelDetID) VALUES (@aju, 1, @lvHO);
 INSERT INTO dbo.ApprovalHistory (RequestID, StepNo, Action, UserID, Notes) VALUES (@aju, 0, 'DIAJUKAN', @sec, N'Kedapatan membuang sampah di area timbangan');
 
+/* ---------- Monitoring CCTV: gateway video demo (go2rtc di server ini, port 1984) + kamera per area ---------- */
+INSERT INTO dbo.CameraGateway (CompAreaID, GatewayName, BaseUrl) VALUES (@areaPT, N'GW-PT', 'http://127.0.0.1:1984'), (@areaYBS, N'GW-YBS', 'http://127.0.0.1:1984');
+INSERT INTO dbo.Camera (CameraCode, CameraName, CompAreaID, GatewayID, Point, ScaleID, Role, Brand, MainStream, SubStream, SortOrder)
+SELECT v.kode, v.nama, g.CompAreaID, g.GatewayID, v.titik, CASE v.jt WHEN 1 THEN @jt1 WHEN 2 THEN @jt2 END, v.peran, v.merk, v.utama, v.utama + '_sub', v.urut
+FROM (VALUES ('CAM-01', N'Gerbang Masuk', 'GW-PT', 'POS_MASUK', 0, 'PLAT', N'Hikvision DS-2CD2T47', 'pt_cam01', 1),
+             ('CAM-02', N'Jembatan 1 (depan)', 'GW-PT', 'JEMBATAN', 1, 'DEPAN', N'Hikvision DS-2CD2T47', 'pt_cam02', 2),
+             ('CAM-03', N'Jembatan 1 (atas)', 'GW-PT', 'JEMBATAN', 1, 'ATAS', N'Dahua IPC-HFW2441', 'pt_cam03', 3),
+             ('CAM-04', N'Jembatan 2 (depan)', 'GW-PT', 'JEMBATAN', 2, 'DEPAN', N'Hikvision DS-2CD2T47', 'pt_cam04', 4),
+             ('CAM-05', N'Sortasi', 'GW-PT', 'SORTASI', 0, 'UMUM', N'Hikvision DS-2CD1043', 'pt_cam05', 5),
+             ('YBS-01', N'Gerbang YBS', 'GW-YBS', 'POS_MASUK', 0, 'PLAT', N'Hikvision DS-2CD2T47', 'ybs_cam01', 1)) v (kode, nama, gw, titik, jt, peran, merk, utama, urut)
+JOIN dbo.CameraGateway g ON g.GatewayName = v.gw;
+
 COMMIT TRANSACTION;
 PRINT 'Data demo berhasil dibuat. Login: ho / security / operator / sortasi / lab, password Demo12345!';
 GO

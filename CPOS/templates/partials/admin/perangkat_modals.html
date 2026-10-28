@@ -143,3 +143,86 @@
         </div>
     </div>
 </div>
+
+<!-- MODAL: Gateway video (go2rtc) -->
+<div id="modalGateway" class="modal-overlay">
+    <form id="formGateway" class="modal-box" autocomplete="off">
+        <div class="modal-header">
+            <h3 id="judulModalGateway" class="font-bold">Tambah Gateway Video</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalGateway" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 space-y-3">
+            <input type="hidden" name="id_gateway">
+            <div><label class="field-label" for="gwNama">Nama</label>
+                <input type="text" id="gwNama" name="nama" required maxlength="100" class="input-field" placeholder="GW-YBS"></div>
+            <div><label class="field-label" for="gwArea">Area</label>
+                <select id="gwArea" name="id_comp_area" required class="input-field">
+                    {% for a in area_list %}<option value="{{ a.id_comp_area }}">{{ a.label }}</option>{% endfor %}
+                </select></div>
+            <div><label class="field-label" for="gwUrl">Alamat gateway (dari server CPOS)</label>
+                <div class="flex gap-2"><input type="text" id="gwUrl" name="url" required maxlength="255" class="input-field font-mono" placeholder="http://192.168.10.5:1984">
+                <button type="button" class="btn-secondary whitespace-nowrap" data-on-click="tesGateway" data-arg="$el">Tes Koneksi</button></div>
+                <p id="gwHasilTes" class="field-hint"></p></div>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_active" value="1" checked> Aktif</label>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalGateway" class="btn-secondary">Batal</button>
+            <button type="submit" class="btn-primary">Simpan</button>
+        </div>
+    </form>
+</div>
+
+<!-- MODAL: Kamera CCTV -->
+<div id="modalKamera" class="modal-overlay">
+    <form id="formKamera" class="modal-box modal-box-lg" autocomplete="off">
+        <div class="modal-header">
+            <h3 id="judulModalKamera" class="font-bold">Tambah Kamera</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalKamera" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 grid grid-cols-1 md:grid-cols-[1fr_260px] gap-5">
+            <div class="grid grid-cols-2 gap-3">
+                <input type="hidden" name="id_kamera">
+                <div><label class="field-label" for="kamKode">Kode</label>
+                    <input type="text" id="kamKode" name="kode" required maxlength="20" class="input-field uppercase font-mono" placeholder="CAM-01"></div>
+                <div><label class="field-label" for="kamNama">Nama</label>
+                    <input type="text" id="kamNama" name="nama" required maxlength="100" class="input-field" placeholder="Gerbang Masuk"></div>
+                <div><label class="field-label" for="kamArea">Area</label>
+                    <select id="kamArea" name="id_comp_area" required class="input-field" data-on-change="aturPilihanKamera">
+                        {% for a in area_list %}<option value="{{ a.id_comp_area }}">{{ a.label }}</option>{% endfor %}
+                    </select></div>
+                <div><label class="field-label" for="kamGateway">Gateway video</label>
+                    <select id="kamGateway" name="id_gateway" required class="input-field"></select></div>
+                <div><label class="field-label" for="kamTitik">Titik</label>
+                    <select id="kamTitik" name="titik" required class="input-field" data-on-change="aturPilihanKamera"></select></div>
+                <div id="blokKamJembatan"><label class="field-label" for="kamJembatan">Jembatan timbang</label>
+                    <select id="kamJembatan" name="id_jembatan" class="input-field"><option value="">-- Pilih --</option></select></div>
+                <div><label class="field-label" for="kamPeran">Peran</label>
+                    <select id="kamPeran" name="peran" class="input-field"></select></div>
+                <div><label class="field-label" for="kamMerk">Merk / tipe</label>
+                    <input type="text" id="kamMerk" name="merk" maxlength="100" class="input-field" placeholder="Hikvision DS-2CD..."></div>
+                <div><label class="field-label" for="kamUtama">Nama stream utama</label>
+                    <input type="text" id="kamUtama" name="stream_utama" required maxlength="100" class="input-field font-mono" placeholder="ybs_cam01"></div>
+                <div><label class="field-label" for="kamRingan">Nama sub-stream (ringan)</label>
+                    <input type="text" id="kamRingan" name="stream_ringan" maxlength="100" class="input-field font-mono" placeholder="ybs_cam01_sub"></div>
+                <div><label class="field-label" for="kamAi">AI</label>
+                    <select id="kamAi" name="ai" class="input-field"></select></div>
+                <div><label class="field-label" for="kamUrutan">Urutan tampil</label>
+                    <input type="number" id="kamUrutan" name="urutan" min="0" max="999" class="input-field" value="0"></div>
+                <label class="col-span-2 flex items-center gap-2 text-sm"><input type="checkbox" name="is_active" value="1" checked> Aktif</label>
+                <p class="col-span-2 text-xs text-slate-500"><i class="fa-solid fa-lock mr-1"></i>Alamat RTSP & password kamera diisi di konfigurasi gateway, bukan di sini.</p>
+            </div>
+            <div class="space-y-2">
+                <p class="field-label">Tes kamera</p>
+                <div class="bg-slate-900 rounded-lg aspect-video flex items-center justify-center overflow-hidden">
+                    <img id="kamTesGambar" alt="" class="w-full h-full object-contain hidden">
+                    <p id="kamTesPesan" class="text-xs text-slate-400 px-3 text-center">Simpan dulu, lalu Tes Koneksi</p>
+                </div>
+                <button type="button" id="btnTesKamera" class="btn-secondary w-full" data-on-click="tesKamera" disabled>Tes Koneksi</button>
+            </div>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalKamera" class="btn-secondary">Batal</button>
+            <button type="submit" class="btn-primary">Simpan</button>
+        </div>
+    </form>
+</div>

@@ -950,6 +950,60 @@ CREATE TABLE dbo.SettingArea (
 );
 GO
 
+/* =========================== MONITORING CCTV (tahap 1: live per area) ===========================
+   Video diambil lewat gateway video di LAN cabang (go2rtc). Alamat RTSP & password kamera hanya ada di konfigurasi gateway;
+   CPOS menyimpan nama stream-nya. Siapa boleh melihat: Admin › Hak Akses menu MON_CCTV + cakupan data (area kamera). */
+CREATE TABLE dbo.CameraGateway (
+    GatewayID    INT IDENTITY(1,1) PRIMARY KEY,
+    CompAreaID   BIGINT NOT NULL CONSTRAINT FK_CamGw_Area REFERENCES dbo.CompanyArea (CompAreaID),
+    GatewayName  NVARCHAR(100) NOT NULL,
+    BaseUrl      VARCHAR(255)  NOT NULL,          -- alamat API gateway dari server CPOS, mis. http://192.168.10.5:1984
+    LastSeen     DATETIME NULL,
+    Active       BIT NOT NULL CONSTRAINT DF_CamGw_Active DEFAULT (1),
+    CreateDate   DATETIME NOT NULL CONSTRAINT DF_CamGw_Create DEFAULT (GETDATE())
+);
+CREATE TABLE dbo.Camera (
+    CameraID     INT IDENTITY(1,1) PRIMARY KEY,
+    CameraCode   VARCHAR(20)   NOT NULL CONSTRAINT UX_Camera_Code UNIQUE,
+    CameraName   NVARCHAR(100) NOT NULL,
+    CompAreaID   BIGINT NOT NULL CONSTRAINT FK_Camera_Area REFERENCES dbo.CompanyArea (CompAreaID),
+    GatewayID    INT NOT NULL CONSTRAINT FK_Camera_Gateway REFERENCES dbo.CameraGateway (GatewayID),
+    Point        VARCHAR(20)   NOT NULL CONSTRAINT CK_Camera_Point CHECK (Point IN ('POS_MASUK', 'POS_KELUAR', 'JEMBATAN', 'SORTASI', 'UMUM')),
+    ScaleID      INT NULL CONSTRAINT FK_Camera_Scale REFERENCES dbo.Scale (ScaleID),          -- kamera milik jembatan timbang
+    Role         VARCHAR(10)   NOT NULL CONSTRAINT DF_Camera_Role DEFAULT ('UMUM')
+                 CONSTRAINT CK_Camera_Role CHECK (Role IN ('DEPAN', 'ATAS', 'PLAT', 'WAJAH', 'UMUM')),
+    Brand        NVARCHAR(100) NULL,              -- merk / tipe (Hikvision, Dahua, ...)
+    MainStream   VARCHAR(100)  NOT NULL,          -- nama stream di gateway (kualitas penuh, layar penuh)
+    SubStream    VARCHAR(100)  NULL,              -- nama stream ringan (grid / dilihat dari HO); kosong = MainStream
+    AIMode       VARCHAR(10)   NOT NULL CONSTRAINT DF_Camera_AI DEFAULT ('NONE')
+                 CONSTRAINT CK_Camera_AI CHECK (AIMode IN ('NONE', 'KAMERA', 'SERVER')),   -- tahap berikutnya
+    Settings     NVARCHAR(MAX) NULL CONSTRAINT CK_Camera_Settings CHECK (Settings IS NULL OR ISJSON(Settings) = 1),
+    LastSeen     DATETIME NULL,
+    SortOrder    INT NOT NULL CONSTRAINT DF_Camera_Sort DEFAULT (0),
+    Active       BIT NOT NULL CONSTRAINT DF_Camera_Active DEFAULT (1),
+    CreateDate   DATETIME NOT NULL CONSTRAINT DF_Camera_Create DEFAULT (GETDATE())
+);
+CREATE INDEX IX_Camera_Area ON dbo.Camera (CompAreaID, Active);
+-- Kejadian dari AI kamera / server AI (tahap berikutnya; satu format untuk semua merk)
+CREATE TABLE dbo.CameraEvent (
+    EventID       BIGINT IDENTITY(1,1) PRIMARY KEY,
+    CameraID      INT NOT NULL CONSTRAINT FK_CamEvent_Camera REFERENCES dbo.Camera (CameraID),
+    EventType     VARCHAR(30) NOT NULL,           -- PLAT_TERBACA, TRUK_MASUK_ZONA, BERHENTI_LAMA, ORANG_DI_ZONA, KAMERA_PUTUS
+    StartTime     DATETIME NOT NULL CONSTRAINT DF_CamEvent_Start DEFAULT (GETDATE()),
+    EndTime       DATETIME NULL,
+    DurationSec   INT NULL,
+    PlateText     VARCHAR(15) NULL,
+    Confidence    FLOAT NULL,
+    IDVehicle     INT NULL CONSTRAINT FK_CamEvent_Vehicle REFERENCES dbo.DetailVehicle (IDVehicle),
+    TicketNumber  VARCHAR(50) NULL,
+    SnapshotPath  VARCHAR(255) NULL,
+    Data          NVARCHAR(MAX) NULL CONSTRAINT CK_CamEvent_Data CHECK (Data IS NULL OR ISJSON(Data) = 1),
+    Status        VARCHAR(10) NOT NULL CONSTRAINT DF_CamEvent_Status DEFAULT ('BARU')
+                  CONSTRAINT CK_CamEvent_Status CHECK (Status IN ('BARU', 'DILIHAT', 'SELESAI'))
+);
+CREATE INDEX IX_CamEvent_Camera_Time ON dbo.CameraEvent (CameraID, StartTime DESC);
+GO
+
 CREATE TABLE dbo.Device (
     DeviceID      VARCHAR(30)  PRIMARY KEY,
     DeviceName        VARCHAR(100) NOT NULL,
@@ -1247,6 +1301,7 @@ FROM (VALUES ('DASHBOARD',       N'Dashboard',                  'G_DASHBOARD',  
              ('FORM',            N'Stasiun Timbang',            'G_MILLS',      '/weighbridge?view=form', 'fa-file-pen',         'CPOS', 20),
              ('POS_SECURITY',    N'Pos Security',               'G_MILLS',      '/pos-security',          'fa-shield-halved',    'CPOS', 30),
              ('LOGBOOK',         N'Logbook Kendaraan',          'G_MILLS',      '/logbook',               'fa-book',             'CPOS', 40),
+             ('MON_CCTV',        N'Monitoring CCTV',            'G_MILLS',      '/cctv',                  'fa-video',            'CPOS', 45),
              ('KELEBIHAN_DO',    N'Kelebihan DO',               'G_MILLS',      '/kelebihan-do',          'fa-scale-unbalanced', 'CPOS', 50),
              ('KUNJUNGAN',       N'Visitor & Staff Logs',       'G_FORMS',      '/visitor-logs',          'fa-id-card',          'CPOS', 10),
              ('FM_IT_HELPDESK',  N'IT Helpdesk',                'G_FORMS',      NULL, 'fa-headset',    'CPOS', 20),
@@ -1328,7 +1383,7 @@ INSERT INTO dbo.Widget (WidgetCode, WidgetName, Description, SortOrder) VALUES
 INSERT INTO dbo.AccessMenu (MenuID, ActionID, TargetType)
 SELECT m.MenuID, 1, 'ALL' FROM dbo.Menu m
 WHERE m.MenuCode IN ('G_DASHBOARD', 'G_MILLS', 'G_FORMS', 'G_MASTER')
-   OR (m.AppCode = 'CPOS' AND m.Url IS NOT NULL AND m.MenuCode NOT IN ('POS_SECURITY', 'LOGBOOK'));
+   OR (m.AppCode = 'CPOS' AND m.Url IS NOT NULL AND m.MenuCode NOT IN ('POS_SECURITY', 'LOGBOOK', 'MON_CCTV'));
 -- Hak per peran: (peran, menu, lihat, tambah, ubah, hapus, setujui). Lihat hanya untuk menu yang tidak untuk semua user.
 DECLARE @hak TABLE (peran VARCHAR(30), menu VARCHAR(40), l BIT, t BIT, u BIT, h BIT, s BIT);
 INSERT INTO @hak VALUES
@@ -1339,7 +1394,8 @@ INSERT INTO @hak VALUES
     ('SECURITY', 'FORM_SECURITY', 0, 1, 1, 0, 0), ('SECURITY', 'MASTER_DRIVER', 0, 1, 1, 1, 0), ('SECURITY', 'MASTER_KENDARAAN', 0, 1, 1, 0, 0),
     ('OPERATOR_TIMBANG', 'FORM_TIMBANGAN', 0, 1, 0, 0, 0), ('SORTASI', 'FORM_SORTASI', 0, 1, 0, 0, 0), ('LAB', 'FORM_LAB', 0, 1, 1, 0, 0),
     ('SECURITY', 'POS_SECURITY', 1, 1, 1, 0, 0), ('SECURITY', 'LOGBOOK', 1, 0, 1, 0, 0), ('SECURITY', 'VSL_SCAN', 0, 1, 1, 0, 0), ('SECURITY', 'PERSONEL', 0, 1, 1, 0, 0),
-    ('HO', 'POS_SECURITY', 1, 0, 0, 0, 0), ('HO', 'LOGBOOK', 1, 0, 0, 0, 0);
+    ('HO', 'POS_SECURITY', 1, 0, 0, 0, 0), ('HO', 'LOGBOOK', 1, 0, 0, 0, 0),
+    ('HO', 'MON_CCTV', 1, 0, 0, 0, 0), ('SECURITY', 'MON_CCTV', 1, 0, 0, 0, 0);
 INSERT INTO dbo.AccessMenu (MenuID, ActionID, TargetType, LevelDetID)
 SELECT m.MenuID, a.ActionID, 'ROLE', ld.LevelDetID
 FROM @hak h JOIN dbo.LevelDetails ld ON ld.LevelDetCode = h.peran JOIN dbo.Menu m ON m.MenuCode = h.menu
