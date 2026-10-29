@@ -109,7 +109,10 @@ CREATE TABLE dbo.MenuAction (
 /* Aturan hak menu (Admin › Hak Akses): satu baris per menu x aksi x sasaran.
    TargetType: ALL = semua user, ROLE = peran (LevelDetails: departemen + jabatan), LEVEL = jabatan, DEPT = departemen,
    USER = satu user. Kolom sasaran yang sesuai TargetType yang diisi, sisanya NULL.
-   IsDeny 1 = Larang: aksi itu dicabut untuk sasaran ini; Larang selalu mengalahkan Izinkan. */
+   IsDeny 1 = Larang: aksi itu dicabut untuk sasaran ini; Larang selalu mengalahkan Izinkan.
+   MenuDetails = cakupan data aturan Izinkan (JSON, sama di semua baris aksi satu aturan; NULL = area sendiri):
+     {"cakupan":"AREA"} area pengguna (kantor pusat: semua) · {"cakupan":"PT"} semua area PT pengguna ·
+     {"cakupan":"SEMUA"} semua PT · {"cakupan":"PT_TERTENTU","pt":["YBS","SJN"]}. Beberapa aturan cocok = digabung. */
 CREATE TABLE dbo.AccessMenu (
     AccessMenuID INT IDENTITY(1,1) PRIMARY KEY,
     MenuID       INT         NOT NULL CONSTRAINT FK_AccessMenu_Menu REFERENCES dbo.Menu (MenuID),
@@ -120,6 +123,7 @@ CREATE TABLE dbo.AccessMenu (
     DeptID       VARCHAR(5)  NULL CONSTRAINT FK_AccessMenu_Dept REFERENCES dbo.Department (DeptID),
     UserID       BIGINT      NULL,                       -- FK ke Users ditambahkan setelah tabel Users dibuat
     IsDeny       BIT NOT NULL CONSTRAINT DF_AccessMenu_Deny DEFAULT (0),
+    MenuDetails  NVARCHAR(MAX) NULL CONSTRAINT CK_AccessMenu_Details CHECK (MenuDetails IS NULL OR ISJSON(MenuDetails) = 1),
     Active       BIT NOT NULL CONSTRAINT DF_AccessMenu_Active DEFAULT (1),
     CreateDate   DATETIME NOT NULL CONSTRAINT DF_AccessMenu_Create DEFAULT (GETDATE()),
     CONSTRAINT CK_AccessMenu_Target CHECK (
@@ -152,20 +156,11 @@ GO
 
 /* =========================== MASTER =========================== */
 
--- Kategori orang (Users.CategoryCode): Driver, Security, Karyawan, Tamu, BHL
-CREATE TABLE dbo.UserCategory (
-    CategoryCode   VARCHAR(20)   NOT NULL PRIMARY KEY,
-    CategoryName   NVARCHAR(50)  NOT NULL,
-    RequireLicense BIT NOT NULL CONSTRAINT DF_UserCat_Sim DEFAULT (0),      -- wajib SIM
-    CanLogin       BIT NOT NULL CONSTRAINT DF_UserCat_Login DEFAULT (0),    -- boleh dibuatkan akun login
-    CodePrefix     VARCHAR(10)   NULL,                                      -- UserCode per kategori, mis. DRV-001
-    Active         BIT NOT NULL CONSTRAINT DF_UserCat_Active DEFAULT (1)
-);
-GO
-
--- Users = SEMUA orang (karyawan, security, supir, tamu). UserID = YYMMDD + urutan 4 digit (mis. 2601010001), dibuat aplikasi.
+-- Users = SEMUA orang (karyawan, security, BHL, driver, tamu). UserID = YYMMDD + urutan 4 digit (mis. 2601010001), dibuat aplikasi.
+-- Jenis orang dibaca dari relasi (view UserProfile.PersonType): jabatan terisi (UserLevelID) = Karyawan (termasuk Security
+-- & BHL lewat departemen / jabatannya); GuestID terisi = visitor: punya SIM aktif = Driver, selain itu Tamu.
 -- Punya login bila UserName terisi (wajib ada peran UserLevelID). BlacklistID terisi = sedang diblacklist.
--- FaceEmbeddingData / UploadPath = salinan wajah utama dari FaceRecog (trigger TR_FaceRecog_Utama).
+-- FaceEmbeddingData / UploadPath = wajah terdaftar (satu per orang; dari kamera atau upload, perubahan tercatat di Log).
 CREATE TABLE dbo.Users (
     UserID            BIGINT        NOT NULL PRIMARY KEY,
     CompAreaID        BIGINT        NULL CONSTRAINT FK_Users_Area REFERENCES dbo.CompanyArea (CompAreaID),
@@ -173,10 +168,8 @@ CREATE TABLE dbo.Users (
     UserName          VARCHAR(50)   NULL,                                   -- username login; NULL = tanpa akun
     UserDeptID        BIGINT        NULL CONSTRAINT FK_Users_DeptDet REFERENCES dbo.DepartmentDetails (DeptDetailID),   -- NULL = admin sistem
     UserLevelID       INT           NULL CONSTRAINT FK_Users_LevelDet REFERENCES dbo.LevelDetails (LevelDetID),
-    CategoryCode      VARCHAR(20)   NOT NULL CONSTRAINT DF_Users_Category DEFAULT ('DRIVER')
-                      CONSTRAINT FK_Users_Category REFERENCES dbo.UserCategory (CategoryCode),
     NoKTP             VARCHAR(20)   NULL,                                   -- NIK 16 digit
-    GuestID           BIGINT        NULL,
+    GuestID           BIGINT        NULL,                                   -- FK ke Guest (profil visitor)
     Nama              NVARCHAR(100) NOT NULL,
     Email             NVARCHAR(100) NULL,
     FaceEmbeddingData VARBINARY(MAX) NULL,
@@ -195,7 +188,7 @@ CREATE TABLE dbo.Users (
 CREATE UNIQUE INDEX UX_Users_UserName ON dbo.Users (UserName) WHERE UserName IS NOT NULL;
 CREATE UNIQUE INDEX UX_Users_NoKTP ON dbo.Users (NoKTP) WHERE NoKTP IS NOT NULL;
 CREATE UNIQUE INDEX UX_Users_UserCode ON dbo.Users (UserCode) WHERE UserCode IS NOT NULL;
-CREATE INDEX IX_Users_Active_Category ON dbo.Users (Active, CategoryCode) INCLUDE (UserCode, Nama);
+CREATE INDEX IX_Users_Active ON dbo.Users (Active) INCLUDE (UserCode, Nama, GuestID, UserLevelID);
 -- Password (hash) + riwayat (History JSON: hash terakhir, terbaru dulu) untuk menolak pemakaian ulang.
 -- MustChange = 1 -> wajib buat password baru saat login.
 CREATE TABLE dbo.PasswordManager (
@@ -209,15 +202,9 @@ CREATE TABLE dbo.PasswordManager (
     Description NVARCHAR(255) NULL
 );
 ALTER TABLE dbo.AccessMenu ADD CONSTRAINT FK_AccessMenu_User FOREIGN KEY (UserID) REFERENCES dbo.Users (UserID);
--- Perusahaan yang dikelola user kantor pusat. Kosong = semua perusahaan
-CREATE TABLE dbo.UserCompany (
-    UserID  BIGINT  NOT NULL CONSTRAINT FK_UserComp_User REFERENCES dbo.Users (UserID),
-    CompID  VARCHAR(5) NOT NULL CONSTRAINT FK_UserComp_Company REFERENCES dbo.Company (CompID),
-    CONSTRAINT PK_UserCompany PRIMARY KEY (UserID, CompID)
-);
 GO
 
-/* SIM (License + LicenseDetail), wajah (FaceRecog), kunjungan tamu (VisitPurpose + Guest) */
+/* SIM (License + LicenseDetail), profil visitor (Guest), wajah tertangkap kamera (FaceRecog) */
 CREATE TABLE dbo.License (
     LicenseID    INT IDENTITY(1,1) PRIMARY KEY,
     LicenseCode  VARCHAR(20)   NOT NULL CONSTRAINT UX_License_Code UNIQUE,
@@ -237,41 +224,29 @@ CREATE TABLE dbo.LicenseDetail (
 );
 CREATE UNIQUE INDEX UX_LicDet_NumberActive ON dbo.LicenseDetail (LicenseNumber) WHERE Active = 1;
 CREATE INDEX IX_LicDet_User ON dbo.LicenseDetail (UserID, Active);
+-- Profil visitor (driver / tamu), ditunjuk Users.GuestID. Keperluan kunjungan tiap kedatangan di FaceActivity.Description.
+CREATE TABLE dbo.Guest (
+    GuestID       BIGINT IDENTITY(1,1) PRIMARY KEY,
+    BlacklistID   BIGINT        NULL,                -- = Users.BlacklistID orangnya (FK setelah tabel Blacklist)
+    CompanyFrom   NVARCHAR(255) NULL,                -- asal perusahaan / transportir
+    VisitorNeeds  NVARCHAR(255) NULL,                -- keperluan yang biasa (isian awal form kunjungan)
+    NoKTP         VARCHAR(20)   NULL,
+    Active        BIT NOT NULL CONSTRAINT DF_Guest_Active DEFAULT (1),
+    Description   NVARCHAR(255) NULL,
+    CreateDate    DATETIME NOT NULL CONSTRAINT DF_Guest_Create DEFAULT (GETDATE())
+);
+ALTER TABLE dbo.Users ADD CONSTRAINT FK_Users_Guest FOREIGN KEY (GuestID) REFERENCES dbo.Guest (GuestID);
+CREATE UNIQUE INDEX UX_Users_Guest ON dbo.Users (GuestID) WHERE GuestID IS NOT NULL;
+-- Wajah yang tertangkap kamera setiap scan (bukti), termasuk yang tidak dikenali. Wajah terdaftar ada di Users.
+-- FaceName = nama yang dikenali saat itu (NULL = tidak dikenal); Blacklist = BlacklistID orang itu saat scan.
 CREATE TABLE dbo.FaceRecog (
-    FaceID      INT IDENTITY(1,1) PRIMARY KEY,
-    UserID      BIGINT NOT NULL CONSTRAINT FK_FaceRecog_User REFERENCES dbo.Users (UserID),
-    FaceDet     VARBINARY(MAX) NOT NULL,                    -- embedding wajah
+    FaceID      BIGINT IDENTITY(1,1) PRIMARY KEY,
+    FaceName    NVARCHAR(120) NULL,
+    FaceDet     VARBINARY(MAX) NULL,                -- embedding saat scan
+    Blacklist   BIGINT NULL,                        -- FK ke Blacklist (setelah tabel Blacklist)
     PhotoPath   VARCHAR(255) NULL,
-    Source      VARCHAR(10)  NULL CONSTRAINT CK_FaceRecog_Source CHECK (Source IN ('UPLOAD', 'KAMERA')),
-    IsMain      BIT NOT NULL CONSTRAINT DF_FaceRecog_Main DEFAULT (1),
-    Active      BIT NOT NULL CONSTRAINT DF_FaceRecog_Active DEFAULT (1),
-    CreateBy    BIGINT NULL CONSTRAINT FK_FaceRecog_CreateBy REFERENCES dbo.Users (UserID),
     CreateDate  DATETIME NOT NULL CONSTRAINT DF_FaceRecog_Create DEFAULT (GETDATE())
 );
-CREATE UNIQUE INDEX UX_FaceRecog_Main ON dbo.FaceRecog (UserID) WHERE IsMain = 1 AND Active = 1;
-CREATE INDEX IX_FaceRecog_Active ON dbo.FaceRecog (Active) INCLUDE (UserID);
-CREATE TABLE dbo.VisitPurpose (
-    PurposeID    INT IDENTITY(1,1) PRIMARY KEY,
-    PurposeName  NVARCHAR(100) NOT NULL CONSTRAINT UX_VisitPurpose_Name UNIQUE,
-    Active       BIT NOT NULL CONSTRAINT DF_VisitPurpose_Active DEFAULT (1)
-);
-CREATE TABLE dbo.Guest (
-    GuestID       INT IDENTITY(1,1) PRIMARY KEY,
-    UserID        BIGINT NOT NULL CONSTRAINT FK_Guest_User REFERENCES dbo.Users (UserID),          -- tamu
-    VisitToID     BIGINT NOT NULL CONSTRAINT FK_Guest_VisitTo REFERENCES dbo.Users (UserID),       -- orang yang dituju
-    PurposeID     INT NOT NULL CONSTRAINT FK_Guest_Purpose REFERENCES dbo.VisitPurpose (PurposeID),
-    Description   NVARCHAR(255) NULL,
-    CompanyFrom   NVARCHAR(100) NULL,
-    NoVehicle     VARCHAR(15)   NULL,
-    CompAreaID    BIGINT NOT NULL CONSTRAINT FK_Guest_Area REFERENCES dbo.CompanyArea (CompAreaID),
-    PhotoPath     VARCHAR(255)  NULL,      -- snapshot wajah saat datang
-    CheckInDate   DATETIME NOT NULL CONSTRAINT DF_Guest_CheckIn DEFAULT (GETDATE()),
-    CheckOutDate  DATETIME NULL,           -- NULL = tamu masih di dalam
-    CreateBy      BIGINT NOT NULL CONSTRAINT FK_Guest_CreateBy REFERENCES dbo.Users (UserID),
-    CONSTRAINT CK_Guest_CheckOut CHECK (CheckOutDate IS NULL OR CheckOutDate >= CheckInDate)
-);
-CREATE INDEX IX_Guest_CheckIn ON dbo.Guest (CheckInDate DESC);
-CREATE INDEX IX_Guest_Inside ON dbo.Guest (UserID) WHERE CheckOutDate IS NULL;
 GO
 /* Dokumen umum (migrasi 010) */
 CREATE TABLE dbo.DocumentType (
@@ -304,22 +279,22 @@ CREATE TABLE dbo.DocumentFile (
 );
 CREATE INDEX IX_DokFile_Dokumen ON dbo.DocumentFile (DocumentID, SortOrder);
 GO
--- Profil orang + SIM aktif terbaru + wajah utama
+-- Profil orang + jenis orang + SIM aktif terbaru + wajah terdaftar
 CREATE OR ALTER VIEW dbo.UserProfile AS
-SELECT u.UserID, u.UserCode, u.NoKTP, u.Nama, u.Email, u.CategoryCode, u.IsUpload, u.CurrentHash,
+SELECT u.UserID, u.UserCode, u.NoKTP, u.Nama, u.Email, u.IsUpload, u.CurrentHash,
+       CAST(CASE WHEN u.UserLevelID IS NOT NULL THEN 'KARYAWAN' WHEN s.LicenseNumber IS NOT NULL THEN 'DRIVER' ELSE 'TAMU' END
+            AS VARCHAR(10)) AS PersonType,
        CAST(CASE WHEN u.BlacklistID IS NULL THEN 0 ELSE 1 END AS BIT) AS IsBlacklisted, u.BlacklistID,
-       u.Active, u.CreateDate, u.UpdateDate, u.UserName,
+       u.Active, u.CreateDate, u.UpdateDate, u.UserName, u.CompAreaID, u.UserDeptID, u.UserLevelID, u.GuestID,
+       g.CompanyFrom, g.VisitorNeeds,
        s.LicenseNumber, s.LicenseID, s.LicenseCode, s.ExpiredSIM,
-       w.FaceDet, w.PhotoPath, w.Source AS PhotoSource
+       u.FaceEmbeddingData AS FaceDet, u.UploadPath AS PhotoPath
 FROM dbo.Users u
+LEFT JOIN dbo.Guest g ON g.GuestID = u.GuestID
 OUTER APPLY (SELECT TOP 1 ld.LicenseNumber, ld.SIMType AS LicenseID, l.LicenseCode, ld.ExpiredSIM
              FROM dbo.LicenseDetail ld JOIN dbo.License l ON l.LicenseID = ld.SIMType
              WHERE ld.UserID = u.UserID AND ld.Active = 1
-             ORDER BY ld.ExpiredSIM DESC, ld.DetailLicenseID DESC) s
-OUTER APPLY (SELECT TOP 1 f.FaceDet, f.PhotoPath, f.Source
-             FROM dbo.FaceRecog f
-             WHERE f.UserID = u.UserID AND f.Active = 1
-             ORDER BY f.IsMain DESC, f.FaceID DESC) w;
+             ORDER BY ld.ExpiredSIM DESC, ld.DetailLicenseID DESC) s;
 GO
 
 -- Customer (membeli / menjual) & pengangkutan pihak ketiga
@@ -867,7 +842,7 @@ GO
 /* =========================== FACE RECOGNITION =========================== */
 
 -- Blacklist orang (TableName 'Users') / kendaraan ('DetailVehicle') / supplier ('Supplier'). Baris tidak pernah dihapus; dicabut lewat persetujuan.
--- AliasName, CategoryCode (kategori target saat itu; KENDARAAN untuk kendaraan), CompAreaID = area pengaju.
+-- AliasName, CategoryCode (jenis target saat itu: KARYAWAN / DRIVER / TAMU, KENDARAAN, SUPPLIER), CompAreaID = area pengaju.
 CREATE TABLE dbo.Blacklist (
     BlacklistID    BIGINT IDENTITY(1,1) PRIMARY KEY,
     CreateDate     DATETIME NOT NULL CONSTRAINT DF_Blacklist_Create DEFAULT (GETDATE()),
@@ -901,6 +876,8 @@ CREATE INDEX IX_Blacklist_Vehicle ON dbo.Blacklist (IDVehicle) WHERE IDVehicle I
 CREATE INDEX IX_Blacklist_Supplier ON dbo.Blacklist (SupplierID) WHERE SupplierID IS NOT NULL;
 CREATE INDEX IX_Blacklist_Doc ON dbo.Blacklist (BlacklistDoc);
 ALTER TABLE dbo.Users ADD CONSTRAINT FK_Users_Blacklist FOREIGN KEY (BlacklistID) REFERENCES dbo.Blacklist (BlacklistID);
+ALTER TABLE dbo.Guest ADD CONSTRAINT FK_Guest_Blacklist FOREIGN KEY (BlacklistID) REFERENCES dbo.Blacklist (BlacklistID);
+ALTER TABLE dbo.FaceRecog ADD CONSTRAINT FK_FaceRecog_Blacklist FOREIGN KEY (Blacklist) REFERENCES dbo.Blacklist (BlacklistID);
 ALTER TABLE dbo.DetailVehicle ADD CONSTRAINT FK_DetailVehicle_Blacklist FOREIGN KEY (BlacklistID) REFERENCES dbo.Blacklist (BlacklistID);
 ALTER TABLE dbo.Supplier ADD CONSTRAINT FK_Supplier_Blacklist FOREIGN KEY (BlacklistID) REFERENCES dbo.Blacklist (BlacklistID);
 GO
@@ -920,28 +897,30 @@ CREATE TABLE dbo.WorkSchedule (
 );
 GO
 
--- Absensi wajah
+-- Semua aktivitas scan wajah (Visitor & Staff Logs): absensi karyawan masuk / pulang dan kunjungan driver / tamu masuk / keluar,
+-- termasuk scan yang tidak dikenali / ditolak blacklist (StatusID: WAJAH_BERHASIL / WAJAH_TIDAK_DIKENALI / WAJAH_DITOLAK).
+-- FaceID = foto wajah saat scan (FaceRecog). Description = keperluan kunjungan. Tiket timbang menunjuk ke sini (WeightBridge).
 CREATE TABLE dbo.FaceActivity (
-    ActivityID         INT IDENTITY(1,1) PRIMARY KEY,
-    UserID             BIGINT NULL CONSTRAINT FK_FaceAct_User REFERENCES dbo.Users (UserID),
-    ActivityType       VARCHAR(10) NULL,
-    Status             VARCHAR(20) NOT NULL,
-    TimeStatus         VARCHAR(20) NULL,
-    DiffMinutes        INT NULL,
-    FaceDistance       FLOAT NULL,
-    LivenessChallenge  VARCHAR(20) NULL,
-    PhotoPath          VARCHAR(255) NULL,
-    Device             VARCHAR(50) NULL,
-    IPAddress          VARCHAR(45) NULL,
-    LogDate            DATETIME NOT NULL CONSTRAINT DF_FaceAct_LogDate DEFAULT (GETDATE()),
-    LogDay             AS CAST(LogDate AS DATE) PERSISTED,
-    CONSTRAINT CK_FaceAct_Status CHECK (Status IN ('BERHASIL', 'TIDAK_DIKENALI', 'DITOLAK_BLACKLIST')),
-    CONSTRAINT CK_FaceAct_Type CHECK (ActivityType IS NULL OR ActivityType IN ('MASUK', 'PULANG')),
-    CONSTRAINT CK_FaceAct_Time CHECK (TimeStatus IS NULL OR TimeStatus IN ('TEPAT_WAKTU', 'TERLAMBAT', 'PULANG_AWAL', 'HARI_LIBUR')),
-    CONSTRAINT CK_FaceAct_Success CHECK (Status <> 'BERHASIL' OR (UserID IS NOT NULL AND ActivityType IS NOT NULL))
+    ActivityID    BIGINT IDENTITY(1,1) PRIMARY KEY,
+    UserID        BIGINT NULL CONSTRAINT FK_FaceAct_User REFERENCES dbo.Users (UserID),
+    FaceID        BIGINT NULL CONSTRAINT FK_FaceAct_Face REFERENCES dbo.FaceRecog (FaceID),
+    ActivityType  VARCHAR(10) NULL CONSTRAINT CK_FaceAct_Type CHECK (ActivityType IN ('MASUK', 'KELUAR')),
+    StatusID      INT NOT NULL CONSTRAINT FK_FaceAct_Status REFERENCES dbo.Status (StatusID),
+    LogDate       DATETIME NOT NULL CONSTRAINT DF_FaceAct_LogDate DEFAULT (GETDATE()),
+    LogDay        AS CAST(LogDate AS DATE) PERSISTED,
+    Description   NVARCHAR(255) NULL,
+    VisitToID     BIGINT NULL CONSTRAINT FK_FaceAct_VisitTo REFERENCES dbo.Users (UserID),     -- orang yang dituju (kunjungan)
+    NoVehicle     VARCHAR(15) NULL,
+    CompAreaID    BIGINT NULL CONSTRAINT FK_FaceAct_Area REFERENCES dbo.CompanyArea (CompAreaID),
+    TimeStatus    VARCHAR(20) NULL CONSTRAINT CK_FaceAct_Time CHECK (TimeStatus IN ('TEPAT_WAKTU', 'TERLAMBAT', 'PULANG_AWAL', 'HARI_LIBUR')),
+    DiffMinutes   INT NULL,
+    FaceDistance  FLOAT NULL,
+    Device        VARCHAR(50) NULL,
+    IPAddress     VARCHAR(45) NULL,
+    CreateBy      BIGINT NULL CONSTRAINT FK_FaceAct_CreateBy REFERENCES dbo.Users (UserID)
 );
 CREATE INDEX IX_FaceAct_User_Day ON dbo.FaceActivity (UserID, LogDay);
-CREATE INDEX IX_FaceAct_Day ON dbo.FaceActivity (LogDay);
+CREATE INDEX IX_FaceAct_Day ON dbo.FaceActivity (LogDay) INCLUDE (CompAreaID, StatusID);
 GO
 
 /* =========================== ADMIN =========================== */
@@ -969,6 +948,60 @@ CREATE TABLE dbo.SettingArea (
     UpdateDate    DATETIME NOT NULL CONSTRAINT DF_PengArea_Updated DEFAULT (GETDATE()),
     CONSTRAINT PK_PengaturanArea PRIMARY KEY (CompAreaID, SettingKey)
 );
+GO
+
+/* =========================== MONITORING CCTV (tahap 1: live per area) ===========================
+   Video diambil lewat gateway video di LAN cabang (go2rtc). Alamat RTSP & password kamera hanya ada di konfigurasi gateway;
+   CPOS menyimpan nama stream-nya. Siapa boleh melihat: Admin › Hak Akses menu MON_CCTV + cakupan data (area kamera). */
+CREATE TABLE dbo.CameraGateway (
+    GatewayID    INT IDENTITY(1,1) PRIMARY KEY,
+    CompAreaID   BIGINT NOT NULL CONSTRAINT FK_CamGw_Area REFERENCES dbo.CompanyArea (CompAreaID),
+    GatewayName  NVARCHAR(100) NOT NULL,
+    BaseUrl      VARCHAR(255)  NOT NULL,          -- alamat API gateway dari server CPOS, mis. http://192.168.10.5:1984
+    LastSeen     DATETIME NULL,
+    Active       BIT NOT NULL CONSTRAINT DF_CamGw_Active DEFAULT (1),
+    CreateDate   DATETIME NOT NULL CONSTRAINT DF_CamGw_Create DEFAULT (GETDATE())
+);
+CREATE TABLE dbo.Camera (
+    CameraID     INT IDENTITY(1,1) PRIMARY KEY,
+    CameraCode   VARCHAR(20)   NOT NULL CONSTRAINT UX_Camera_Code UNIQUE,
+    CameraName   NVARCHAR(100) NOT NULL,
+    CompAreaID   BIGINT NOT NULL CONSTRAINT FK_Camera_Area REFERENCES dbo.CompanyArea (CompAreaID),
+    GatewayID    INT NOT NULL CONSTRAINT FK_Camera_Gateway REFERENCES dbo.CameraGateway (GatewayID),
+    Point        VARCHAR(20)   NOT NULL CONSTRAINT CK_Camera_Point CHECK (Point IN ('POS_MASUK', 'POS_KELUAR', 'JEMBATAN', 'SORTASI', 'UMUM')),
+    ScaleID      INT NULL CONSTRAINT FK_Camera_Scale REFERENCES dbo.Scale (ScaleID),          -- kamera milik jembatan timbang
+    Role         VARCHAR(10)   NOT NULL CONSTRAINT DF_Camera_Role DEFAULT ('UMUM')
+                 CONSTRAINT CK_Camera_Role CHECK (Role IN ('DEPAN', 'ATAS', 'PLAT', 'WAJAH', 'UMUM')),
+    Brand        NVARCHAR(100) NULL,              -- merk / tipe (Hikvision, Dahua, ...)
+    MainStream   VARCHAR(100)  NOT NULL,          -- nama stream di gateway (kualitas penuh, layar penuh)
+    SubStream    VARCHAR(100)  NULL,              -- nama stream ringan (grid / dilihat dari HO); kosong = MainStream
+    AIMode       VARCHAR(10)   NOT NULL CONSTRAINT DF_Camera_AI DEFAULT ('NONE')
+                 CONSTRAINT CK_Camera_AI CHECK (AIMode IN ('NONE', 'KAMERA', 'SERVER')),   -- tahap berikutnya
+    Settings     NVARCHAR(MAX) NULL CONSTRAINT CK_Camera_Settings CHECK (Settings IS NULL OR ISJSON(Settings) = 1),
+    LastSeen     DATETIME NULL,
+    SortOrder    INT NOT NULL CONSTRAINT DF_Camera_Sort DEFAULT (0),
+    Active       BIT NOT NULL CONSTRAINT DF_Camera_Active DEFAULT (1),
+    CreateDate   DATETIME NOT NULL CONSTRAINT DF_Camera_Create DEFAULT (GETDATE())
+);
+CREATE INDEX IX_Camera_Area ON dbo.Camera (CompAreaID, Active);
+-- Kejadian dari AI kamera / server AI (tahap berikutnya; satu format untuk semua merk)
+CREATE TABLE dbo.CameraEvent (
+    EventID       BIGINT IDENTITY(1,1) PRIMARY KEY,
+    CameraID      INT NOT NULL CONSTRAINT FK_CamEvent_Camera REFERENCES dbo.Camera (CameraID),
+    EventType     VARCHAR(30) NOT NULL,           -- PLAT_TERBACA, TRUK_MASUK_ZONA, BERHENTI_LAMA, ORANG_DI_ZONA, KAMERA_PUTUS
+    StartTime     DATETIME NOT NULL CONSTRAINT DF_CamEvent_Start DEFAULT (GETDATE()),
+    EndTime       DATETIME NULL,
+    DurationSec   INT NULL,
+    PlateText     VARCHAR(15) NULL,
+    Confidence    FLOAT NULL,
+    IDVehicle     INT NULL CONSTRAINT FK_CamEvent_Vehicle REFERENCES dbo.DetailVehicle (IDVehicle),
+    TicketNumber  VARCHAR(50) NULL,
+    SnapshotPath  VARCHAR(255) NULL,
+    Data          NVARCHAR(MAX) NULL CONSTRAINT CK_CamEvent_Data CHECK (Data IS NULL OR ISJSON(Data) = 1),
+    Status        VARCHAR(10) NOT NULL CONSTRAINT DF_CamEvent_Status DEFAULT ('BARU')
+                  CONSTRAINT CK_CamEvent_Status CHECK (Status IN ('BARU', 'DILIHAT', 'SELESAI'))
+);
+CREATE INDEX IX_CamEvent_Camera_Time ON dbo.CameraEvent (CameraID, StartTime DESC);
 GO
 
 CREATE TABLE dbo.Device (
@@ -1194,15 +1227,14 @@ BEGIN
     END
 END
 GO
--- Salin wajah utama aktif ke Users.FaceEmbeddingData / UploadPath
-CREATE OR ALTER TRIGGER dbo.TR_FaceRecog_Utama ON dbo.FaceRecog AFTER INSERT, UPDATE AS
+-- Guest.BlacklistID mengikuti Users.BlacklistID orangnya
+CREATE OR ALTER TRIGGER dbo.TR_Users_GuestBlacklist ON dbo.Users AFTER INSERT, UPDATE AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE u SET u.FaceEmbeddingData = f.FaceDet, u.UploadPath = f.PhotoPath
-    FROM dbo.Users u
-    JOIN (SELECT DISTINCT UserID FROM inserted) x ON x.UserID = u.UserID
-    OUTER APPLY (SELECT TOP 1 FaceDet, PhotoPath FROM dbo.FaceRecog
-                 WHERE UserID = u.UserID AND Active = 1 ORDER BY IsMain DESC, FaceID DESC) f;
+    IF UPDATE(BlacklistID) OR UPDATE(GuestID)
+        UPDATE g SET g.BlacklistID = i.BlacklistID
+        FROM dbo.Guest g JOIN inserted i ON i.GuestID = g.GuestID
+        WHERE ISNULL(g.BlacklistID, -1) <> ISNULL(i.BlacklistID, -1);
 END
 GO
 
@@ -1215,18 +1247,10 @@ INSERT INTO dbo.DocumentType (DocTypeCode, DocTypeName, RequireFile) VALUES
     ('SIM',             N'Scan SIM', 1),
     ('STNK',            N'Scan STNK', 1),
     ('KONTRAK',         N'Dokumen Kontrak', 0);
--- Kategori personel, jenis SIM, keperluan kunjungan (migrasi 009)
-INSERT INTO dbo.UserCategory (CategoryCode, CategoryName, RequireLicense, CanLogin, CodePrefix) VALUES
-    ('DRIVER',   N'Driver',   1, 0, 'DRV'),
-    ('SECURITY', N'Security', 0, 1, 'SEC'),
-    ('EMPLOYEE', N'Karyawan', 0, 1, 'KRY'),
-    ('TAMU',     N'Tamu',     0, 0, 'TMU'),
-    ('BHL',      N'BHL',      0, 0, 'BHL');
+-- Jenis SIM (migrasi 009)
 INSERT INTO dbo.License (LicenseCode, LicenseType) VALUES
     ('A', N'SIM A'), ('B1', N'SIM B1'), ('B1_UMUM', N'SIM B1 Umum'), ('B2', N'SIM B2'), ('B2_UMUM', N'SIM B2 Umum');
 INSERT INTO dbo.License (LicenseCode, LicenseType, Active) VALUES ('BELUM_DIISI', N'Belum dilengkapi', 0);
-INSERT INTO dbo.VisitPurpose (PurposeName) VALUES
-    (N'Rapat / Bertemu'), (N'Pengiriman Barang'), (N'Perbaikan / Servis'), (N'Audit / Inspeksi'), (N'Lainnya');
 GO
 -- Organisasi, peran, menu (sidebar master page, 3 level), dan hak akses awal (ERD Ladder Desk)
 INSERT INTO dbo.Company (CompID, CompName) VALUES ('PT', N'Perusahaan (ubah di Admin › Organisasi)'), ('HO', N'HEAD OFFICE');
@@ -1243,7 +1267,8 @@ SELECT a.CompAreaID, d.DeptID, CASE WHEN m.IsHeadOffice = 1 THEN 'HO' ELSE 'SITE
 FROM dbo.CompanyArea a JOIN dbo.Mill m ON m.MillID = a.MillID JOIN dbo.Department d
   ON (m.IsHeadOffice = 0 AND d.DeptID IN ('UMUM', 'SEC', 'TBG', 'SRT', 'LAB')) OR (m.IsHeadOffice = 1 AND d.DeptID IN ('UMUM', 'HO'));
 INSERT INTO dbo.Level (LevelName, IsAdmin, SortOrder) VALUES
-    (N'Admin', 1, 1), (N'Manager', 0, 2), (N'Supervisor', 0, 3), (N'Staff', 0, 4), (N'Magang', 0, 5);
+    (N'Admin', 1, 1), (N'Manager', 0, 2), (N'Supervisor', 0, 3), (N'Staff', 0, 4), (N'Magang', 0, 5),
+    (N'BHL', 0, 6);          -- buruh harian lepas: karyawan tanpa akun (mis. peran "Sortasi · BHL")
 -- Peran awal (Departemen · Level); kode dipakai data awal hak akses di bawah
 INSERT INTO dbo.LevelDetails (LevelDetCode, LevelDetName, LevelID, DeptID, HomeUrl)
 SELECT v.kode, CASE WHEN d.DeptName IS NULL THEN l.LevelName ELSE d.DeptName + N' · ' + l.LevelName END, l.LevelID, d.DeptID, v.awal
@@ -1252,7 +1277,9 @@ FROM (VALUES ('ADMIN',            N'Admin',   NULL,   '/admin'),
              ('SECURITY',         N'Staff',   'SEC',  '/pos-security'),
              ('OPERATOR_TIMBANG', N'Staff',   'TBG',  '/weighbridge?tab=timbangan'),
              ('SORTASI',          N'Staff',   'SRT',  '/weighbridge?tab=sortasi'),
-             ('LAB',              N'Staff',   'LAB',  '/weighbridge?tab=lab')) v (kode, lvl, dept, awal)
+             ('LAB',              N'Staff',   'LAB',  '/weighbridge?tab=lab'),
+             ('UMUM',             N'Staff',   'UMUM', '/dashboard'),
+             ('SORTASI_BHL',      N'BHL',     'SRT',  '/weighbridge?tab=sortasi')) v (kode, lvl, dept, awal)
 JOIN dbo.Level l ON l.LevelName = v.lvl
 LEFT JOIN dbo.Department d ON d.DeptID = v.dept;
 INSERT INTO dbo.ActionType (ActionID, TypeName, Description) VALUES
@@ -1274,8 +1301,9 @@ FROM (VALUES ('DASHBOARD',       N'Dashboard',                  'G_DASHBOARD',  
              ('FORM',            N'Stasiun Timbang',            'G_MILLS',      '/weighbridge?view=form', 'fa-file-pen',         'CPOS', 20),
              ('POS_SECURITY',    N'Pos Security',               'G_MILLS',      '/pos-security',          'fa-shield-halved',    'CPOS', 30),
              ('LOGBOOK',         N'Logbook Kendaraan',          'G_MILLS',      '/logbook',               'fa-book',             'CPOS', 40),
+             ('MON_CCTV',        N'Monitoring CCTV',            'G_MILLS',      '/cctv',                  'fa-video',            'CPOS', 45),
              ('KELEBIHAN_DO',    N'Kelebihan DO',               'G_MILLS',      '/kelebihan-do',          'fa-scale-unbalanced', 'CPOS', 50),
-             ('KUNJUNGAN',       N'Visitor & Staff Logs',       'G_FORMS',      '/tamu',                  'fa-id-card',          'CPOS', 10),
+             ('KUNJUNGAN',       N'Visitor & Staff Logs',       'G_FORMS',      '/visitor-logs',          'fa-id-card',          'CPOS', 10),
              ('FM_IT_HELPDESK',  N'IT Helpdesk',                'G_FORMS',      NULL, 'fa-headset',    'CPOS', 20),
              ('FM_NEW_ITEM',     N'New Item Request',           'G_FORMS',      '/item-request', 'fa-box-open', 'CPOS', 30),
              ('RP_PR',           N'Purchase Request',           'G_REPORTS',    NULL, 'fa-file-invoice', 'ANALYTICS', 10),
@@ -1292,8 +1320,7 @@ FROM (VALUES ('DASHBOARD',       N'Dashboard',                  'G_DASHBOARD',  
              ('RK_FITUR',        N'Kategori Request',           'G_MASTER',     NULL, 'fa-list-check',    'REKAPIN', 60),
              ('BLACKLIST',       N'Blacklist',                  'G_MASTER',     '/blacklist',             'fa-ban',              'CPOS', 10),
              ('MASTER',          N'Data Master',                'G_MASTER',     '/master',                'fa-database',         'CPOS', 20),
-             ('KONTRAK_DO',      N'Kontrak & DO',               'G_MASTER',     '/kontrak',               'fa-file-contract',    'CPOS', 30),
-             ('FACE_RECOGNITION', N'Pengenalan Wajah',          'G_MASTER',     '/face-recognition',      'fa-face-smile',       'CPOS', 40)
+             ('KONTRAK_DO',      N'Kontrak & DO',               'G_MASTER',     '/kontrak',               'fa-file-contract',    'CPOS', 30)
      ) v (kode, nama, induk, url, ikon, app, urut)
 JOIN dbo.Menu p ON p.MenuCode = v.induk;
 -- Menu Lv3 (bagian halaman / sub-halaman)
@@ -1319,9 +1346,9 @@ FROM (VALUES ('AN_PR_PO',         N'PR & PO Outstanding',       'AN_DASHBOARD', 
              ('MASTER_MITRA',     N'Supplier',                  'MASTER', '/master?tab=mitra',     3),
              ('MASTER_PRODUK',    N'Produk',                    'MASTER', '/master?tab=produk',    4),
              ('MASTER_KEUANGAN',  N'Mata Uang & Bank',          'MASTER', '/master?tab=keuangan',  5),
-             ('ABSENSI',          N'Absensi',                   'FACE_RECOGNITION', '/face-recognition?tab=absensi',  1),
-             ('PERSONEL',         N'Personel',                  'FACE_RECOGNITION', '/face-recognition?tab=personel', 2),
-             ('AUDIT_LOG',        N'Log Audit',                 'FACE_RECOGNITION', '/face-recognition?tab=audit',    4)
+             ('VSL_SCAN',         N'Scan Wajah',                'KUNJUNGAN', '/visitor-logs?tab=scan',   1),
+             ('VSL_LOGS',         N'Logs',                      'KUNJUNGAN', '/visitor-logs?tab=logs',   2),
+             ('PERSONEL',         N'Data Orang',                'KUNJUNGAN', '/visitor-logs?tab=orang',  3)
      ) v (kode, nama, induk, url, urut)
 JOIN dbo.Menu p ON p.MenuCode = v.induk;
 UPDATE dbo.Menu SET AppCode = 'ANALYTICS' WHERE MenuCode LIKE 'AN[_]%';
@@ -1334,14 +1361,14 @@ WHERE MenuCode IN ('LIST', 'FM_IT_HELPDESK', 'RP_PR', 'RP_PO', 'RP_ITEM');
 UPDATE dbo.Menu SET Url = '/an/pi_pvr', AppCode = 'ANALYTICS' WHERE MenuCode = 'RP_PI';
 UPDATE dbo.Menu SET Url = '/an/pi_gt', AppCode = 'ANALYTICS' WHERE MenuCode = 'RP_GT';
 -- Aksi yang berlaku per menu selain View (kolom yang bisa dicentang di Admin › Hak Akses):
--- 2 Create, 3 Edit, 0 Delete, 5 Approve, 6 Reject, 7 Done. Halaman yang punya anak (FORM, MASTER, FACE_RECOGNITION)
+-- 2 Create, 3 Edit, 0 Delete, 5 Approve, 6 Reject, 7 Done. Halaman yang punya anak (FORM, MASTER, KUNJUNGAN)
 -- diatur lewat anaknya.
 INSERT INTO dbo.MenuAction (MenuID, ActionID)
 SELECT m.MenuID, CAST(x.value AS INT)
 FROM (VALUES ('DASHBOARD', '3'), ('LIST', '3,5'), ('FORM_SECURITY', '2,3'), ('FORM_TIMBANGAN', '2'),
-             ('FORM_SORTASI', '2'), ('FORM_LAB', '2,3'), ('PERSONEL', '2,3,0'), ('MASTER_DRIVER', '2,3,0'),
+             ('FORM_SORTASI', '2'), ('FORM_LAB', '2,3'), ('PERSONEL', '2,3,0,5'), ('MASTER_DRIVER', '2,3,0'),
              ('MASTER_KENDARAAN', '2,3'), ('MASTER_MITRA', '2,3'), ('MASTER_PRODUK', '2,3'), ('MASTER_KEUANGAN', '2,3'),
-             ('KONTRAK_DO', '2,3'), ('BLACKLIST', '2,0,5'), ('KUNJUNGAN', '2,3'), ('KELEBIHAN_DO', '2,3'),
+             ('KONTRAK_DO', '2,3'), ('BLACKLIST', '2,0,5'), ('VSL_SCAN', '2,3'), ('KELEBIHAN_DO', '2,3'),
              ('POS_SECURITY', '2,3'), ('LOGBOOK', '3'),
              -- RekapIn: request operator (tambah, ubah, hapus, setujui, tolak, selesai), harga & kategori request
              ('RK_REQUEST', '2,3,0,5,6,7'), ('RK_HARGA', '2,3,0'), ('RK_FITUR', '2,3,0')) v (kode, aksi)
@@ -1356,7 +1383,7 @@ INSERT INTO dbo.Widget (WidgetCode, WidgetName, Description, SortOrder) VALUES
 INSERT INTO dbo.AccessMenu (MenuID, ActionID, TargetType)
 SELECT m.MenuID, 1, 'ALL' FROM dbo.Menu m
 WHERE m.MenuCode IN ('G_DASHBOARD', 'G_MILLS', 'G_FORMS', 'G_MASTER')
-   OR (m.AppCode = 'CPOS' AND m.Url IS NOT NULL AND m.MenuCode NOT IN ('POS_SECURITY', 'LOGBOOK'));
+   OR (m.AppCode = 'CPOS' AND m.Url IS NOT NULL AND m.MenuCode NOT IN ('POS_SECURITY', 'LOGBOOK', 'MON_CCTV'));
 -- Hak per peran: (peran, menu, lihat, tambah, ubah, hapus, setujui). Lihat hanya untuk menu yang tidak untuk semua user.
 DECLARE @hak TABLE (peran VARCHAR(30), menu VARCHAR(40), l BIT, t BIT, u BIT, h BIT, s BIT);
 INSERT INTO @hak VALUES
@@ -1366,8 +1393,9 @@ INSERT INTO @hak VALUES
     ('HO', 'MASTER_MITRA', 0, 1, 1, 0, 0), ('HO', 'MASTER_PRODUK', 0, 1, 1, 0, 0), ('HO', 'MASTER_KEUANGAN', 0, 1, 1, 0, 0),
     ('SECURITY', 'FORM_SECURITY', 0, 1, 1, 0, 0), ('SECURITY', 'MASTER_DRIVER', 0, 1, 1, 1, 0), ('SECURITY', 'MASTER_KENDARAAN', 0, 1, 1, 0, 0),
     ('OPERATOR_TIMBANG', 'FORM_TIMBANGAN', 0, 1, 0, 0, 0), ('SORTASI', 'FORM_SORTASI', 0, 1, 0, 0, 0), ('LAB', 'FORM_LAB', 0, 1, 1, 0, 0),
-    ('SECURITY', 'POS_SECURITY', 1, 1, 1, 0, 0), ('SECURITY', 'LOGBOOK', 1, 0, 1, 0, 0), ('SECURITY', 'KUNJUNGAN', 0, 1, 1, 0, 0),
-    ('HO', 'POS_SECURITY', 1, 0, 0, 0, 0), ('HO', 'LOGBOOK', 1, 0, 0, 0, 0);
+    ('SECURITY', 'POS_SECURITY', 1, 1, 1, 0, 0), ('SECURITY', 'LOGBOOK', 1, 0, 1, 0, 0), ('SECURITY', 'VSL_SCAN', 0, 1, 1, 0, 0), ('SECURITY', 'PERSONEL', 0, 1, 1, 0, 0),
+    ('HO', 'POS_SECURITY', 1, 0, 0, 0, 0), ('HO', 'LOGBOOK', 1, 0, 0, 0, 0),
+    ('HO', 'MON_CCTV', 1, 0, 0, 0, 0), ('SECURITY', 'MON_CCTV', 1, 0, 0, 0, 0);
 INSERT INTO dbo.AccessMenu (MenuID, ActionID, TargetType, LevelDetID)
 SELECT m.MenuID, a.ActionID, 'ROLE', ld.LevelDetID
 FROM @hak h JOIN dbo.LevelDetails ld ON ld.LevelDetCode = h.peran JOIN dbo.Menu m ON m.MenuCode = h.menu
@@ -1410,7 +1438,10 @@ INSERT INTO dbo.Status (StatusCode, StatusName, StatusColor, SortOrder) VALUES
     ('SECURITY_REGISTER', N'Registrasi Security', 'oranye', 1), ('SCAN_WAJAH', N'Scan Wajah', 'oranye', 2),
     ('TIMBANG_1', N'Timbang 1', 'biru', 3), ('INSPEKSI_PROSES', N'Inspeksi', 'ungu', 4),
     ('TIMBANG_2', N'Timbang 2', 'biru', 5), ('SELESAI', N'Selesai', 'hijau', 6),
-    ('REJECTED', N'Ditolak', 'merah', 7), ('VOID', N'Dibatalkan', 'abu', 8), ('MENUNGGU_KELUAR', N'Menunggu Keluar', 'kuning', 6);
+    ('REJECTED', N'Ditolak', 'merah', 7), ('VOID', N'Dibatalkan', 'abu', 8), ('MENUNGGU_KELUAR', N'Menunggu Keluar', 'kuning', 6),
+    -- Hasil scan wajah (FaceActivity.StatusID)
+    ('WAJAH_BERHASIL', N'Scan berhasil', 'hijau', 20), ('WAJAH_TIDAK_DIKENALI', N'Wajah tidak dikenali', 'kuning', 21),
+    ('WAJAH_DITOLAK', N'Ditolak (blacklist)', 'merah', 22);
 INSERT INTO dbo.VehicleType (VehicleTypeCode, NameType) VALUES
     ('TRUK', N'Truk'), ('DUMP_TRUK', N'Dump Truk'), ('TANGKI', N'Truk Tangki'), ('PICKUP', N'Pick-up'), ('LAINNYA', N'Lainnya');
 INSERT INTO dbo.Currency (CurrencyCode, CurrencyName, CurrencyRate) VALUES
@@ -1434,8 +1465,8 @@ FROM (VALUES ('TBS', 1, 'SECURITY'), ('TBS', 2, 'TIMBANG_1'), ('TBS', 3, 'SORTAS
              ('POS_SAJA', 1, 'SECURITY')) v (alur, urutan, tahap)
 JOIN dbo.Flow a ON a.FlowCode = v.alur;
 -- Akun super admin pertama: admin / admin12345. MustChange = 1 -> wajib buat password baru saat login pertama
-INSERT INTO dbo.Users (UserID, UserName, Nama, CategoryCode, UserLevelID, UserDeptID, CompAreaID)
-SELECT CAST(FORMAT(GETDATE(), 'yyMMdd') AS BIGINT) * 10000 + 1, 'admin', 'Super Admin', 'EMPLOYEE',
+INSERT INTO dbo.Users (UserID, UserName, Nama, UserLevelID, UserDeptID, CompAreaID)
+SELECT CAST(FORMAT(GETDATE(), 'yyMMdd') AS BIGINT) * 10000 + 1, 'admin', 'Super Admin',
        (SELECT LevelDetID FROM dbo.LevelDetails WHERE LevelDetCode = 'ADMIN'), NULL,
        (SELECT MIN(CompAreaID) FROM dbo.CompanyArea);
 INSERT INTO dbo.PasswordManager (UserID, UserPasswd, MustChange, History)
@@ -1938,35 +1969,6 @@ BEGIN
     CLOSE c; DEALLOCATE c;
 END
 GO
-CREATE OR ALTER TRIGGER dbo.TR_LogData_UserCategory ON dbo.UserCategory AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-    SET NOCOUNT ON;
-    IF NOT EXISTS (SELECT 1 FROM inserted) AND NOT EXISTS (SELECT 1 FROM deleted) RETURN;
-    DECLARE @kunci TABLE (k NVARCHAR(100) PRIMARY KEY);
-    INSERT INTO @kunci (k) SELECT CAST(d.CategoryCode AS NVARCHAR(100)) FROM deleted d UNION SELECT CAST(i.CategoryCode AS NVARCHAR(100)) FROM inserted i;
-    DECLARE @k NVARCHAR(100), @lama NVARCHAR(MAX), @baru NVARCHAR(MAX), @aksi VARCHAR(40),
-            @id_user BIGINT = TRY_CAST(SESSION_CONTEXT(N'id_user') AS BIGINT), @ip VARCHAR(45) = CAST(SESSION_CONTEXT(N'ip') AS VARCHAR(45));
-    DECLARE c CURSOR LOCAL FAST_FORWARD FOR SELECT k FROM @kunci;
-    OPEN c; FETCH NEXT FROM c INTO @k;
-    WHILE @@FETCH_STATUS = 0
-    BEGIN
-        SET @lama = (SELECT * FROM deleted d WHERE CAST(d.CategoryCode AS NVARCHAR(100)) = @k FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
-        SET @baru = (SELECT * FROM inserted i WHERE CAST(i.CategoryCode AS NVARCHAR(100)) = @k FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
-        SET @lama = JSON_MODIFY(@lama, '$.FaceEmbeddingData', NULL); SET @baru = JSON_MODIFY(@baru, '$.FaceEmbeddingData', NULL);
-        SET @lama = JSON_MODIFY(@lama, '$.LastLogin', NULL); SET @baru = JSON_MODIFY(@baru, '$.LastLogin', NULL);
-        SET @lama = JSON_MODIFY(@lama, '$.SessionVersion', NULL); SET @baru = JSON_MODIFY(@baru, '$.SessionVersion', NULL);
-        SET @lama = JSON_MODIFY(@lama, '$.UpdateDate', NULL); SET @baru = JSON_MODIFY(@baru, '$.UpdateDate', NULL);
-        IF ISNULL(@lama, N'') <> ISNULL(@baru, N'')
-        BEGIN
-            SET @aksi = CASE WHEN @lama IS NULL THEN 'DATA_TAMBAH' WHEN @baru IS NULL THEN 'DATA_HAPUS' ELSE 'DATA_UBAH' END;
-            EXEC dbo.sp_WriteLog @kategori = 'DATA', @aksi = @aksi, @tabel = 'UserCategory', @id_baris = @k,
-                 @nilai_lama = @lama, @nilai_baru = @baru, @id_user = @id_user, @ip = @ip;
-        END
-        FETCH NEXT FROM c INTO @k;
-    END
-    CLOSE c; DEALLOCATE c;
-END
-GO
 CREATE OR ALTER TRIGGER dbo.TR_LogData_License ON dbo.License AFTER INSERT, UPDATE, DELETE AS
 BEGIN
     SET NOCOUNT ON;
@@ -1996,35 +1998,6 @@ BEGIN
     CLOSE c; DEALLOCATE c;
 END
 GO
-CREATE OR ALTER TRIGGER dbo.TR_LogData_VisitPurpose ON dbo.VisitPurpose AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-    SET NOCOUNT ON;
-    IF NOT EXISTS (SELECT 1 FROM inserted) AND NOT EXISTS (SELECT 1 FROM deleted) RETURN;
-    DECLARE @kunci TABLE (k NVARCHAR(100) PRIMARY KEY);
-    INSERT INTO @kunci (k) SELECT CAST(d.PurposeID AS NVARCHAR(100)) FROM deleted d UNION SELECT CAST(i.PurposeID AS NVARCHAR(100)) FROM inserted i;
-    DECLARE @k NVARCHAR(100), @lama NVARCHAR(MAX), @baru NVARCHAR(MAX), @aksi VARCHAR(40),
-            @id_user BIGINT = TRY_CAST(SESSION_CONTEXT(N'id_user') AS BIGINT), @ip VARCHAR(45) = CAST(SESSION_CONTEXT(N'ip') AS VARCHAR(45));
-    DECLARE c CURSOR LOCAL FAST_FORWARD FOR SELECT k FROM @kunci;
-    OPEN c; FETCH NEXT FROM c INTO @k;
-    WHILE @@FETCH_STATUS = 0
-    BEGIN
-        SET @lama = (SELECT * FROM deleted d WHERE CAST(d.PurposeID AS NVARCHAR(100)) = @k FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
-        SET @baru = (SELECT * FROM inserted i WHERE CAST(i.PurposeID AS NVARCHAR(100)) = @k FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
-        SET @lama = JSON_MODIFY(@lama, '$.FaceEmbeddingData', NULL); SET @baru = JSON_MODIFY(@baru, '$.FaceEmbeddingData', NULL);
-        SET @lama = JSON_MODIFY(@lama, '$.LastLogin', NULL); SET @baru = JSON_MODIFY(@baru, '$.LastLogin', NULL);
-        SET @lama = JSON_MODIFY(@lama, '$.SessionVersion', NULL); SET @baru = JSON_MODIFY(@baru, '$.SessionVersion', NULL);
-        SET @lama = JSON_MODIFY(@lama, '$.UpdateDate', NULL); SET @baru = JSON_MODIFY(@baru, '$.UpdateDate', NULL);
-        IF ISNULL(@lama, N'') <> ISNULL(@baru, N'')
-        BEGIN
-            SET @aksi = CASE WHEN @lama IS NULL THEN 'DATA_TAMBAH' WHEN @baru IS NULL THEN 'DATA_HAPUS' ELSE 'DATA_UBAH' END;
-            EXEC dbo.sp_WriteLog @kategori = 'DATA', @aksi = @aksi, @tabel = 'VisitPurpose', @id_baris = @k,
-                 @nilai_lama = @lama, @nilai_baru = @baru, @id_user = @id_user, @ip = @ip;
-        END
-        FETCH NEXT FROM c INTO @k;
-    END
-    CLOSE c; DEALLOCATE c;
-END
-GO
 
 /* =========================== HAK AKSES BERSAMA (CPOS, ANALYTICS, REKAPIN) ===========================
    Satu aturan untuk semua aplikasi (Admin › Hak Akses):
@@ -2045,7 +2018,7 @@ WITH siapa AS (
     WHERE lv.IsAdmin = 0
       AND ((@UserID IS NULL AND ld.LevelDetID = @LevelDetID) OR (@UserID IS NOT NULL AND u.UserID IS NOT NULL))
 )
-SELECT a.AccessMenuID, a.MenuID, a.ActionID, a.TargetType, a.IsDeny, a.LevelDetID, a.LevelID, a.DeptID, a.UserID
+SELECT a.AccessMenuID, a.MenuID, a.ActionID, a.TargetType, a.IsDeny, a.LevelDetID, a.LevelID, a.DeptID, a.UserID, a.MenuDetails
 FROM dbo.AccessMenu a CROSS JOIN siapa s
 WHERE a.Active = 1
   AND (a.TargetType = 'ALL'
@@ -2210,19 +2183,17 @@ BEGIN
       AND s.LastActive >= DATEADD(MINUTE, -@idle, GETDATE()) AND s.LoginDate >= DATEADD(HOUR, -@maks, GETDATE());
 END
 GO
-/* Cakupan data user (area yang boleh dilihat):
+/* Cakupan data user (area yang boleh dilihat), bawaan:
    - akun di area biasa: hanya areanya;
-   - akun di area bertipe Mill kantor pusat (Mill.IsHeadOffice): semua area, atau hanya area milik PT di UserCompany bila diisi;
-   - akun tanpa area (admin sistem): semua area.
-   fn_UserScopeInfo = 1 baris ringkasan; fn_UserScope = daftar area. Contoh di prosedur laporan:
-     WHERE t.CompAreaID IN (SELECT CompAreaID FROM dbo.fn_UserScope(@UserID)) */
+   - akun di area bertipe Mill kantor pusat (Mill.IsHeadOffice) dan akun tanpa area (admin sistem): semua area.
+   Per menu (fn_UserMenuScope): gabungan cakupan aturan Izinkan-Lihat menu itu yang cocok dengan user (AccessMenu.MenuDetails).
+   fn_UserScopeInfo = 1 baris ringkasan; fn_UserScope = daftar area bawaan. Contoh di prosedur laporan:
+     WHERE t.CompAreaID IN (SELECT CompAreaID FROM dbo.fn_UserMenuScope(@UserID, 'RK_TBS_DAILY')) */
 CREATE OR ALTER FUNCTION dbo.fn_UserScopeInfo (@UserID BIGINT)
 RETURNS TABLE AS RETURN
 SELECT u.UserID, u.CompAreaID AS OwnAreaID, a.CompID AS OwnCompID,
        CAST(ISNULL(m.IsHeadOffice, 0) AS BIT) AS IsHeadOffice,
-       CAST(CASE WHEN u.CompAreaID IS NULL
-                   OR (m.IsHeadOffice = 1 AND NOT EXISTS (SELECT 1 FROM dbo.UserCompany uc WHERE uc.UserID = u.UserID))
-                 THEN 1 ELSE 0 END AS BIT) AS AllAreas
+       CAST(CASE WHEN u.CompAreaID IS NULL OR m.IsHeadOffice = 1 THEN 1 ELSE 0 END AS BIT) AS AllAreas
 FROM dbo.Users u
 LEFT JOIN dbo.CompanyArea a ON a.CompAreaID = u.CompAreaID
 LEFT JOIN dbo.Mill m ON m.MillID = a.MillID
@@ -2233,19 +2204,43 @@ RETURNS TABLE AS RETURN
 SELECT a.CompAreaID, a.AreaCode, a.AreaName, a.CompID, c.CompName, a.Active,
        CAST(CASE WHEN a.CompAreaID = i.OwnAreaID THEN 1 ELSE 0 END AS BIT) AS IsOwnArea
 FROM dbo.fn_UserScopeInfo(@UserID) i
-JOIN dbo.CompanyArea a ON i.AllAreas = 1
-     OR (i.IsHeadOffice = 1 AND a.CompID IN (SELECT uc.CompID FROM dbo.UserCompany uc WHERE uc.UserID = i.UserID))
-     OR (i.IsHeadOffice = 0 AND a.CompAreaID = i.OwnAreaID)
+JOIN dbo.CompanyArea a ON i.AllAreas = 1 OR a.CompAreaID = i.OwnAreaID
 JOIN dbo.Company c ON c.CompID = a.CompID;
 GO
+CREATE OR ALTER FUNCTION dbo.fn_UserMenuScope (@UserID BIGINT, @MenuCode VARCHAR(40))
+RETURNS TABLE AS RETURN
+WITH aturan AS (
+    SELECT ISNULL(JSON_VALUE(r.MenuDetails, '$.cakupan'), 'AREA') AS Cakupan, r.MenuDetails
+    FROM dbo.fn_AccessRules(@UserID, NULL) r
+    JOIN dbo.Menu m ON m.MenuID = r.MenuID
+    WHERE m.MenuCode = @MenuCode AND r.ActionID = 1 AND r.IsDeny = 0
+)
+SELECT a.CompAreaID, a.AreaCode, a.AreaName, a.CompID, c.CompName, a.Active,
+       CAST(CASE WHEN a.CompAreaID = i.OwnAreaID THEN 1 ELSE 0 END AS BIT) AS IsOwnArea
+FROM dbo.fn_UserScopeInfo(@UserID) i
+JOIN dbo.CompanyArea a ON EXISTS (
+         SELECT 1 FROM aturan t
+         WHERE t.Cakupan = 'SEMUA'
+            OR (t.Cakupan = 'PT' AND a.CompID = i.OwnCompID)
+            OR (t.Cakupan = 'PT_TERTENTU' AND a.CompID IN (SELECT j.value FROM OPENJSON(t.MenuDetails, '$.pt') j))
+            OR (t.Cakupan = 'AREA' AND (i.AllAreas = 1 OR a.CompAreaID = i.OwnAreaID)))
+JOIN dbo.Company c ON c.CompID = a.CompID;
+GO
+/* @MenuCode NULL = cakupan bawaan; diisi = cakupan menu itu (Admin › Hak Akses › Cakupan data). */
 CREATE OR ALTER PROCEDURE dbo.sp_UserScope
-    @UserID BIGINT
+    @UserID   BIGINT,
+    @MenuCode VARCHAR(40) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
-    SELECT s.*, i.IsHeadOffice, i.AllAreas
-    FROM dbo.fn_UserScope(@UserID) s CROSS JOIN dbo.fn_UserScopeInfo(@UserID) i
-    ORDER BY s.CompID, s.AreaCode, s.AreaName;
+    IF @MenuCode IS NULL
+        SELECT s.*, i.IsHeadOffice, i.AllAreas
+        FROM dbo.fn_UserScope(@UserID) s CROSS JOIN dbo.fn_UserScopeInfo(@UserID) i
+        ORDER BY s.CompID, s.AreaCode, s.AreaName;
+    ELSE
+        SELECT s.*, i.IsHeadOffice, i.AllAreas
+        FROM dbo.fn_UserMenuScope(@UserID, @MenuCode) s CROSS JOIN dbo.fn_UserScopeInfo(@UserID) i
+        ORDER BY s.CompID, s.AreaCode, s.AreaName;
 END
 GO
 /* =========================== DATA WIDGET DASHBOARD ===========================

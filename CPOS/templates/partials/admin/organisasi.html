@@ -15,7 +15,7 @@
                 <tr>{% for k in kolom %}<th class="table-cell">{{ k }}</th>{% endfor %}
                     <th class="table-cell">Status</th><th class="table-cell text-right">Aksi</th></tr>
             </thead>
-            <tbody id="tabelOrg-{{ key }}" data-kolom="{{ kolom | length + 2 }}" class="divide-y divide-slate-100"></tbody>
+            <tbody data-per-halaman="20" id="tabelOrg-{{ key }}" data-kolom="{{ kolom | length + 2 }}" class="divide-y divide-slate-100"></tbody>
         </table>
     </div>
 </div>
@@ -29,7 +29,7 @@
                 <tr><th class="table-cell">Kode</th><th class="table-cell">Nama</th><th class="table-cell">Tampilan</th>
                     <th class="table-cell text-right">Aksi</th></tr>
             </thead>
-            <tbody id="tabelOrg-status" class="divide-y divide-slate-100"></tbody>
+            <tbody data-per-halaman="20" id="tabelOrg-status" class="divide-y divide-slate-100"></tbody>
         </table>
     </div>
 </div>

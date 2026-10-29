@@ -43,13 +43,13 @@ def ringkas_security(id_area):
     from datetime import date
     from utils.area_filter import sql_area
     from utils.db_pos import logbook
+    from utils.db_aktivitas import di_dalam
     lb = logbook(id_area, date.today())
     f_tamu, p_tamu = sql_area("CompAreaID", id_area)
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute(f"SELECT COUNT(*) FROM Guest WHERE CheckOutDate IS NULL{f_tamu}", *p_tamu)
-        tamu = cursor.fetchone()[0]
+        tamu = sum(1 for d in di_dalam(id_area) if d["kategori"] == "TAMU")
         cursor.execute(f"SELECT COUNT(*) FROM BlacklistDetection WHERE DetectDate >= CAST(GETDATE() AS DATE){f_tamu}", *p_tamu)
         blacklist = cursor.fetchone()[0]
     finally:

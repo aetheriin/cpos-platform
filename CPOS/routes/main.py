@@ -3,7 +3,7 @@ from urllib.parse import urlparse, parse_qs
 from datetime import datetime
 import qrcode
 import qrcode.image.svg
-from flask import Blueprint, request, jsonify, render_template, Response, abort
+from flask import Blueprint, request, jsonify, render_template, Response, abort, redirect
 from utils.area_filter import area_cocok
 from utils.db_organisasi import daftar_area
 from utils.area import area_data, company_user
@@ -24,8 +24,7 @@ from utils.hak_akses import boleh, boleh_lihat, izin, halaman as lihat_halaman, 
 from utils import log_aktivitas, koreksi_tiket, alur
 from utils.db_master import daftar_driver_aktif
 from utils.db_jembatan import daftar_jembatan, jembatan_dipilih
-from utils.db_personel import daftar_jenis_sim, daftar_kategori
-from utils.db_kunjungan import daftar_keperluan, area_akun
+from utils.db_aktivitas import area_akun
 
 main_bp = Blueprint('main', __name__)
 
@@ -184,23 +183,13 @@ def halaman_blacklist():
 
 
 @main_bp.route("/tamu")
-@login_required
-@lihat_halaman("KUNJUNGAN")
-def halaman_tamu():
-    """Menu Tamu: scan wajah, daftar tamu baru, catat masuk / keluar (hak KUNJUNGAN)."""
-    return render_template("face_recognition/tamu.html", halaman="tamu", keperluan_list=daftar_keperluan(),
-                           boleh_kunjungan=boleh("KUNJUNGAN"))
-
-
 @main_bp.route("/face-recognition")
 @login_required
-@lihat_halaman("FACE_RECOGNITION")
-def face_recognition():
-    """Satu halaman, tab Absensi | Personel | Log Audit (tanpa info bar). Blacklist & Tamu menu sendiri."""
-    return render_template("face_recognition/face_recognition.html", halaman="face", boleh_ubah=boleh("PERSONEL"),
-                           jenis_sim_list=daftar_jenis_sim(), keperluan_list=daftar_keperluan(),
-                           boleh_kunjungan=boleh("KUNJUNGAN"), kategori_list=list(daftar_kategori().values()),
-                           boleh_kode=boleh("PERSONEL", "ubah"))
+def halaman_lama_wajah():
+    """Menu lama (Tamu, Pengenalan Wajah) sudah digabung ke Visitor & Staff Logs."""
+    tab = {"personel": "orang", "absensi": "logs", "audit": "logs"}.get(request.args.get("tab"), "scan")
+    return redirect(f"/visitor-logs?tab={tab}")
+
 
 @main_bp.route("/api/plat/lookup", methods=["POST"])
 @login_required

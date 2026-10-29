@@ -50,15 +50,15 @@ DECLARE @areaYBS BIGINT = (SELECT CompAreaID FROM dbo.CompanyArea WHERE CompID =
 DECLARE @areaHO BIGINT = (SELECT CompAreaID FROM dbo.CompanyArea WHERE CompID = 'HO');
 
 /* ---------- Akun per peran (Users + PasswordManager) ---------- */
-INSERT INTO dbo.Users (UserID, UserName, Nama, CategoryCode, UserLevelID, UserDeptID, CompAreaID, NoKTP, UserCode, Email)
-SELECT @p + v.n, v.u, v.nama, v.kat, ld.LevelDetID, dd.DeptDetailID, a.CompAreaID, v.nik, v.kode, v.email
-FROM (VALUES (11, 'ho',        N'Andi Wijaya',     'EMPLOYEE', 'HO',               'HO',  'HO',  '1471010101800011', 'KRY-001', 'andi@contoh.co.id'),
-             (12, 'security',  N'Budi Santoso',    'SECURITY', 'SECURITY',         'SEC', 'PT',  '1471010101850012', 'SEC-001', NULL),
-             (13, 'security2', N'Hendra Gunawan',  'SECURITY', 'SECURITY',         'SEC', 'YBS', '1471010101860013', 'SEC-002', NULL),
-             (14, 'operator',  N'Rudi Hartono',    'EMPLOYEE', 'OPERATOR_TIMBANG', 'TBG', 'PT',  '1471010101870014', 'KRY-002', NULL),
-             (15, 'sortasi',   N'Siti Rahmawati',  'EMPLOYEE', 'SORTASI',          'SRT', 'PT',  '1471010101880015', 'KRY-003', NULL),
-             (16, 'lab',       N'Dewi Lestari',    'EMPLOYEE', 'LAB',              'LAB', 'PT',  '1471010101890016', 'KRY-004', NULL)
-     ) v (n, u, nama, kat, peran, dept, comp, nik, kode, email)
+INSERT INTO dbo.Users (UserID, UserName, Nama, UserLevelID, UserDeptID, CompAreaID, NoKTP, UserCode, Email)
+SELECT @p + v.n, v.u, v.nama, ld.LevelDetID, dd.DeptDetailID, a.CompAreaID, v.nik, v.kode, v.email
+FROM (VALUES (11, 'ho',        N'Andi Wijaya',     'HO',                           'HO',  'HO',  '1471010101800011', 'KRY-001', 'andi@contoh.co.id'),
+             (12, 'security',  N'Budi Santoso',    'SECURITY',                     'SEC', 'PT',  '1471010101850012', 'SEC-001', NULL),
+             (13, 'security2', N'Hendra Gunawan',  'SECURITY',                     'SEC', 'YBS', '1471010101860013', 'SEC-002', NULL),
+             (14, 'operator',  N'Rudi Hartono',    'OPERATOR_TIMBANG',             'TBG', 'PT',  '1471010101870014', 'KRY-002', NULL),
+             (15, 'sortasi',   N'Siti Rahmawati',  'SORTASI',                      'SRT', 'PT',  '1471010101880015', 'KRY-003', NULL),
+             (16, 'lab',       N'Dewi Lestari',    'LAB',                          'LAB', 'PT',  '1471010101890016', 'KRY-004', NULL)
+     ) v (n, u, nama, peran, dept, comp, nik, kode, email)
 JOIN dbo.LevelDetails ld ON ld.LevelDetCode = v.peran
 JOIN dbo.CompanyArea a ON a.CompID = v.comp
 JOIN dbo.DepartmentDetails dd ON dd.DeptID = v.dept AND dd.CompAreaID = a.CompAreaID;
@@ -66,22 +66,31 @@ INSERT INTO dbo.PasswordManager (UserID, UserPasswd, MustChange, History)
 SELECT UserID, @pw, 0, N'[]' FROM dbo.Users WHERE UserID BETWEEN @p + 11 AND @p + 16;
 DECLARE @ho BIGINT = @p + 11, @sec BIGINT = @p + 12, @sec2 BIGINT = @p + 13, @op BIGINT = @p + 14, @srt BIGINT = @p + 15, @lab BIGINT = @p + 16;
 
-/* ---------- Orang tanpa akun: supir, karyawan, BHL, tamu ---------- */
-INSERT INTO dbo.Users (UserID, Nama, CategoryCode, NoKTP, UserCode, IsUpload)
-VALUES (@p + 21, N'Joko Susilo',      'DRIVER',   '1471020202800021', 'DRV-001', 1),
-       (@p + 22, N'Agus Salim',       'DRIVER',   '1471020202810022', 'DRV-002', 1),
-       (@p + 23, N'Bambang Prasetyo', 'DRIVER',   '1471020202820023', 'DRV-003', 1),
-       (@p + 24, N'Dedi Kurniawan',   'DRIVER',   '1471020202830024', 'DRV-004', 1),
-       (@p + 25, N'Eko Saputra',      'DRIVER',   '1471020202840025', 'DRV-005', 1),
-       (@p + 26, N'Fajar Nugroho',    'DRIVER',   '1471020202850026', 'DRV-006', 1),
-       (@p + 27, N'Gilang Ramadhan',  'DRIVER',   '1471020202860027', 'DRV-007', 0),
-       (@p + 28, N'Hari Wibowo',      'DRIVER',   '1471020202870028', 'DRV-008', 1),
-       (@p + 29, N'Irfan Hakim',      'DRIVER',   '1471020202880029', 'DRV-009', 1),
-       (@p + 30, N'Yusuf Maulana',    'DRIVER',   '1471020202890030', 'DRV-010', 1),
-       (@p + 31, N'Rina Marlina',     'EMPLOYEE', '1471030303900031', 'KRY-005', 1),
-       (@p + 32, N'Tono Sugiarto',    'BHL',      '1471030303910032', 'BHL-001', 0),
-       (@p + 33, N'Lina Kusuma',      'TAMU',     '3171040404920033', 'TMU-001', 0),
-       (@p + 34, N'Rudy Tanjung',     'TAMU',     '1271040404930034', 'TMU-002', 0);
+/* ---------- Orang tanpa akun: supir & tamu (profil visitor di Guest), karyawan & BHL (jabatan) ---------- */
+INSERT INTO dbo.Guest (CompanyFrom, VisitorNeeds, NoKTP, Description)
+VALUES (N'PT Angkut Lancar', N'Antar TBS', '1471020202800021', N'DRV-001'), (N'PT Angkut Lancar', N'Antar TBS', '1471020202810022', N'DRV-002'),
+       (N'CV Transportir Riau', N'Antar TBS', '1471020202820023', N'DRV-003'), (N'CV Sawit Nakal', N'Antar TBS', '1471020202830024', N'DRV-004'),
+       (N'PT Minyak Prima', N'Muat CPO', '1471020202840025', N'DRV-005'), (N'PT Minyak Prima', N'Muat CPO', '1471020202850026', N'DRV-006'),
+       (N'PT Angkut Lancar', N'Antar TBS', '1471020202860027', N'DRV-007'), (N'KUD Sawit Jaya', N'Antar TBS', '1471020202870028', N'DRV-008'),
+       (N'KUD Sawit Jaya', N'Antar TBS', '1471020202880029', N'DRV-009'), (N'UD Berkah Tani', N'Antar TBS', '1471020202890030', N'DRV-010'),
+       (N'Lembaga Sertifikasi ISPO', N'Audit / Inspeksi', '3171040404920033', N'TMU-001'),
+       (N'PT Timbang Presisi', N'Perbaikan / Servis', '1271040404930034', N'TMU-002');
+INSERT INTO dbo.Users (UserID, Nama, NoKTP, UserCode, IsUpload, GuestID)
+SELECT @p + v.n, v.nama, v.nik, v.kode, v.upd, g.GuestID
+FROM (VALUES (21, N'Joko Susilo',      '1471020202800021', 'DRV-001', 1), (22, N'Agus Salim',       '1471020202810022', 'DRV-002', 1),
+             (23, N'Bambang Prasetyo', '1471020202820023', 'DRV-003', 1), (24, N'Dedi Kurniawan',   '1471020202830024', 'DRV-004', 1),
+             (25, N'Eko Saputra',      '1471020202840025', 'DRV-005', 1), (26, N'Fajar Nugroho',    '1471020202850026', 'DRV-006', 1),
+             (27, N'Gilang Ramadhan',  '1471020202860027', 'DRV-007', 0), (28, N'Hari Wibowo',      '1471020202870028', 'DRV-008', 1),
+             (29, N'Irfan Hakim',      '1471020202880029', 'DRV-009', 1), (30, N'Yusuf Maulana',    '1471020202890030', 'DRV-010', 1),
+             (33, N'Lina Kusuma',      '3171040404920033', 'TMU-001', 0), (34, N'Rudy Tanjung',     '1271040404930034', 'TMU-002', 0)
+     ) v (n, nama, nik, kode, upd)
+JOIN dbo.Guest g ON g.NoKTP = v.nik;
+INSERT INTO dbo.Users (UserID, Nama, NoKTP, UserCode, IsUpload, UserLevelID, UserDeptID, CompAreaID)
+SELECT @p + v.n, v.nama, v.nik, v.kode, v.upd, ld.LevelDetID, dd.DeptDetailID, @areaPT
+FROM (VALUES (31, N'Rina Marlina',  '1471030303900031', 'KRY-005', 1, 'UMUM',        'UMUM'),
+             (32, N'Tono Sugiarto', '1471030303910032', 'BHL-001', 0, 'SORTASI_BHL', 'SRT')) v (n, nama, nik, kode, upd, peran, dept)
+JOIN dbo.LevelDetails ld ON ld.LevelDetCode = v.peran
+JOIN dbo.DepartmentDetails dd ON dd.DeptID = v.dept AND dd.CompAreaID = @areaPT;
 INSERT INTO dbo.LicenseDetail (UserID, SIMType, LicenseNumber, ExpiredSIM, CreateBy)
 SELECT @p + v.n, l.LicenseID, v.sim, DATEADD(MONTH, v.bulan, @hari), @sec
 FROM (VALUES (21, 'B1_UMUM', '140112340021', 30), (22, 'B1_UMUM', '140112340022', 18), (23, 'B2_UMUM', '140112340023', 40),
@@ -275,28 +284,30 @@ SELECT 'POS-' + FORMAT(@hari, 'yyMMdd') + '-001', DATEADD(MINUTE, -45, GETDATE()
 FROM dbo.Supplier s, dbo.Product p, dbo.DetailVehicle k, dbo.Flow f
 WHERE s.SupplierCode = 'SUP-003' AND p.ProductName = 'TBS' AND k.NoVehicle = 'BM 7734 TC' AND f.FlowCode = 'POS_SAJA';
 
-/* ---------- Absensi 5 hari terakhir (karyawan & security) ---------- */
-INSERT INTO dbo.FaceActivity (UserID, ActivityType, Status, TimeStatus, DiffMinutes, FaceDistance, LivenessChallenge, Device, LogDate)
-SELECT u.n, j.jenis, 'BERHASIL',
+/* ---------- Visitor & Staff Logs: absensi 5 hari terakhir (karyawan & security) + kunjungan tamu (FaceActivity) ---------- */
+DECLARE @ok INT = (SELECT StatusID FROM dbo.Status WHERE StatusCode = 'WAJAH_BERHASIL');
+INSERT INTO dbo.FaceActivity (UserID, ActivityType, StatusID, TimeStatus, DiffMinutes, FaceDistance, Device, CompAreaID, LogDate)
+SELECT u.n, j.jenis, @ok,
        CASE WHEN j.jenis = 'MASUK' AND (u.n + d.n) % 4 = 0 THEN 'TERLAMBAT' ELSE 'TEPAT_WAKTU' END,
-       CASE WHEN j.jenis = 'MASUK' AND (u.n + d.n) % 4 = 0 THEN 12 ELSE 0 END, 0.32, 'KEDIP', 'KIOSK-PKS',
+       CASE WHEN j.jenis = 'MASUK' AND (u.n + d.n) % 4 = 0 THEN 12 ELSE 0 END, 0.32, 'KIOSK-PKS', @areaPT,
        DATEADD(MINUTE, CASE j.jenis WHEN 'MASUK' THEN 7 * 60 + 50 + CASE WHEN (u.n + d.n) % 4 = 0 THEN 22 ELSE 0 END ELSE 17 * 60 + 5 END,
                CAST(DATEADD(DAY, -d.n, @hari) AS DATETIME))
 FROM (VALUES (@sec), (@op), (@srt), (@lab), (@p + 31)) u (n)
 CROSS JOIN (VALUES (1), (2), (3), (4), (5)) d (n)
-CROSS JOIN (VALUES ('MASUK'), ('PULANG')) j (jenis)
+CROSS JOIN (VALUES ('MASUK'), ('KELUAR')) j (jenis)
 WHERE DATEPART(WEEKDAY, DATEADD(DAY, -d.n, @hari)) NOT IN (1);
-INSERT INTO dbo.FaceActivity (UserID, ActivityType, Status, TimeStatus, DiffMinutes, FaceDistance, LivenessChallenge, Device, LogDate)
-SELECT n, 'MASUK', 'BERHASIL', 'TEPAT_WAKTU', 0, 0.3, 'KEDIP', 'KIOSK-PKS', DATEADD(MINUTE, 7 * 60 + 48, CAST(@hari AS DATETIME))
+INSERT INTO dbo.FaceActivity (UserID, ActivityType, StatusID, TimeStatus, DiffMinutes, FaceDistance, Device, CompAreaID, LogDate)
+SELECT n, 'MASUK', @ok, 'TEPAT_WAKTU', 0, 0.3, 'KIOSK-PKS', @areaPT, DATEADD(MINUTE, 7 * 60 + 48, CAST(@hari AS DATETIME))
 FROM (VALUES (@sec), (@op), (@srt), (@lab)) u (n);
-
-/* ---------- Kunjungan tamu ---------- */
-INSERT INTO dbo.Guest (UserID, VisitToID, PurposeID, Description, CompanyFrom, NoVehicle, CompAreaID, CheckInDate, CheckOutDate, CreateBy)
-SELECT @p + 33, @p + 31, (SELECT PurposeID FROM dbo.VisitPurpose WHERE PurposeName = N'Audit / Inspeksi'), N'Audit sertifikasi ISPO',
-       N'PT Sertifikasi Hijau', 'B 1234 KLM', @areaPT, DATEADD(MINUTE, -150, GETDATE()), NULL, @sec
-UNION ALL
-SELECT @p + 34, @ho, (SELECT PurposeID FROM dbo.VisitPurpose WHERE PurposeName = N'Perbaikan / Servis'), N'Kalibrasi timbangan JT-2',
-       N'CV Teknik Timbang', 'BK 7788 ZZ', @areaPT, DATEADD(HOUR, -26, GETDATE()), DATEADD(HOUR, -23, GETDATE()), @sec;
+-- Kunjungan: Lina masih di dalam, Rudy sudah keluar kemarin
+INSERT INTO dbo.FaceActivity (UserID, ActivityType, StatusID, Description, VisitToID, NoVehicle, CompAreaID, LogDate, CreateBy)
+VALUES (@p + 33, 'MASUK', @ok, N'Audit / Inspeksi · Audit sertifikasi ISPO', @p + 31, 'B 1234 KLM', @areaPT, DATEADD(MINUTE, -150, GETDATE()), @sec),
+       (@p + 34, 'MASUK', @ok, N'Perbaikan / Servis · Kalibrasi timbangan JT-2', @ho, 'BK 7788 ZZ', @areaPT, DATEADD(HOUR, -26, GETDATE()), @sec),
+       (@p + 34, 'KELUAR', @ok, NULL, NULL, NULL, @areaPT, DATEADD(HOUR, -23, GETDATE()), @sec);
+-- Wajah tidak dikenali (bukti foto di FaceRecog)
+INSERT INTO dbo.FaceRecog (FaceName, CreateDate) VALUES (NULL, DATEADD(MINUTE, -40, GETDATE()));
+INSERT INTO dbo.FaceActivity (FaceID, StatusID, CompAreaID, LogDate, Device, CreateBy)
+SELECT SCOPE_IDENTITY(), StatusID, @areaPT, DATEADD(MINUTE, -40, GETDATE()), 'KIOSK-PKS', @sec FROM dbo.Status WHERE StatusCode = 'WAJAH_TIDAK_DIKENALI';
 
 /* ---------- Blacklist: supir, kendaraan, supplier (aktif) + satu yang sudah dicabut ---------- */
 DECLARE @bl TABLE (id BIGINT, jenis VARCHAR(20));
@@ -337,6 +348,18 @@ VALUES ('BLACKLIST_TAMBAH', 1, 1, 'PT', @areaPT, 'PERSONEL:' + CAST(@p + 24 AS V
 SET @aju = SCOPE_IDENTITY();
 INSERT INTO dbo.ApprovalRequestStep (RequestID, StepNo, LevelDetID) VALUES (@aju, 1, @lvHO);
 INSERT INTO dbo.ApprovalHistory (RequestID, StepNo, Action, UserID, Notes) VALUES (@aju, 0, 'DIAJUKAN', @sec, N'Kedapatan membuang sampah di area timbangan');
+
+/* ---------- Monitoring CCTV: gateway video demo (go2rtc di server ini, port 1984) + kamera per area ---------- */
+INSERT INTO dbo.CameraGateway (CompAreaID, GatewayName, BaseUrl) VALUES (@areaPT, N'GW-PT', 'http://127.0.0.1:1984'), (@areaYBS, N'GW-YBS', 'http://127.0.0.1:1984');
+INSERT INTO dbo.Camera (CameraCode, CameraName, CompAreaID, GatewayID, Point, ScaleID, Role, Brand, MainStream, SubStream, SortOrder)
+SELECT v.kode, v.nama, g.CompAreaID, g.GatewayID, v.titik, CASE v.jt WHEN 1 THEN @jt1 WHEN 2 THEN @jt2 END, v.peran, v.merk, v.utama, v.utama + '_sub', v.urut
+FROM (VALUES ('CAM-01', N'Gerbang Masuk', 'GW-PT', 'POS_MASUK', 0, 'PLAT', N'Hikvision DS-2CD2T47', 'pt_cam01', 1),
+             ('CAM-02', N'Jembatan 1 (depan)', 'GW-PT', 'JEMBATAN', 1, 'DEPAN', N'Hikvision DS-2CD2T47', 'pt_cam02', 2),
+             ('CAM-03', N'Jembatan 1 (atas)', 'GW-PT', 'JEMBATAN', 1, 'ATAS', N'Dahua IPC-HFW2441', 'pt_cam03', 3),
+             ('CAM-04', N'Jembatan 2 (depan)', 'GW-PT', 'JEMBATAN', 2, 'DEPAN', N'Hikvision DS-2CD2T47', 'pt_cam04', 4),
+             ('CAM-05', N'Sortasi', 'GW-PT', 'SORTASI', 0, 'UMUM', N'Hikvision DS-2CD1043', 'pt_cam05', 5),
+             ('YBS-01', N'Gerbang YBS', 'GW-YBS', 'POS_MASUK', 0, 'PLAT', N'Hikvision DS-2CD2T47', 'ybs_cam01', 1)) v (kode, nama, gw, titik, jt, peran, merk, utama, urut)
+JOIN dbo.CameraGateway g ON g.GatewayName = v.gw;
 
 COMMIT TRANSACTION;
 PRINT 'Data demo berhasil dibuat. Login: ho / security / operator / sortasi / lab, password Demo12345!';

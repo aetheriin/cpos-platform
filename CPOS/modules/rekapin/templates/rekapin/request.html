@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/layout/_macros.html" import section_header, judul_halaman, tombol_ekspor %}
+{% from "partials/layout/_macros.html" import section_header, judul_halaman %}
 {% block title %}Request Operator · CPOS{% endblock %}
 {% block info_bar %}{% endblock %}{% block info_bar_script %}{% endblock %}
 {% block tab_header %}
@@ -22,7 +22,6 @@
   <div class="flex flex-wrap items-center gap-3" data-henti-klik>
     <span id="rkFilterInfo" class="text-xs text-slate-500"></span>
     <button type="button" id="rkSetujuiTerpilih" class="btn-success btn-sm hidden" data-on-click="setujuiTerpilih" data-arg="$el"><i class="fa-solid fa-check-double"></i> Setujui Terpilih <span id="rkJumlahPilih" class="font-mono"></span></button>
-    {{ tombol_ekspor('tabelRkRequest', 'Request Operator') }}
   </div>
   {% endcall %}
   <div id="body-daftar-request" class="section-body overflow-x-auto"><table class="w-full text-left text-sm">
@@ -30,7 +29,7 @@
       <th class="table-cell w-8"><input type="checkbox" id="rkPilihSemua" class="w-4 h-4" data-on-change="pilihSemuaRequest" data-arg="$el" title="Pilih semua yang menunggu persetujuan Anda"></th>
       <th class="table-cell">Tanggal</th><th class="table-cell">Nama Operator</th><th class="table-cell">Kesalahan</th><th class="table-cell">Nomor Tiket</th>
       <th class="table-cell">Remarks</th><th class="table-cell">Remarks Aksi</th><th class="table-cell">Status</th><th class="table-cell text-right">Aksi</th></tr></thead>
-    <tbody id="tabelRkRequest" class="divide-y divide-slate-100" data-per-halaman="20"
+    <tbody data-judul-ekspor="Request Operator" id="tabelRkRequest" class="divide-y divide-slate-100" data-per-halaman="20"
            data-hak="{{ hak|tojson|forceescape }}"></tbody>
   </table></div>
 </div>

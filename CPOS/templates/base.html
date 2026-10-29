@@ -10,7 +10,6 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fonts/fonts.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
-    <script src="{{ url_for('static', filename='js/tema.js') }}"></script>
     {% include "partials/layout/bahasa.html" %}
     {% block extra_head %}{% endblock %}
 </head>
@@ -20,6 +19,13 @@
 {# Kerangka default semua halaman:
    sidebar + topbar (selalu), info bar & header tab (block, bisa diganti / dikosongkan per halaman),
    isi tab di block tab_content. #}
+{# Menu yang sedang dibuka: dipakai sidebar (sorotan) dan topbar (breadcrumb Grup / Menu, sama persis dengan sidebar) #}
+{% if halaman == 'site' %}{% set menu_aktif = 'FORM' if view == 'form' else 'LIST' %}
+{% elif halaman == 'kosong' %}{% set menu_aktif = menu.induk if menu.level == 3 else menu.kode %}
+{% elif kode_aktif %}{% set menu_aktif = kode_aktif %}
+{% else %}{% set menu_aktif = {'dashboard': 'DASHBOARD', 'kontrak': 'KONTRAK_DO',
+                               'master': 'MASTER', 'blacklist': 'BLACKLIST', 'visitor': 'KUNJUNGAN',
+                               'kelebihan_do': 'KELEBIHAN_DO', 'pos': 'POS_SECURITY', 'logbook': 'LOGBOOK'}.get(halaman) %}{% endif %}
 <div class="app-shell">
 
     {% include "partials/layout/sidebar.html" %}
@@ -47,6 +53,7 @@
 </div>
 
 {% block modals %}{% endblock %}
+<button type="button" id="tombolKeAtas" class="tombol-ke-atas hidden" title="Kembali ke atas" aria-label="Kembali ke atas"><i class="fa-solid fa-arrow-up"></i></button>
 {% include "partials/layout/notifikasi.html" %}
 {% if current_user.is_authenticated %}{% include "partials/layout/cari.html" %}{% endif %}
 
@@ -56,6 +63,8 @@
 <script defer src="{{ url_for('static', filename='js/common.js') }}"></script>
 <script defer src="{{ url_for('static', filename='js/aksi.js') }}"></script>
 <script defer src="{{ url_for('static', filename='js/halaman.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/tabel_rapi.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/form_rapi.js') }}"></script>
 <script defer src="{{ url_for('static', filename='js/pilih_cari.js') }}"></script>
 <script defer src="{{ url_for('static', filename='js/api.js') }}"></script>
 <script defer src="{{ url_for('static', filename='js/ui.js') }}"></script>

@@ -41,6 +41,7 @@ const Api = {
             const jenis = res.headers.get('content-type') || '';
             const data = jenis.includes('application/json') ? await res.json() : null;
             if (!res.ok || (data && data.error)) {
+                if (typeof Galat !== 'undefined') Galat.dariServer(data, res.status);     // pesan di bawah isian (form_rapi.js)
                 return { ok: false, status: res.status, data,
                          error: (data && data.error) || PESAN_STATUS[res.status] || `Permintaan gagal (${res.status}).` };
             }

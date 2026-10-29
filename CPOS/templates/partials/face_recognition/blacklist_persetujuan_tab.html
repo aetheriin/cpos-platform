@@ -1,4 +1,3 @@
-{% from "partials/layout/_macros.html" import tombol_ekspor %}
 {# List Request: pengajuan tambah / hapus blacklist. Pengaju melihat request miliknya; penyetuju melihat request
    di PT-nya yang tahapnya memuat perannya (Admin › Alur Persetujuan). Approve / Reject hanya di tahap berjalan. #}
 {% set bisa_setujui = boleh('BLACKLIST', 'setujui') or penyetuju_alur %}
@@ -30,7 +29,6 @@
             </div>
             <div class="flex items-center gap-1.5">
                 <div data-tombol-kolom="tabelRequest"></div>
-                {{ tombol_ekspor('daftarPengajuan', 'List Request Blacklist') }}
             </div>
         </div>
         <div class="overflow-x-auto">
@@ -52,7 +50,7 @@
                         <th class="table-cell" data-kolom="tahap">Tahap Persetujuan</th>
                         <th class="table-cell text-right" data-kolom="aksi" data-kolom-wajib>Aksi</th></tr>
                 </thead>
-                <tbody id="daftarPengajuan" data-per-halaman="20" data-tampilan="tabel" data-mode-awal="{{ 'menunggu' if bisa_setujui else 'saya' }}"
+                <tbody data-judul-ekspor="List Request Blacklist" id="daftarPengajuan" data-per-halaman="20" data-tampilan="tabel" data-mode-awal="{{ 'menunggu' if bisa_setujui else 'saya' }}"
                        class="divide-y divide-slate-100"></tbody>
             </table>
         </div>

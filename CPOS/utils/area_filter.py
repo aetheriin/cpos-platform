@@ -1,7 +1,7 @@
 """Filter data per area (tanpa import lain, dipakai modul query mana pun).
 
 id_area dari area_data():  None = semua area (kantor pusat) · int = satu site · tuple = beberapa site
-(user kantor pusat yang dibatasi ke PT tertentu, Admin › Kelola Pengguna › PT yang dikelola)."""
+(cakupan data aturan menu, Admin › Hak Akses › Cakupan data)."""
 
 
 def sql_area(kolom, id_area):

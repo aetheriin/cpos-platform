@@ -8,11 +8,11 @@
 </div>
 <form id="formPengaturan" autocomplete="off">
     <div id="grupPengaturan" class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4"></div>
-    <div class="flex items-center gap-3">
-        <button type="submit" class="btn-primary"><i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Pengaturan</button>
+    <div class="flex items-center justify-end gap-3">
         <button type="button" id="btnSalinCompany" class="btn-secondary hidden" data-on-click="salinPengaturanCompany" data-arg="$el"
                 title="Nilai area ini (yang sudah disimpan) dipakai juga oleh semua area lain di company yang sama">
             <i class="fa-solid fa-copy mr-1"></i> Terapkan ke semua area company ini</button>
+        <button type="submit" class="btn-primary"><i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Pengaturan</button>
     </div>
 </form>
 
@@ -20,7 +20,6 @@
     <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
         <div>
             <h2 class="text-sm font-bold text-slate-900">Kolom Wajib</h2>
-            <p class="text-xs text-slate-500">Kolom yang biasanya opsional bisa dijadikan wajib diisi. Berlaku untuk semua area.</p>
         </div>
         <button type="submit" class="btn-primary py-1.5"><i class="fa-solid fa-floppy-disk mr-1"></i> Simpan</button>
     </div>

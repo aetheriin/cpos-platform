@@ -38,8 +38,8 @@ function saringRequest() {
             <td class="table-cell"><div class="min-w-[12rem]">${ringkasTahap(p)}</div></td>
             <td class="table-cell text-right whitespace-nowrap">
                 <button type="button" class="link-aksi text-blue-600" data-on-click="bukaDetailRequest" data-arg="${p.id_pengajuan}">Detail</button>
-                ${p.bisa_setujui ? `<button type="button" class="link-aksi text-red-600 ml-3" data-on-click="bukaPutusan" data-arg="${p.id_pengajuan}|tolak">Reject</button>
-                    <button type="button" class="btn-primary btn-sm ml-2" data-on-click="bukaPutusan" data-arg="${p.id_pengajuan}|setujui">Approve</button>` : ''}
+                ${p.bisa_setujui ? `<button type="button" class="link-aksi text-red-600 ml-3" data-on-click="bukaPutusan" data-arg="${p.id_pengajuan}|tolak">Tolak</button>
+                    <button type="button" class="btn-primary btn-sm ml-2" data-on-click="bukaPutusan" data-arg="${p.id_pengajuan}|setujui">Setujui</button>` : ''}
                 ${p.bisa_batal ? `<button type="button" class="link-aksi text-slate-600 ml-3" data-on-click="batalkanPengajuan" data-arg="${p.id_pengajuan}">Batalkan</button>` : ''}</td>
         </tr>`;
     }).join('') || barisKosong(KOLOM_REQUEST, modePersetujuan === 'menunggu' ? 'Tidak ada request yang menunggu persetujuan Anda' : 'Belum ada request');
@@ -96,8 +96,8 @@ function bukaDetailRequest(id) {
                 ${tahap}
             </ol></div>`;
     const aksi = document.getElementById('aksiDetailRequest');
-    aksi.innerHTML = p.bisa_setujui ? `<button type="button" class="btn-secondary text-red-600" data-on-click="putusanDariDetail" data-arg="${p.id_pengajuan}|tolak">Reject</button>
-        <button type="button" class="btn-primary" data-on-click="putusanDariDetail" data-arg="${p.id_pengajuan}|setujui">Approve</button>` : '';
+    aksi.innerHTML = p.bisa_setujui ? `<button type="button" class="btn-secondary text-red-600" data-on-click="putusanDariDetail" data-arg="${p.id_pengajuan}|tolak">Tolak</button>
+        <button type="button" class="btn-primary" data-on-click="putusanDariDetail" data-arg="${p.id_pengajuan}|setujui">Setujui</button>` : '';
     openModal('modalDetailRequest');
 }
 

@@ -66,7 +66,12 @@ const Dialog = {
         document.getElementById('dialogPesan').textContent = rapikanPesan(pesan);
         const ya = document.getElementById('dialogYa');
         ya.textContent = teksYa;
-        ya.className = bahaya ? 'btn-danger flex-1' : 'btn-primary flex-1';
+        ya.className = bahaya ? 'btn-danger' : 'btn-primary';
+        const ikon = document.getElementById('dialogIkon');
+        if (ikon) {
+            ikon.className = `dialog-ikon ${bahaya ? 'dialog-ikon-bahaya' : ''}`;
+            ikon.innerHTML = `<i class="fa-solid ${bahaya ? 'fa-triangle-exclamation' : 'fa-circle-question'}"></i>`;
+        }
         document.getElementById('dialogBatal').textContent = teksBatal;
         openModal('dialogKonfirmasi');
         ya.focus();

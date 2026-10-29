@@ -42,11 +42,11 @@ function formatNamaPersonel(kode, id, nama) {
     return kode ? `${kode} · ${nama}` : `ID ${formatIdPersonel(id)} · ${nama}`;
 }
 
+// Jenis orang (utils/jenis_orang.py)
 const LABEL_KATEGORI = {
-    DRIVER: ['SUPIR', 'bg-blue-100 text-blue-700'],
-    SECURITY: ['SECURITY', 'bg-slate-900 text-white'],
-    EMPLOYEE: ['KARYAWAN HO', 'bg-slate-200 text-slate-600'],
-    TAMU: ['TAMU', 'bg-amber-100 text-amber-700'],
+    KARYAWAN: ['Karyawan', 'bg-slate-200 text-slate-700'],
+    DRIVER: ['Supir', 'bg-utama-100 text-utama-700'],
+    TAMU: ['Tamu', 'bg-amber-100 text-amber-700'],
 };
 
 const WARNA_BADGE = {
@@ -101,8 +101,8 @@ try {
     });
 } catch (e) { /* data status rusak: pakai label bawaan */ }
 
-// Kolom wajib dari Admin › Pengaturan Site › Kolom Wajib: {id form: [nama kolom]} -> required + tanda * di label;
-// tulisan "(opsional)" di label dihapus. Server tetap memeriksa.
+// Kolom wajib dari Admin › Pengaturan Site › Kolom Wajib: {id form: [nama kolom]} -> required (tanda * di label
+// dipasang form_rapi.js); tulisan "(opsional)" di label dihapus. Server tetap memeriksa.
 document.addEventListener('DOMContentLoaded', () => {
     let peta = {};
     try { peta = JSON.parse(document.getElementById('dataStatusTiket')?.dataset.kolomWajib || '{}') || {}; } catch (e) { return; }
@@ -117,7 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!label) return;
             label.querySelectorAll('span').forEach(s => { if (/opsional/i.test(s.textContent)) s.remove(); });
             label.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = n.textContent.replace(/\s*\(opsional\)/i, ''); });
-            label.insertAdjacentHTML('beforeend', ' <span class="text-red-600">*</span>');
         });
     });
 });
@@ -262,6 +261,21 @@ document.addEventListener('input', e => {
     el.setSelectionRange(posisi, posisi);
 });
 document.addEventListener('focusout', e => { if (e.target.matches && e.target.matches('input[data-plat]')) rapikanKotakPlat(e.target); });
+
+// ===== HURUF KECIL / BESAR =====
+// <input data-huruf-kecil> (mis. username): diketik / ditempel -> langsung huruf kecil tanpa spasi.
+// <input class="uppercase"> (kode, No. DO, SIM, ...): isinya benar-benar dijadikan huruf besar, bukan hanya tampilannya,
+// supaya yang terlihat sama dengan yang dikirim (pola isian / pengecekan server tidak menolak huruf kecil tersembunyi).
+document.addEventListener('input', e => {
+    const el = e.target;
+    if (!el.matches || el.matches('[data-plat]')) return;
+    const baru = el.matches('input[data-huruf-kecil]') ? el.value.toLowerCase().replace(/\s+/g, '')
+        : el.matches('input.uppercase, input.info-field-input.uppercase') ? el.value.toUpperCase() : el.value;
+    if (baru === el.value) return;
+    const posisi = Math.min(el.selectionStart, baru.length);
+    el.value = baru;
+    el.setSelectionRange(posisi, posisi);
+});
 
 // ===== NIK (semua kotak <input data-nik>) =====
 // Hanya angka, maksimal 16 (NIK KTP). Teks tempelan dengan spasi / titik ikut dibersihkan. Server tetap memvalidasi.

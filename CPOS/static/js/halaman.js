@@ -5,7 +5,10 @@
 // Tambahan otomatis:
 // - kepala tabel menempel di bawah header saat halaman digulir (bila tabel muat selebar kotaknya, .tabel-lekat di CSS);
 // - jumlah baris per halaman diingat per user (Pilihan di common.js);
-// - <tbody data-sorot>: baris yang baru muncul / berubah (tr data-jejak) disorot sebentar saat data dimuat ulang.
+// - <tbody data-sorot>: baris yang baru muncul / berubah (tr data-jejak) disorot sebentar saat data dimuat ulang;
+// - kaki tabel seragam di semua halaman: jumlah data · tombol Excel / PDF (ekspor.js) · baris per halaman · halaman.
+//   Judul file ekspor = data-judul-ekspor di tbody, selain itu judul kotak tabel / judul halaman.
+//   <tbody data-tanpa-ekspor> = tanpa tombol ekspor.
 const PILIHAN_PER_HALAMAN = [10, 20, 50, 100];
 
 const Halaman = {
@@ -14,13 +17,19 @@ const Halaman = {
         const perTersimpan = Number(Pilihan.ambil(kunciPer));
         tbody._hal = { ke: 1, per: PILIHAN_PER_HALAMAN.includes(perTersimpan) ? perTersimpan : Number(tbody.dataset.perHalaman) || 20 };
         const nav = document.createElement('div');
-        nav.className = 'flex items-center gap-3 px-5 py-2.5 text-xs text-slate-500 border-t border-slate-100 hidden';
-        nav.innerHTML = `<span data-info></span><div class="flex-1"></div>
+        nav.className = 'kaki-tabel hidden';
+        const ekspor = 'tanpaEkspor' in tbody.dataset || !tbody.id ? '' : `<div class="flex items-center gap-1.5">
+            <button type="button" class="btn-secondary btn-sm" data-ekspor="xlsx" title="Unduh Excel (semua baris yang tampil)"><i class="fa-regular fa-file-excel text-emerald-600"></i> Excel</button>
+            <button type="button" class="btn-secondary btn-sm" data-ekspor="pdf" title="Cetak / simpan PDF"><i class="fa-regular fa-file-pdf text-red-600"></i> PDF</button></div>`;
+        nav.innerHTML = `<span data-info></span>${ekspor}<div class="flex-1"></div>
             <label class="flex items-center gap-1">Tampilkan <select data-per class="border border-slate-300 rounded px-1.5 py-1">
                 ${PILIHAN_PER_HALAMAN.map(n => `<option value="${n}">${n}</option>`).join('')}</select> baris</label>
+            <div data-nav-hal class="flex items-center gap-2">
             <button type="button" data-ke="-1" class="btn-secondary py-1 px-2.5 text-xs">‹ Sebelumnya</button>
             <span data-posisi class="font-medium text-slate-700"></span>
-            <button type="button" data-ke="1" class="btn-secondary py-1 px-2.5 text-xs">Berikutnya ›</button>`;
+            <button type="button" data-ke="1" class="btn-secondary py-1 px-2.5 text-xs">Berikutnya ›</button></div>`;
+        nav.querySelectorAll('[data-ekspor]').forEach(b => b.addEventListener('click', () =>
+            eksporTabel(tbody.id, b.dataset.ekspor, this.judulEkspor(tbody))));
         nav.querySelector('[data-per]').value = tbody._hal.per;
         nav.querySelector('[data-per]').addEventListener('change', e => {
             tbody._hal.per = Number(e.target.value);
@@ -39,6 +48,15 @@ const Halaman = {
         tbody._nav = nav;
         new MutationObserver(() => { this.sorot(tbody); this.segarkan(tbody); }).observe(tbody, { childList: true });
         this.segarkan(tbody);
+    },
+
+    // Judul file ekspor: data-judul-ekspor, judul kotak tabel (h2/h3 / teks tebal pertama), lalu judul halaman
+    judulEkspor(tbody) {
+        if (tbody.dataset.judulEkspor) return tbody.dataset.judulEkspor;
+        const kotak = tbody.closest('.section-box, .card, [data-tab-content]');
+        const judul = kotak && kotak.querySelector('h2, h3, .section-header-text, p.font-bold, p.font-semibold');
+        const teks = judul && judul.textContent.replace(/\s+/g, ' ').trim();
+        return teks && teks.length <= 60 ? teks : document.title.split(' · ')[0];
     },
 
     // Pembungkus tabel (div overflow-x-auto); dibuat bila belum ada
@@ -80,7 +98,7 @@ const Halaman = {
 
     segarkan(tbody) {
         if (!tbody || !tbody._hal) return;
-        const data = [...tbody.rows].filter(tr => tr.cells.length > 1);
+        const data = [...tbody.rows].filter(tr => tr.cells.length > 1 && !tr.classList.contains('baris-kerangka'));
         const tampil = data.filter(tr => !tr.classList.contains('hidden'));
         const { per } = tbody._hal;
         const total = tampil.length, jumlahHal = Math.max(1, Math.ceil(total / per));
@@ -90,7 +108,8 @@ const Halaman = {
         tampil.forEach((tr, i) => { if (i < awal || i >= awal + per) tr.style.display = 'none'; });
 
         const nav = tbody._nav;
-        nav.classList.toggle('hidden', total <= PILIHAN_PER_HALAMAN[0]);
+        nav.classList.toggle('hidden', !total);
+        nav.querySelector('[data-nav-hal]').classList.toggle('hidden', jumlahHal <= 1);
         nav.querySelector('[data-info]').textContent = total
             ? `Menampilkan ${awal + 1}–${Math.min(awal + per, total)} dari ${total}` : '';
         nav.querySelector('[data-posisi]').textContent = `${tbody._hal.ke} / ${jumlahHal}`;
@@ -102,7 +121,9 @@ const Halaman = {
     sorot(tbody) {
         if (!('sorot' in tbody.dataset)) return;
         const kenal = tbody._kenal || (tbody._kenal = new Set());
-        [...tbody.rows].filter(tr => tr.cells.length > 1).forEach(tr => {
+        const data = [...tbody.rows].filter(tr => tr.cells.length > 1);
+        if (data.some(tr => tr.classList.contains('baris-kerangka'))) return;      // kerangka memuat (tabel_rapi.js)
+        data.forEach(tr => {
             const jejak = tr.dataset.jejak || tr.cells[0].textContent.trim();
             if (tbody._sudahIsi && !kenal.has(jejak)) tr.classList.add('baris-baru');
             kenal.add(jejak);

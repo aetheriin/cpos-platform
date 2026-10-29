@@ -374,20 +374,19 @@ def akhiri_kontrak(id_kontrak):
     conn.close()
 
 # ===== DRIVER (tabel personel, migrasi 002) =====
-# Supir adalah personel berkategori DRIVER. Kolom dialias ke nama lama (id_driver, nama_driver)
+# Supir adalah orang berjenis DRIVER (visitor dengan SIM). Kolom dialias ke nama lama (id_driver, nama_driver)
 # supaya kode & JSON tab Security / Timbangan / Sortasi / Lab tidak perlu berubah.
 
 SQL_KOLOM_DRIVER = """d.UserID AS id_driver, d.UserCode AS kode_personel, d.NoKTP AS nik, d.Nama AS nama_driver, d.LicenseNumber AS no_sim,
-                      d.CategoryCode AS kategori, d.IsBlacklisted AS is_blacklisted, d.IsUpload AS is_updated, d.PhotoPath AS foto_path"""
+                      d.PersonType AS kategori, d.IsBlacklisted AS is_blacklisted, d.IsUpload AS is_updated, d.PhotoPath AS foto_path"""
 
 def get_all_driver_embeddings():
-    """Semua personel aktif (bukan hanya DRIVER), supaya wajah security/karyawan tidak terbaca sebagai supir lain."""
+    """Wajah terdaftar semua orang aktif (bukan hanya DRIVER), supaya wajah security/karyawan tidak terbaca sebagai supir lain.
+    Satu wajah per orang: Users.FaceEmbeddingData."""
     conn = get_connection()
     cursor = conn.cursor()
-    # Semua wajah aktif (personel_wajah, migrasi 009); satu personel bisa punya lebih dari satu
-    cursor.execute("""SELECT p.UserID AS id_personel, p.Nama AS nama_personel, w.FaceDet AS embedding FROM FaceRecog w
-                      JOIN Users p ON p.UserID = w.UserID
-                      WHERE p.Active = 1 AND w.Active = 1""")
+    cursor.execute("""SELECT UserID AS id_personel, Nama AS nama_personel, FaceEmbeddingData AS embedding FROM Users
+                      WHERE Active = 1 AND FaceEmbeddingData IS NOT NULL""")
     rows = cursor.fetchall()
     conn.close()
     return rows
@@ -422,7 +421,7 @@ def cari_wajah_mirip_driver(embedding_baru, threshold=None, exclude_id=None):
     return (id_personel, nama) if id_personel is not None else None
 
 def insert_driver(nik, nama, no_sim, embedding_binary, foto_path=None, user_id=None, foto_sumber='KAMERA'):
-    """Supir baru dari modal Tambah di Form Create Ticket = personel kategori DRIVER, kode otomatis (mis. DRV-012).
+    """Supir baru dari modal Tambah di Form Create Ticket = orang berjenis DRIVER, kode otomatis (mis. DRV-012).
     Kembalikan (id_personel, kode_personel)."""
     from utils.db_personel import insert_personel, saran_kode_personel
     kode = saran_kode_personel('DRIVER')

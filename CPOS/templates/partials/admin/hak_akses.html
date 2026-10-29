@@ -9,16 +9,21 @@
 
 {# ===== TAB: ATURAN PER MENU ===== #}
 <div id="tabAkses-aturan" class="grid grid-cols-1 lg:grid-cols-12 gap-4 akses-tinggi">
-    <div class="lg:col-span-4 xl:col-span-3 section-box flex flex-col min-h-0">
+    <div class="lg:col-span-5 xl:col-span-4 section-box flex flex-col min-h-0">
         <div class="px-4 py-3 border-b border-slate-100 space-y-2">
-            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Menu</p>
+            <div class="flex items-center justify-between gap-2">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Menu</p>
+                <div class="flex items-center gap-1">
+                    <button type="button" class="pohon-tombol" data-on-click="lipatPohon" data-arg="$false" title="Buka semua"><i class="fa-solid fa-angles-down"></i></button>
+                    <button type="button" class="pohon-tombol" data-on-click="lipatPohon" data-arg="$true" title="Lipat semua"><i class="fa-solid fa-angles-up"></i></button>
+                </div>
+            </div>
             <input type="search" id="cariMenuAkses" class="input-field py-1.5" placeholder="Cari menu..." data-on-input="tampilPohonMenu">
         </div>
-        <div id="pohonMenu" class="flex-1 overflow-y-auto py-1"></div>
-        <p class="px-4 py-2 border-t border-slate-100 text-[11px] text-slate-400"><span class="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1"></span>sudah ada aturan</p>
+        <div id="pohonMenu" class="flex-1 overflow-y-auto py-1.5"></div>
     </div>
 
-    <form id="formAturan" class="lg:col-span-8 xl:col-span-9 section-box flex flex-col min-h-0" autocomplete="off">
+    <form id="formAturan" class="lg:col-span-7 xl:col-span-8 section-box flex flex-col min-h-0" autocomplete="off">
         <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center gap-2">
             <div class="min-w-0 flex-1">
                 <p id="remahMenuAkses" class="text-[11px] text-slate-400 truncate">Pilih menu di kiri</p>
@@ -38,10 +43,11 @@
             <button type="button" class="btn-primary btn-sm" data-on-click="tambahAturan" data-perlu-menu disabled><i class="fa-solid fa-plus mr-1"></i>Aturan</button>
         </div>
         <div class="flex-1 overflow-auto min-h-0">
-            <table class="w-full text-left text-sm">
+            <table data-tanpa-urut class="w-full text-left text-sm">
                 <thead id="kepalaAturan" class="table-header-row sticky top-0 z-10">
                     <tr><th class="table-cell !px-2">Efek</th><th class="table-cell !px-2">Diberikan ke</th><th class="table-cell !px-2">Sasaran</th>
                         <th class="table-cell !px-1 text-center text-[11px] kolom-aksi" colspan="7">Aksi</th>
+                        <th class="table-cell !px-2">Cakupan data</th>
                         <th class="table-cell !px-2 kolom-widget hidden">Isi Dashboard</th>
                         <th class="table-cell !px-2"></th></tr>
                 </thead>
@@ -50,8 +56,7 @@
                 </tbody>
             </table>
         </div>
-        <p class="px-4 py-2 border-t border-slate-100 text-[11px] text-slate-500">Hak user = gabungan semua aturan <b>Izinkan</b> yang cocok, dikurangi aturan <b>Larang</b> yang cocok (Larang selalu menang).
-            Menu hanya tampil bila menu induknya juga diberikan. Isi Dashboard memakai aturan paling spesifik: User › Peran › Jabatan › Departemen › Semua.</p>
+
     </form>
 </div>
 
@@ -74,7 +79,7 @@
                 <thead class="table-header-row sticky top-0 z-10">
                     <tr><th class="table-cell">Menu</th><th class="table-cell">Hak</th><th class="table-cell">Asal aturan</th></tr>
                 </thead>
-                <tbody id="tabelCek" class="divide-y divide-slate-100"></tbody>
+                <tbody data-tanpa-kerangka id="tabelCek" class="divide-y divide-slate-100"></tbody>
             </table>
         </div>
     </div>
@@ -84,12 +89,11 @@
 <div id="tabAkses-awal" class="hidden section-box">
     <div class="px-4 py-3 border-b border-slate-100">
         <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Halaman yang dibuka setelah login</p>
-        <p class="text-xs text-slate-500">Bila peran tidak boleh membuka halaman ini, dipakai halaman pertama di menu yang boleh dibuka.</p>
     </div>
     <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
             <thead class="table-header-row"><tr><th class="table-cell">Peran</th><th class="table-cell text-right">User</th><th class="table-cell">Halaman awal</th></tr></thead>
-            <tbody id="tabelHalamanAwal" class="divide-y divide-slate-100"></tbody>
+            <tbody data-per-halaman="20" id="tabelHalamanAwal" class="divide-y divide-slate-100"></tbody>
         </table>
     </div>
 </div>

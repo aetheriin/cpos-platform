@@ -15,6 +15,7 @@ from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from extensions import BASE_DIR, UPLOAD_FOLDER
+from utils.galat_isian import GalatIsian, isi_galat
 from utils.versi import versi_aplikasi
 from utils.hak_akses import admin_required
 from utils.dokumen import simpan_file, hapus_file_info
@@ -35,7 +36,7 @@ HALAMAN = {
     "users": ("Kelola Pengguna", "fa-users", "Tambah akun, ubah level / departemen / area, atur ulang password, aktif / nonaktif"),
     "menu": ("Kelola Menu", "fa-bars-staggered", "Susunan menu 3 level: nama, induk, urutan, alamat, ikon, aksi yang berlaku, aktif / nonaktif"),
     "hak_akses": ("Hak Akses", "fa-user-shield", "Siapa mendapat menu apa: aturan per menu untuk semua user, peran, jabatan, departemen, atau user tertentu"),
-    "persetujuan": ("Alur Persetujuan", "fa-route", "Tahap persetujuan berjenjang per jenis pengajuan & kategori (mis. blacklist Driver)"),
+    "persetujuan": ("Alur Persetujuan", "fa-route", "Tahap persetujuan berjenjang per jenis pengajuan & kategori (mis. blacklist Supir)"),
     "alur_tiket": ("Alur Tiket", "fa-diagram-project", "Urutan tahap tiket (Security, timbang, sortasi, lab, keluar) per Area + Produk, termasuk tahap bersamaan"),
     "organisasi": ("Organisasi", "fa-sitemap", "Perusahaan, area perusahaan, Mill (tipe area), departemen, jabatan, dan status tiket"),
     "sesi": ("Sesi Aktif", "fa-user-clock", "Pengguna yang sedang login, paksa keluar, buka kunci login"),
@@ -79,9 +80,9 @@ def _audit(aksi, target=None, detail=None):
 def _teks(nama, wajib=True, maks=100):
     nilai = (request.form.get(nama) or "").strip()
     if wajib and not nilai:
-        raise ValueError(f"{nama.replace('_', ' ').capitalize()} wajib diisi")
+        raise GalatIsian(f"{nama.replace('_', ' ').capitalize()} wajib diisi", nama)
     if len(nilai) > maks:
-        raise ValueError(f"{nama.replace('_', ' ').capitalize()} maksimal {maks} karakter")
+        raise GalatIsian(f"{nama.replace('_', ' ').capitalize()} maksimal {maks} karakter", nama)
     return nilai
 
 
@@ -94,7 +95,7 @@ def _jalankan(fn):
     try:
         return fn()
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify(isi_galat(e)), 400
 
 
 # ===== HALAMAN =====
@@ -126,11 +127,9 @@ def admin_halaman(halaman):
 @admin_bp.route("/api/admin/users")
 @_admin
 def users_daftar():
-    pt, pusat = org.pt_kelola_semua(), org.area_pusat()
     return jsonify([{**u, "last_login": u["last_login"].strftime("%Y-%m-%d %H:%M") if u["last_login"] else None,
                      "created_at": u["created_at"].strftime("%Y-%m-%d") if u["created_at"] else None,
-                     "is_saya": u["id_user"] == current_user.id, "pt_kelola": pt.get(u["id_user"], []),
-                     "di_pusat": u["id_comp_area"] in pusat}
+                     "is_saya": u["id_user"] == current_user.id}
                     for u in db.daftar_user()])
 
 
@@ -162,26 +161,12 @@ def _akun_form():
     return peran, id_department, id_area
 
 
-def _pt_kelola_form(id_area):
-    """PT yang dikelola user kantor pusat (wajib minimal satu; semua PT = semua dicentang). User site: kosong."""
-    if id_area not in org.area_pusat():
-        return set()
-    pilihan = {v.strip() for v in request.form.getlist("pt_kelola") if v.strip()} & {c["id_company"] for c in org.daftar_company()}
-    if not pilihan:
-        raise ValueError("Pilih PT yang dikelola (semua PT: tekan Pilih semua)")
-    return pilihan
-
-
-def _simpan_pt_kelola(id_user, pilihan):
-    org.simpan_pt_kelola(id_user, pilihan)
-
-
 def _password_form(nama="password"):
     pw = request.form.get(nama) or ""
     if len(pw) < PASSWORD_MIN:
-        raise ValueError(f"Password minimal {PASSWORD_MIN} karakter")
+        raise GalatIsian(f"Password minimal {PASSWORD_MIN} karakter", nama)
     if pw != (request.form.get("password_ulang") or ""):
-        raise ValueError("Ulangi password tidak sama")
+        raise GalatIsian("Ulangi password tidak sama", "password_ulang")
     return pw
 
 
@@ -192,20 +177,20 @@ def _personel_form(user_lama=None):
     Akun lama yang belum punya NIK boleh disimpan tanpa NIK."""
     nama, nik = _teks("nama"), (request.form.get("nik") or "").strip()
     if nik and not nik_valid(nik):
-        raise ValueError("NIK harus 16 digit angka.")
+        raise GalatIsian("NIK harus 16 digit angka.", "nik")
     if not nik and (user_lama is None or user_lama["nik"]):
-        raise ValueError("NIK wajib diisi.")
+        raise GalatIsian("NIK wajib diisi.", "nik")
     id_personel = user_lama["id_personel"] if user_lama else None
     if nik and user_lama is None:
         ada = db.personel_untuk_nik(nik)
         if ada:
             if ada["akun"]:
-                raise ValueError(f"NIK ini sudah dipakai akun {ada['akun']}.")
+                raise GalatIsian(f"NIK ini sudah dipakai akun {ada['akun']}.", "nik")
             if not ada["boleh_akun"]:
-                raise ValueError(f"NIK ini terdaftar sebagai {ada['nama_kategori'] or ada['kategori']} dan tidak bisa dibuatkan akun.")
+                raise GalatIsian(f"NIK ini terdaftar sebagai {ada['nama_kategori'] or ada['kategori']} dan tidak bisa dibuatkan akun.", "nik")
             id_personel = ada["id_personel"]
     elif nik and cek_nik_ada(nik, exclude_id=id_personel):
-        raise ValueError("NIK sudah terdaftar pada personel lain.")
+        raise GalatIsian("NIK sudah terdaftar pada personel lain.", "nik")
     return {"id_personel": id_personel, "nama": nama, "nik": nik or None}
 
 
@@ -223,13 +208,11 @@ def users_tambah():
     def aksi():
         username = _teks("username", maks=50).lower()
         if not POLA_USERNAME.match(username):
-            raise ValueError("Username 3-50 karakter: huruf kecil, angka, titik, garis bawah")
+            raise GalatIsian("Username 3-50 karakter: huruf, angka, titik, garis bawah", "username")
         if db.username_dipakai(username):
-            raise ValueError(f"Username {username} sudah dipakai")
+            raise GalatIsian(f"Username {username} sudah dipakai", "username")
         personel, (level, id_department, id_area), pw = _personel_form(), _akun_form(), _password_form()
-        pt = _pt_kelola_form(id_area)
-        id_user = db.tambah_user(username, level["id_level"], id_department, id_area, generate_password_hash(pw), personel)
-        _simpan_pt_kelola(id_user, pt)
+        db.tambah_user(username, level["id_level"], id_department, id_area, generate_password_hash(pw), personel)
         _audit("USER_TAMBAH", username, f"jabatan {level['kode']}")
         return jsonify({"message": f"Pengguna {username} berhasil ditambahkan"})
     return _jalankan(aksi)
@@ -254,9 +237,7 @@ def users_ubah(id_user):
                 raise ValueError("Tidak bisa menurunkan level akun sendiri")
             if db.jumlah_admin_aktif(kecuali=id_user) == 0:
                 raise ValueError("Minimal harus ada 1 admin aktif")
-        pt = _pt_kelola_form(id_area)
         db.ubah_user(id_user, level["id_level"], id_department, id_area, personel)
-        _simpan_pt_kelola(id_user, pt)
         _audit("USER_UBAH", u["username"], f"level {u['role']} -> {level['kode']}" if ganti_level else "data diubah")
         if ganti_level:
             sesi_aktif.hapus_user(id_user, "ROLE_DIUBAH")
@@ -336,6 +317,7 @@ def level_aktif(id_level):
 def akses_awal():
     """Pohon menu + pilihan sasaran (peran = departemen + jabatan, jabatan, departemen) + widget dashboard."""
     return jsonify({"menu": hak_akses.pohon_menu(), "widget": hak_akses.daftar_widget(),
+                    "company": [{"id": c["id_company"], "nama": c["nama"]} for c in org.daftar_company() if c["is_active"]],
                     "jabatan": [{"id": j["id_jabatan"], "nama": j["nama"]} for j in hak_akses.daftar_jabatan()
                                 if j["is_active"] and not j["is_admin"]],
                     "departemen": [{"id": d["id_department"], "nama": d["nama"]} for d in org.daftar_department() if d["is_active"]],
@@ -349,6 +331,23 @@ def akses_awal():
 @_admin
 def akses_menu(id_menu):
     return jsonify(hak_akses.aturan_menu(id_menu))
+
+
+def _cakupan_dari_json(c):
+    """{"cakupan": AREA / PT / SEMUA / PT_TERTENTU, "pt": [...]} -> dict untuk AccessMenu.MenuDetails, None = area sendiri."""
+    c = c if isinstance(c, dict) else {}
+    jenis = str(c.get("cakupan") or "AREA").upper()
+    if jenis not in hak_akses.JENIS_CAKUPAN:
+        raise ValueError("Cakupan data tidak dikenal")
+    if jenis == "AREA":
+        return None
+    if jenis != "PT_TERTENTU":
+        return {"cakupan": jenis}
+    ada = {x["id_company"] for x in org.daftar_company()}
+    pt = sorted({str(x).strip().upper() for x in (c.get("pt") or [])} & ada)
+    if not pt:
+        raise ValueError("Cakupan PT tertentu: pilih minimal satu PT")
+    return {"cakupan": jenis, "pt": pt}
 
 
 def _aturan_dari_json(m, data):
@@ -388,7 +387,8 @@ def _aturan_dari_json(m, data):
         if not aksi:
             continue
         widget = [w for w in dict.fromkeys(a.get("widget") or []) if w in widget_ada] if m["kode"] == "DASHBOARD" else []
-        hasil.append({"jenis": jenis, "id_target": target, "tolak": tolak, "aksi": aksi, "widget": widget})
+        hasil.append({"jenis": jenis, "id_target": target, "tolak": tolak, "aksi": aksi, "widget": widget,
+                      "cakupan": None if tolak else _cakupan_dari_json(a.get("cakupan"))})
     return hasil
 
 
@@ -1306,8 +1306,7 @@ TABEL_LOG_DATA = {
     "LevelDetails": "Jabatan", "Supplier": "Supplier", "Product": "Produk & Standar Mutu", "DetailVehicle": "Kendaraan",
     "VehicleType": "Jenis Kendaraan", "Contract": "Kontrak", "DeliveryOrder": "DO", "Scale": "Jembatan Timbang",
     "DailyPrice": "Harga Harian", "Setting": "Pengaturan", "SettingArea": "Pengaturan Area",
-    "Status": "Status Tiket", "UserCategory": "Kategori Personel", "License": "Jenis SIM",
-    "VisitPurpose": "Keperluan Kunjungan", "WeightBridge": "Tiket",
+    "Status": "Status", "License": "Jenis SIM", "WeightBridge": "Tiket",
 }
 
 

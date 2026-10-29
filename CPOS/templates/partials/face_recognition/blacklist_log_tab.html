@@ -1,4 +1,3 @@
-{% from "partials/layout/_macros.html" import tombol_ekspor %}
 {# Log Validasi Blacklist: setiap kali orang / kendaraan blacklist terdeteksi (utils/blacklist_deteksi.py) #}
 <div data-tab-content="log" class="hidden">
     <div class="filter-bar">
@@ -38,7 +37,6 @@
     <div class="card p-0 overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
             <h2 class="text-sm font-bold text-slate-900">Semua kejadian</h2>
-            {{ tombol_ekspor('tabelLogBlacklist', 'Log Validasi Blacklist') }}
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-left text-sm">
@@ -47,7 +45,7 @@
                         <th class="table-cell">Tindakan</th><th class="table-cell">Kemiripan</th><th class="table-cell">Area</th>
                         <th class="table-cell">Petugas</th><th class="table-cell">Keterangan</th></tr>
                 </thead>
-                <tbody data-per-halaman="20" id="tabelLogBlacklist" class="divide-y divide-slate-100"></tbody>
+                <tbody data-judul-ekspor="Log Validasi Blacklist" data-per-halaman="20" id="tabelLogBlacklist" class="divide-y divide-slate-100"></tbody>
             </table>
         </div>
     </div>

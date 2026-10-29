@@ -109,7 +109,7 @@ function tampilkanCari(kata, data) {
             });
         }).join(''));
         html += grupCari(`Personel (${data.personel.length})`, data.personel.map(p => itemCari({
-            url: p.kategori === 'DRIVER' ? '/master?tab=personel' : '/face-recognition?tab=personel',
+            url: p.kategori === 'DRIVER' ? '/master?tab=personel' : '/visitor-logs?tab=orang',
             ikon: `<span class="font-mono text-[10px] font-bold">${escapeHtml((p.nama_personel || '?').slice(0, 2).toUpperCase())}</span>`,
             kiri: `<span class="block font-semibold text-slate-900 truncate">${escapeHtml(p.nama_personel)}
                    ${p.is_blacklisted ? '<span class="ml-1 text-[10px] font-bold text-red-600 bg-red-50 px-1.5 rounded">BLACKLIST</span>' : ''}</span>

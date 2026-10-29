@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/layout/_macros.html" import judul_halaman, section_header, tombol_ekspor %}
+{% from "partials/layout/_macros.html" import judul_halaman, section_header %}
 {% block title %}Logbook Kendaraan · CPOS{% endblock %}
 
 {# Truk masih di dalam (semua, belum dicatat keluar) dan yang sudah keluar pada tanggal terpilih, dari tabel transaksi
@@ -40,7 +40,6 @@
         {% call section_header('lb-dalam', 'Masih di Dalam') %}
         <span class="flex items-center gap-3" data-henti-klik>
             <span id="jmlDalam" class="badge-status bg-blue-100 text-blue-700"></span>
-            {{ tombol_ekspor('tabelDalam', 'Truk Masih di Dalam') }}
         </span>
         {% endcall %}
         <div id="body-lb-dalam" class="section-body overflow-x-auto">
@@ -50,7 +49,7 @@
                         <th class="table-cell">Produk</th><th class="table-cell">Pengangkutan</th><th class="table-cell">Jam Masuk</th>
                         <th class="table-cell">Lama di Dalam</th><th class="table-cell">Petugas Masuk</th><th class="table-cell text-right">Aksi</th></tr>
                 </thead>
-                <tbody id="tabelDalam" data-per-halaman="20" class="divide-y divide-slate-100"></tbody>
+                <tbody data-judul-ekspor="Truk Masih di Dalam" id="tabelDalam" data-per-halaman="20" class="divide-y divide-slate-100"></tbody>
             </table>
         </div>
     </div>
@@ -59,7 +58,6 @@
         {% call section_header('lb-keluar', 'Sudah Keluar') %}
         <span class="flex items-center gap-3" data-henti-klik>
             <span id="jmlKeluar" class="badge-status bg-slate-200 text-slate-700"></span>
-            {{ tombol_ekspor('tabelKeluar', 'Truk Sudah Keluar') }}
         </span>
         {% endcall %}
         <div id="body-lb-keluar" class="section-body overflow-x-auto">
@@ -69,7 +67,7 @@
                         <th class="table-cell">Produk</th><th class="table-cell">Pengangkutan</th><th class="table-cell">Jam Masuk</th>
                         <th class="table-cell">Jam Keluar</th><th class="table-cell">Durasi</th><th class="table-cell">Petugas Masuk / Keluar</th></tr>
                 </thead>
-                <tbody id="tabelKeluar" data-per-halaman="20" class="divide-y divide-slate-100"></tbody>
+                <tbody data-judul-ekspor="Truk Sudah Keluar" id="tabelKeluar" data-per-halaman="20" class="divide-y divide-slate-100"></tbody>
             </table>
         </div>
     </div>

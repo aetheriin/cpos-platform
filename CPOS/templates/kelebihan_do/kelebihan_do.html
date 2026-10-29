@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/layout/_macros.html" import tab_header, section_header, judul_halaman, tombol_ekspor %}
+{% from "partials/layout/_macros.html" import tab_header, section_header, judul_halaman %}
 {% block title %}Kelebihan DO · CPOS{% endblock %}
 
 {# DO melebihi kuota: kelebihan jadi tiket baru (truk sama). Krani isi No. DO baru dari Ascend, KTU / HO menetapkan. #}
@@ -16,13 +16,13 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
         <div class="stat-card"><p class="stat-label">Menunggu No. DO baru</p>
             <p class="mt-1"><span id="kpiMenungguDO" class="text-3xl font-bold font-mono text-amber-600">-</span> <span class="text-sm font-semibold text-slate-600">tiket</span></p>
-            <p class="text-xs text-slate-400 mt-1">Krani mengisi No. DO dari Ascend (termasuk yang dikembalikan)</p></div>
+        </div>
         <div class="stat-card"><p class="stat-label">Menunggu penetapan</p>
             <p class="mt-1"><span id="kpiDiajukan" class="text-3xl font-bold font-mono text-red-600">-</span> <span class="text-sm font-semibold text-slate-600">tiket</span></p>
-            <p class="text-xs text-slate-400 mt-1">KTU / HO menetapkan atau mengembalikan</p></div>
+        </div>
         <div class="stat-card"><p class="stat-label">Toleransi kelebihan DO</p>
             <p class="mt-1"><span class="text-3xl font-bold font-mono text-slate-900">{{ '{:,.0f}'.format(toleransi_kg).replace(',', '.') }}</span> <span class="text-sm font-semibold text-slate-600">kg</span></p>
-            <p class="text-xs text-slate-400 mt-1">Di atas angka ini kelebihan menjadi tiket -S1 (Admin › Pengaturan Site)</p></div>
+        </div>
     </div>
     <div class="filter-bar">
       <div class="seg flex-wrap">
@@ -31,7 +31,6 @@
         {% endfor %}
       </div>
       <div class="flex-1"></div>
-      {{ tombol_ekspor('tabelKelebihan', 'Kelebihan DO') }}
     </div>
     <div class="section-box">
         {{ section_header('daftar-kelebihan', 'Daftar Kelebihan DO') }}
@@ -43,7 +42,7 @@
                         <th class="table-cell text-right">Kelebihan</th><th class="table-cell">DO Baru (Ascend)</th>
                         <th class="table-cell">Status</th><th class="table-cell text-right">Aksi</th></tr>
                 </thead>
-                <tbody id="tabelKelebihan" data-per-halaman="20" data-boleh-ajukan="{{ 1 if boleh_ajukan else 0 }}"
+                <tbody data-judul-ekspor="Kelebihan DO" id="tabelKelebihan" data-per-halaman="20" data-boleh-ajukan="{{ 1 if boleh_ajukan else 0 }}"
                        data-boleh-tetapkan="{{ 1 if boleh_tetapkan else 0 }}" class="divide-y divide-slate-100"></tbody>
             </table>
         </div>

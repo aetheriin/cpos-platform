@@ -8,9 +8,7 @@
         </div>
 
         <div class="p-6 space-y-4">
-            <div id="personelNoteUpdate" class="note-warning hidden">
-                Perubahan tercatat di Log Audit (Perubahan Data Personel)
-            </div>
+            <div id="personelNoteUpdate" class="hidden"></div>
 
             <div class="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-5">
                 <!-- Foto wajah: upload atau kamera -->
@@ -38,7 +36,7 @@
 
                     <ul id="personelCek" class="space-y-1 text-xs font-medium">
                         <li data-cek="satu_wajah">Terdeteksi tepat 1 wajah</li>
-                        <li data-cek="tidak_mirip_personel">Tidak mirip personel lain</li>
+                        <li data-cek="tidak_mirip_personel">Belum terdaftar sebagai orang lain</li>
                         <li data-cek="tidak_mirip_blacklist">Tidak mirip daftar blacklist</li>
                     </ul>
                     <p id="personelCekPesan" class="text-xs text-red-600"></p>
@@ -47,15 +45,15 @@
                 <!-- Data personel -->
                 <div class="space-y-3">
                     <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="field-label" for="personelId">ID Personel</label>
-                            <div class="relative">
-                                <input type="text" id="personelId" readonly placeholder="otomatis" class="input-field bg-slate-50 pr-8">
-                                <i class="fa-solid fa-lock absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                            </div>
+                        <div{% if kategori_tetap %} class="hidden"{% endif %}>
+                            <label class="field-label" for="personelKategori">Jenis</label>
+                            <select id="personelKategori" class="input-field" data-on-change="gantiKategoriPersonel">
+                                <option value="">-- Pilih jenis --</option>
+                                {% for k in kategori_list or [] %}<option value="{{ k.kode }}" data-wajib-sim="{{ 1 if k.wajib_sim else 0 }}">{{ k.nama }}</option>{% endfor %}
+                            </select>
                         </div>
                         <div>
-                            <label class="field-label" for="personelKode">Kode Personel</label>
+                            <label class="field-label" for="personelKode">Kode</label>
                             <input type="text" id="personelKode" class="input-field uppercase{% if not boleh_kode %} bg-slate-50{% endif %}"
                                    {% if not boleh_kode %}readonly placeholder="otomatis sesuai kategori"{% endif %}>
                         </div>
@@ -67,17 +65,40 @@
                             <label class="field-label" for="personelNik">NIK</label>
                             <input type="text" id="personelNik" data-nik maxlength="16" inputmode="numeric" class="input-field">
                         </div>
-                        <div{% if kategori_tetap %} class="hidden"{% endif %}>
-                            <label class="field-label" for="personelKategori">Kategori</label>
-                            <select id="personelKategori" class="input-field" data-on-change="gantiKategoriPersonel">
-                                <option value="">-- Pilih kategori --</option>
-                                {% for k in kategori_list or [] %}<option value="{{ k.kode }}" data-wajib-sim="{{ 1 if k.wajib_sim else 0 }}">{{ k.nama }}</option>{% endfor %}
+                        {# Karyawan: area + departemen + jabatan (BHL = jabatan BHL). Akun login diatur di Admin › Kelola Pengguna #}
+                        <div class="blok-karyawan">
+                            <label class="field-label" for="personelArea">Area</label>
+                            <select id="personelArea" class="input-field" data-on-change="aturDeptPersonel">
+                                <option value="">-- Pilih area --</option>
+                                {% for a in area_list or [] %}<option value="{{ a.id_comp_area }}">{{ a.label }}</option>{% endfor %}
                             </select>
+                        </div>
+                        <div class="blok-karyawan">
+                            <label class="field-label" for="personelDept">Departemen</label>
+                            <select id="personelDept" class="input-field"><option value="">-- Pilih departemen --</option></select>
+                            <template id="sumberDeptPersonel">{% for d in department_list or [] %}<option value="{{ d.id_department }}" data-area="{{ d.area | join(',') }}">{{ d.nama }}</option>{% endfor %}</template>
+                        </div>
+                        <div class="blok-karyawan">
+                            <label class="field-label" for="personelJabatan">Jabatan</label>
+                            <select id="personelJabatan" class="input-field">
+                                <option value="">-- Pilih jabatan --</option>
+                                {% for j in jabatan_list or [] %}<option value="{{ j.id_jabatan }}">{{ j.nama }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <p id="personelInfoAkun" class="blok-akun hidden col-span-2 text-xs text-slate-500">Punya akun login: area, departemen, dan jabatan diatur di Admin › Kelola Pengguna.</p>
+                        {# Driver / Tamu: profil visitor #}
+                        <div class="blok-visitor">
+                            <label class="field-label" for="personelAsal">Asal Perusahaan</label>
+                            <input type="text" id="personelAsal" maxlength="255" class="input-field">
+                        </div>
+                        <div class="blok-visitor">
+                            <label class="field-label" for="personelKeperluan">Keperluan Biasa</label>
+                            <input type="text" id="personelKeperluan" maxlength="255" class="input-field" placeholder="mis. Antar TBS">
                         </div>
                         <div class="blok-sim">
                             <label class="field-label" for="personelSim">No. SIM</label>
                             <input type="text" id="personelSim" maxlength="30" class="input-field uppercase">
-                            <p id="personelHintSim" class="field-hint text-amber-700">wajib untuk kategori ini</p>
+                            <p id="personelHintSim" class="field-hint text-amber-700">wajib untuk supir</p>
                         </div>
                         <div class="blok-sim">
                             <label class="field-label" for="personelJenisSim">Jenis SIM</label>
@@ -97,25 +118,6 @@
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" data-on-click="tutupModalPersonel" class="btn-secondary">Batal</button>
                 <button type="button" id="btnSimpanPersonel" data-on-click="simpanPersonel" class="btn-primary">Simpan</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- MODAL: Hapus Personel (soft delete) -->
-<div id="modalHapusPersonel" class="modal-overlay">
-    <div class="modal-box">
-        <div class="modal-header">
-            <h3 class="font-bold">Hapus Personel</h3>
-            <button type="button" data-on-click="closeModal" data-arg="modalHapusPersonel" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div class="p-6 space-y-4">
-            <div id="hapusTarget" class="border border-slate-200 bg-slate-50 rounded-lg p-3 text-sm"></div>
-            <p class="text-sm text-slate-700">Hapus personel ini? Wajahnya tidak lagi dikenali saat scan absensi maupun pendaftaran tiket.</p>
-            <div class="note-warning">Riwayat absensi & tiket tetap tersimpan, dan penghapusan tercatat di Log Audit.</div>
-            <div class="flex gap-3">
-                <button type="button" data-on-click="closeModal" data-arg="modalHapusPersonel" class="btn-secondary flex-1">Batal</button>
-                <button type="button" id="btnKonfirmasiHapus" data-on-click="konfirmasiHapusPersonel" class="btn-danger flex-1">Hapus</button>
             </div>
         </div>
     </div>

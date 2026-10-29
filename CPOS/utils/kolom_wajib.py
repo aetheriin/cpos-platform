@@ -13,8 +13,8 @@ DAFTAR = {
     "KENDARAAN": ("Kendaraan", "formKendaraan", {"id_supir_utama": "Supir utama"}),
     "KONTRAK_DO": ("Kontrak & DO", "formDO", {"qty_kg": "Qty (kg)", "harga_per_kg": "Harga/kg",
                                               "berlaku_sampai": "Berlaku sampai", "keterangan": "Keterangan"}),
-    "TAMU": ("Tamu", "formKunjungan", {"asal_perusahaan": "Asal perusahaan", "no_plat": "No. plat kendaraan",
-                                       "keterangan": "Keterangan"}),
+    "TAMU": ("Kunjungan (Visitor & Staff Logs)", "formKunjungan", {"id_dituju": "Orang yang dituju", "no_plat": "No. plat kendaraan",
+                                                                  "keterangan": "Keterangan"}),
 }
 
 

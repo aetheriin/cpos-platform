@@ -37,11 +37,11 @@ null_of = {(t, k["nama"]): k["null"] for t, ks in kolom.items() for k in ks}
 KELOMPOK = [
     ("01_organisasi_akses", "Organisasi, akun & hak akses",
      ["Company", "Mill", "CompanyArea", "Department", "DepartmentDetails", "Level", "LevelDetails", "Menu", "ActionType",
-      "MenuAction", "AccessMenu", "Widget", "AccessMenuWidget", "Users", "PasswordManager", "UserCompany", "UserSession",
+      "MenuAction", "AccessMenu", "Widget", "AccessMenuWidget", "Users", "PasswordManager", "UserSession",
       "Setting", "SettingArea", "RequiredDataField",
-      "Device", "WorkSchedule", "UserCategory"]),
+      "Device", "WorkSchedule"]),
     ("02_personel_dokumen", "Orang (Users), SIM, wajah, kunjungan, absensi, blacklist & dokumen",
-     ["UserCategory", "Users", "License", "LicenseDetail", "FaceRecog", "VisitPurpose", "Guest", "FaceActivity",
+     ["Users", "License", "LicenseDetail", "FaceRecog", "Guest", "FaceActivity",
       "Blacklist", "BlacklistDetection", "DocumentType", "Document", "DocumentFile", "DetailVehicle", "CompanyArea"]),
     ("03_mitra_kontrak", "Supplier, bank, produk, harga, kontrak, DO & invoice",
      ["Currency", "Bank", "BankDetails", "SupplierType", "SupplierTypeDetails", "SupplierGroup", "Supplier", "SupplierCompany",
@@ -90,7 +90,7 @@ hasil = {"lengkap": diagram(sorted(kolom), set(kolom))}
 for kode, judul, tabel in KELOMPOK:
     utama = {t for t in tabel}
     # tabel pendukung (milik kelompok lain) cukup ditampilkan PK-nya
-    pendukung = {"01_organisasi_akses": {"UserCategory"}, "02_personel_dokumen": {"Users", "DetailVehicle", "CompanyArea"},
+    pendukung = {"02_personel_dokumen": {"Users", "DetailVehicle", "CompanyArea"},
                  "03_mitra_kontrak": {"Users", "Flow", "Company", "WeightBridgeType"},
                  "04_proses_tiket": {"CompanyArea", "Product", "Supplier", "DetailVehicle", "DeliveryOrder",
                                      "VehicleContract", "Document", "Users"},

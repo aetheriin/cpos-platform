@@ -74,7 +74,7 @@ def atur_jenis_kendaraan(no_plat, id_jenis):
 
 def supir_terakhir(no_plat):
     rows = _query("""SELECT TOP 1 t.TicketDate AS waktu, d.UserID AS id_driver, d.UserCode AS kode_personel, d.NoKTP AS nik,
-                            d.Nama AS nama, d.LicenseNumber AS no_sim, d.CategoryCode AS kategori, d.IsBlacklisted AS is_blacklisted, d.IsUpload AS is_updated, d.PhotoPath AS foto_path
+                            d.Nama AS nama, d.LicenseNumber AS no_sim, d.PersonType AS kategori, d.IsBlacklisted AS is_blacklisted, d.IsUpload AS is_updated, d.PhotoPath AS foto_path
                      FROM WeightBridge t JOIN DetailVehicle k ON k.IDVehicle = t.IDVehicle
                      JOIN UserProfile d ON d.UserID = t.DriverID
                      WHERE k.NoVehicle = ? ORDER BY t.TicketDate DESC""", no_plat)

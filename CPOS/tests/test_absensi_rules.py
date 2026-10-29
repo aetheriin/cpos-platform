@@ -16,7 +16,7 @@ class TestJenis(unittest.TestCase):
         self.assertEqual(tentukan_jenis(False), "MASUK")
 
     def test_scan_berikutnya_pulang(self):
-        self.assertEqual(tentukan_jenis(True), "PULANG")
+        self.assertEqual(tentukan_jenis(True), "KELUAR")
 
     def test_duplikat_kurang_5_menit(self):
         self.assertTrue(is_duplikat(jam(8, 0), jam(8, 4, 59)))
@@ -43,11 +43,11 @@ class TestStatusWaktu(unittest.TestCase):
         self.assertEqual(hitung_status_waktu("MASUK", jam(8, 6), jadwal), ("TERLAMBAT", 6))
 
     def test_pulang_awal_senin(self):
-        self.assertEqual(hitung_status_waktu("PULANG", jam(16, 30), SENIN), ("PULANG_AWAL", 30))
+        self.assertEqual(hitung_status_waktu("KELUAR", jam(16, 30), SENIN), ("PULANG_AWAL", 30))
 
     def test_pulang_sabtu_jam_12(self):
-        self.assertEqual(hitung_status_waktu("PULANG", jam(12, 0), SABTU), ("TEPAT_WAKTU", 0))
-        self.assertEqual(hitung_status_waktu("PULANG", jam(13, 0), SABTU), ("TEPAT_WAKTU", -60))
+        self.assertEqual(hitung_status_waktu("KELUAR", jam(12, 0), SABTU), ("TEPAT_WAKTU", 0))
+        self.assertEqual(hitung_status_waktu("KELUAR", jam(13, 0), SABTU), ("TEPAT_WAKTU", -60))
 
     def test_minggu_libur(self):
         self.assertEqual(hitung_status_waktu("MASUK", jam(9, 0), MINGGU), ("HARI_LIBUR", None))
