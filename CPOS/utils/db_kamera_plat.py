@@ -2,6 +2,7 @@
 Alamat RTSP memuat password kamera: ke browser hanya dikirim dalam bentuk tersamar."""
 import re
 
+from utils.cache import cache_ttl
 from utils.db_utils import get_connection, _rows_to_dicts
 
 FACING = {"MASUK": "Menghadap kendaraan masuk", "KELUAR": "Menghadap kendaraan keluar"}
@@ -33,11 +34,13 @@ def tutup_sandi(url):
     return re.sub(r"(rtsp://[^:/@]+:)[^@]*@", r"\1***@", url or "")
 
 
+@cache_ttl(30)
 def daftar():
-    baris = _query("""SELECT k.CamDetID AS id_kamera, k.CamDetName AS nama, k.CompAreaID AS id_comp_area, a.AreaName AS area,
+    baris = _query("""SELECT k.CamDetID AS id_kamera, k.CamDetName AS nama, k.CompAreaID AS id_comp_area,
+                             a.CompID + ' · ' + a.AreaName AS area,
                              k.Gate AS gate, k.Facing AS facing, k.RtspUrl AS rtsp, k.Note AS catatan, k.SortOrder AS urutan, k.Active AS is_active
                       FROM dbo.CameraDeteksi k JOIN dbo.CompanyArea a ON a.CompAreaID = k.CompAreaID
-                      ORDER BY k.Active DESC, k.SortOrder, k.CamDetName""")
+                      ORDER BY k.Active DESC, a.CompID, a.AreaName, k.SortOrder, k.CamDetName""")
     for b in baris:
         b["rtsp_tersamar"] = tutup_sandi(b.pop("rtsp"))
     return baris
@@ -59,3 +62,4 @@ def simpan(id_kamera, d):
             raise ValueError("Isi alamat RTSP kamera")
         _ubah("""INSERT INTO dbo.CameraDeteksi (CamDetName, CompAreaID, Gate, Facing, Note, SortOrder, Active, RtspUrl)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)""", *kolom, d["rtsp"])
+    daftar.hapus()

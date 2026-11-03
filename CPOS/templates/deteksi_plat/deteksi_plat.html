@@ -2,26 +2,32 @@
 {% from "partials/layout/_macros.html" import tab_header, section_header, judul_halaman %}
 {% block title %}Deteksi Plat · CPOS{% endblock %}
 
-{# Mills Operation › Deteksi Plat (routes/deteksi_plat.py). Hanya tampilan: backend deteksi jalan terpisah dan menulis ke dbo.RiwayatDeteksi. #}
+{# Mills Operation › Deteksi Plat (routes/deteksi_plat.py). Kamera & riwayat tampil per area dalam cakupan data Hak Akses menu MON_PLAT.
+   Hanya tampilan: backend deteksi jalan terpisah dan menulis ke dbo.RiwayatDeteksi. #}
 {% block info_bar %}{% endblock %}
 {% block info_bar_script %}{% endblock %}
 
 {% block tab_header %}
-    {{ judul_halaman('Deteksi Plat', 'Riwayat plat yang terbaca kamera (uji coba)', 'fa-car-side') }}
+    {{ judul_halaman('Deteksi Plat', 'Video kamera deteksi dan riwayat plat per area', 'fa-car-side') }}
     {{ tab_header([('plat', 'Riwayat Deteksi')], 'hidden') }}
 {% endblock %}
 
 {% block tab_content %}
 <div data-tab-content="plat" class="hidden">
-    <div class="section-box mb-5">
-        {% call section_header('video-deteksi', 'Kamera Deteksi') %}
+    <div class="filter-bar">
+        <select id="pilihArea" class="input-field w-56 hidden" data-on-change="gantiArea" data-tanpa-cari><option value="">Semua area</option></select>
+        <select id="pilihKamera" class="input-field w-56 hidden" data-on-change="gantiKameraSatu" data-tanpa-cari></select>
+        <div class="flex-1"></div>
         <span id="infoAi" class="text-xs text-slate-500"></span>
-        {% endcall %}
-        <div id="body-video-deteksi" class="section-body">
-            <div id="gridVideo" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3"></div>
-            <p id="pesanVideo" class="text-sm text-slate-500 hidden"></p>
+        <div class="seg">
+            <button type="button" class="chip" data-kolom="1" data-on-click="pilihGridPlat" data-arg="$el" title="1 kamera"><i class="fa-solid fa-square"></i></button>
+            <button type="button" class="chip chip-active" data-kolom="2" data-on-click="pilihGridPlat" data-arg="$el" title="4 kamera"><i class="fa-solid fa-table-cells-large"></i></button>
+            <button type="button" class="chip" data-kolom="3" data-on-click="pilihGridPlat" data-arg="$el" title="9 kamera"><i class="fa-solid fa-table-cells"></i></button>
         </div>
     </div>
+    <p id="pesanVideo" class="text-sm text-amber-600 mb-3 hidden"></p>
+    <div id="gridVideo" class="grid gap-3 mb-5 grid-cols-1 md:grid-cols-2"></div>
+
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
         <div class="stat-card"><p class="stat-label">Plat terbaca</p>
             <p class="mt-1"><span id="kpiTotal" class="text-3xl font-bold font-mono text-slate-900">-</span> <span class="text-sm font-semibold text-slate-600">deteksi</span></p></div>
@@ -39,11 +45,11 @@
         <button type="button" class="btn-secondary" data-on-click="muatPlat"><i class="fa-solid fa-rotate"></i> Muat ulang</button>
     </div>
     <div class="section-box">
-        {{ section_header('daftar-plat', 'Riwayat Deteksi Plat (maks. 500 baris terbaru)') }}
+        {{ section_header('daftar-plat', 'Riwayat Deteksi Plat (otomatis bertambah · maks. 500 baris terbaru)') }}
         <div id="body-daftar-plat" class="section-body overflow-x-auto">
             <table class="w-full text-left text-sm">
                 <thead class="table-header-row">
-                    <tr><th class="table-cell">Waktu</th><th class="table-cell">Kamera</th><th class="table-cell">Jenis</th>
+                    <tr><th class="table-cell">Waktu</th><th class="table-cell">Area</th><th class="table-cell">Kamera</th><th class="table-cell">Arah</th><th class="table-cell">Jenis</th>
                         <th class="table-cell">Plat</th><th class="table-cell">Pemilik</th>
                         <th class="table-cell text-right">Conf</th><th class="table-cell text-right">Foto</th></tr>
                 </thead>
@@ -66,7 +72,6 @@
         </div>
     </div>
 </div>
-
 <div id="modalVideo" class="modal-overlay">
     <div class="modal-box max-w-6xl w-full">
         <div class="modal-header">

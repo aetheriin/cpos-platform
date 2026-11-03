@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 from dotenv import load_dotenv
+from anpr import gerbang
 
 FOLDER_PROYEK = Path(__file__).resolve().parent.parent
 load_dotenv(FOLDER_PROYEK / ".env")
@@ -30,7 +31,8 @@ def get_koneksi(timeout=10):
 
 
 def simpan_riwayat(waktu, kamera, jenis, plat, conf_ocr, foto_rel, plat_rel):
-    """Simpan satu baris ke dbo.RiwayatDeteksi. Return nama pemilik (dbo.UserC) atau 'Tidak Diketahui'."""
+    """Simpan satu baris ke dbo.RiwayatDeteksi dan gabungkan ke kejadian gerbang (bila kamera punya gerbang).
+    Return nama pemilik (dbo.UserC) atau 'Tidak Diketahui'."""
     for percobaan in range(1, 4):
         try:
             conn = get_koneksi()
@@ -39,11 +41,18 @@ def simpan_riwayat(waktu, kamera, jenis, plat, conf_ocr, foto_rel, plat_rel):
                 cur.execute("SELECT IDVehicle FROM dbo.DetailVehicle WHERE NoVehicle = ?", plat)
                 baris = cur.fetchone()
                 id_vehicle = baris[0] if baris else None            # NULL = plat belum terdaftar
-                cur.execute(
-                    "INSERT INTO dbo.RiwayatDeteksi (Waktu, Kamera, IDVehicle, PlatNomor, JenisTerdeteksi, ConfOCR, FotoPath, PlatPath) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    datetime.fromtimestamp(waktu), kamera, id_vehicle, plat, jenis,
-                    float(conf_ocr) if conf_ocr is not None else None, foto_rel, plat_rel)
+                waktu_dt = datetime.fromtimestamp(waktu)
+                conf = float(conf_ocr) if conf_ocr is not None else None
+                cur.execute("""SET NOCOUNT ON;
+                               INSERT INTO dbo.RiwayatDeteksi (Waktu, Kamera, IDVehicle, PlatNomor, JenisTerdeteksi, ConfOCR, FotoPath, PlatPath)
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+                               SELECT CAST(SCOPE_IDENTITY() AS BIGINT);""",
+                            waktu_dt, kamera, id_vehicle, plat, jenis, conf, foto_rel, plat_rel)
+                id_deteksi = cur.fetchone()[0]
+                try:
+                    gerbang.pasangkan(cur, id_deteksi, waktu_dt, kamera, plat, conf, id_vehicle)
+                except Exception as e:  # noqa: BLE001 - bacaan tetap tersimpan walau penggabungan gagal
+                    print(f"[GERBANG] gagal menggabungkan bacaan: {e}")
                 pemilik = TIDAK_DIKETAHUI
                 if id_vehicle is not None:
                     cur.execute("SELECT TOP 1 Nama FROM dbo.UserC WHERE IDVehicle = ? AND Active = 1", id_vehicle)

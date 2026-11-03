@@ -111,6 +111,22 @@ PALM_TOP_PELANGGAR = angka("PALM_TOP_PELANGGAR", 10)
 PALM_MIN_TRANSAKSI_PERSEN = angka("PALM_MIN_TRANSAKSI_PERSEN", 10)  # di bawah ini supplier tidak diurutkan menurut persen
 PALM_TOP_OPERATOR = angka("PALM_TOP_OPERATOR", 12)
 
+# ---------- Kas & Bank ----------
+# Kedua SP menerima @PERIOD (YYYYMM) dan mengembalikan satu bulan untuk semua perusahaan; laporan memanggilnya per bulan di periode yang dimuat.
+SP_KAS_GIRO = nama_sp("SP_KAS_GIRO", "test.dbo.SP_GET_GIROTRANSACTION")
+TABEL_KAS_KURS = nama_sp("TABEL_KAS_KURS", "test.dbo.EXC_RATE")   # kurs ke rupiah per perusahaan, CURRENCYID, dan tahun
+KAS_HARI_BAWAAN = angka("KAS_HARI_BAWAAN", 30)          # rentang tampilan bawaan: sekian hari terakhir (yang dimuat: 1 Januari sampai hari ini)
+# kurs harian dari internet untuk mata uang yang tidak ada di TABEL_KAS_KURS; {dari} {sampai} {kode} diisi.
+KAS_KURS_INTERNET = teks("KAS_KURS_INTERNET", "https://api.frankfurter.dev/v1/{dari}..{sampai}?base={kode}&symbols=IDR")
+KAS_HARI_GRAFIK = angka("KAS_HARI_GRAFIK", 31)  # rentang tampilan lebih panjang dari ini: grafik deret waktu per bulan
+KAS_HARI_RAMAL = angka("KAS_HARI_RAMAL", 14)   # perkiraan running balance sekian hari ke depan (0 = tanpa perkiraan)
+KAS_PARALEL = angka("KAS_PARALEL", 6)                   # perusahaan yang diambil bersamaan
+# Saldo awal rekening per 1 Januari (membaca seluruh riwayat ERP, lambat) disimpan di folder ini; dihitung ulang di latar belakang kalau
+# simpanannya lebih tua dari KAS_SALDO_AWAL_JAM jam, untuk menangkap transaksi mundur tanggal sebelum 1 Januari.
+KAS_CACHE_FOLDER = teks("KAS_CACHE_FOLDER", str(Path(__file__).resolve().parent.parent / "cache_kas"))
+KAS_SALDO_AWAL_JAM = angka("KAS_SALDO_AWAL_JAM", 24)
+KAS_TOP_MITRA = angka("KAS_TOP_MITRA", 10)
+
 # ---------- Penerimaan TBS ----------
 SP_PI_GT = nama_sp("SP_PI_GT", "dbo.CheckStatItem")              # PI yang belum di-GT
 SP_GT_OUT = nama_sp("SP_GT_OUT", "dbo.gt_out")                    # semua GT, sama dengan query di Excel PI GT db

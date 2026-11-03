@@ -175,7 +175,7 @@ export default function TabelDetail({ judul, laporanId, dataId, filter, jumlah, 
       judul={judul}
       tab={tab}
       jenis={jenis}
-      onJenis={setJenis}
+      onJenis={(k) => { setJenis(k); setUrut(null) }}   // kolom urutan tab lama belum tentu ada di tab baru
       jumlah={jumlah}
       hasil={hasil}
       galat={galat}

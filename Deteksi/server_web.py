@@ -20,7 +20,8 @@ from anpr.foto import simpan_foto
 from anpr.kamera import KameraRTSP
 from anpr.kendaraan import DetektorKendaraan
 from anpr.konfigurasi import FOLDER_PROYEK, muat_semua_kamera
-from anpr.pengaturan_db import baca_pengaturan
+from anpr import gerbang
+from anpr.pengaturan_db import baca_pengaturan, info_kamera
 from baca_plat import SumberFile, gambar_bacaan
 
 MAKS_RIWAYAT = 50
@@ -309,12 +310,15 @@ def pekerja(args, daftar_konf, keadaan, berhenti):
         print("Pembaca plat & CPOS System berjalan.")
 
         def terapkan_pengaturan():
-            p = baca_pengaturan()
-            if not p:
-                return
-            pembaca.konf.min_conf_ocr = p["conf"]
-            for j in daftar_jalur:
-                j.penstabil.jeda_ulang_detik = p["jeda_detik"]
+        p = baca_pengaturan()
+            if p:
+                pembaca.konf.min_conf_ocr = p["conf"]
+                for j in daftar_jalur:
+                    j.penstabil.jeda_ulang_detik = p["jeda_detik"]
+                gerbang.STATE["jendela"] = p["jendela_detik"]
+            info = info_kamera()                       # gerbang & hadap kamera: perubahan di Admin berlaku tanpa restart
+            if info is not None:
+                gerbang.STATE["info"] = info
 
         terapkan_pengaturan()
         terakhir_baca = time.time()

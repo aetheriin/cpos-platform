@@ -8,6 +8,8 @@ $akar = $PSScriptRoot
 $lokal = Join-Path $env:LOCALAPPDATA 'cpos-platform'
 $log = Join-Path $lokal 'log'
 $PortAnalytics = 8001
+$PortDeteksi = 8000
+$Go2rtcExe = 'C:\go2rtc\go2rtc.exe'
 New-Item -ItemType Directory -Force $log | Out-Null
 $Host.UI.RawUI.WindowTitle = 'CPOS + Analytics'
 
@@ -55,7 +57,7 @@ function Siapkan-Venv($nama, $folder, $requirements, $tambahan) {
 function Hentikan-Sisa {
     # proses Python dari venv PC ini yang masih hidup (jendela ditutup paksa sebelumnya)
     Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
-        Where-Object { $_.ExecutablePath -and $_.ExecutablePath -like '*\cpos-platform\venv-*' } |
+        Where-Object { $_.ExecutablePath -and ($_.ExecutablePath -like '*\cpos-platform\venv-*' -or $_.ExecutablePath -like '*\deteksi-plat\venv\*') } |
         ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
     Start-Sleep -Milliseconds 500
 }
@@ -92,6 +94,10 @@ try {
         Sort-Object FullName | ForEach-Object FullName)
     $pyCpos = Siapkan-Venv 'CPOS' (Join-Path $lokal 'venv-cpos') $reqCpos @(, @('--no-deps', 'face-recognition==1.3.0'))
     $pyAnalytics = Siapkan-Venv 'Analytics' (Join-Path $lokal 'venv-analytics') @(Join-Path $akar 'Analytics\backend\requirements.txt') @()
+    $adaDeteksi = Test-Path (Join-Path $akar 'Deteksi\server_web.py')
+    if ($adaDeteksi) {
+        $pyDeteksi = Siapkan-Venv 'Deteksi Plat' (Join-Path $env:LOCALAPPDATA 'deteksi-plat\venv') @(Join-Path $akar 'Deteksi\requirements.txt') @()
+    }
     if (-not (Test-Path (Join-Path $akar 'Analytics\frontend\dist\index.html'))) {
         Write-Warning 'Tampilan Analytics belum dibangun: laporan tidak akan tampil. Jalankan bangun-analytics.bat sekali.'
     }
@@ -99,12 +105,31 @@ try {
     Hentikan-Sisa
     Port-Dipakai $portCpos
     Port-Dipakai $PortAnalytics
+    if ($adaDeteksi) { Port-Dipakai $PortDeteksi }
 
     Write-Host 'Menyalakan backend Analytics...'
     $analytics = Start-Process $pyAnalytics -ArgumentList '-m', 'uvicorn', 'api:app', '--host', '127.0.0.1', '--port', $PortAnalytics `
         -WorkingDirectory (Join-Path $akar 'Analytics\backend') -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput (Join-Path $log 'analytics.log') -RedirectStandardError (Join-Path $log 'analytics-galat.log')
     if (-not (Tunggu-Port $PortAnalytics 'Analytics' 60)) { throw "Backend Analytics gagal menyala. Lihat $log\analytics-galat.log" }
+    if ((Test-Path $Go2rtcExe) -and -not (Tunggu-Port 1984 'go2rtc' 1)) {
+    Write-Host 'Menyalakan go2rtc (video CCTV)...'
+    $gateway = Start-Process $Go2rtcExe -WorkingDirectory (Split-Path $Go2rtcExe) -WindowStyle Hidden -PassThru
+    }
+    if ($adaDeteksi) {
+        $envDeteksi = Join-Path $akar 'Deteksi\.env'
+        if (-not (Test-Path $envDeteksi)) {
+            Copy-Item (Join-Path $akar 'Deteksi\.env.example') $envDeteksi
+            Write-Warning 'Deteksi\.env baru dibuat dari contoh. Isi SQL, kamera & folder foto, lalu jalankan lagi.'
+        }
+        Write-Host 'Menyalakan backend Deteksi Plat...'
+        $env:PYTHONUNBUFFERED = '1'
+        $deteksi = Start-Process $pyDeteksi -ArgumentList 'server_web.py' -WorkingDirectory (Join-Path $akar 'Deteksi') -WindowStyle Hidden -PassThru `
+            -RedirectStandardOutput (Join-Path $log 'deteksi.log') -RedirectStandardError (Join-Path $log 'deteksi-galat.log')
+        if (-not (Tunggu-Port $PortDeteksi 'Deteksi' 60)) {
+            Write-Warning "Backend Deteksi belum siap (model AI masih dimuat, atau ada galat). Lihat $log\deteksi-galat.log. CPOS tetap dijalankan."
+        }
+    }
 
     # browser dibuka setelah CPOS siap
     Start-Job -ArgumentList $portCpos -ScriptBlock {
@@ -117,6 +142,7 @@ try {
 
     Write-Host ''
     Write-Host "CPOS + Analytics: http://localhost:$portCpos   (dari PC lain: http://<IP PC ini>:$portCpos)" -ForegroundColor Green
+    if ($deteksi) { Write-Host "Deteksi Plat: http://localhost:$PortDeteksi   (log: $log\deteksi.log)" -ForegroundColor Green }
     Write-Host 'Tutup jendela ini untuk berhenti.' -ForegroundColor Green
     Write-Host ''
     Set-Location (Join-Path $akar 'CPOS')
@@ -128,4 +154,6 @@ catch {
 }
 finally {
     if ($analytics -and -not $analytics.HasExited) { Stop-Process -Id $analytics.Id -Force -ErrorAction SilentlyContinue }
+    if ($deteksi -and -not $deteksi.HasExited) { & taskkill /PID $deteksi.Id /T /F | Out-Null }
+    if ($gateway -and -not $gateway.HasExited) { & taskkill /PID $gateway.Id /T /F | Out-Null }
 }

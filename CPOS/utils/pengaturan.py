@@ -52,6 +52,8 @@ DEFINISI = {
                              "Plat yang dibaca di bawah persen ini tidak dicatat sebagai deteksi. Berlaku untuk semua kamera deteksi, tanpa restart"),
     "PLAT_JEDA_ULANG_MENIT": ("Jeda catat ulang plat yang sama (menit)", "Deteksi Plat", "int", "1", 1, 1440,
                               "Plat yang sama tidak dicatat lagi selama jeda ini (supaya satu kendaraan tidak tercatat tiap detik)"),
+    "PLAT_JENDELA_GERBANG_DETIK": ("Jendela pemasangan kamera gerbang (detik)", "Deteksi Plat", "int", "60", 10, 600,
+                                   "Bacaan plat yang sama dari kamera-kamera satu gerbang dalam jendela ini digabung menjadi satu kejadian; arah masuk/keluar ditentukan dari kamera yang membaca lebih dulu"),
 }
 
 # Operasional, boleh berbeda per area (migrasi 014). Sisanya keamanan: global.

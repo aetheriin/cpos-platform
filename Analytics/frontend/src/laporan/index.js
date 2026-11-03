@@ -1,6 +1,7 @@
 // Daftar dashboard untuk tiap laporan. Kuncinya harus sama dengan id laporan di backend (backend/laporan/__init__.py).
 // Untuk laporan baru: buat folder laporan/<nama>/Dashboard<Nama>.jsx lalu tambahkan satu baris impor dan satu baris di bawah.
 import DashboardPalm from './palm/DashboardPalm'
+import DashboardKasBank from './kas_bank/DashboardKasBank'
 import { DashboardPvKpi, DashboardPvrKpi } from './penilaian'
 import DashboardPiGt from './pi_gt/DashboardPiGt'
 import LaporanPiPvr from './pi_pvr/LaporanPiPvr'
@@ -18,5 +19,6 @@ export const DASHBOARD = {
   palm_weighbridge: DashboardPalm,
   penerimaan_tbs: DashboardTbs,
   tbs_mingguan: DashboardTbsMingguan,
+  cash_flow: DashboardKasBank,
   pi_pvr: LaporanPiPvr,
 }
