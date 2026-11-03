@@ -1,0 +1,30 @@
+{% extends "auth/_kerangka.html" %}
+{% from "partials/layout/_kotak_password.html" import kotak_password %}
+{% block title %}Login{% endblock %}
+
+{% block isi %}
+<h1 class="text-xl font-bold text-slate-900">Selamat datang</h1>
+<p class="text-sm text-slate-500 mt-1">Masuk dengan akun yang diberikan admin sistem.</p>
+
+{% if info %}<div class="note-warning text-sm mt-6">{{ info }}</div>{% endif %}
+{% if error %}<div class="mt-6 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+    <i class="fa-solid fa-circle-exclamation mt-0.5"></i><span>{{ error }}</span></div>{% endif %}
+
+<form method="post" action="/login" class="space-y-5 mt-6" autocomplete="off">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div>
+        <label class="field-label" for="username">Username</label>
+        <div class="relative">
+            <i class="fa-solid fa-user absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+            <input type="text" id="username" name="username" required autofocus autocomplete="username" class="input-field py-2.5 pl-9">
+        </div>
+    </div>
+    {{ kotak_password('password', 'Password') }}
+    <button type="submit" class="btn-primary w-full py-2.5"><i class="fa-solid fa-right-to-bracket"></i> <span data-en="Sign In">Masuk</span></button>
+</form>
+<p class="text-xs text-slate-500 mt-8 pt-5 border-t border-slate-100">
+    <i class="fa-solid fa-circle-info mr-1 text-slate-400"></i>Lupa password atau akun terkunci? Hubungi admin sistem.</p>
+<p class="text-[11px] text-slate-400 mt-3">CPOS v{{ versi_aplikasi() }}</p>
+{% endblock %}
+
+{% block skrip %}<script src="{{ url_for('static', filename='js/login.js') }}"></script>{% endblock %}

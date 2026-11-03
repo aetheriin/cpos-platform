@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "partials/layout/_macros.html" import judul_halaman %}
+{% block title %}Daftar Tiket · CPOS{% endblock %}
+
+{# Halaman List: tanpa info bar & tanpa tab. Tiket aktif per tahap (default tahap role) + history per produk. #}
+{% block info_bar %}{% endblock %}
+{% block info_bar_script %}{% endblock %}
+
+{% block tab_header %}
+    {% call judul_halaman('Daftar & Rekapitulasi Tiket', 'Tiket aktif per tahap dan riwayat penimbangan 7 hari terakhir', 'fa-list') %}
+        {% if boleh('FORM_SECURITY', 'tambah') %}
+        <a href="{{ url_for('main.weighbridge', view='form', tab='security') }}" class="btn-primary"><i class="fa-solid fa-plus"></i> Tiket Baru</a>
+        {% endif %}
+    {% endcall %}
+{% endblock %}
+
+{% block tab_content %}
+    {% include "partials/site/list_tiket.html" %}
+{% endblock %}
+
+{% block modals %}
+    {% if boleh_koreksi %}{% include "partials/site/koreksi_modal.html" %}{% endif %}
+    {% if boleh_koreksi or boleh_periksa %}{% include "partials/layout/persetujuan_modal.html" %}{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script defer src="{{ url_for('static', filename='js/site/list.js') }}"></script>
+{% if boleh_koreksi or boleh_periksa %}<script defer src="{{ url_for('static', filename='js/persetujuan.js') }}"></script>{% endif %}
+{% endblock %}

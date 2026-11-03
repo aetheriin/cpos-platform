@@ -1,0 +1,9 @@
+# New Item Request (modules/item_request): sama dengan aplikasi Item Similarity Search.
+# pip install -r modules/item_request/requirements.txt   (sentence-transformers ikut memasang torch, +- 2 GB)
+pandas
+numpy
+rapidfuzz
+scikit-learn
+sentence-transformers
+# torch menaikkan setuptools; dibatasi di bawah 81 supaya pkg_resources (dipakai face_recognition_models di CPOS) tetap ada
+setuptools>=77,<81

@@ -1,0 +1,114 @@
+erDiagram
+    Log {
+        bigint LogID PK
+        datetime2 LogDate
+        bigint CreateBy FK "NULL"
+        bigint CompAreaID FK "NULL"
+        varchar Category
+        varchar LogActionType
+        varchar TableName "NULL"
+        varchar RowID "NULL"
+        nvarchar OldValue "NULL"
+        nvarchar NewValue "NULL"
+        varchar IPAddress "NULL"
+        char PrevHash "NULL"
+        char RowHash
+    }
+    ApprovalRequest {
+        int RequestID PK
+        varchar RequestType
+        varchar Status
+        tinyint CurrentStep
+        tinyint TotalSteps
+        varchar CompID FK
+        bigint CompAreaID FK
+        varchar Target
+        nvarchar Title
+        nvarchar Reason "NULL"
+        nvarchar Data "NULL"
+        bigint RequestBy FK
+        datetime CreateDate
+        datetime FinishDate "NULL"
+        varchar CategoryCode "NULL"
+    }
+    ApprovalHistory {
+        int HistoryID PK
+        int RequestID FK
+        tinyint StepNo
+        varchar Action
+        int LevelDetID FK "NULL"
+        bigint UserID FK
+        nvarchar Notes "NULL"
+        datetime ActionDate
+    }
+    ApprovalRequestStep {
+        int RequestID PK,FK
+        tinyint StepNo PK
+        int LevelDetID FK
+    }
+    ApprovalFlow {
+        int ApprovalFlowID PK
+        varchar RequestType
+        varchar CategoryCode "NULL"
+        nvarchar Description "NULL"
+        bit Active
+        datetime CreateDate
+    }
+    ApprovalFlowStep {
+        int FlowStepID PK
+        int ApprovalFlowID FK
+        tinyint StepNo
+        int LevelDetID FK
+    }
+    LevelDetails {
+        int LevelDetID PK
+        bigint CompAreaID FK "NULL"
+        int LevelID FK
+        varchar DeptID FK "NULL"
+        varchar LevelDetCode UK
+        nvarchar LevelDetName
+        varchar HomeUrl
+        nvarchar Description "NULL"
+        bit Active
+    }
+    Notification {
+        int NotificationID PK
+        varchar MenuCode
+        bigint CompAreaID FK "NULL"
+        nvarchar Title
+        nvarchar Message "NULL"
+        varchar Link "NULL"
+        datetime CreateDate
+        int LevelDetID FK "NULL"
+        varchar CompID FK "NULL"
+        bigint UserID FK "NULL"
+    }
+    NotificationRead {
+        int NotificationID PK,FK
+        bigint UserID PK,FK
+        datetime ReadDate
+    }
+    Users {
+        bigint UserID PK
+    }
+    CompanyArea {
+        bigint CompAreaID PK
+    }
+    ApprovalFlow ||--o{ ApprovalFlowStep : "ApprovalFlowID"
+    LevelDetails ||--o{ ApprovalFlowStep : "LevelDetID"
+    LevelDetails |o--o{ ApprovalHistory : "LevelDetID"
+    ApprovalRequest ||--o{ ApprovalHistory : "RequestID"
+    Users ||--o{ ApprovalHistory : "UserID"
+    CompanyArea ||--o{ ApprovalRequest : "CompAreaID"
+    Users ||--o{ ApprovalRequest : "RequestBy"
+    LevelDetails ||--o{ ApprovalRequestStep : "LevelDetID"
+    ApprovalRequest ||--o{ ApprovalRequestStep : "RequestID"
+    CompanyArea |o--o{ LevelDetails : "CompAreaID"
+    CompanyArea |o--o{ Log : "CompAreaID"
+    Users |o--o{ Log : "CreateBy"
+    CompanyArea |o--o{ Notification : "CompAreaID"
+    LevelDetails |o--o{ Notification : "LevelDetID"
+    Users |o--o{ Notification : "UserID"
+    Notification ||--o{ NotificationRead : "NotificationID"
+    Users ||--o{ NotificationRead : "UserID"
+    LevelDetails |o--o{ Users : "UserLevelID"

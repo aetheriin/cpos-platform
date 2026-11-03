@@ -1,0 +1,68 @@
+<!-- MODAL: Tambah / Ubah Kendaraan -->
+<div id="modalKendaraan" class="modal-overlay">
+    <form id="formKendaraan" class="modal-box max-w-lg" autocomplete="off">
+        <div class="modal-header">
+            <h3 id="judulModalKendaraan" class="font-bold">Tambah Kendaraan</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalKendaraan" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 space-y-3">
+            <input type="hidden" name="id_kendaraan">
+            <div>
+                <label class="field-label" for="kendNoPlat">No. Plat</label>
+                <input type="text" id="kendNoPlat" data-plat name="no_plat" required maxlength="15" class="input-field uppercase">
+            </div>
+            <div>
+                <label class="field-label" for="kendNoStnk">No. STNK</label>
+                <input type="text" id="kendNoStnk" name="no_stnk" required maxlength="50" class="input-field uppercase">
+            </div>
+            <div>
+                <label class="field-label" for="kendJenis">Jenis Kendaraan</label>
+                <select id="kendJenis" name="id_jenis_kendaraan" required class="input-field">
+                    <option value="">-- Pilih --</option>
+                    {% for j in jenis_kendaraan_list %}<option value="{{ j.id_jenis_kendaraan }}">{{ j.nama }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="field-label" for="kendSupir">Supir Utama</label>
+                <select id="kendSupir" name="id_supir_utama" class="input-field" data-cari>
+                    <option value="">-- Tanpa supir utama --</option>
+                    {% for d in driver_list %}
+                    <option value="{{ d.id_personel }}">{{ d.nama_personel }} · {{ d.kode_personel or 'ID %03d' % d.id_personel }} · NIK {{ d.nik }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" data-on-click="closeModal" data-arg="modalKendaraan" class="btn-secondary">Batal</button>
+                <button type="submit" class="btn-primary">Simpan</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- MODAL: Jenis Kendaraan (ERD VehicleType: WeightCar, MaxLoad, Seat) -->
+<div id="modalJenisKendaraan" class="modal-overlay">
+    <form id="formJenisKendaraan" class="modal-box" autocomplete="off">
+        <div class="modal-header">
+            <h3 id="judulJenisKendaraan" class="font-bold">Jenis Kendaraan</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalJenisKendaraan" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 grid grid-cols-3 gap-3">
+            <input type="hidden" name="id_jenis_kendaraan">
+            <div><label class="field-label" for="jkKode">Kode</label>
+                <input type="text" id="jkKode" name="kode" required maxlength="20" class="input-field uppercase"></div>
+            <div class="col-span-2"><label class="field-label" for="jkNama">Nama</label>
+                <input type="text" id="jkNama" name="nama" required maxlength="50" class="input-field"></div>
+            <div><label class="field-label" for="jkKosong">Berat Kosong (kg)</label>
+                <input type="number" id="jkKosong" name="berat_kosong_kg" min="0" step="1" class="input-field"></div>
+            <div><label class="field-label" for="jkMuatan">Muatan Maks. (kg)</label>
+                <input type="number" id="jkMuatan" name="muatan_maks_kg" min="0" step="1" class="input-field"></div>
+            <div><label class="field-label" for="jkKursi">Kursi</label>
+                <input type="number" id="jkKursi" name="kursi" min="0" max="99" step="1" class="input-field"></div>
+            <p class="field-hint col-span-3">Kosongkan bila tidak ingin dicek di timbangan.</p>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalJenisKendaraan" class="btn-secondary">Batal</button>
+            <button type="submit" class="btn-primary">Simpan</button>
+        </div>
+    </form>
+</div>

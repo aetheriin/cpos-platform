@@ -1,0 +1,226 @@
+let idSupplierAktif = null;
+let noTiketAktif = null;
+let jenisAktif = null;
+
+// Label di atas angka berat: berat yang dikunci akan disimpan sebagai apa (aturan server: Pembelian & Penimbangan
+// saja ke-1 = bruto, ke-2 = tara; Penjualan kebalikannya). data = hasil /api/timbang/data, null = belum ada tiket.
+function aturLabelBerat(data) {
+    const el = document.getElementById('labelBeratLive');
+    const BRUTO = '<span class="text-emerald-300">Bruto</span> (truk + muatan)';
+    const TARA = '<span class="text-sky-300">Tara</span> (truk kosong)';
+    let html = 'Berat di jembatan';
+    if (data && noTiketAktif) {
+        const pertama = data.berat_bruto == null && data.berat_tara == null;
+        if (data.berat_netto != null) html = 'Tiket ini sudah selesai ditimbang';
+        else if (jenisAktif === 'PENIMBANGAN_SAJA') html = `Timbang · ${BRUTO}`;
+        else if (jenisAktif === 'PENJUALAN') html = pertama ? `Timbang Masuk · ${TARA}` : `Timbang Keluar · ${BRUTO}`;
+        else html = pertama ? `Timbang Masuk · ${BRUTO}` : `Timbang Keluar · ${TARA}`;
+    }
+    el.innerHTML = html;
+}
+
+window.addEventListener('platLookup', (e) => {
+    const data = e.detail;
+    if (data.status === 'ADA_TIKET') {
+        noTiketAktif = data.no_tiket;
+        idSupplierAktif = data.id_supplier;
+        jenisAktif = data.jenis_transaksi;
+        document.getElementById('tbJenisTransaksi').value = labelKode(data.jenis_transaksi);
+        document.getElementById('tbSupplier').value = data.supplier;
+        document.getElementById('tbProduk').value = data.produk;
+        muatHistorySupplier(data.id_supplier);
+        muatDataTimbanganTersimpan(data.no_tiket);
+    } else {
+        noTiketAktif = null;
+        idSupplierAktif = null;
+        jenisAktif = null;
+        aturLabelBerat(null);
+        ['tbJenisTransaksi', 'tbSupplier', 'tbProduk'].forEach(id => document.getElementById(id).value = '');
+        ['tbBruto', 'tbTara', 'tbNetto', 'tbPotongan', 'tbNettoAkhir'].forEach(id => document.getElementById(id).textContent = '-');
+    }
+});
+
+// ===== BERAT LIVE =====
+// Polling berurutan (tidak menumpuk), hanya saat tab Timbangan dibuka dan tab browser terlihat.
+const pollingBerat = new Poller(async () => {
+    const r = await Api.get('/api/timbang/status', { timeout: 3000, polling: true });
+    const el = document.getElementById('beratLiveDisplay');
+    const st = r.data && r.data.berat !== undefined ? r.data : null;     // status putus tetap berisi data + sebabnya
+    const putus = !st || !st.terhubung;
+    el.textContent = st ? Number(st.berat).toLocaleString('id-ID') : '—';
+    el.parentElement.classList.toggle('opacity-40', putus);          // koneksi timbangan / server terputus
+    // Status: putus (dengan sebab), belum kembali ke 0 setelah simpan, di bawah berat minimum, bergerak, atau stabil siap disimpan
+    const ket = document.getElementById('statusBeratLive');
+    const [teks, warna] = !st ? ['Server tidak menjawab', 'text-red-400']
+        : putus ? [`Tidak terhubung: ${st.error || 'cek kabel / agen timbangan'}`, 'text-red-400']
+        : st.perlu_nol
+            ? ['Belum kembali ke 0: tunggu truk sebelumnya turun / tekan ZERO di indikator', 'text-amber-400']
+        : st.berat_min_kg && st.berat < st.berat_min_kg ? [`Kosong (di bawah ${st.berat_min_kg} kg)`, 'text-slate-400']
+        : st.siap_kunci ? ['● Stabil, siap disimpan', 'text-emerald-400'] : ['○ Bergerak, tunggu stabil', 'text-amber-400'];
+    ket.textContent = teks;
+    const [badge, kelas, lampu] = putus ? ['TERPUTUS', 'indikator-badge-mati', 'bg-red-500']
+        : st.siap_kunci ? ['STABIL / READY', 'indikator-badge-stabil', 'bg-emerald-400']
+        : ['GERAK / SENSING', 'indikator-badge-gerak', 'bg-amber-400'];
+    const b = document.getElementById('badgeStabil');
+    b.textContent = badge;
+    b.className = `indikator-badge ${kelas}`;
+    document.getElementById('lampuIndikator').className = `w-2 h-2 rounded-full flex-shrink-0 ${lampu}`;
+    ket.className = `text-sm mt-4 ${warna}`;
+}, 500);
+
+window.addEventListener('tabChange', e => {
+    if (e.detail === 'timbangan') pollingBerat.start();
+    else pollingBerat.stop();
+});
+
+async function simpanHasilTimbangan(btn) {
+    if (!noTiketAktif) { Notif.peringatan('Silakan pilih plat atau tiket pada kolom di atas'); return; }
+    const data = await denganTombol(btn, () => kirimForm('/api/timbang/simpan', { no_tiket: noTiketAktif }));
+    if (tampilkanHasil(data)) muatDataTimbanganTersimpan(noTiketAktif);
+    (data.peringatan || []).forEach(p => Notif.peringatan(p));      // kapasitas jenis kendaraan (tidak menahan)
+    const lebih = data.kelebihan_do;
+    if (lebih) {          // DO melewati kuota: kelebihan jadi tiket baru (truk sama), KTU / HO sudah dinotifikasi
+        const angka = v => Number(v).toLocaleString('id-ID');
+        Dialog.konfirmasi({ judul: `DO ${lebih.no_do} melebihi kuota`, teksYa: 'Buka Kelebihan DO', teksBatal: 'Tutup',
+            pesan: `Kuota ${angka(lebih.kuota_kg)} kg, realisasi ${angka(lebih.realisasi_kg)} kg.\n` +
+                   `Kelebihan ${angka(lebih.kelebihan_kg)} kg menjadi tiket ${lebih.tiket_split} (truk yang sama).\n` +
+                   'Isi No. DO baru dari Ascend di menu Kelebihan DO.' })
+            .then(ok => { if (ok) window.location.href = '/kelebihan-do'; });
+    }
+}
+
+async function muatDataTimbanganTersimpan(noTiket) {
+    const data = await ambilJson(`/api/timbang/data/${encodeURIComponent(noTiket)}`);
+    if (data.error) { Notif.gagal(data.error); return; }
+    const kgTeks = v => v == null ? '-' : Number(v).toLocaleString('id-ID');
+    document.getElementById('tbBruto').textContent = kgTeks(data.berat_bruto);
+    document.getElementById('tbTara').textContent = kgTeks(data.berat_tara);
+    document.getElementById('tbNetto').textContent = kgTeks(data.berat_netto);
+    document.getElementById('tbPotongan').textContent = data.potongan_kg == null ? '-' : `-${kgTeks(data.potongan_kg)}`;
+    document.getElementById('tbNettoAkhir').textContent = kgTeks(data.netto_akhir);
+    aturLabelBerat(data);
+    const info = document.getElementById('tbJembatanMasuk');
+    info.classList.toggle('hidden', !data.jembatan_masuk);
+    info.textContent = data.jembatan_masuk ? `Masuk di ${data.jembatan_masuk} · keluar wajib di jembatan sama` : '';
+}
+
+// Jembatan timbang PC ini: disimpan di cookie (1 tahun), dibaca server saat status berat & simpan timbang
+function pilihJembatanTimbang(id) {
+    if (!id) return;
+    document.cookie = `jembatan_timbang=${encodeURIComponent(id)}; path=/; max-age=31536000; SameSite=Lax`;
+    const opsi = document.querySelector(`#pilihJembatan option[value="${CSS.escape(id)}"]`);
+    Notif.sukses(`PC ini sekarang menggunakan ${opsi ? opsi.textContent : 'jembatan ' + id}`);
+}
+
+// History: default 7 hari terakhir, atau satu tanggal dalam 30 hari terakhir
+const HARI_HISTORY_MAKS = 30;
+let idSupplierHistory = null;
+
+function tanggalLokal(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+(function aturBatasTanggalTimbang() {
+    const input = document.getElementById('filterTanggalTimbang');
+    const hari = new Date();
+    input.max = tanggalLokal(hari);
+    hari.setDate(hari.getDate() - (HARI_HISTORY_MAKS - 1));
+    input.min = tanggalLokal(hari);
+})();
+
+function resetTanggalTimbang() {
+    document.getElementById('filterTanggalTimbang').value = '';
+    muatHistoryTimbanganUlang();
+}
+
+function muatHistoryTimbanganUlang() {
+    muatHistorySupplier(idSupplierHistory);
+}
+
+async function muatHistorySupplier(idSupplier) {
+    if (!idSupplier) return;
+    idSupplierHistory = idSupplier;
+    const input = document.getElementById('filterTanggalTimbang');
+    let tanggal = input.value;
+    if (tanggal && (tanggal < input.min || tanggal > input.max)) {
+        Notif.peringatan(`Tanggal hanya bisa dipilih ${HARI_HISTORY_MAKS} hari terakhir`);
+        input.value = tanggal = '';
+    }
+    document.getElementById('keteranganHistoryTimbang').textContent =
+        tanggal ? `Menampilkan tanggal ${tanggal}` : 'Menampilkan 7 hari terakhir';
+    const url = `/api/history-timbangan-supplier?id_supplier=${encodeURIComponent(idSupplier)}` +
+                (tanggal ? `&tanggal=${tanggal}` : '');
+    const data = await ambilJson(url);
+    const tbody = document.getElementById('tabelHistoryTimbangan');
+    if (data.error) { tbody.innerHTML = barisKosong(6, data.error); return; }
+    if (!data.length) {
+        tbody.innerHTML = barisKosong(6, tanggal ? `Belum ada riwayat pada ${tanggal}` : 'Belum ada riwayat 7 hari terakhir');
+        return;
+    }
+    tbody.innerHTML = data.map(r => `
+        <tr><td class="table-cell whitespace-nowrap text-xs">${escapeHtml(r.created_at || '-')}</td><td class="table-cell">${escapeHtml(r.no_plat)}</td>
+        <td class="table-cell">${escapeHtml(r.nama_supplier)}</td><td class="table-cell">${escapeHtml(r.berat_bruto ?? '-')}</td>
+        <td class="table-cell">${escapeHtml(r.berat_tara ?? '-')}</td><td class="table-cell">${escapeHtml(r.berat_netto ?? '-')}</td></tr>
+    `).join('');
+}
+
+// ===== SCAN QR TIKET =====
+// Kamera (library html5-qrcode disimpan lokal di static/vendor, tidak butuh internet)
+// atau scanner barcode USB (mengetik No. Tiket + Enter ke kotak input).
+let qrScanner = null;
+let sedangProsesScan = false;
+
+async function bukaScanQRTimbangan() {
+    const status = document.getElementById('statusScanQR');
+    const input = document.getElementById('inputScanTiket');
+    input.value = '';
+    sedangProsesScan = false;
+    openModal('modalScanQRTimbangan');
+    input.focus();
+
+    if (typeof Html5Qrcode === 'undefined') {
+        status.textContent = 'Library kamera tidak termuat. Gunakan scanner barcode atau ketik No. Tiket.';
+        return;
+    }
+    status.textContent = 'Menyalakan kamera...';
+    try {
+        qrScanner = new Html5Qrcode('qr-reader-timbang');
+        await qrScanner.start({ facingMode: 'environment' }, { fps: 15, qrbox: 250 }, teks => prosesScanTiket(teks));
+        status.textContent = 'Arahkan QR tiket ke kamera, atau gunakan scanner barcode.';
+    } catch (err) {
+        qrScanner = null;
+        status.textContent = `Kamera tidak bisa dipakai (${err}). Gunakan scanner barcode atau ketik No. Tiket.`;
+        input.focus();
+    }
+}
+
+async function hentikanKameraQR() {
+    if (!qrScanner) return;
+    try { await qrScanner.stop(); } catch (e) { /* kamera sudah berhenti */ }
+    try { qrScanner.clear(); } catch (e) { /* abaikan */ }
+    qrScanner = null;
+}
+
+async function tutupScanQR() {
+    await hentikanKameraQR();
+    closeModal('modalScanQRTimbangan');
+}
+
+// Tombol "Cari Tiket" (sama dengan menekan Enter di kotak No. Tiket)
+function kirimScanTiket() {
+    const input = document.getElementById('inputScanTiket');
+    if (!input.value.trim()) {
+        Notif.peringatan('Silakan masukkan atau scan No. Tiket');
+        input.focus();
+        return;
+    }
+    prosesScanTiket(input.value);
+}
+
+async function prosesScanTiket(teks) {
+    const noTiket = (teks || '').trim().toUpperCase();
+    if (!noTiket || sedangProsesScan) return;     // kamera bisa membaca QR yang sama berkali-kali
+    sedangProsesScan = true;
+    await tutupScanQR();
+    await lookupTiket(noTiket);
+}

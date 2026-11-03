@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% from "partials/layout/_macros.html" import tab_header, section_header, judul_halaman %}
+{% block title %}Deteksi Plat · CPOS{% endblock %}
+
+{# Mills Operation › Deteksi Plat (routes/deteksi_plat.py). Hanya tampilan: backend deteksi jalan terpisah dan menulis ke dbo.RiwayatDeteksi. #}
+{% block info_bar %}{% endblock %}
+{% block info_bar_script %}{% endblock %}
+
+{% block tab_header %}
+    {{ judul_halaman('Deteksi Plat', 'Riwayat plat yang terbaca kamera (uji coba)', 'fa-car-side') }}
+    {{ tab_header([('plat', 'Riwayat Deteksi')], 'hidden') }}
+{% endblock %}
+
+{% block tab_content %}
+<div data-tab-content="plat" class="hidden">
+    <div class="section-box mb-5">
+        {% call section_header('video-deteksi', 'Kamera Deteksi') %}
+        <span id="infoAi" class="text-xs text-slate-500"></span>
+        {% endcall %}
+        <div id="body-video-deteksi" class="section-body">
+            <div id="gridVideo" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+            <p id="pesanVideo" class="text-sm text-slate-500 hidden"></p>
+        </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+        <div class="stat-card"><p class="stat-label">Plat terbaca</p>
+            <p class="mt-1"><span id="kpiTotal" class="text-3xl font-bold font-mono text-slate-900">-</span> <span class="text-sm font-semibold text-slate-600">deteksi</span></p></div>
+        <div class="stat-card"><p class="stat-label">Pemilik tidak diketahui</p>
+            <p class="mt-1"><span id="kpiTakDikenal" class="text-3xl font-bold font-mono text-amber-600">-</span> <span class="text-sm font-semibold text-slate-600">deteksi</span></p></div>
+        <div class="stat-card"><p class="stat-label">Terdaftar di master kendaraan</p>
+            <p class="mt-1"><span id="kpiTerdaftar" class="text-3xl font-bold font-mono text-emerald-600">-</span> <span class="text-sm font-semibold text-slate-600">deteksi</span></p></div>
+    </div>
+    <div class="filter-bar">
+        <input type="date" id="fDari" class="input-field w-56" data-on-change="muatPlat">
+        <input type="date" id="fSampai" class="input-field w-56" data-on-change="muatPlat">
+        <select id="fKamera" class="input-field w-56" data-on-change="muatPlat" data-tanpa-cari><option value="">Semua kamera</option></select>
+        <input type="text" id="fPlat" maxlength="15" placeholder="Cari plat" class="input-field w-56 uppercase" data-on-change="muatPlat">
+        <div class="flex-1"></div>
+        <button type="button" class="btn-secondary" data-on-click="muatPlat"><i class="fa-solid fa-rotate"></i> Muat ulang</button>
+    </div>
+    <div class="section-box">
+        {{ section_header('daftar-plat', 'Riwayat Deteksi Plat (maks. 500 baris terbaru)') }}
+        <div id="body-daftar-plat" class="section-body overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="table-header-row">
+                    <tr><th class="table-cell">Waktu</th><th class="table-cell">Kamera</th><th class="table-cell">Jenis</th>
+                        <th class="table-cell">Plat</th><th class="table-cell">Pemilik</th>
+                        <th class="table-cell text-right">Conf</th><th class="table-cell text-right">Foto</th></tr>
+                </thead>
+                <tbody data-judul-ekspor="Deteksi Plat" id="tabelPlat" data-per-halaman="20" class="divide-y divide-slate-100"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<div id="modalFoto" class="modal-overlay">
+    <div class="modal-box max-w-6xl w-full">
+        <div class="modal-header">
+            <h3 class="font-bold" id="judulFoto"></h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalFoto" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="bg-black aspect-video flex items-center justify-center">
+            <img id="gambarFoto" alt="" class="max-w-full max-h-full">
+        </div>
+    </div>
+</div>
+
+<div id="modalVideo" class="modal-overlay">
+    <div class="modal-box max-w-6xl w-full">
+        <div class="modal-header">
+            <h3 class="font-bold"><span id="judulVideo"></span> <span class="font-normal text-slate-400">· video dari backend deteksi</span></h3>
+            <button type="button" data-on-click="tutupVideo" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="bg-black aspect-video flex items-center justify-center relative">
+            <img id="gambarVideo" alt="" class="max-w-full max-h-full">
+            <p id="pesanLive" class="absolute text-sm text-slate-300 hidden"></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script defer src="{{ url_for('static', filename='js/deteksi_plat/deteksi_plat.js') }}"></script>
+{% endblock %}

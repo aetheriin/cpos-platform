@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · CPOS{% endblock %}
+
+{% block info_bar %}{% endblock %}
+{% block info_bar_script %}{% endblock %}
+
+{% block tab_header %}
+{% set ada_harga = 'harga' in widget or 'riwayat' in widget %}
+<div class="halaman-judul">
+    <div>
+        <h1>{{ judul }}</h1>
+        <p>{{ keterangan }}</p>
+    </div>
+    {% if ada_harga %}
+    <div class="flex items-center gap-3">
+        {% if company_harga|length > 1 %}
+        <select id="pilihCompanyHarga" data-simpan="company_harga" class="input-field w-56 py-1.5" data-on-change="muatDashboard" title="Perusahaan (harga)">
+            {% for c in company_harga %}<option value="{{ c.id_company }}">{{ c.id_company }} · {{ c.nama }}</option>{% endfor %}
+        </select>
+        {% elif company_harga %}
+        <input type="hidden" id="pilihCompanyHarga" value="{{ company_harga[0].id_company }}">
+        {% endif %}
+        <div class="seg">
+            {% for h in (7, 30, 90) %}
+            <button type="button" class="chip{% if h == 30 %} chip-active{% endif %}" data-hari="{{ h }}" data-on-click="filterHariDashboard" data-arg="$el">{{ h }} Hari</button>
+            {% endfor %}
+        </div>
+        {% if boleh_ubah %}
+        <button type="button" class="btn-primary" data-on-click="bukaIsiHarga"><i class="fa-solid fa-plus"></i> Isi Harga</button>
+        {% endif %}
+    </div>
+    {% elif 'security' in widget and is_pusat %}
+    <select id="pilihAreaSecurity" data-simpan="area_security" class="input-field w-56 py-1.5" data-on-change="muatSecurity">
+        <option value="">Semua area</option>
+        {% for a in area_list %}<option value="{{ a.id_comp_area }}">{{ a.label }}</option>{% endfor %}
+    </select>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block tab_content %}
+{# Widget tampil sesuai urutan Menu.Widgets; satu file per widget di templates/dashboard/widget/ #}
+<div id="dataDashboard" hidden data-widget="{{ widget | join(',') }}"></div>
+{% for w in widget %}{% include "dashboard/widget/" ~ w ~ ".html" %}{% endfor %}
+{% endblock %}
+
+{% block modals %}
+{% if boleh_ubah %}
+<div id="modalHarga" class="modal-overlay">
+    <form id="formHarga" class="modal-box" autocomplete="off">
+        <div class="modal-header">
+            <h3 class="font-bold">Isi Harga</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalHarga" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 grid grid-cols-2 gap-3">
+            <div>
+                <label class="field-label" for="hrgCompany">Perusahaan</label>
+                <select id="hrgCompany" name="company" required class="input-field">
+                    {% for c in company_harga %}<option value="{{ c.id_company }}">{{ c.id_company }} · {{ c.nama }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="field-label" for="hrgTanggal">Tanggal</label>
+                <input type="date" id="hrgTanggal" name="tanggal" required class="input-field">
+            </div>
+            {% for nama, label, step in [('harga_cpo', 'Harga CPO (Rp/kg)', '0.01'), ('harga_kernel', 'Harga Kernel (Rp/kg)', '0.01'),
+                                         ('oer_cpo', 'OER CPO (%)', '0.01'), ('biaya_olah', 'Biaya Olah (Rp/kg TBS)', '0.01')] %}
+            <div>
+                <label class="field-label" for="hrg_{{ nama }}">{{ label }}</label>
+                <input type="number" id="hrg_{{ nama }}" name="{{ nama }}" required min="0" step="{{ step }}" class="input-field">
+            </div>
+            {% endfor %}
+            <div>
+                <label class="field-label" for="hrg_qty_rsi">Qty RSI <span class="text-slate-400 font-normal">(opsional)</span></label>
+                <input type="number" id="hrg_qty_rsi" name="qty_rsi" min="0" step="0.001" class="input-field">
+            </div>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalHarga" class="btn-secondary">Batal</button>
+            <button type="submit" class="btn-primary">Simpan</button>
+        </div>
+    </form>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script defer src="{{ url_for('static', filename='js/admin/admin.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/dashboard/dashboard.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,172 @@
+erDiagram
+    UserCategory {
+        varchar CategoryCode PK
+        nvarchar CategoryName
+        bit RequireLicense
+        bit CanLogin
+        varchar CodePrefix "NULL"
+        bit Active
+    }
+    Users {
+        bigint UserID PK
+    }
+    License {
+        int LicenseID PK
+        varchar LicenseCode UK
+        nvarchar LicenseType
+        nvarchar Description "NULL"
+        bit Active
+    }
+    LicenseDetail {
+        int DetailLicenseID PK
+        bigint UserID FK
+        int SIMType FK
+        varchar LicenseNumber UK
+        date ExpiredSIM "NULL"
+        bit Active
+        bigint CreateBy FK "NULL"
+        datetime CreateDate
+    }
+    FaceRecog {
+        int FaceID PK
+        bigint UserID FK,UK
+        varbinary FaceDet
+        varchar PhotoPath "NULL"
+        varchar Source "NULL"
+        bit IsMain
+        bit Active
+        bigint CreateBy FK "NULL"
+        datetime CreateDate
+    }
+    VisitPurpose {
+        int PurposeID PK
+        nvarchar PurposeName UK
+        bit Active
+    }
+    Guest {
+        int GuestID PK
+        bigint UserID FK
+        bigint VisitToID FK
+        int PurposeID FK
+        nvarchar Description "NULL"
+        nvarchar CompanyFrom "NULL"
+        varchar NoVehicle "NULL"
+        bigint CompAreaID FK
+        varchar PhotoPath "NULL"
+        datetime CheckInDate
+        datetime CheckOutDate "NULL"
+        bigint CreateBy FK
+    }
+    FaceActivity {
+        int ActivityID PK
+        bigint UserID FK "NULL"
+        varchar ActivityType "NULL"
+        varchar Status
+        varchar TimeStatus "NULL"
+        int DiffMinutes "NULL"
+        float FaceDistance "NULL"
+        varchar LivenessChallenge "NULL"
+        varchar PhotoPath "NULL"
+        varchar Device "NULL"
+        varchar IPAddress "NULL"
+        datetime LogDate
+        date LogDay "NULL"
+    }
+    Blacklist {
+        bigint BlacklistID PK
+        datetime CreateDate
+        int BlacklistDoc FK "NULL"
+        varchar LogActionType
+        varchar TableName
+        varchar TargetType "NULL"
+        nvarchar OldValue "NULL"
+        nvarchar NewValue "NULL"
+        bigint UserID FK "NULL"
+        int IDVehicle FK "NULL"
+        int SupplierID FK "NULL"
+        varchar Reason
+        bigint CreateBy FK
+        varchar NoVehicle "NULL"
+        int CustomerID FK "NULL"
+        int TransportID FK "NULL"
+        datetime RevokeDate "NULL"
+        bigint RevokeBy FK "NULL"
+        nvarchar RevokeReason "NULL"
+        nvarchar AliasName "NULL"
+        varchar CategoryCode "NULL"
+        bigint CompAreaID FK "NULL"
+    }
+    BlacklistDetection {
+        bigint DetectionID PK
+        datetime DetectDate
+        bigint CompAreaID FK "NULL"
+        bigint UserID FK "NULL"
+        int IDVehicle FK "NULL"
+        varchar NoVehicle "NULL"
+        varchar Source
+        varchar Action
+        float FaceDistance "NULL"
+        nvarchar Description "NULL"
+        varchar TicketNumber "NULL"
+        bigint CreateBy FK "NULL"
+    }
+    DocumentType {
+        int DocTypeID PK
+        varchar DocTypeCode UK
+        nvarchar DocTypeName
+        bit RequireFile
+        bit Active
+    }
+    Document {
+        int DocumentID PK
+        int DocTypeID FK
+        nvarchar DocNumber
+        date DocDate
+        nvarchar Subject "NULL"
+        bigint CreateBy FK
+        datetime CreateDate
+    }
+    DocumentFile {
+        int FileID PK
+        int DocumentID FK
+        varchar FilePath
+        nvarchar OriginalName "NULL"
+        varchar MimeType "NULL"
+        int FileSize "NULL"
+        char SHA256 "NULL"
+        tinyint SortOrder
+        datetime CreateDate
+    }
+    DetailVehicle {
+        int IDVehicle PK
+    }
+    CompanyArea {
+        bigint CompAreaID PK
+    }
+    Document |o--o{ Blacklist : "BlacklistDoc"
+    CompanyArea |o--o{ Blacklist : "CompAreaID"
+    Users ||--o{ Blacklist : "CreateBy"
+    DetailVehicle |o--o{ Blacklist : "IDVehicle"
+    Users |o--o{ Blacklist : "RevokeBy"
+    Users |o--o{ Blacklist : "UserID"
+    CompanyArea |o--o{ BlacklistDetection : "CompAreaID"
+    Users |o--o{ BlacklistDetection : "CreateBy"
+    DetailVehicle |o--o{ BlacklistDetection : "IDVehicle"
+    Users |o--o{ BlacklistDetection : "UserID"
+    Blacklist |o--o{ DetailVehicle : "BlacklistID"
+    Users ||--o{ Document : "CreateBy"
+    DocumentType ||--o{ Document : "DocTypeID"
+    Document ||--o{ DocumentFile : "DocumentID"
+    Users |o--o{ FaceActivity : "UserID"
+    Users |o--o{ FaceRecog : "CreateBy"
+    Users ||--o| FaceRecog : "UserID"
+    CompanyArea ||--o{ Guest : "CompAreaID"
+    Users ||--o{ Guest : "CreateBy"
+    VisitPurpose ||--o{ Guest : "PurposeID"
+    Users ||--o{ Guest : "UserID"
+    Users ||--o{ Guest : "VisitToID"
+    Users |o--o{ LicenseDetail : "CreateBy"
+    License ||--o{ LicenseDetail : "SIMType"
+    Users ||--o{ LicenseDetail : "UserID"
+    Blacklist |o--o{ Users : "BlacklistID"
+    UserCategory ||--o{ Users : "CategoryCode"

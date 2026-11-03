@@ -1,0 +1,14 @@
+# Rahasia & data lokal (tiap PC / server punya sendiri)
+.env
+**/.env
+!**/.env.example
+!**/.env.contoh
+**/__pycache__/
+**/venv/
+**/.venv/
+Analytics/backend/log_aktivitas/
+Analytics/backend/pengaturan.json
+Analytics/frontend/node_modules/
+Analytics/frontend/dist/
+CPOS/logs/
+CPOS/data/

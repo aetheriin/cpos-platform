@@ -1,0 +1,90 @@
+"""Satu log untuk semua aktivitas (tabel log_aktivitas, migrasi 015).
+
+Ditulis hanya lewat prosedur dbo.sp_WriteLog: isi lama / baru berupa JSON dan setiap baris membawa hash baris
+sebelumnya (rantai hash), sehingga baris yang diubah / dihapus ketahuan lewat view dbo.v_log_rusak.
+Kategori: ADMIN, SECURITY, PERSONEL, STANDAR_MUTU, TIMELINE."""
+import json
+import logging
+from datetime import date, datetime
+from decimal import Decimal
+
+from utils.db_utils import get_connection, _rows_to_dicts
+
+log = logging.getLogger("weighbridge")
+
+
+def _json(nilai):
+    if nilai is None:
+        return None
+
+    def bawaan(v):
+        if isinstance(v, (datetime, date)):
+            return v.isoformat()
+        if isinstance(v, Decimal):
+            return float(v)
+        return str(v)
+    return json.dumps(nilai, ensure_ascii=False, default=bawaan)
+
+
+def _exec(cursor, kategori, aksi, tabel, id_baris, lama, baru, user_id, ip):
+    cursor.execute("""EXEC dbo.sp_WriteLog @kategori = ?, @aksi = ?, @tabel = ?, @id_baris = ?, @nilai_lama = ?,
+                                            @nilai_baru = ?, @id_user = ?, @ip = ?""",
+                   kategori, aksi[:40], tabel, None if id_baris is None else str(id_baris)[:100],
+                   _json(lama), _json(baru), user_id, (ip or None) and ip[:45])
+
+
+def catat(kategori, aksi, *, tabel=None, id_baris=None, lama=None, baru=None, user_id=None, ip=None, cursor=None):
+    """cursor diberikan: ikut transaksi pemanggil (gagal = ikut batal). Tanpa cursor: koneksi sendiri dan
+    kegagalan mencatat tidak menggagalkan proses utama."""
+    if cursor is not None:
+        _exec(cursor, kategori, aksi, tabel, id_baris, lama, baru, user_id, ip)
+        return
+    try:
+        conn = get_connection()
+        try:
+            _exec(conn.cursor(), kategori, aksi, tabel, id_baris, lama, baru, user_id, ip)
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:       # noqa: BLE001 - log tidak boleh memutus alur
+        log.exception("Gagal mencatat log %s/%s", kategori, aksi)
+
+
+def daftar(kategori, hari=7, batas=300, aksi=None):
+    """Baris log satu kategori N hari terakhir, terbaru dulu. nilai_lama / nilai_baru sudah jadi dict."""
+    sql = f"""SELECT TOP {int(batas)} l.LogID AS id_log, l.LogDate AS waktu, l.LogActionType AS aksi, l.TableName AS tabel, l.RowID AS id_baris, l.OldValue AS nilai_lama, l.NewValue AS nilai_baru, l.IPAddress AS ip,
+                     l.CreateBy AS id_user, u.Nama AS oleh, u.UserName AS username, lv.LevelDetCode AS role_oleh, u.UserCode AS kode_oleh
+              FROM Log l
+              LEFT JOIN Users u ON u.UserID = l.CreateBy
+              LEFT JOIN LevelDetails lv ON lv.LevelDetID = u.UserLevelID
+              WHERE l.Category = ? AND l.LogDate >= DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
+                    {"AND l.LogActionType = ?" if aksi else ""}
+              ORDER BY l.LogID DESC"""
+    params = [kategori, -(int(hari) - 1)] + ([aksi] if aksi else [])
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, *params)
+        rows = _rows_to_dicts(cursor)
+    finally:
+        conn.close()
+    for r in rows:
+        r["nilai_lama"] = json.loads(r["nilai_lama"]) if r["nilai_lama"] else {}
+        r["nilai_baru"] = json.loads(r["nilai_baru"]) if r["nilai_baru"] else {}
+    return rows
+
+
+def verifikasi():
+    """Cek rantai hash. Kembalikan {"utuh": bool, "jumlah": n, "rusak": [baris pertama yang bermasalah...]}."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM Log")
+        jumlah = cursor.fetchone()[0]
+        cursor.execute("SELECT TOP 20 LogID AS id_log, LogDate AS waktu, Category AS kategori, LogActionType AS aksi, Problem AS masalah FROM LogIntegrity ORDER BY LogID")
+        rusak = _rows_to_dicts(cursor)
+    finally:
+        conn.close()
+    for r in rusak:
+        r["waktu"] = r["waktu"].strftime("%Y-%m-%d %H:%M:%S") if r["waktu"] else None
+    return {"utuh": not rusak, "jumlah": jumlah, "rusak": rusak}

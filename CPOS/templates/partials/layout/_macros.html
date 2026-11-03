@@ -1,0 +1,44 @@
+{# Header tab (dipakai halaman site & Pengenalan Wajah). tabs = [(key, label), ...] #}
+{% macro tab_header(tabs, kelas="") %}
+<div id="tabHeader" class="tab-header {{ kelas }}">
+    {% for key, label in tabs %}
+    <button type="button" class="tab-btn{% if loop.first %} tab-btn-active{% endif %}" data-tab="{{ key }}"
+            data-on-click="switchTab" data-arg="{{ key }}">{{ label }}</button>
+    {% endfor %}
+</div>
+{% endmacro %}
+
+{# Header section abu-abu yang bisa dibuka / ditutup (toggleSection di base.js) #}
+{% macro section_header(id, judul, tertutup=false) %}
+<div class="section-header" data-on-click="toggleSection" data-arg="{{ id }}">
+    <span class="section-header-text">
+        <i id="chevron-{{ id }}" class="fa-solid fa-chevron-down section-chevron{% if tertutup %} section-chevron-collapsed{% endif %}"></i>
+        {{ judul }}
+    </span>
+    {{ caller() if caller else '' }}
+</div>
+{% endmacro %}
+
+{# Judul halaman ala prototipe: judul + subjudul di kiri, aksi (caller) di kanan #}
+{# Warna ikon (ditulis lengkap supaya terbaca Tailwind): judul-ikon-biru judul-ikon-merah judul-ikon-kuning judul-ikon-hijau judul-ikon-gelap #}
+{% macro judul_halaman(judul, sub="", ikon="", warna="biru", kartu=false) %}
+<div class="halaman-judul{% if kartu %} halaman-judul-kartu{% endif %}">
+    <div class="flex items-center gap-3">
+        {% if ikon %}<div class="judul-ikon judul-ikon-{{ warna }}"><i class="fa-solid {{ ikon }}"></i></div>{% endif %}
+        <div>
+            <h1>{{ judul }}</h1>
+            {% if sub %}<p>{{ sub }}</p>{% endif %}
+        </div>
+    </div>
+    {% if caller %}<div class="flex flex-wrap items-center gap-2">{{ caller() }}</div>{% endif %}
+</div>
+{% endmacro %}
+
+{# Tombol ekspor untuk tabel laporan TANPA pembagian halaman (mis. RekapIn Pembelian TBS). Tabel daftar biasa
+   (<tbody data-per-halaman>) tidak memakai ini: tombol Excel / PDF-nya ada di kaki tabel (static/js/halaman.js). #}
+{% macro tombol_ekspor(id_tbody, judul) %}
+<div class="flex items-center gap-1.5">
+    <button type="button" class="btn-secondary btn-sm" data-on-click="eksporTabel" data-arg="{{ id_tbody }}|xlsx|{{ judul }}" title="Unduh Excel (semua baris yang tampil)"><i class="fa-regular fa-file-excel text-emerald-600"></i> Excel</button>
+    <button type="button" class="btn-secondary btn-sm" data-on-click="eksporTabel" data-arg="{{ id_tbody }}|pdf|{{ judul }}" title="Cetak / simpan PDF"><i class="fa-regular fa-file-pdf text-red-600"></i> PDF</button>
+</div>
+{% endmacro %}

@@ -1,0 +1,202 @@
+erDiagram
+    Company {
+        varchar CompID PK
+        nvarchar CompName
+        nvarchar CompAddress "NULL"
+        bit Active
+        nvarchar Description "NULL"
+        datetime CreateDate
+    }
+    Mill {
+        bigint MillID PK
+        varchar MillCode UK
+        nvarchar MillName
+        bit IsHeadOffice
+        bit Active
+        nvarchar Description "NULL"
+        datetime CreateDate
+    }
+    CompanyArea {
+        bigint CompAreaID PK
+        varchar CompID FK
+        bigint MillID FK "NULL"
+        varchar AreaCode
+        nvarchar AreaName
+        nvarchar AreaDesc "NULL"
+        nvarchar AreaAddress "NULL"
+        bit Active
+        datetime CreateDate
+    }
+    Department {
+        varchar DeptID PK
+        nvarchar DeptName UK
+        nvarchar Description "NULL"
+        bit Active
+    }
+    DepartmentDetails {
+        bigint DeptDetailID PK
+        bigint CompAreaID FK
+        varchar DeptID FK
+        nvarchar Location
+        nvarchar Description "NULL"
+        bit Active
+    }
+    Level {
+        int LevelID PK
+        nvarchar LevelName UK
+        nvarchar Description "NULL"
+        bit IsAdmin
+        int SortOrder
+        bit Active
+    }
+    LevelDetails {
+        int LevelDetID PK
+        bigint CompAreaID FK "NULL"
+        int LevelID FK
+        varchar DeptID FK "NULL"
+        varchar LevelDetCode UK
+        nvarchar LevelDetName
+        varchar HomeUrl
+        nvarchar Description "NULL"
+        bit Active
+    }
+    Menu {
+        int MenuID PK
+        varchar MenuCode UK
+        nvarchar MenuName
+        nvarchar Description "NULL"
+        int ParentMenuID FK "NULL"
+        tinyint MenuLevel
+        varchar Url "NULL"
+        varchar Icon "NULL"
+        varchar AppCode
+        int SortOrder
+        bigint CompAreaID FK "NULL"
+        bit Active
+    }
+    ActionType {
+        int ActionID PK
+        varchar TypeName UK
+        varchar Description "NULL"
+        bit Active
+    }
+    AccessMenu {
+        int AccessMenuID PK
+        int MenuID FK
+        int ActionID FK
+        int LevelDetID FK "NULL"
+        bigint UserID FK "NULL"
+        bit Active
+        datetime CreateDate
+    }
+    Users {
+        bigint UserID PK
+        bigint CompAreaID FK "NULL"
+        varchar UserCode UK "NULL"
+        varchar UserName UK "NULL"
+        bigint UserDeptID FK "NULL"
+        int UserLevelID FK "NULL"
+        varchar CategoryCode FK
+        varchar NoKTP UK "NULL"
+        bigint GuestID "NULL"
+        nvarchar Nama
+        nvarchar Email "NULL"
+        varbinary FaceEmbeddingData "NULL"
+        nvarchar UploadPath "NULL"
+        varchar CurrentHash "NULL"
+        datetime CreateDate
+        datetime UpdateDate
+        bit Active
+        bit IsUpload
+        bigint BlacklistID FK "NULL"
+        nvarchar Description "NULL"
+        datetime LastLogin "NULL"
+        int SessionVersion
+    }
+    PasswordManager {
+        bigint UserID PK,FK
+        varchar UserPasswd
+        datetime CreateDate
+        bit MustChange
+        nvarchar History
+        int Term "NULL"
+        nvarchar Description "NULL"
+    }
+    UserCompany {
+        bigint UserID PK,FK
+        varchar CompID PK,FK
+    }
+    UserSession {
+        varchar SessionID PK
+        bigint UserID FK
+        varchar IPAddress "NULL"
+        varchar UserAgent "NULL"
+        datetime LoginDate
+        datetime LastActive
+        datetime EndDate "NULL"
+        varchar EndReason "NULL"
+    }
+    Setting {
+        varchar SettingKey PK
+        varchar SettingValue
+        bigint UpdateBy FK "NULL"
+        datetime UpdateDate
+    }
+    SettingArea {
+        bigint CompAreaID PK,FK
+        varchar SettingKey PK
+        varchar SettingValue
+        bigint UpdateBy FK "NULL"
+        datetime UpdateDate
+    }
+    RequiredDataField {
+        varchar FormCode PK
+        varchar FieldName PK
+    }
+    Device {
+        varchar DeviceID PK
+        varchar DeviceName
+        varchar Location "NULL"
+        char TokenHash
+        bigint CompAreaID FK
+        bit Active
+        datetime CreateDate
+    }
+    WorkSchedule {
+        bigint CompAreaID PK,FK
+        tinyint DayNo PK
+        varchar DayName
+        time TimeIn "NULL"
+        time TimeOut "NULL"
+        bit IsHoliday
+        int ToleranceMinutes
+    }
+    UserCategory {
+        varchar CategoryCode PK
+    }
+    ActionType ||--o{ AccessMenu : "ActionID"
+    LevelDetails |o--o{ AccessMenu : "LevelDetID"
+    Menu ||--o{ AccessMenu : "MenuID"
+    Users |o--o{ AccessMenu : "UserID"
+    Company ||--o{ CompanyArea : "CompID"
+    Mill |o--o{ CompanyArea : "MillID"
+    CompanyArea ||--o{ DepartmentDetails : "CompAreaID"
+    Department ||--o{ DepartmentDetails : "DeptID"
+    CompanyArea ||--o{ Device : "CompAreaID"
+    CompanyArea |o--o{ LevelDetails : "CompAreaID"
+    Department |o--o{ LevelDetails : "DeptID"
+    Level ||--o{ LevelDetails : "LevelID"
+    CompanyArea |o--o{ Menu : "CompAreaID"
+    Menu |o--o{ Menu : "ParentMenuID"
+    Users ||--o| PasswordManager : "UserID"
+    Users |o--o{ Setting : "UpdateBy"
+    CompanyArea ||--o{ SettingArea : "CompAreaID"
+    Users |o--o{ SettingArea : "UpdateBy"
+    Company ||--o{ UserCompany : "CompID"
+    Users ||--o{ UserCompany : "UserID"
+    UserCategory ||--o{ Users : "CategoryCode"
+    CompanyArea |o--o{ Users : "CompAreaID"
+    DepartmentDetails |o--o{ Users : "UserDeptID"
+    LevelDetails |o--o{ Users : "UserLevelID"
+    Users ||--o{ UserSession : "UserID"
+    CompanyArea ||--o{ WorkSchedule : "CompAreaID"

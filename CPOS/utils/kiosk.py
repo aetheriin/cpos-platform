@@ -1,0 +1,136 @@
+"""Perangkat kiosk kamera per pos (menu Admin > Perangkat / Kios).
+
+Token asli hanya ditampilkan sekali saat dibuat / diganti; yang disimpan hash SHA-256.
+Kiosk mengirim header X-Kiosk-Id (= id_pos) dan X-Kiosk-Token. KIOSK_TOKEN di .env tetap berlaku
+sebagai token bersama (cara lama), supaya kiosk yang sudah terpasang tidak langsung putus."""
+import hashlib
+import hmac
+import re
+import secrets
+import threading
+import time
+
+from utils.cache import cache_ttl
+from utils.db_utils import get_connection, _rows_to_dicts
+
+POLA_ID_POS = re.compile(r"^[A-Z0-9_-]{2,30}$")
+
+_lock = threading.Lock()
+_terakhir = {}      # id_pos -> {"waktu", "ip"} (memori, tidak menulis DB setiap request)
+
+
+def hash_token(token):
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def token_baru():
+    return secrets.token_urlsafe(32)
+
+
+@cache_ttl(60)
+def _perangkat():
+    try:
+        conn = get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT DeviceID AS id_pos, TokenHash AS token_hash, Active AS is_active FROM Device")
+            return {r[0]: (r[1], bool(r[2])) for r in cursor.fetchall() if isinstance(r[0], str)}
+        finally:
+            conn.close()
+    except Exception:       # noqa: BLE001 - tabel belum ada / DB mati -> hanya KIOSK_TOKEN .env
+        return {}
+
+
+def token_cocok(id_pos, token):
+    """True bila id_pos terdaftar, aktif, dan token sesuai."""
+    data = _perangkat().get(id_pos)
+    return bool(data and data[1] and token and hmac.compare_digest(data[0], hash_token(token)))
+
+
+def catat_terlihat(id_pos, ip):
+    with _lock:
+        _terakhir[id_pos] = {"waktu": time.time(), "ip": ip}
+
+
+def terakhir_terlihat():
+    with _lock:
+        return dict(_terakhir)
+
+
+def hapus_cache():
+    _perangkat.hapus()
+
+
+# ===== CRUD (dipanggil routes/admin.py) =====
+def daftar():
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""SELECT k.DeviceID AS id_pos, k.DeviceName AS nama, k.Location AS lokasi, k.CompAreaID AS id_comp_area, a.AreaName AS area, k.Active AS is_active, k.CreateDate AS created_at
+                          FROM Device k LEFT JOIN CompanyArea a ON a.CompAreaID = k.CompAreaID
+                          ORDER BY k.DeviceID""")
+        return _rows_to_dicts(cursor)
+    finally:
+        conn.close()
+
+
+def area_pos(id_pos):
+    """Area pos (untuk pengaturan per area saat dipanggil kiosk tanpa login). None bila tidak ada."""
+    try:
+        return next((p["id_comp_area"] for p in daftar() if p["id_pos"] == id_pos), None)
+    except Exception:       # noqa: BLE001
+        return None
+
+
+def daftar_aktif():
+    """Pos aktif untuk pilihan "Pos kamera" di Form Security. Gagal / tabel belum ada -> kosong."""
+    try:
+        return [p for p in daftar() if p["is_active"]]
+    except Exception:       # noqa: BLE001
+        return []
+
+
+def tambah(id_pos, nama, lokasi, id_comp_area):
+    """Kembalikan token asli (tampilkan sekali ke admin)."""
+    token = token_baru()
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM Device WHERE DeviceID = ?", id_pos)
+        if cursor.fetchone():
+            raise ValueError(f"ID pos {id_pos} sudah dipakai")
+        cursor.execute("INSERT INTO Device (DeviceID, DeviceName, Location, CompAreaID, TokenHash) VALUES (?, ?, ?, ?, ?)",
+                       id_pos, nama, lokasi or None, id_comp_area, hash_token(token))
+        conn.commit()
+    finally:
+        conn.close()
+    hapus_cache()
+    return token
+
+
+def ganti_token(id_pos):
+    token = token_baru()
+    _ubah("UPDATE Device SET TokenHash = ? WHERE DeviceID = ?", hash_token(token), id_pos)
+    return token
+
+
+def ubah(id_pos, nama, lokasi, id_comp_area):
+    _ubah("UPDATE Device SET DeviceName = ?, Location = ?, CompAreaID = ? WHERE DeviceID = ?",
+          nama, lokasi or None, id_comp_area, id_pos)
+
+
+def set_aktif(id_pos, aktif):
+    _ubah("UPDATE Device SET Active = ? WHERE DeviceID = ?", 1 if aktif else 0, id_pos)
+
+
+def _ubah(sql, *params):
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, *params)
+        if cursor.rowcount == 0:
+            raise ValueError("Perangkat tidak ditemukan")
+        conn.commit()
+    finally:
+        conn.close()
+    hapus_cache()

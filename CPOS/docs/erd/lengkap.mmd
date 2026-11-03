@@ -1,0 +1,874 @@
+erDiagram
+    AccessMenu {
+        int AccessMenuID PK
+        int MenuID FK
+        int ActionID FK
+        int LevelDetID FK "NULL"
+        bigint UserID FK "NULL"
+        bit Active
+        datetime CreateDate
+    }
+    ActionType {
+        int ActionID PK
+        varchar TypeName UK
+        varchar Description "NULL"
+        bit Active
+    }
+    ApprovalFlow {
+        int ApprovalFlowID PK
+        varchar RequestType
+        varchar CategoryCode "NULL"
+        nvarchar Description "NULL"
+        bit Active
+        datetime CreateDate
+    }
+    ApprovalFlowStep {
+        int FlowStepID PK
+        int ApprovalFlowID FK
+        tinyint StepNo
+        int LevelDetID FK
+    }
+    ApprovalHistory {
+        int HistoryID PK
+        int RequestID FK
+        tinyint StepNo
+        varchar Action
+        int LevelDetID FK "NULL"
+        bigint UserID FK
+        nvarchar Notes "NULL"
+        datetime ActionDate
+    }
+    ApprovalRequest {
+        int RequestID PK
+        varchar RequestType
+        varchar Status
+        tinyint CurrentStep
+        tinyint TotalSteps
+        varchar CompID FK
+        bigint CompAreaID FK
+        varchar Target
+        nvarchar Title
+        nvarchar Reason "NULL"
+        nvarchar Data "NULL"
+        bigint RequestBy FK
+        datetime CreateDate
+        datetime FinishDate "NULL"
+        varchar CategoryCode "NULL"
+    }
+    ApprovalRequestStep {
+        int RequestID PK,FK
+        tinyint StepNo PK
+        int LevelDetID FK
+    }
+    Bank {
+        int BankAccountID PK
+        nvarchar BankName
+        nvarchar BankRegion "NULL"
+        int CurrencyID FK "NULL"
+        bigint CompAreaID FK "NULL"
+        bit Active
+    }
+    BankDetails {
+        bigint BankAccountDetailsID PK
+        int BankAccountID FK
+        nvarchar BankAccountCode
+        nvarchar BankName "NULL"
+        decimal Balance "NULL"
+        bit Active
+    }
+    Blacklist {
+        bigint BlacklistID PK
+        datetime CreateDate
+        int BlacklistDoc FK "NULL"
+        varchar LogActionType
+        varchar TableName
+        varchar TargetType "NULL"
+        nvarchar OldValue "NULL"
+        nvarchar NewValue "NULL"
+        bigint UserID FK "NULL"
+        int IDVehicle FK "NULL"
+        int SupplierID FK "NULL"
+        varchar Reason
+        bigint CreateBy FK
+        varchar NoVehicle "NULL"
+        int CustomerID FK "NULL"
+        int TransportID FK "NULL"
+        datetime RevokeDate "NULL"
+        bigint RevokeBy FK "NULL"
+        nvarchar RevokeReason "NULL"
+        nvarchar AliasName "NULL"
+        varchar CategoryCode "NULL"
+        bigint CompAreaID FK "NULL"
+    }
+    BlacklistDetection {
+        bigint DetectionID PK
+        datetime DetectDate
+        bigint CompAreaID FK "NULL"
+        bigint UserID FK "NULL"
+        int IDVehicle FK "NULL"
+        varchar NoVehicle "NULL"
+        varchar Source
+        varchar Action
+        float FaceDistance "NULL"
+        nvarchar Description "NULL"
+        varchar TicketNumber "NULL"
+        bigint CreateBy FK "NULL"
+    }
+    Company {
+        varchar CompID PK
+        nvarchar CompName
+        nvarchar CompAddress "NULL"
+        bit Active
+        nvarchar Description "NULL"
+        datetime CreateDate
+    }
+    CompanyArea {
+        bigint CompAreaID PK
+        varchar CompID FK
+        bigint MillID FK "NULL"
+        varchar AreaCode
+        nvarchar AreaName
+        nvarchar AreaDesc "NULL"
+        nvarchar AreaAddress "NULL"
+        bit Active
+        datetime CreateDate
+    }
+    Contract {
+        int ContractID PK
+        varchar ContractNumber UK
+        varchar TransactionType FK
+        int SupplierID FK
+        int ProductID FK
+        date ContractDate
+        decimal ContractQty "NULL"
+        decimal Price "NULL"
+        bit PPN
+        bit IncludePPN
+        int CurrencyID FK "NULL"
+        varchar CompID FK "NULL"
+        varchar Description "NULL"
+        bit Active
+        bigint CreateBy FK "NULL"
+        datetime CreateDate
+    }
+    Currency {
+        int CurrencyID PK
+        varchar CurrencyCode UK
+        nvarchar CurrencyName
+        decimal CurrencyRate "NULL"
+        nvarchar Description "NULL"
+        bit Active
+    }
+    DOExcess {
+        int ExcessID PK
+        varchar TicketNumber FK,UK
+        varchar SplitTicketNumber FK
+        int DeliveryOrderID FK
+        decimal QuotaKg
+        decimal RealizedKg
+        decimal TicketNettoKg
+        decimal ExcessKg
+        varchar NewDONumber "NULL"
+        varchar Status
+        nvarchar Notes "NULL"
+        bigint SubmitBy FK "NULL"
+        datetime SubmitDate "NULL"
+        bigint ConfirmBy FK "NULL"
+        datetime ConfirmDate "NULL"
+        nvarchar ReturnReason "NULL"
+        bigint CompAreaID FK "NULL"
+        datetime CreateDate
+    }
+    DOTransport {
+        int DOTransportID PK
+        int DeliveryOrderID FK
+        varchar TransportMode
+        int TransportID FK "NULL"
+        decimal DOQty "NULL"
+        decimal PriceTransport "NULL"
+    }
+    DailyPrice {
+        date PriceDate PK
+        decimal CPOPrice
+        decimal KernelPrice
+        decimal OERCPO
+        decimal ProcessingCost
+        bigint UpdateBy FK "NULL"
+        datetime UpdateDate
+    }
+    DeliveryOrder {
+        int DeliveryOrderID PK
+        varchar DONumber UK
+        int ContractID FK,UK
+        date DODate
+        date ExpiredDate "NULL"
+        varchar Description "NULL"
+        bit Active
+        bigint CreateBy FK "NULL"
+        datetime CreateDate
+    }
+    Department {
+        varchar DeptID PK
+        nvarchar DeptName UK
+        nvarchar Description "NULL"
+        bit Active
+    }
+    DepartmentDetails {
+        bigint DeptDetailID PK
+        bigint CompAreaID FK
+        varchar DeptID FK
+        nvarchar Location
+        nvarchar Description "NULL"
+        bit Active
+    }
+    DetailVehicle {
+        int IDVehicle PK
+        varchar NoVehicle UK
+        varchar NoSTNK UK
+        int VehicleType FK "NULL"
+        bigint BlacklistID FK "NULL"
+        bit Active
+        datetime CreateDate
+    }
+    Device {
+        varchar DeviceID PK
+        varchar DeviceName
+        varchar Location "NULL"
+        char TokenHash
+        bigint CompAreaID FK
+        bit Active
+        datetime CreateDate
+    }
+    Document {
+        int DocumentID PK
+        int DocTypeID FK
+        nvarchar DocNumber
+        date DocDate
+        nvarchar Subject "NULL"
+        bigint CreateBy FK
+        datetime CreateDate
+    }
+    DocumentFile {
+        int FileID PK
+        int DocumentID FK
+        varchar FilePath
+        nvarchar OriginalName "NULL"
+        varchar MimeType "NULL"
+        int FileSize "NULL"
+        char SHA256 "NULL"
+        tinyint SortOrder
+        datetime CreateDate
+    }
+    DocumentType {
+        int DocTypeID PK
+        varchar DocTypeCode UK
+        nvarchar DocTypeName
+        bit RequireFile
+        bit Active
+    }
+    FaceActivity {
+        int ActivityID PK
+        bigint UserID FK "NULL"
+        varchar ActivityType "NULL"
+        varchar Status
+        varchar TimeStatus "NULL"
+        int DiffMinutes "NULL"
+        float FaceDistance "NULL"
+        varchar LivenessChallenge "NULL"
+        varchar PhotoPath "NULL"
+        varchar Device "NULL"
+        varchar IPAddress "NULL"
+        datetime LogDate
+        date LogDay "NULL"
+    }
+    FaceRecog {
+        int FaceID PK
+        bigint UserID FK,UK
+        varbinary FaceDet
+        varchar PhotoPath "NULL"
+        varchar Source "NULL"
+        bit IsMain
+        bit Active
+        bigint CreateBy FK "NULL"
+        datetime CreateDate
+    }
+    Flow {
+        int FlowID PK
+        varchar FlowCode UK
+        nvarchar FlowName
+        bit Active
+    }
+    FlowStage {
+        varchar StageCode PK
+        nvarchar StageName
+        tinyint SortOrder
+    }
+    FlowStep {
+        int FlowID PK,FK
+        tinyint StepNo PK
+        varchar StageCode FK
+    }
+    Grading {
+        int GradingID PK
+        varchar TicketNumber FK,UK
+        float UnripePct "NULL"
+        float RottenPct "NULL"
+        float LongStalkPct "NULL"
+        float DirtPct "NULL"
+        float RipePct "NULL"
+        float LooseFruitPct "NULL"
+        float DeductionKg "NULL"
+        varchar Notes "NULL"
+        bigint GradedBy FK "NULL"
+        datetime GradingDate "NULL"
+    }
+    Guest {
+        int GuestID PK
+        bigint UserID FK
+        bigint VisitToID FK
+        int PurposeID FK
+        nvarchar Description "NULL"
+        nvarchar CompanyFrom "NULL"
+        varchar NoVehicle "NULL"
+        bigint CompAreaID FK
+        varchar PhotoPath "NULL"
+        datetime CheckInDate
+        datetime CheckOutDate "NULL"
+        bigint CreateBy FK
+    }
+    Invoice {
+        bigint InvoiceID PK
+        varchar InvoiceNumber UK
+        date InvoiceDate
+        int DeliveryOrderID FK
+        int SupplierID FK
+        int TransportID FK "NULL"
+        decimal PriceTransport "NULL"
+        decimal DOQty "NULL"
+        decimal DOShipped "NULL"
+        decimal Amount "NULL"
+        int CurrencyID FK "NULL"
+        date PaidDate "NULL"
+        bit Active
+        bigint CreateBy FK "NULL"
+        datetime CreateDate
+    }
+    LabResult {
+        int LabResultID PK
+        varchar TicketNumber FK,UK
+        float FFA "NULL"
+        float Moisture "NULL"
+        float Dirt "NULL"
+        varchar LovibondColor "NULL"
+        varchar Decision "NULL"
+        int COADocID FK "NULL"
+        bigint TestedBy FK "NULL"
+        datetime TestDate "NULL"
+    }
+    Level {
+        int LevelID PK
+        nvarchar LevelName UK
+        nvarchar Description "NULL"
+        bit IsAdmin
+        int SortOrder
+        bit Active
+    }
+    LevelDetails {
+        int LevelDetID PK
+        bigint CompAreaID FK "NULL"
+        int LevelID FK
+        varchar DeptID FK "NULL"
+        varchar LevelDetCode UK
+        nvarchar LevelDetName
+        varchar HomeUrl
+        nvarchar Description "NULL"
+        bit Active
+    }
+    License {
+        int LicenseID PK
+        varchar LicenseCode UK
+        nvarchar LicenseType
+        nvarchar Description "NULL"
+        bit Active
+    }
+    LicenseDetail {
+        int DetailLicenseID PK
+        bigint UserID FK
+        int SIMType FK
+        varchar LicenseNumber UK
+        date ExpiredSIM "NULL"
+        bit Active
+        bigint CreateBy FK "NULL"
+        datetime CreateDate
+    }
+    Log {
+        bigint LogID PK
+        datetime2 LogDate
+        bigint CreateBy FK "NULL"
+        bigint CompAreaID FK "NULL"
+        varchar Category
+        varchar LogActionType
+        varchar TableName "NULL"
+        varchar RowID "NULL"
+        nvarchar OldValue "NULL"
+        nvarchar NewValue "NULL"
+        varchar IPAddress "NULL"
+        char PrevHash "NULL"
+        char RowHash
+    }
+    Menu {
+        int MenuID PK
+        varchar MenuCode UK
+        nvarchar MenuName
+        nvarchar Description "NULL"
+        int ParentMenuID FK "NULL"
+        tinyint MenuLevel
+        varchar Url "NULL"
+        varchar Icon "NULL"
+        varchar AppCode
+        int SortOrder
+        bigint CompAreaID FK "NULL"
+        bit Active
+    }
+    Mill {
+        bigint MillID PK
+        varchar MillCode UK
+        nvarchar MillName
+        bit IsHeadOffice
+        bit Active
+        nvarchar Description "NULL"
+        datetime CreateDate
+    }
+    Notification {
+        int NotificationID PK
+        varchar MenuCode
+        bigint CompAreaID FK "NULL"
+        nvarchar Title
+        nvarchar Message "NULL"
+        varchar Link "NULL"
+        datetime CreateDate
+        int LevelDetID FK "NULL"
+        varchar CompID FK "NULL"
+        bigint UserID FK "NULL"
+    }
+    NotificationRead {
+        int NotificationID PK,FK
+        bigint UserID PK,FK
+        datetime ReadDate
+    }
+    PasswordManager {
+        bigint UserID PK,FK
+        varchar UserPasswd
+        datetime CreateDate
+        bit MustChange
+        nvarchar History
+        int Term "NULL"
+        nvarchar Description "NULL"
+    }
+    Product {
+        int ProductID PK
+        varchar ProductName
+        varchar Category FK
+        int FlowID FK
+        float StandardFFA
+        float StandardMoist
+        float StandardDirt
+        bit Active
+    }
+    ProductPrice {
+        bigint ProductPriceID PK
+        int ProductID FK
+        date PriceDate
+        decimal Price
+        int CurrencyID FK "NULL"
+        datetime CreateDate
+        bigint CreateBy FK "NULL"
+        bit IsVoid
+        datetime VoidDate "NULL"
+        bigint VoidBy FK "NULL"
+    }
+    ProductType {
+        int ProductTypeID PK
+        varchar ProductTypeCode UK
+        nvarchar ProductTypeName
+        varchar Description "NULL"
+        bit Active
+    }
+    RequiredDataField {
+        varchar FormCode PK
+        varchar FieldName PK
+    }
+    Scale {
+        int ScaleID PK
+        bigint CompAreaID FK
+        varchar ScaleCode
+        nvarchar ScaleName
+        varchar Port
+        int BaudRate
+        bit Active
+        datetime CreateDate
+        varchar Mode
+        tinyint DataBits
+        char Parity
+        decimal StopBits
+        varchar DataFormat
+        varchar Pattern "NULL"
+        decimal Factor
+        decimal ToleranceKg
+        decimal StableSeconds
+        decimal MinWeightKg
+        bit RequireST
+    }
+    Setting {
+        varchar SettingKey PK
+        varchar SettingValue
+        bigint UpdateBy FK "NULL"
+        datetime UpdateDate
+    }
+    SettingArea {
+        bigint CompAreaID PK,FK
+        varchar SettingKey PK
+        varchar SettingValue
+        bigint UpdateBy FK "NULL"
+        datetime UpdateDate
+    }
+    Status {
+        int StatusID PK
+        varchar StatusCode UK
+        nvarchar StatusName
+        varchar StatusColor
+        tinyint SortOrder
+        nvarchar Description "NULL"
+    }
+    Supplier {
+        int SupplierID PK
+        varchar SupplierCode UK
+        varchar SupplierName
+        nvarchar SupplierAddress "NULL"
+        int SupplierGroupID FK "NULL"
+        bigint BankAccountDetailsID FK "NULL"
+        bigint BlacklistID FK "NULL"
+        nvarchar Description "NULL"
+        bit Active
+        datetime CreateDate
+    }
+    SupplierCompany {
+        int SupplierID PK,FK
+        varchar CompID PK,FK
+    }
+    SupplierGroup {
+        int SupplierGroupID PK
+        nvarchar NameGroup
+        nvarchar Description "NULL"
+        bit Active
+    }
+    SupplierType {
+        int SupplierTypeID PK
+        varchar TypeCode UK
+        nvarchar NameType
+        nvarchar Description "NULL"
+        bit Active
+    }
+    SupplierTypeDetails {
+        int SupplierID PK,FK
+        varchar TypeCode PK,FK
+    }
+    TicketVoid {
+        varchar TicketNumber PK,FK
+        varchar VoidType
+        nvarchar Reason
+        int DocumentID FK "NULL"
+        bigint VoidBy FK "NULL"
+        datetime VoidDate
+    }
+    UserCategory {
+        varchar CategoryCode PK
+        nvarchar CategoryName
+        bit RequireLicense
+        bit CanLogin
+        varchar CodePrefix "NULL"
+        bit Active
+    }
+    UserCompany {
+        bigint UserID PK,FK
+        varchar CompID PK,FK
+    }
+    UserSession {
+        varchar SessionID PK
+        bigint UserID FK
+        varchar IPAddress "NULL"
+        varchar UserAgent "NULL"
+        datetime LoginDate
+        datetime LastActive
+        datetime EndDate "NULL"
+        varchar EndReason "NULL"
+    }
+    Users {
+        bigint UserID PK
+        bigint CompAreaID FK "NULL"
+        varchar UserCode UK "NULL"
+        varchar UserName UK "NULL"
+        bigint UserDeptID FK "NULL"
+        int UserLevelID FK "NULL"
+        varchar CategoryCode FK
+        varchar NoKTP UK "NULL"
+        bigint GuestID "NULL"
+        nvarchar Nama
+        nvarchar Email "NULL"
+        varbinary FaceEmbeddingData "NULL"
+        nvarchar UploadPath "NULL"
+        varchar CurrentHash "NULL"
+        datetime CreateDate
+        datetime UpdateDate
+        bit Active
+        bit IsUpload
+        bigint BlacklistID FK "NULL"
+        nvarchar Description "NULL"
+        datetime LastLogin "NULL"
+        int SessionVersion
+    }
+    VehicleContract {
+        int VehicleContractID PK
+        varchar ContractNumber "NULL"
+        int IDVehicle FK
+        int SupplierID FK
+        int ProductID FK "NULL"
+        varchar TransactionType FK "NULL"
+        date StartDate
+        date EndDate "NULL"
+        bit Active
+        varchar Description "NULL"
+        bigint CreateBy FK "NULL"
+        datetime CreateDate
+    }
+    VehicleDriver {
+        int VehicleDriverID PK
+        int IDVehicle FK
+        bigint UserID FK
+        bit IsMain
+        bit Active
+        bigint CreateBy FK "NULL"
+        datetime CreateDate
+        datetime UpdateDate
+    }
+    VehicleType {
+        int VehicleTypeID PK
+        varchar VehicleTypeCode UK
+        nvarchar NameType
+        bit Active
+        decimal WeightCar "NULL"
+        decimal MaxLoad "NULL"
+        int Seat "NULL"
+    }
+    VisitPurpose {
+        int PurposeID PK
+        nvarchar PurposeName UK
+        bit Active
+    }
+    Weighing {
+        varchar TicketNumber PK,FK
+        tinyint WeighNo PK
+        int ScaleID FK
+        decimal Weight
+        datetime WeighDate
+        bigint OperatorID FK "NULL"
+        char Hash "NULL"
+    }
+    WeightBridge {
+        bigint WeightID PK
+        varchar TicketNumber UK
+        datetime TicketDate
+        varchar WeightTypeCode FK
+        int SupplierID FK
+        int ProductID FK
+        int IDVehicle FK
+        bigint DriverID FK
+        varchar TransportMode
+        int TransportID FK "NULL"
+        int VehicleContractID FK "NULL"
+        varchar DONumber "NULL"
+        int DeliveryOrderID FK "NULL"
+        varchar StatusCode FK
+        bit IsVoid "NULL"
+        bit IsQRActive
+        datetime QRExpiredDate
+        int QRReprintCount
+        varchar DriverPhotoPath "NULL"
+        int ScaleID FK "NULL"
+        bigint CompAreaID FK
+        int FlowID FK "NULL"
+        varchar ParentTicketNumber FK "NULL"
+        decimal SplitWeight "NULL"
+        bigint CreateBy FK
+        datetime CheckDate "NULL"
+        bigint CheckBy FK "NULL"
+        bit IsCheck "NULL"
+        datetime ExitDate "NULL"
+        bigint ExitBy FK "NULL"
+    }
+    WeightBridgeType {
+        int WeightTypeID PK
+        varchar WeightTypeCode UK
+        nvarchar WeightTypeName
+        bit IsPayment
+        bit Active
+    }
+    WorkSchedule {
+        bigint CompAreaID PK,FK
+        tinyint DayNo PK
+        varchar DayName
+        time TimeIn "NULL"
+        time TimeOut "NULL"
+        bit IsHoliday
+        int ToleranceMinutes
+    }
+    ActionType ||--o{ AccessMenu : "ActionID"
+    LevelDetails |o--o{ AccessMenu : "LevelDetID"
+    Menu ||--o{ AccessMenu : "MenuID"
+    Users |o--o{ AccessMenu : "UserID"
+    ApprovalFlow ||--o{ ApprovalFlowStep : "ApprovalFlowID"
+    LevelDetails ||--o{ ApprovalFlowStep : "LevelDetID"
+    LevelDetails |o--o{ ApprovalHistory : "LevelDetID"
+    ApprovalRequest ||--o{ ApprovalHistory : "RequestID"
+    Users ||--o{ ApprovalHistory : "UserID"
+    CompanyArea ||--o{ ApprovalRequest : "CompAreaID"
+    Company ||--o{ ApprovalRequest : "CompID"
+    Users ||--o{ ApprovalRequest : "RequestBy"
+    LevelDetails ||--o{ ApprovalRequestStep : "LevelDetID"
+    ApprovalRequest ||--o{ ApprovalRequestStep : "RequestID"
+    CompanyArea |o--o{ Bank : "CompAreaID"
+    Currency |o--o{ Bank : "CurrencyID"
+    Bank ||--o{ BankDetails : "BankAccountID"
+    Document |o--o{ Blacklist : "BlacklistDoc"
+    CompanyArea |o--o{ Blacklist : "CompAreaID"
+    Users ||--o{ Blacklist : "CreateBy"
+    Supplier |o--o{ Blacklist : "CustomerID"
+    DetailVehicle |o--o{ Blacklist : "IDVehicle"
+    Users |o--o{ Blacklist : "RevokeBy"
+    Supplier |o--o{ Blacklist : "SupplierID"
+    Supplier |o--o{ Blacklist : "TransportID"
+    Users |o--o{ Blacklist : "UserID"
+    CompanyArea |o--o{ BlacklistDetection : "CompAreaID"
+    Users |o--o{ BlacklistDetection : "CreateBy"
+    DetailVehicle |o--o{ BlacklistDetection : "IDVehicle"
+    Users |o--o{ BlacklistDetection : "UserID"
+    Company ||--o{ CompanyArea : "CompID"
+    Mill |o--o{ CompanyArea : "MillID"
+    Company |o--o{ Contract : "CompID"
+    Users |o--o{ Contract : "CreateBy"
+    Currency |o--o{ Contract : "CurrencyID"
+    Product ||--o{ Contract : "ProductID"
+    Supplier ||--o{ Contract : "SupplierID"
+    WeightBridgeType ||--o{ Contract : "TransactionType"
+    Users |o--o{ DailyPrice : "UpdateBy"
+    Contract ||--o| DeliveryOrder : "ContractID"
+    Users |o--o{ DeliveryOrder : "CreateBy"
+    CompanyArea ||--o{ DepartmentDetails : "CompAreaID"
+    Department ||--o{ DepartmentDetails : "DeptID"
+    Blacklist |o--o{ DetailVehicle : "BlacklistID"
+    VehicleType |o--o{ DetailVehicle : "VehicleType"
+    CompanyArea ||--o{ Device : "CompAreaID"
+    Users ||--o{ Document : "CreateBy"
+    DocumentType ||--o{ Document : "DocTypeID"
+    Document ||--o{ DocumentFile : "DocumentID"
+    CompanyArea |o--o{ DOExcess : "CompAreaID"
+    Users |o--o{ DOExcess : "ConfirmBy"
+    DeliveryOrder ||--o{ DOExcess : "DeliveryOrderID"
+    WeightBridge ||--o{ DOExcess : "SplitTicketNumber"
+    Users |o--o{ DOExcess : "SubmitBy"
+    WeightBridge ||--o| DOExcess : "TicketNumber"
+    DeliveryOrder ||--o{ DOTransport : "DeliveryOrderID"
+    Supplier |o--o{ DOTransport : "TransportID"
+    Users |o--o{ FaceActivity : "UserID"
+    Users |o--o{ FaceRecog : "CreateBy"
+    Users ||--o| FaceRecog : "UserID"
+    Flow ||--o{ FlowStep : "FlowID"
+    FlowStage ||--o{ FlowStep : "StageCode"
+    Users |o--o{ Grading : "GradedBy"
+    WeightBridge ||--o| Grading : "TicketNumber"
+    CompanyArea ||--o{ Guest : "CompAreaID"
+    Users ||--o{ Guest : "CreateBy"
+    VisitPurpose ||--o{ Guest : "PurposeID"
+    Users ||--o{ Guest : "UserID"
+    Users ||--o{ Guest : "VisitToID"
+    Users |o--o{ Invoice : "CreateBy"
+    Currency |o--o{ Invoice : "CurrencyID"
+    DeliveryOrder ||--o{ Invoice : "DeliveryOrderID"
+    Supplier ||--o{ Invoice : "SupplierID"
+    Supplier |o--o{ Invoice : "TransportID"
+    Document |o--o{ LabResult : "COADocID"
+    Users |o--o{ LabResult : "TestedBy"
+    WeightBridge ||--o| LabResult : "TicketNumber"
+    CompanyArea |o--o{ LevelDetails : "CompAreaID"
+    Department |o--o{ LevelDetails : "DeptID"
+    Level ||--o{ LevelDetails : "LevelID"
+    Users |o--o{ LicenseDetail : "CreateBy"
+    License ||--o{ LicenseDetail : "SIMType"
+    Users ||--o{ LicenseDetail : "UserID"
+    CompanyArea |o--o{ Log : "CompAreaID"
+    Users |o--o{ Log : "CreateBy"
+    CompanyArea |o--o{ Menu : "CompAreaID"
+    Menu |o--o{ Menu : "ParentMenuID"
+    CompanyArea |o--o{ Notification : "CompAreaID"
+    Company |o--o{ Notification : "CompID"
+    LevelDetails |o--o{ Notification : "LevelDetID"
+    Users |o--o{ Notification : "UserID"
+    Notification ||--o{ NotificationRead : "NotificationID"
+    Users ||--o{ NotificationRead : "UserID"
+    Users ||--o| PasswordManager : "UserID"
+    ProductType ||--o{ Product : "Category"
+    Flow ||--o{ Product : "FlowID"
+    Users |o--o{ ProductPrice : "CreateBy"
+    Currency |o--o{ ProductPrice : "CurrencyID"
+    Product ||--o{ ProductPrice : "ProductID"
+    Users |o--o{ ProductPrice : "VoidBy"
+    CompanyArea ||--o{ Scale : "CompAreaID"
+    Users |o--o{ Setting : "UpdateBy"
+    CompanyArea ||--o{ SettingArea : "CompAreaID"
+    Users |o--o{ SettingArea : "UpdateBy"
+    BankDetails |o--o{ Supplier : "BankAccountDetailsID"
+    Blacklist |o--o{ Supplier : "BlacklistID"
+    SupplierGroup |o--o{ Supplier : "SupplierGroupID"
+    Company ||--o{ SupplierCompany : "CompID"
+    Supplier ||--o{ SupplierCompany : "SupplierID"
+    Supplier ||--o{ SupplierTypeDetails : "SupplierID"
+    SupplierType ||--o{ SupplierTypeDetails : "TypeCode"
+    Document |o--o{ TicketVoid : "DocumentID"
+    WeightBridge ||--o| TicketVoid : "TicketNumber"
+    Users |o--o{ TicketVoid : "VoidBy"
+    Company ||--o{ UserCompany : "CompID"
+    Users ||--o{ UserCompany : "UserID"
+    Blacklist |o--o{ Users : "BlacklistID"
+    UserCategory ||--o{ Users : "CategoryCode"
+    CompanyArea |o--o{ Users : "CompAreaID"
+    DepartmentDetails |o--o{ Users : "UserDeptID"
+    LevelDetails |o--o{ Users : "UserLevelID"
+    Users ||--o{ UserSession : "UserID"
+    Users |o--o{ VehicleContract : "CreateBy"
+    DetailVehicle ||--o{ VehicleContract : "IDVehicle"
+    Product |o--o{ VehicleContract : "ProductID"
+    Supplier ||--o{ VehicleContract : "SupplierID"
+    WeightBridgeType |o--o{ VehicleContract : "TransactionType"
+    Users |o--o{ VehicleDriver : "CreateBy"
+    DetailVehicle ||--o{ VehicleDriver : "IDVehicle"
+    Users ||--o{ VehicleDriver : "UserID"
+    Users |o--o{ Weighing : "OperatorID"
+    Scale ||--o{ Weighing : "ScaleID"
+    WeightBridge ||--o{ Weighing : "TicketNumber"
+    Users |o--o{ WeightBridge : "CheckBy"
+    CompanyArea ||--o{ WeightBridge : "CompAreaID"
+    Users ||--o{ WeightBridge : "CreateBy"
+    DeliveryOrder |o--o{ WeightBridge : "DeliveryOrderID"
+    Users ||--o{ WeightBridge : "DriverID"
+    Users |o--o{ WeightBridge : "ExitBy"
+    Flow |o--o{ WeightBridge : "FlowID"
+    DetailVehicle ||--o{ WeightBridge : "IDVehicle"
+    WeightBridge |o--o{ WeightBridge : "ParentTicketNumber"
+    Product ||--o{ WeightBridge : "ProductID"
+    Scale |o--o{ WeightBridge : "ScaleID"
+    Status ||--o{ WeightBridge : "StatusCode"
+    Supplier ||--o{ WeightBridge : "SupplierID"
+    Supplier |o--o{ WeightBridge : "TransportID"
+    VehicleContract |o--o{ WeightBridge : "VehicleContractID"
+    WeightBridgeType ||--o{ WeightBridge : "WeightTypeCode"
+    CompanyArea ||--o{ WorkSchedule : "CompAreaID"

@@ -1,0 +1,45 @@
+from flask import Blueprint, request, jsonify
+from utils.area import area_data
+from flask_login import login_required, current_user
+from utils.db_utils import simpan_sortasi, get_history_umum, cari_transaksi_aktif
+from utils.hak_akses import izin
+from utils import alur
+
+
+def _tahap_ada(trx, kode):
+    """Tahap ini ada di alur tiket; tiket lama tanpa alur memakai kategori produk."""
+    if trx.id_alur:
+        return alur.punya_tahap(trx.id_alur, kode)
+    return trx.kategori == ("TBS" if kode == "SORTASI" else "PRODUK_PKS")
+
+sortasi_bp = Blueprint('sortasi', __name__)
+
+@sortasi_bp.route("/api/sortasi/simpan", methods=["POST"])
+@login_required
+@izin('FORM_SORTASI', 'tambah')
+def sortasi_simpan():
+    no_tiket = request.form.get("no_tiket")
+    if not no_tiket:
+        return jsonify({"error": "Tiket belum dipilih"}), 400
+    trx = cari_transaksi_aktif(no_tiket=no_tiket)
+    if trx is None:
+        return jsonify({"error": "Tiket tidak ditemukan, sudah selesai, atau ditolak"}), 404
+    # Alur dinamis: sortasi saat tahapnya ditunggu (boleh diisi ulang selama tiket berjalan); tiket lama: setelah timbang 1
+    dinamis, pesan = alur.cek_tahap(no_tiket, "SORTASI", boleh_ulang=True)
+    if pesan:
+        return jsonify({"error": pesan}), 400
+    if not dinamis and not _tahap_ada(trx, "SORTASI"):
+        return jsonify({"error": "Sortasi tidak ada di alur tiket ini (lihat Admin › Alur Tiket)"}), 400
+    if not dinamis and trx.status_alur not in ('TIMBANG_1', 'TIMBANG_2'):
+        return jsonify({"error": "Sortasi dilakukan setelah timbang pertama"}), 400
+    v = {k: float(request.form.get(k) or 0) for k in ['mentah', 'busuk', 'tangkai', 'sampah', 'matang', 'brondolan']}
+    persen, kg = simpan_sortasi(no_tiket, v['mentah'], v['busuk'], v['tangkai'], v['sampah'],
+                                v['matang'], v['brondolan'], request.form.get("catatan", ""), current_user.id)
+    rincian = f"{kg} kg" if kg is not None else "kg dihitung dari netto saat timbang kedua"
+    return jsonify({"message": f"Sortasi berhasil disimpan. Potongan {persen}% ({rincian})",
+                    "total_persen_potongan": persen, "total_potongan_kg": kg}), 200
+
+@sortasi_bp.route("/api/history/sortasi")
+@login_required
+def history_sortasi():
+    return jsonify(get_history_umum('sortasi', id_area=area_data(current_user.id)))

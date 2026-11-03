@@ -1,0 +1,101 @@
+<!-- MODAL: Tambah / Ubah Pengguna -->
+<div id="modalUser" class="modal-overlay">
+    <form id="formUser" class="modal-box max-w-lg" autocomplete="off">
+        <div class="modal-header">
+            <h3 id="judulModalUser" class="font-bold">Tambah Pengguna</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalUser" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 space-y-3">
+            <input type="hidden" name="id_user">
+            {# Akun = personel yang bisa login. NIK yang sudah terdaftar di Personel langsung dihubungkan (nama terisi);
+               NIK baru -> personel baru kategori Karyawan. Kategori, email, SIM, wajah diatur di menu Personel. #}
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="field-label" for="userNik">NIK</label>
+                    <input type="text" id="userNik" name="nik" data-nik maxlength="16" inputmode="numeric" class="input-field"
+                           data-on-change="cekNikUser" data-arg="$value" placeholder="16 digit">
+                </div>
+                <div>
+                    <label class="field-label" for="userNama">Nama Lengkap</label>
+                    <input type="text" id="userNama" name="nama" required maxlength="100" class="input-field">
+                </div>
+                <p id="infoNikUser" class="field-hint col-span-2 -mt-1 hidden"></p>
+            </div>
+            <div>
+                <label class="field-label" for="userUsername">Username</label>
+                <input type="text" id="userUsername" name="username" required minlength="3" maxlength="50" class="input-field" data-huruf-kecil
+                       autocomplete="off" spellcheck="false">
+                <p class="field-hint">3-50 karakter: huruf, angka, titik ( . ), garis bawah ( _ ). Otomatis jadi huruf kecil.</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="field-label" for="userCompany">Perusahaan</label>
+                    <select id="userCompany" required class="input-field" data-on-change="aturAreaUser">
+                        {% for c in company_list %}<option value="{{ c.id_company }}">{{ c.kode }} · {{ c.nama }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="field-label" for="userArea">Area</label>
+                    <select id="userArea" name="id_comp_area" required class="input-field" data-on-change="aturDeptUser"></select>
+                </div>
+                <div>
+                    <label class="field-label" for="userLevel">Jabatan</label>
+                    <select id="userLevel" name="id_jabatan" required class="input-field" data-on-change="aturJabatanUser">
+                        <option value="">-- Pilih jabatan --</option>
+                        {% for j in jabatan_list %}<option value="{{ j.id_jabatan }}" data-admin="{{ 1 if j.is_admin else 0 }}">{{ j.nama }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div id="blokUserDept">
+                    <label class="field-label" for="userDept">Departemen</label>
+                    <select id="userDept" name="id_department" required class="input-field"></select>
+                </div>
+            </div>
+            {# Sumber pilihan Area (per perusahaan) & Departemen (per area, DepartmentDetails), disaring users.js.
+               Hak menu mengikuti gabungan departemen + jabatan (Admin › Hak Akses). #}
+            <template id="sumberArea">{% for a in area_list %}<option value="{{ a.id_comp_area }}" data-company="{{ a.id_company }}" data-pusat="{{ 1 if a.is_pusat else 0 }}">{{ a.nama }} ({{ a.kode }})</option>{% endfor %}</template>
+            <template id="sumberDept">{% for d in department_list %}<option value="{{ d.id_department }}" data-area="{{ d.area | join(',') }}">{{ d.nama }}</option>{% endfor %}</template>
+            <div id="blokPasswordUser" class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="field-label" for="userPassword">Password</label>
+                    <input type="password" id="userPassword" name="password" minlength="{{ password_min }}" class="input-field" autocomplete="new-password">
+                </div>
+                <div>
+                    <label class="field-label" for="userPasswordUlang">Ulangi Password</label>
+                    <input type="password" id="userPasswordUlang" name="password_ulang" minlength="{{ password_min }}" class="input-field" autocomplete="new-password">
+                </div>
+                <p class="field-hint col-span-2">Minimal {{ password_min }} karakter.</p>
+            </div>
+            <div id="noteRoleUser" class="note-warning hidden">Mengganti jabatan akan mengakhiri sesi pengguna ini, dan pengguna perlu login ulang.</div>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalUser" class="btn-secondary">Batal</button>
+            <button type="submit" class="btn-primary">Simpan</button>
+        </div>
+    </form>
+</div>
+
+<!-- MODAL: Atur Ulang Password -->
+<div id="modalResetPassword" class="modal-overlay">
+    <form id="formResetPassword" class="modal-box" autocomplete="off">
+        <div class="modal-header">
+            <h3 class="font-bold">Atur Ulang Password</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalResetPassword" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 space-y-3">
+            <p class="text-sm text-slate-600">Password baru untuk <b id="resetUsername"></b>. Sesi user yang sedang login akan diakhiri.</p>
+            <div>
+                <label class="field-label" for="resetPassword">Password Baru</label>
+                <input type="password" id="resetPassword" name="password" required minlength="{{ password_min }}" class="input-field" autocomplete="new-password">
+            </div>
+            <div>
+                <label class="field-label" for="resetPasswordUlang">Ulangi Password Baru</label>
+                <input type="password" id="resetPasswordUlang" name="password_ulang" required minlength="{{ password_min }}" class="input-field" autocomplete="new-password">
+            </div>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalResetPassword" class="btn-secondary">Batal</button>
+            <button type="submit" class="btn-primary">Atur Ulang Password</button>
+        </div>
+    </form>
+</div>
+

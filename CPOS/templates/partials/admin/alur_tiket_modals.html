@@ -1,0 +1,88 @@
+<!-- MODAL: Alur tiket (nama + susunan tahap) -->
+<div id="modalAlurTiket" class="modal-overlay">
+    <form id="formAlurTiket" class="modal-box max-w-2xl" autocomplete="off">
+        <div class="modal-header">
+            <h3 class="font-bold" id="judulAlurTiket">Alur Tiket</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalAlurTiket" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 space-y-4">
+            <input type="hidden" name="id_alur">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><label class="field-label" for="alurTiketNama">Nama Alur</label>
+                    <input type="text" id="alurTiketNama" name="nama" required maxlength="100" class="input-field" placeholder="Mis. CPO Refinery: lab dulu"></div>
+                <div><label class="field-label" for="alurTiketKet">Keterangan</label>
+                    <input type="text" id="alurTiketKet" name="keterangan" maxlength="255" class="input-field" placeholder="Opsional"></div>
+            </div>
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <p class="field-label mb-0">Tahap (berurutan)</p>
+                    <button type="button" class="link-aksi text-blue-600" data-on-click="tambahTahapTiket"><i class="fa-solid fa-plus mr-1"></i>Tambah tahap</button>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
+                        <div class="input-field flex-1 bg-slate-50 text-slate-500"><i class="fa-solid fa-lock mr-1 text-xs"></i> Security (selalu pertama)</div>
+                    </div>
+                    <div id="daftarTahapTiket" class="space-y-2"></div>
+                </div>
+                <label class="mt-3 flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+                    <input type="checkbox" id="alurTiketKeluar" class="w-4 h-4" data-on-change="pratinjauAlurTiket">
+                    Akhiri dengan <b>Security Keluar</b> (tiket selesai setelah truk dicatat keluar)
+                </label>
+                <div class="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Pratinjau</p>
+                    <div id="pratinjauAlurTiket"></div>
+                    <p id="peringatanAlurTiket" class="mt-2 text-xs text-red-600 hidden"></p>
+                </div>
+            </div>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalAlurTiket" class="btn-secondary">Batal</button>
+            <button type="submit" class="btn-primary">Simpan</button>
+        </div>
+    </form>
+</div>
+<!-- MODAL: Pemakaian alur (Area + Produk -> Alur) -->
+<div id="modalAturanAlur" class="modal-overlay">
+    <form id="formAturanAlur" class="modal-box max-w-lg" autocomplete="off">
+        <div class="modal-header">
+            <h3 class="font-bold" id="judulAturanAlur">Pemakaian Alur</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalAturanAlur" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 space-y-3">
+            <input type="hidden" name="id_aturan">
+            <div><label class="field-label" for="aturanArea">Area</label>
+                <select id="aturanArea" name="id_comp_area" required class="input-field"></select></div>
+            <div><label class="field-label" for="aturanProduk">Produk</label>
+                <select id="aturanProduk" name="id_produk" class="input-field"></select>
+                <p class="field-hint">"Semua produk" = cadangan untuk produk yang tidak punya aturan sendiri di area ini.</p></div>
+            <div><label class="field-label" for="aturanAlur">Alur</label>
+                <select id="aturanAlur" name="id_alur" required class="input-field" data-on-change="pratinjauAturanAlur"></select>
+                <div id="pratinjauAturanAlur" class="mt-2"></div></div>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalAturanAlur" class="btn-secondary">Batal</button>
+            <button type="submit" class="btn-primary">Simpan</button>
+        </div>
+    </form>
+</div>
+<!-- MODAL: Cek alur (Area + Produk -> alur yang dipakai tiket baru) -->
+<div id="modalCekAlur" class="modal-overlay">
+    <form id="formCekAlur" class="modal-box max-w-lg" autocomplete="off">
+        <div class="modal-header">
+            <h3 class="font-bold">Cek Alur</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalCekAlur" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 space-y-3">
+            <div><label class="field-label" for="cekArea">Area</label>
+                <select id="cekArea" name="id_comp_area" required class="input-field"></select></div>
+            <div><label class="field-label" for="cekProduk">Produk</label>
+                <select id="cekProduk" name="id_produk" required class="input-field"></select></div>
+            <div id="hasilCekAlur" class="hidden rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm"></div>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalCekAlur" class="btn-secondary">Tutup</button>
+            <button type="submit" class="btn-primary"><i class="fa-solid fa-magnifying-glass mr-1"></i> Cek</button>
+        </div>
+    </form>
+</div>

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "partials/layout/_macros.html" import tab_header, judul_halaman %}
+{% block title %}Blacklist · CPOS{% endblock %}
+
+{# Menu Blacklist (sidebar). Hak aksi: Admin › Hak Akses › BLACKLIST #}
+{% block info_bar %}{% endblock %}
+{% block info_bar_script %}{% endblock %}
+
+{% block tab_header %}
+    {{ judul_halaman('Pengawasan & Blacklist', 'Personel, kendaraan, dan supplier yang diblacklist berlaku di semua area', 'fa-ban', 'merah') }}
+    {# List Request selalu ada: pengaju melihat request miliknya, penyetuju melihat request di tahapnya #}
+    {{ tab_header([('blacklist', 'List Blacklist'), ('persetujuan', 'List Request'), ('log', 'Log Validasi')]) }}
+{% endblock %}
+
+{% block tab_content %}
+    {% include "partials/face_recognition/blacklist_tab.html" %}
+    {% include "partials/face_recognition/blacklist_log_tab.html" %}
+    {% include "partials/face_recognition/blacklist_persetujuan_tab.html" %}
+{% endblock %}
+
+{% block modals %}
+    {% include "partials/face_recognition/blacklist_modals.html" %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script defer src="{{ url_for('static', filename='js/face_recognition/kamera.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/face_recognition/blacklist.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/face_recognition/blacklist_log.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/face_recognition/blacklist_request.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/persetujuan.js') }}"></script>
+{% endblock %}

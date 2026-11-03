@@ -1,0 +1,65 @@
+{# List Blacklist: sesuai PT yang boleh diakses user (lokasi blacklist = area pengaju). Kolom bisa ditampilkan /
+   disembunyikan lewat tombol "Kolom" (js/kolom_tabel.js). Blacklist tetap berlaku di semua area. #}
+<div data-tab-content="blacklist" class="hidden">
+
+    <div class="filter-bar">
+        <div id="chipTipeBlacklist" class="seg flex-wrap">
+            <button type="button" class="chip chip-active" data-tipe="" data-on-click="filterBlacklist" data-arg="$el">Semua</button>
+            <button type="button" class="chip" data-tipe="PERSONEL" data-on-click="filterBlacklist" data-arg="$el">Personel</button>
+            <button type="button" class="chip" data-tipe="KENDARAAN" data-on-click="filterBlacklist" data-arg="$el">Kendaraan</button>
+            <button type="button" class="chip" data-tipe="SUPPLIER" data-on-click="filterBlacklist" data-arg="$el">Supplier</button>
+        </div>
+        <div id="chipStatusBlacklist" class="seg">
+            <button type="button" class="chip chip-active" data-status="AKTIF" data-on-click="filterStatusBlacklist" data-arg="$el">Aktif</button>
+            <button type="button" class="chip" data-status="DICABUT" data-on-click="filterStatusBlacklist" data-arg="$el">Dicabut</button>
+        </div>
+        <select id="kategoriBlacklist" class="input-field w-44" data-tanpa-cari data-on-change="muatBlacklist" aria-label="Kategori">
+            <option value="">Semua kategori</option>
+            {% for k in kategori_list or [] %}<option value="{{ k.kode }}">{{ k.nama }}</option>{% endfor %}
+        </select>
+        <div class="flex-1"></div>
+        <div class="relative">
+            <input type="text" id="cariBlacklist" placeholder="Cari nama / alias / NIK / plat / supplier / no. surat" class="input-field pl-9 w-72"
+                   data-on-input="cariBlacklistTunda">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+        </div>
+        {% if boleh_blacklist is not defined or boleh_blacklist %}
+        <button type="button" data-on-click="bukaTambahBlacklist" class="btn-danger">
+            <i class="fa-solid fa-plus mr-1"></i> Request
+        </button>
+        {% endif %}
+    </div>
+
+    <div class="card p-0 overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+            <div>
+                <h2 class="text-sm font-bold text-slate-900">List Blacklist</h2>
+                <p id="totalBlacklist" class="text-xs text-slate-500">Memuat...</p>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <div data-tombol-kolom="tabelBlacklist"></div>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table id="tabelBlacklist" data-atur-kolom class="tabel-aksi-lekat w-full text-left text-sm">
+                <thead class="table-header-row">
+                    <tr><th class="table-cell" data-kolom="nama" data-kolom-wajib>Nama</th>
+                        <th class="table-cell" data-kolom="alias">Alias</th>
+                        <th class="table-cell" data-kolom="nik">NIK</th>
+                        <th class="table-cell" data-kolom="kategori">Status</th>
+                        <th class="table-cell" data-kolom="supplier">Asal Supplier</th>
+                        <th class="table-cell" data-kolom="plat" data-kolom-sembunyi>Plat</th>
+                        <th class="table-cell" data-kolom="alasan" data-kolom-sembunyi>Alasan</th>
+                        <th class="table-cell" data-kolom="tgl">Tanggal Blacklist</th>
+                        <th class="table-cell" data-kolom="lokasi">Lokasi Blacklist</th>
+                        <th class="table-cell" data-kolom="scan">Tanggal Scan Terakhir</th>
+                        <th class="table-cell" data-kolom="lokasi_scan">Lokasi Scan Terakhir</th>
+                        <th class="table-cell" data-kolom="surat" data-kolom-sembunyi>Surat</th>
+                        <th class="table-cell" data-kolom="oleh" data-kolom-sembunyi>Diajukan Oleh</th>
+                        <th class="table-cell text-right" data-kolom="aksi" data-kolom-wajib>Aksi</th></tr>
+                </thead>
+                <tbody data-judul-ekspor="List Blacklist" data-per-halaman="20" id="kartuBlacklist" data-boleh-tambah="{{ 1 if boleh_blacklist else 0 }}" data-boleh-hapus="{{ 1 if boleh_hapus_blacklist else 0 }}" class="divide-y divide-slate-100"></tbody>
+            </table>
+        </div>
+    </div>
+</div>

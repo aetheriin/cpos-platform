@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ menu.nama }} · CPOS{% endblock %}
+{% block info_bar %}{% endblock %}{% block info_bar_script %}{% endblock %}
+{% block tab_header %}{% endblock %}
+{# Laporan Analytics (frontend React di /analytics) dalam bingkai CPOS. Aktivitas di dalam bingkai dikirim ke halaman ini
+   (postMessage 'cpos-aktif') supaya sesi CPOS tidak dianggap diam (static/js/analytics/sematan.js). #}
+{% block tab_content %}
+<div class="analytics-bingkai">
+    <iframe id="bingkaiAnalytics" src="{{ src }}" title="{{ menu.nama }}" class="w-full h-full border-0 rounded-xl bg-white"></iframe>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script defer src="{{ url_for('static', filename='js/analytics/sematan.js') }}"></script>
+{% endblock %}

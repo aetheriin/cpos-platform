@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "partials/layout/_macros.html" import section_header, judul_halaman %}
+{% block title %}Kategori Request · CPOS{% endblock %}
+{% block info_bar %}{% endblock %}{% block info_bar_script %}{% endblock %}
+{% block tab_header %}
+{% call judul_halaman('Kategori Request', 'Kategori kesalahan yang dipilih saat membuat Request Operator.', 'fa-list-check') %}
+    {% if hak.tambah %}<button type="button" class="btn-primary" data-on-click="bukaKategori"><i class="fa-solid fa-plus"></i> Tambah Kategori</button>{% endif %}
+{% endcall %}
+{% endblock %}
+{% block tab_content %}
+<div class="section-box">
+  {% call section_header('daftar-kategori', 'Daftar Kategori') %}<span id="rkJumlahKategori" class="text-xs text-slate-500"></span>{% endcall %}
+  <div id="body-daftar-kategori" class="section-body overflow-x-auto"><table class="w-full text-left text-sm">
+    <thead class="table-header-row"><tr><th class="table-cell w-12">No</th><th class="table-cell">Kesalahan</th><th class="table-cell text-right">Dipakai</th>
+      <th class="table-cell">Dibuat</th><th class="table-cell">Status</th><th class="table-cell text-right">Aksi</th></tr></thead>
+    <tbody id="tabelRkKategori" class="divide-y divide-slate-100" data-hak="{{ hak|tojson|forceescape }}"></tbody>
+  </table></div>
+</div>
+{% endblock %}
+{% block modals %}
+<div id="modalRkKategori" class="modal-overlay"><div class="modal-box">
+  <div class="modal-header"><h3 id="rkKategoriJudul" class="font-bold">Tambah Kategori</h3><button type="button" data-on-click="closeModal" data-arg="modalRkKategori" title="Tutup"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="p-6 space-y-3"><input type="hidden" id="rkKategoriId">
+    <div><label class="field-label" for="rkKategoriNama">Nama Kategori</label><input id="rkKategoriNama" maxlength="100" class="input-field" placeholder="Mis. Salah input netto" data-on-enter="simpanKategori"></div></div>
+  <div class="px-6 pb-6 flex justify-end gap-2"><button type="button" class="btn-secondary" data-on-click="closeModal" data-arg="modalRkKategori">Batal</button>
+    <button type="button" class="btn-primary" data-on-click="simpanKategori" data-arg="$el"><i class="fa-solid fa-floppy-disk"></i> Simpan</button></div>
+</div></div>
+{% endblock %}
+{% block extra_scripts %}
+<script defer src="{{ url_for('rekapin.static', filename='rekapin/kategori.js') }}"></script>
+{% endblock %}

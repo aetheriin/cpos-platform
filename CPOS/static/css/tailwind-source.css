@@ -1,0 +1,462 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ===== WARNA UTAMA CPOS: ganti di sini saja (angka R G B), lalu build ulang tailwind.css =====
+     Contoh biru (seperti logo). Hijau: 50 240 253 244 / 100 220 252 231 / 200 187 247 208 / 300 134 239 172 / 400 74 222 128 / 500 34 197 94 /
+     600 22 163 74 / 700 21 128 61 / 800 22 101 52 */
+  :root {
+    --utama-50: 236 246 253;  --utama-100: 212 236 251; --utama-200: 168 214 245; --utama-300: 125 190 236; --utama-400: 80 170 225;
+    --utama-500: 41 151 214;  --utama-600: 18 124 191;  --utama-700: 13 102 160; --utama-800: 14 84 130;
+    /* Lebar menu samping (sidebar). Nama menu tidak turun ke baris kedua; perbesar bila ada nama menu yang lebih panjang */
+    --lebar-sidebar: 19rem;
+    /* Skala abu-abu (slate Tailwind). Mode gelap membaliknya di html.dark di bawah, jadi semua teks, garis, dan latar abu ikut */
+    --slate-50: 248 250 252; --slate-100: 241 245 249; --slate-200: 226 232 240; --slate-300: 203 213 225; --slate-400: 148 163 184;
+    --slate-500: 100 116 139; --slate-600: 71 85 105; --slate-700: 51 65 85; --slate-800: 30 41 59; --slate-900: 15 23 42; --slate-950: 2 6 23;
+  }
+  html { font-size: 81.25%; }               /* 13px: padat untuk layar operator, tetap terbaca */
+  /* Monitor lebar (22"-24", >= 1800px): huruf & jarak sedikit lebih besar supaya seimbang */
+  @media (min-width: 1800px) { html { font-size: 87.5%; } }
+  @media (min-width: 2400px) { html { font-size: 100%; } }
+  body { @apply text-slate-900 bg-slate-50; }
+  /* Scrollbar sama dengan Analytics untuk semua yang menggulir (halaman, tabel, popup, daftar pilihan): batang abu lembut di atas
+     latar transparan, tanpa tombol panah. Firefox & Chrome baru memakai scrollbar-width/color; ::-webkit-scrollbar untuk browser lama. */
+  * { scrollbar-width: thin; scrollbar-color: theme('colors.slate.300') transparent; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+  ::-webkit-scrollbar-button { display: none; }
+  ::-webkit-scrollbar-thumb { background-color: theme('colors.slate.300'); border-radius: 9999px; border: 3px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background-color: theme('colors.slate.400'); border-width: 2px; }
+}
+
+@layer components {
+  /* ===== Kerangka: sidebar putih + header putih + isi abu muda ===== */
+  .app-shell { @apply flex h-screen overflow-hidden bg-slate-50; }
+  .sidebar { @apply bg-white border-r border-slate-200 w-[var(--lebar-sidebar)] flex-shrink-0 flex flex-col transition-all duration-200 overflow-hidden; }
+  .sidebar-collapsed { @apply w-0 border-r-0; }
+  /* Layar tablet (< 1280px, mis. Pos Security / kiosk): menu samping menjadi laci di atas isi, tertutup bawaan;
+     dibuka lewat tombol garis tiga, tertutup lagi saat klik di luar menu (base.js). Isi halaman memakai lebar penuh. */
+  @media (max-width: 1279px) {
+    .sidebar { @apply fixed inset-y-0 left-0 z-40 -translate-x-full shadow-2xl; transition: transform .2s ease; }
+    .sidebar.sidebar-buka { @apply translate-x-0; }
+    .sidebar-latar { @apply fixed inset-0 z-30 bg-slate-900/30; }
+  }
+  @media (min-width: 1280px) { .sidebar-latar { display: none; } }
+  /* Layar sentuh: isian & tombol cukup besar untuk jari (min. 44px) */
+  @media (pointer: coarse) {
+    .input-field, .btn-primary, .btn-secondary, .btn-danger, .btn-success { min-height: 2.75rem; }
+    .chip, .tab-btn { min-height: 2.5rem; }
+  }
+  .sidebar-brand { @apply h-16 flex items-center justify-between gap-2 px-4 border-b border-slate-100 flex-shrink-0; }
+  .sidebar-logo { @apply w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm shadow-blue-500/20; }
+  .sidebar-ikon-btn { @apply w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition flex-shrink-0; }
+  .sidebar-nav { @apply flex-1 overflow-y-auto px-3 py-3 space-y-1; }
+  /* Scrollbar menu samping sama dengan Analytics: tipis, abu lembut, hanya terlihat saat kursor di atas menu.
+     Ruangnya tetap disisakan supaya menu tidak bergeser saat scrollbar muncul. */
+  .sidebar-nav { scrollbar-width: thin; scrollbar-gutter: stable; scrollbar-color: transparent transparent; }
+  .sidebar-nav:hover { scrollbar-color: theme('colors.slate.300') transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 10px; }
+  .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-nav::-webkit-scrollbar-button { display: none; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background-color: transparent; border-radius: 9999px; border: 3px solid transparent; background-clip: padding-box; }
+  .sidebar-nav:hover::-webkit-scrollbar-thumb { background-color: theme('colors.slate.300'); }
+  .sidebar-nav:hover::-webkit-scrollbar-thumb:hover { background-color: theme('colors.slate.400'); border-width: 2px; }
+  .sidebar-section { @apply px-3 pt-1 pb-1.5 text-[10px] font-extrabold tracking-widest text-slate-500 uppercase; }
+  .sidebar-link { @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition whitespace-nowrap; }
+  .sidebar-link-active { @apply bg-utama-600 text-white shadow-sm shadow-utama-600/30 hover:bg-utama-600 hover:text-white; }
+  /* Navbar 3 level: grup (Lv1) bisa dilipat, bagian (Lv3) di bawah halaman aktif, halaman belum ada tampil redup */
+  .sidebar-grup + .sidebar-grup { @apply mt-1; }
+  .sidebar-grup-judul { @apply flex items-center justify-between cursor-pointer select-none list-none pt-3 hover:text-slate-600; }
+  .sidebar-grup-judul::-webkit-details-marker { display: none; }
+  .sidebar-grup-panah { @apply text-[9px] transition-transform; }
+  .sidebar-grup:not([open]) .sidebar-grup-panah { @apply -rotate-90; }
+  .sidebar-grup > a.sidebar-link, .sidebar-grup > details { @apply ml-2.5 w-auto; }
+  /* Jarak antar menu di dalam grup, supaya sorotan aktif & hover yang bersebelahan tidak menempel */
+  .sidebar-grup > :is(a, details) + :is(a, details) { @apply mt-1.5; }
+  /* Lv3: menggantung pada satu garis tipis yang turun dari ikon induknya, jadi terlihat sebagai isi menu itu tanpa titik di tiap baris.
+     Halaman aktif ditandai potongan garis itu yang berwarna (bukan hiasan: menandai posisi) + latar lembut. */
+  .sidebar-sublink { @apply relative mr-1 px-3 py-2 flex items-center gap-2.5 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition whitespace-nowrap; }
+  .sidebar-sublink-aktif { @apply text-utama-700 font-semibold bg-utama-50 hover:bg-utama-50 hover:text-utama-700; }
+  .sidebar-sublink-aktif::before { content: ''; @apply absolute -left-[13px] top-1.5 bottom-1.5 w-0.5 rounded-full bg-utama-600; }
+  /* Laporan Analytics: titik status muat (static/js/analytics/status_menu.js); hanya tampil bila sedang memuat atau data siap */
+  .sidebar-status { @apply ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0; }
+  .sidebar-status[data-status="memuat"] { @apply bg-amber-400; }
+  .sidebar-status[data-status="siap"] { @apply bg-emerald-500; }
+  /* Pohon menu (Admin › Hak Akses / Kelola Menu): ikon & label per level, garis bantu, bisa dilipat */
+  .pohon-baris { @apply relative w-full flex items-center gap-2 pr-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50 transition; }
+  .pohon-baris-aktif { @apply bg-utama-600 text-white hover:bg-utama-600; }
+  .pohon-garis { @apply absolute top-0 bottom-0 border-l border-dashed border-slate-200; }
+  .pohon-caret { @apply w-4 h-4 flex items-center justify-center text-[9px] text-slate-400 rounded hover:bg-slate-200 hover:text-slate-700 flex-shrink-0 transition-transform; }
+  .pohon-caret-tutup { @apply -rotate-90; }
+  .pohon-ikon { @apply w-6 h-6 rounded-md flex items-center justify-center text-[11px] flex-shrink-0; }
+  .pohon-ikon-1 { @apply bg-utama-700 text-white; }
+  .pohon-ikon-2 { @apply bg-utama-50 text-utama-600 ring-1 ring-utama-100; }
+  .pohon-ikon-3 { @apply w-5 h-5 bg-slate-100 text-slate-400 text-[7px]; }
+  .pohon-baris-aktif .pohon-ikon { @apply bg-white/15 text-white ring-0; }
+  .pohon-level { @apply font-mono text-[9px] font-bold rounded px-1 py-px leading-none flex-shrink-0; }
+  .pohon-level-1 { @apply bg-slate-900 text-white; }
+  .pohon-level-2 { @apply bg-blue-100 text-blue-700; }
+  .pohon-level-3 { @apply bg-slate-100 text-slate-500; }
+  .pohon-app { @apply text-[9px] font-bold rounded px-1 py-px flex-shrink-0; }
+  .pohon-aturan { @apply min-w-[1.25rem] text-center text-[10px] font-bold rounded-full px-1.5 py-px bg-emerald-100 text-emerald-700 flex-shrink-0; }
+  .pohon-aturan-kosong { @apply bg-slate-100 text-slate-400; }
+  .pt-pilih { @apply cursor-pointer select-none rounded border border-slate-200 px-1.5 py-px text-[10px] font-bold text-slate-500 hover:border-utama-300; }
+  .pt-pilih-aktif { @apply border-utama-400 bg-utama-50 text-utama-700; }
+  .pohon-baris-aktif .pohon-level, .pohon-baris-aktif .pohon-aturan, .pohon-baris-aktif .pohon-app { @apply bg-white/20 text-white; }
+  .pohon-tombol { @apply w-7 h-7 inline-flex items-center justify-center rounded-md text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-800; }
+  /* Lv2 dropdown (punya bagian Lv3): klik membuka / menutup daftar bagian, bukan pindah halaman */
+  .sidebar-sub-judul { @apply cursor-pointer select-none list-none whitespace-normal; }
+  .sidebar-sub-judul::-webkit-details-marker { display: none; }
+  /* Induk dari halaman aktif cukup berwarna teks; latar hanya di halaman aktifnya, supaya tidak ada dua blok berwarna bertumpuk */
+  .sidebar-sub-judul-aktif { @apply text-utama-700 hover:text-utama-700; }
+  .sidebar-sub-judul-aktif .sidebar-link-ikon { @apply text-utama-600; }
+  .sidebar-sub-jumlah { @apply ml-auto text-[10px] font-bold text-slate-400 bg-slate-100 rounded-md px-1.5 py-0.5; }
+  .sidebar-sub-judul-aktif .sidebar-sub-jumlah { @apply bg-utama-50 text-utama-600; }
+  .sidebar-sub-panah { @apply text-[9px] text-slate-400 transition-transform; }
+  .sidebar-sub:not([open]) .sidebar-sub-panah { @apply -rotate-90; }
+  /* Jarak antar baris supaya sorotan hover / aktif tidak saling menempel, dan jeda dari judul induk & menu berikutnya */
+  .sidebar-sub-isi { @apply mt-1 mb-2 ml-5 pl-3 border-l border-slate-200 space-y-1; }
+  .sidebar-link-nanti { @apply opacity-50; }
+  .sidebar-link-ikon { @apply w-4 text-center text-slate-400; }
+  .sidebar-link-active .sidebar-link-ikon { @apply text-white; }
+  .sidebar-badge { @apply ml-auto text-[10px] font-bold px-2 py-0.5 rounded-md border; }
+  .sidebar-badge-hijau { @apply text-emerald-700 bg-emerald-50 border-emerald-200; }
+  .sidebar-link-active .sidebar-badge { @apply bg-white/20 text-white border-transparent; }
+  .sidebar-profil { @apply flex items-center gap-2.5 p-4 border-t border-slate-100 flex-shrink-0; }
+  .avatar { @apply w-8 h-8 rounded-full bg-utama-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0; }
+  .main-area { @apply flex-1 flex flex-col overflow-y-auto; }
+  .main-area > * { flex-shrink: 0; }
+  /* Tombol kembali ke atas: muncul setelah halaman digulir ke bawah (base.js) */
+  .tombol-ke-atas { @apply fixed bottom-6 right-6 z-30 w-11 h-11 flex items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-utama-500 transition-opacity; }
+  .topbar { @apply sticky top-0 z-30 h-16 bg-white/95 backdrop-blur border-b border-slate-200 px-5 flex items-center justify-between gap-4; }
+  .topbar-cari { @apply hidden md:flex items-center gap-3 w-52 lg:w-72 xl:w-96 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-500 text-left transition; }
+  .topbar-kbd { @apply hidden lg:inline text-[10px] font-mono bg-white border border-slate-200 rounded px-1.5 py-0.5 text-slate-500; }
+
+  /* Pencarian global (Ctrl+K) */
+  .cari-overlay { @apply fixed inset-0 z-[70] flex items-start justify-center pt-20 px-4 bg-slate-900/40 backdrop-blur-sm; }
+  .cari-overlay.hidden { display: none; }
+  .cari-box { @apply w-full max-w-2xl bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[75vh]; }
+  .cari-grup-judul { @apply text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1.5 flex items-center justify-between; }
+  .cari-item { @apply flex items-center gap-3 p-2.5 rounded-lg text-sm border border-transparent hover:bg-slate-50 hover:border-slate-200 transition; }
+  .cari-item-aktif { @apply bg-slate-50 border-slate-200; }
+  .cari-aksi { @apply flex items-center gap-2.5 p-2.5 rounded-lg text-sm font-semibold text-slate-700 border border-slate-100 hover:bg-slate-50 hover:border-slate-200 transition; }
+  .cari-ikon { @apply w-8 h-8 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0; }
+
+  /* Info bar (halaman Form) */
+  .info-bar { @apply bg-white mt-5 rounded-xl border border-slate-200 shadow-sm p-5 flex items-start justify-between gap-6; }
+  .info-grid { @apply grid grid-cols-2 lg:grid-cols-4 gap-4 flex-1; }
+  .info-field-label { @apply text-xs font-semibold text-slate-500 mb-1 block; }
+  .info-field-input { @apply w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500; }
+  .info-photo-box { @apply w-28 h-28 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center bg-slate-50 flex-shrink-0 overflow-hidden; }
+
+  /* Tab = kontrol segmen */
+  .tab-header { @apply flex gap-1 bg-white border border-slate-200 shadow-sm mt-5 rounded-xl p-1; }
+  .tab-btn { @apply flex-1 py-2 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition text-center; }
+  .tab-btn-active { @apply bg-utama-600 text-white shadow-sm hover:bg-utama-600 hover:text-white; }
+  .tab-body { @apply mt-5 mb-10; }
+  /* Admin › Hak Akses: tiap panel bergulir sendiri, halaman tidak ikut bergulir (layar lebar) */
+  .akses-tinggi { @apply lg:h-[calc(100vh-15rem)] lg:min-h-[28rem]; }
+
+  /* Judul halaman (halaman tanpa tab) */
+  .page-header { @apply flex items-center gap-3 mt-6 pb-4 border-b border-slate-200; }
+  .page-header h1 { @apply text-xl font-bold text-slate-900 tracking-tight; }
+  .page-header-icon { @apply w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 text-white flex items-center justify-center text-sm shadow-sm shadow-blue-500/20; }
+  .page-header-sub { @apply text-sm text-slate-500; }
+  .halaman-judul { @apply flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6 pb-4 border-b border-slate-200; }
+  /* Tabel laporan Pembelian TBS (RekapIn): kolom angka rata kanan & lurus (judul ikut), garis antar kolom, baris ringkasan tebal */
+  /* Dropdown dengan pencarian (static/js/pilih_cari.js) */
+  .pilih-cari-tombol { @apply cursor-pointer whitespace-nowrap overflow-hidden; }
+  .pilih-cari-tombol.pilih-cari-buka { @apply ring-2 ring-blue-500 border-blue-500; }
+  .pilih-cari-panel { @apply bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden; }
+  .pilih-cari-kepala { @apply p-2 border-b border-slate-100 bg-slate-50; }
+  .pilih-cari-ketik { @apply block w-full pl-8 pr-3 py-1.5 border border-slate-300 rounded-md text-sm bg-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500; }
+  .pilih-cari-daftar { @apply overflow-y-auto py-1; }
+  .pilih-cari-item { @apply px-3 py-2 text-sm text-slate-700 cursor-pointer flex items-center justify-between gap-2 hover:bg-slate-100; }
+  .pilih-cari-item.pilih-cari-sorot { @apply bg-slate-100; }
+  .pilih-cari-item.pilih-cari-aktif { @apply bg-blue-50 text-blue-700 font-medium; }
+  /* border-separate (bukan collapse): pada tabel collapse garis sel milik tabel, bukan milik sel, jadi saat judul kolom menempel
+     (sticky) garisnya tertinggal dan isi tabel terlihat lewat celah di atas / di antara baris judul */
+  .tbs-tabel { @apply w-full text-sm border-separate border-spacing-0; font-variant-numeric: tabular-nums; }
+  .tbs-tabel th { @apply px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 bg-slate-50 border-b border-slate-200 whitespace-nowrap; }
+  .tbs-tabel .tbs-grup th { @apply text-center text-slate-600 bg-slate-100; }
+  .tbs-tabel td { @apply px-3 py-2 border-b border-slate-100 text-slate-700 align-middle; }
+  .tbs-tabel th + th, .tbs-tabel td + td { @apply border-l border-slate-100; }
+  .tbs-tabel .tbs-angka { @apply text-right font-mono whitespace-nowrap; }
+  .tbs-tabel th.tbs-angka { @apply font-sans; }
+  .tbs-tabel tbody tr:hover { @apply bg-slate-50; }
+  .tbs-tabel .tbs-ringkas td { @apply bg-slate-50 font-semibold text-slate-900; }
+  /* Warna perusahaan hanya sebagai penanda: garis atas kartu, titik di judul, dan judul kolom yang diwarnai tipis. Isi tabel tetap
+     netral supaya angka mudah dibaca. Perusahaan lain memakai warna utama. */
+  .tbs-kartu { --aksen: #185FA5; --kepala: #E6F1FB; --kepala-teks: #0C447C; border-top: 3px solid var(--aksen); }
+  .tbs-kartu[data-company="YBS"] { --aksen: #3B6D11; --kepala: #EAF3DE; --kepala-teks: #27500A; }
+  .tbs-kartu[data-company="SUN"] { --aksen: #BA7517; --kepala: #FAEEDA; --kepala-teks: #633806; }
+  .tbs-kartu[data-company="SJN"] { --aksen: #D85A30; --kepala: #FAECE7; --kepala-teks: #712B13; }
+  html.dark .tbs-kartu { --aksen: #85B7EB; --kepala: #16263d; --kepala-teks: #B5D4F4; }
+  html.dark .tbs-kartu[data-company="YBS"] { --aksen: #97C459; --kepala: #1c2e24; --kepala-teks: #C0DD97; }
+  html.dark .tbs-kartu[data-company="SUN"] { --aksen: #EF9F27; --kepala: #33270f; --kepala-teks: #FAC775; }
+  html.dark .tbs-kartu[data-company="SJN"] { --aksen: #F0997B; --kepala: #35201b; --kepala-teks: #F5C4B3; }
+  .tbs-kartu .section-header-text::after { content: ""; @apply inline-block w-2 h-2 ml-2 rounded-full align-middle; background: var(--aksen); }
+  .section-box.tbs-kartu .tbs-tabel > thead th { background: var(--kepala); color: var(--kepala-teks); }
+  /* Laporan Analytics dalam bingkai (templates/analytics/sematan.html): mengisi seluruh area di bawah topbar, dari tepi ke tepi
+     (keluar dari jarak tepi .konten). Laporan menggulir di dalam bingkai dan halaman CPOS tidak ikut menggulir, jadi tetap satu
+     scrollbar, di tepi kanan layar seperti halaman lain. Dengan begitu laci filter & popup laporan benar-benar diam di layar
+     (fixed milik browser), bukan digeser skrip yang selalu tertinggal satu langkah dari gulir lalu bergetar.
+     Jarak tepi halaman CPOS diberikan ke isi laporan oleh sematan.js (--tepi) supaya sejajar. */
+  .analytics-bingkai { @apply -mx-6 2xl:-mx-8; height: calc(100vh - 4rem); }
+  .analytics-bingkai > iframe { @apply rounded-none; }
+  .main-area:has(#bingkaiAnalytics) { @apply overflow-hidden; }
+  .tab-body:has(> .analytics-bingkai) { @apply mt-0; }   /* bingkai langsung di bawah topbar, tanpa celah */
+  .halaman-judul-kartu { @apply bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-0; }
+  .halaman-judul-kartu .judul-ikon { @apply w-11 h-11 bg-gradient-to-tr from-blue-700 to-indigo-600 text-white border-0; }
+  .filter-bar { @apply bg-white rounded-xl border border-slate-200 shadow-sm p-3 mb-5 flex flex-wrap items-center gap-2; }
+  .judul-ikon { @apply w-10 h-10 rounded-xl flex items-center justify-center text-base flex-shrink-0; }
+  .judul-ikon-biru { @apply bg-blue-50 text-blue-600 border border-blue-100; }
+  .judul-ikon-merah { @apply bg-red-50 text-red-600 border border-red-100; }
+  .judul-ikon-kuning { @apply bg-amber-50 text-amber-600 border border-amber-100; }
+  .judul-ikon-hijau { @apply bg-emerald-50 text-emerald-600 border border-emerald-100; }
+  .judul-ikon-gelap { @apply bg-utama-600 text-white; }
+  /* Isi mengikuti lebar layar (tidak dikunci ke tengah); dibatasi hanya di layar sangat lebar */
+  .konten { @apply w-full max-w-[150rem] mx-auto px-6 2xl:px-8; }
+  .halaman-judul h1 { @apply text-xl font-bold text-slate-900 tracking-tight; }
+  .halaman-judul p { @apply text-sm text-slate-500 mt-0.5; }
+  .seg .chip { @apply border-0 bg-transparent text-slate-600 hover:text-slate-900 hover:bg-transparent rounded-md; }
+  .seg .chip-active { @apply bg-white text-slate-900 shadow-sm hover:bg-white; }
+  .kpi-tanggal { @apply text-[11px] font-medium text-slate-400 px-2 py-0.5 bg-slate-50 border border-slate-100 rounded; }
+  .mini-stat { @apply p-3 rounded-lg border border-slate-100 bg-slate-50/70; }
+  .mini-stat-label { @apply text-xs text-slate-500; }
+  .mini-stat-nilai { @apply text-xl font-bold font-mono text-slate-900 mt-1; }
+  /* Stasiun timbang: panel indikator gelap */
+  .indikator-panel { @apply bg-slate-900 text-white rounded-xl border border-slate-800 p-5 shadow-lg; }
+  .indikator-pilih { @apply bg-transparent text-xs font-mono font-semibold tracking-wider text-slate-300 border-0 p-0 pr-6 focus:outline-none focus:ring-0 cursor-pointer max-w-[16rem] truncate; }
+  .indikator-pilih option { @apply text-slate-900; }
+  .indikator-badge { @apply text-[10px] font-mono font-bold px-2 py-0.5 rounded border flex-shrink-0; }
+  .indikator-badge-stabil { @apply bg-emerald-500/20 text-emerald-400 border-emerald-500/30; }
+  .indikator-badge-gerak { @apply bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse; }
+  .indikator-badge-mati { @apply bg-red-500/20 text-red-400 border-red-500/30; }
+  .indikator-btn { @apply px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-mono font-semibold rounded-lg border border-slate-700 transition flex items-center justify-center gap-2 disabled:opacity-50; }
+  .indikator-btn-utama { @apply bg-blue-600 hover:bg-blue-500 border-blue-500 text-white shadow-sm; }
+  .berat-kotak { @apply bg-white rounded-lg border border-slate-200 p-3; }
+  .berat-kotak-label { @apply text-[11px] font-semibold text-slate-500 uppercase; }
+  .berat-kotak-nilai { @apply font-mono font-bold text-xl text-slate-900 mt-1 tabular-nums; }
+  .stat-card { @apply bg-white rounded-xl border border-slate-200 shadow-sm p-5; }
+  .stat-label { @apply text-sm font-medium text-slate-500; }
+  .stat-value { @apply text-2xl font-bold text-slate-900 mt-1 font-mono tracking-tight; }
+  .token-box { @apply font-mono text-xs bg-slate-900 text-emerald-300 rounded-lg p-3 break-all select-all; }
+
+  /* Collapsible section */
+  .section-box { @apply bg-white rounded-xl border border-slate-200 shadow-sm mb-5 overflow-hidden; }
+  .section-header { @apply bg-white border-b border-slate-100 px-5 py-3.5 flex items-center justify-between cursor-pointer select-none; }
+  .section-header-text { @apply text-sm font-bold text-slate-900 flex items-center gap-2; }
+  .section-chevron { @apply text-xs text-slate-400 transition-transform duration-200; }
+  .section-chevron-collapsed { @apply -rotate-90; }
+  .section-body { @apply p-0; }
+  .section-body-hidden { @apply hidden; }
+
+  /* Buttons */
+  .btn-primary { @apply inline-flex items-center justify-center gap-1.5 bg-utama-600 hover:bg-utama-700 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm shadow-blue-500/20 transition disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed; }
+  .btn-secondary { @apply inline-flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold px-4 py-2 rounded-lg text-sm shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-light { @apply inline-flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg text-sm transition; }
+  .btn-success { @apply inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm shadow-emerald-500/20 transition disabled:bg-slate-300 disabled:cursor-not-allowed; }
+  .btn-danger { @apply inline-flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm transition disabled:bg-slate-300 disabled:cursor-not-allowed; }
+  .btn-outline-danger { @apply inline-flex items-center justify-center gap-1.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 font-semibold px-4 py-2 rounded-lg text-sm transition; }
+  .btn-sm { @apply px-3 py-1.5 text-xs; }
+  .aksi-ikon { @apply inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition; }
+  .aksi-tombol { @apply inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm hover:bg-slate-100 transition align-middle; }
+  .link-aksi { @apply text-xs font-semibold hover:underline; }
+
+  /* Kartu putih di dalam section / tab body */
+  .card { @apply bg-white rounded-xl border border-slate-200 shadow-sm p-5; }
+  .langkah-nomor { @apply w-6 h-6 rounded-full bg-utama-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0; }
+  .card-title { @apply text-sm font-bold text-slate-900 mb-4 pb-2.5 border-b border-slate-100; }
+
+  /* Filter chip & segmented control (menu Face Recognition) */
+  .chip { @apply px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition; }
+  .chip-active { @apply bg-utama-600 border-utama-600 text-white hover:bg-utama-600; }
+  .seg { @apply inline-flex bg-slate-100 border border-slate-200 rounded-lg p-1 gap-1; }
+  .seg-item { @apply px-4 py-1.5 rounded-md text-xs font-medium text-slate-500 transition; }
+  .seg-item-active { @apply bg-white text-blue-700 font-semibold shadow-sm; }
+
+  /* Catatan & upload */
+  .note-info { @apply bg-blue-50 border border-blue-200 rounded-lg p-3 text-blue-800; }
+  .note-warning { @apply bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700; }
+  .note-danger { @apply bg-red-50 border border-red-500 rounded-xl p-4 text-sm text-red-700; }
+  .drop-zone { @apply border-2 border-dashed border-slate-300 rounded-lg p-4 text-center bg-slate-50 cursor-pointer hover:border-blue-400 transition; }
+  .field-hint { @apply text-xs text-slate-500 mt-1; }
+
+  /* Notifikasi toast (ui.js: Notif) */
+  .notif-wadah { @apply fixed top-16 right-4 z-[60] flex flex-col gap-2 w-96 max-w-[calc(100vw-2rem)]; }
+  .notif { @apply flex items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-lg; animation: notif-masuk 0.15s ease-out; }
+  .notif-sukses { @apply bg-emerald-50 border-emerald-200 text-emerald-800; }
+  .notif-gagal { @apply bg-red-50 border-red-200 text-red-800; }
+  .notif-peringatan { @apply bg-amber-50 border-amber-200 text-amber-800; }
+  .notif-info { @apply bg-blue-50 border-blue-200 text-blue-800; }
+  .notif-tutup { @apply opacity-60 hover:opacity-100; }
+
+  /* Form */
+  .input-field { @apply w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-slate-50; }
+  .field-label { @apply block text-sm font-semibold text-slate-700 mb-1.5; }
+  /* Form seragam (form_rapi.js): tanda wajib, pesan galat di bawah isian, bingkai merah isian yang salah */
+  .tanda-wajib { @apply text-red-600 font-bold; }
+  /* Dialog konfirmasi (ui.js Dialog): ikon tanya biru, ikon peringatan merah untuk aksi berbahaya (hapus, batalkan) */
+  .dialog-ikon { @apply w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center bg-utama-50 text-utama-600 text-lg; }
+  .dialog-ikon-bahaya { @apply bg-red-50 text-red-600; }
+  .galat-isian { @apply mt-1 text-xs font-medium text-red-600; }
+  .isian-galat, .isian-galat + button, .relative:has(> .isian-galat) > button { @apply border-red-400 ring-2 ring-red-500/15; }
+
+  /* Table */
+  /* Tabel di dalam kotak bagian menggulir sendiri (bukan seluruh halaman) dan judul kolomnya tetap terlihat.
+     Berlaku otomatis untuk semua tabel di .section-box (pembungkus .overflow-x-auto / .section-body yang langsung berisi table). */
+  .section-box .overflow-x-auto:has(> table), .section-box .section-body:has(> table) { max-height: 34rem; @apply overflow-auto; }
+  .section-box .overflow-x-auto > table > thead th, .section-box .section-body > table > thead th { @apply sticky top-0 z-[2] bg-slate-50; }
+  .section-box .tbs-tabel > thead > tr.tbs-grup + tr > th { top: 2.25rem; }
+  .tbs-tabel .tbs-grup th { height: 2.25rem; }
+  .table-header-row { @apply bg-slate-50 border-b border-slate-200 text-slate-500 text-sm font-semibold; }
+  .table-cell { @apply px-4 py-3 align-middle; }
+  /* Judul kolom satu baris & sejajar dengan isinya (perataan kanan / tengah disalin dari isi oleh base.js) */
+  th.table-cell { @apply whitespace-nowrap; }
+  /* Kolom Aksi menempel di kanan saat tabel lebar digulir (List Blacklist / List Request) */
+  .tabel-aksi-lekat tbody tr > td:last-child:not([colspan]) { @apply sticky right-0 bg-white; box-shadow: -8px 0 8px -8px rgb(15 23 42 / 0.18); }
+  .tabel-aksi-lekat thead tr > th:last-child { @apply sticky right-0 bg-slate-50; box-shadow: -8px 0 8px -8px rgb(15 23 42 / 0.18); }
+  /* Urut kolom (tabel_rapi.js): judul bisa diklik, ikon panah redup sampai kolom itu dipakai mengurutkan */
+  th.th-urut { @apply cursor-pointer select-none hover:text-slate-800; }
+  th.th-urut .ikon-urut { @apply ml-1 text-[10px] text-slate-300; }
+  th.th-urut[aria-sort="ascending"] .ikon-urut, th.th-urut[aria-sort="descending"] .ikon-urut { @apply text-utama-600; }
+  /* Kaki tabel seragam (halaman.js): jumlah data, Excel / PDF, baris per halaman, pindah halaman */
+  .kaki-tabel { @apply flex flex-wrap items-center gap-3 px-5 py-2.5 text-xs text-slate-500 border-t border-slate-100; }
+  /* Kerangka memuat: garis abu-abu berkedip di sel tabel selama data diambil */
+  .kerangka { @apply block h-3 rounded bg-slate-200 animate-pulse; }
+
+  /* Modal */
+  .modal-overlay { @apply fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4; }
+  /* Modal setinggi apa pun tidak melewati layar: isi di-scroll, judul + tombol X tetap terlihat di atas */
+  .modal-box { @apply bg-white rounded-xl border border-slate-200 w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto shadow-2xl; }
+  .modal-box-lg { @apply max-w-3xl max-h-[90vh] overflow-y-auto; }
+  .modal-header { @apply sticky top-0 z-10 bg-white text-slate-900 border-b border-slate-100 px-6 py-4 flex justify-between items-center; }
+  .modal-tab { @apply py-2.5 text-sm font-medium text-slate-500 bg-slate-100 border-b-2 border-transparent transition; }
+  .modal-tab-active { @apply bg-white text-blue-700 border-blue-600; }
+
+    /* Status badge */
+  .badge-status { @apply inline-block px-2 py-0.5 rounded-md text-xs font-semibold; }
+
+  /* Driver photo circle (modal) */
+  .photo-circle { @apply w-24 h-24 rounded-full bg-white border-2 border-dashed border-slate-300 mx-auto flex items-center justify-center overflow-hidden; }
+
+  /* Disabled section overlay */
+  .section-disabled { @apply opacity-40 pointer-events-none; }
+
+  /* Video */
+  .video-mirror { transform: scaleX(-1); }
+}
+
+@keyframes notif-masuk {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Kotak isian huruf besar: teks contoh (placeholder) tetap huruf biasa */
+input.uppercase::placeholder { text-transform: none; }
+
+/* ===== Tabel: kepala menempel di bawah header (halaman.js), sorot data baru, cetak PDF ===== */
+.tabel-lekat, .lekat-induk { overflow: clip; }
+.tabel-lekat > table > thead th { position: sticky; top: 4rem; z-index: 5; background-color: rgb(var(--slate-50)); box-shadow: inset 0 -1px 0 rgb(var(--slate-200)); }
+@keyframes sorot-baru { from { background-color: rgb(var(--amber-100)); } to { background-color: transparent; } }
+.baris-baru > td { animation: sorot-baru 6s ease-out; }
+.baris-baru > td:first-child { box-shadow: inset 3px 0 0 #f59e0b; }
+
+/* Ekspor PDF tabel (ekspor.js): saat dicetak hanya #areaCetakTabel yang tampil, A4 mendatar */
+#areaCetakTabel { display: none; }
+@page lanskap { size: A4 landscape; margin: 10mm; }
+@media print {
+  body.mode-cetak-tabel > *:not(#areaCetakTabel) { display: none !important; }
+  body.mode-cetak-tabel #areaCetakTabel { display: block; page: lanskap; color: #000; font-size: 9pt; }
+  #areaCetakTabel h1 { font-size: 14pt; font-weight: 700; margin: 0 0 2pt; }
+  #areaCetakTabel p { font-size: 8pt; color: #475569; margin: 0 0 8pt; }
+  #areaCetakTabel table { width: 100%; border-collapse: collapse; }
+  #areaCetakTabel thead { display: table-header-group; }
+  #areaCetakTabel tr { break-inside: avoid; }
+  #areaCetakTabel th, #areaCetakTabel td { border: 1px solid #cbd5e1; padding: 3pt 5pt; text-align: left; vertical-align: top; }
+  #areaCetakTabel th { background: #e2e8f0; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #areaCetakTabel .kanan { text-align: right; font-variant-numeric: tabular-nums; }
+}
+
+/* ===================== MODE GELAP (html.dark, static/js/tema.js; tombol di topbar) =====================
+   Seluruh halaman. Skala slate dibalik lewat variabel (tailwind.config.js), jadi teks, garis, dan latar abu di semua halaman ikut
+   tanpa kelas dark: satu per satu; caranya sama dengan Analytics (data-tema="gelap"). Putih tidak dibalik supaya tulisan putih di
+   tombol berwarna tetap terbaca; latar putih (kartu, panel, input) diganti di bawah. Ditulis di luar @layer supaya selalu ikut ter-build. */
+.tema-ikon-terang { display: none; }
+html.dark .tema-ikon-gelap { display: none; }
+html.dark .tema-ikon-terang { display: inline-block; }
+html.dark {
+  color-scheme: dark;    /* kalender, scrollbar, dan kontrol bawaan browser ikut gelap */
+  --slate-50: 11 17 32; --slate-100: 26 35 53; --slate-200: 37 48 70; --slate-300: 53 65 87; --slate-400: 100 116 139;
+  --slate-500: 148 163 184; --slate-600: 180 192 207; --slate-700: 203 213 225; --slate-800: 226 232 240; --slate-900: 241 245 249; --slate-950: 248 250 252;
+}
+/* Latar putih: kartu, panel, popup, input, kolom tabel yang menempel */
+html.dark :is(.bg-white, .sidebar, .topbar, .topbar-kbd, .cari-box, .info-bar, .tab-header, .pilih-cari-panel, .pilih-cari-ketik,
+  .halaman-judul-kartu, .filter-bar, .berat-kotak, .stat-card, .section-box, .section-header, .btn-secondary,
+  .btn-outline-danger, .card, .chip:not(.chip-active), .modal-box, .modal-header, .modal-tab-active, .photo-circle,
+  .tombol-ke-atas, .tabel-aksi-lekat tbody tr > td:last-child) { background-color: #121a2b; }
+/* Isian sedikit lebih gelap dari kartu tempatnya + garis lebih jelas, supaya kotaknya terlihat (di mode terang: putih bergaris abu) */
+html.dark :is(.input-field, .info-field-input, .pilih-cari-ketik, .pilih-cari-tombol,
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]):not([type=submit]), select, textarea) {
+  background-color: rgb(var(--slate-50)); border-color: rgb(var(--slate-300)); }
+html.dark :is(.input-field, input, select, textarea):disabled { background-color: rgb(var(--slate-100)); }
+html.dark .bg-white\/95, html.dark .bg-white\/90, html.dark .bg-white\/80 { background-color: rgb(18 26 43 / 0.92); }
+/* Sorotan hover yang tertimpa aturan di atas dikembalikan */
+html.dark :is(.hover\:bg-white, .chip:not(.chip-active), .btn-secondary, .tombol-ke-atas):hover { background-color: rgb(var(--slate-100)); }
+/* Pilihan aktif di segmented control harus lebih terang dari wadahnya (di mode terang: putih di atas abu) */
+html.dark .seg-item-active { background-color: rgb(var(--slate-300)); color: #f1f5f9; box-shadow: none; }
+/* Lapisan peredup di belakang popup (abu tua transparan) tetap gelap; kalau ikut terbalik, halaman di belakangnya justru memutih */
+html.dark :is(.modal-overlay, .cari-overlay, .sidebar-latar, [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="bg-slate-800/"]) { background-color: rgb(2 6 23 / 0.65); }
+/* Latar abu tua yang bertulisan putih (badge, tooltip): tetap gelap, tidak ikut terbalik menjadi terang */
+html.dark :is(.bg-slate-700, .bg-slate-800, .bg-slate-900, .bg-slate-950, .pohon-level-1) { background-color: #334155; color: #f8fafc; }
+/* Latar & teks berwarna lembut (badge status, kotak info): shade 50/100/200 dan 700/800/900 sudah dibalik lewat variabel di
+   tailwind.config.js. Di sini sisanya: warna utama, teks shade 600 yang terlalu gelap di latar gelap, dan shade 700 yang dipakai
+   sebagai latar (logo bergradien, hover tombol hijau / merah) supaya tidak ikut menjadi terang. */
+html.dark { --utama-50: 15 36 64; --utama-100: 22 50 90; --utama-200: 30 64 120; }
+html.dark :is(.text-blue-600, .text-sky-600, .text-indigo-600, .text-utama-600, .text-utama-700) { color: #93c5fd; }
+html.dark :is(.text-red-600, .text-rose-600) { color: #fca5a5; }
+html.dark :is(.text-emerald-600, .text-green-600, .text-teal-600) { color: #6ee7b7; }
+html.dark :is(.text-amber-600, .text-yellow-600, .text-orange-600) { color: #fcd34d; }
+html.dark :is(.sidebar-logo, .page-header-icon, .halaman-judul-kartu .judul-ikon) { background-image: linear-gradient(to top right, #1d4ed8, #4f46e5); }
+html.dark .btn-success:hover { background-color: #047857; }
+html.dark .btn-danger:hover { background-color: #b91c1c; }
+/* Sidebar */
+html.dark .sidebar-sub-judul-aktif, html.dark .sidebar-sub-judul-aktif .sidebar-link-ikon { color: #93c5fd; }
+html.dark .sidebar-sub-judul-aktif .sidebar-sub-jumlah { background-color: #16325a; color: #93c5fd; }
+html.dark .sidebar-sublink-aktif { background-color: #0f2440; color: #bfdbfe; }
+html.dark .sidebar-sublink-aktif::before { background-color: #60a5fa; }
+html.dark .sidebar-badge-hijau { background-color: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #6ee7b7; }
+/* Laporan Analytics di dalam bingkai mengikuti tema CPOS (static/js/analytics/sematan.js); latar bingkai disamakan supaya tidak berkedip putih */
+html.dark #bingkaiAnalytics { background-color: #0b1120; }
+
+/* ===================== HALAMAN ERROR (templates/error.html): warna logo CPOS (navy + amber) ===================== */
+.hal-error { background: radial-gradient(ellipse at 50% 35%, #ffffff 0%, #f1f5f9 70%); color: #0f172a; position: relative; overflow-x: hidden; }
+.hal-error-latar { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.hal-error-latar .sirkuit { stroke: #cbd5e1; }
+.hal-error-latar .sirkuit-titik { fill: #f59e0b; opacity: 0.55; }
+.hal-error-latar .daun { fill: #e2e8f0; opacity: 0.8; }
+.hal-error-navy { color: #0f172a; }
+.hal-error-redup { color: #64748b; }
+.hal-error-angka { font-size: clamp(5.5rem, 16vw, 10rem); line-height: 1; font-weight: 800; letter-spacing: -0.04em;
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 60%, #334155 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hal-error-tanda { height: clamp(6rem, 17vw, 10.5rem); width: auto; filter: drop-shadow(0 8px 18px rgba(245, 158, 11, 0.25)); }
+.hal-error-gembok { fill: #0f172a; }
+.hal-error-gembok-tali { stroke: #0f172a; }
+.hal-error-bayang { background: radial-gradient(ellipse, rgba(15, 23, 42, 0.18) 0%, transparent 70%); }
+.hal-error-tombol, .hal-error-tombol-2 { display: inline-flex; align-items: center; gap: 0.5rem; border-radius: 9999px; padding: 0.7rem 1.5rem;
+  font-size: 0.875rem; font-weight: 600; transition: transform .15s, box-shadow .15s; }
+.hal-error-tombol { color: #fff; background: linear-gradient(90deg, #0f172a 0%, #1e293b 55%, #b45309 100%); box-shadow: 0 6px 18px rgba(15, 23, 42, 0.25); }
+.hal-error-tombol:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.3); }
+.hal-error-tombol-2 { color: #0f172a; background: #fff; border: 1px solid #cbd5e1; }
+.hal-error-tombol-2:hover { border-color: #94a3b8; }
+html.dark .hal-error { background: radial-gradient(ellipse at 50% 35%, #1e293b 0%, #0b1220 75%); color: #e2e8f0; }
+html.dark .hal-error-navy { color: #f8fafc; }
+html.dark .hal-error-redup { color: #94a3b8; }
+html.dark .hal-error-angka { background: linear-gradient(180deg, #f8fafc 0%, #cbd5e1 100%); -webkit-background-clip: text; background-clip: text; }
+html.dark .hal-error-latar .sirkuit { stroke: #334155; }
+html.dark .hal-error-latar .daun { fill: #1e293b; }
+html.dark .hal-error-gembok { fill: #e2e8f0; }
+html.dark .hal-error-gembok-tali { stroke: #e2e8f0; }
+html.dark .hal-error-tombol-2 { color: #e2e8f0; background: #1e293b; border-color: #334155; }

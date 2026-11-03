@@ -1,0 +1,27 @@
+<div class="filter-bar">
+    <label class="field-label mb-0" for="pengaturanArea">Berlaku untuk</label>
+    <select id="pengaturanArea" class="input-field w-64" data-on-change="muatPengaturan">
+        <option value="">Global (semua area)</option>
+        {% for a in area_list %}<option value="{{ a.id_comp_area }}">Area {{ a.label }}</option>{% endfor %}
+    </select>
+    <span id="infoPengaturanArea" class="text-xs text-slate-500 hidden"></span>
+</div>
+<form id="formPengaturan" autocomplete="off">
+    <div id="grupPengaturan" class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4"></div>
+    <div class="flex items-center justify-end gap-3">
+        <button type="button" id="btnSalinCompany" class="btn-secondary hidden" data-on-click="salinPengaturanCompany" data-arg="$el"
+                title="Nilai area ini (yang sudah disimpan) dipakai juga oleh semua area lain di company yang sama">
+            <i class="fa-solid fa-copy mr-1"></i> Terapkan ke semua area company ini</button>
+        <button type="submit" class="btn-primary"><i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Pengaturan</button>
+    </div>
+</form>
+
+<form id="formKolomWajib" class="section-box mt-6" autocomplete="off">
+    <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
+        <div>
+            <h2 class="text-sm font-bold text-slate-900">Kolom Wajib</h2>
+        </div>
+        <button type="submit" class="btn-primary py-1.5"><i class="fa-solid fa-floppy-disk mr-1"></i> Simpan</button>
+    </div>
+    <div id="daftarKolomWajib" class="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 text-sm"></div>
+</form>

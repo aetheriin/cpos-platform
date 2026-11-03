@@ -1,0 +1,234 @@
+erDiagram
+    Currency {
+        int CurrencyID PK
+        varchar CurrencyCode UK
+        nvarchar CurrencyName
+        decimal CurrencyRate "NULL"
+        nvarchar Description "NULL"
+        bit Active
+    }
+    Bank {
+        int BankAccountID PK
+        nvarchar BankName
+        nvarchar BankRegion "NULL"
+        int CurrencyID FK "NULL"
+        bigint CompAreaID FK "NULL"
+        bit Active
+    }
+    BankDetails {
+        bigint BankAccountDetailsID PK
+        int BankAccountID FK
+        nvarchar BankAccountCode
+        nvarchar BankName "NULL"
+        decimal Balance "NULL"
+        bit Active
+    }
+    SupplierType {
+        int SupplierTypeID PK
+        varchar TypeCode UK
+        nvarchar NameType
+        nvarchar Description "NULL"
+        bit Active
+    }
+    SupplierTypeDetails {
+        int SupplierID PK,FK
+        varchar TypeCode PK,FK
+    }
+    SupplierGroup {
+        int SupplierGroupID PK
+        nvarchar NameGroup
+        nvarchar Description "NULL"
+        bit Active
+    }
+    Supplier {
+        int SupplierID PK
+        varchar SupplierCode UK
+        varchar SupplierName
+        nvarchar SupplierAddress "NULL"
+        int SupplierGroupID FK "NULL"
+        bigint BankAccountDetailsID FK "NULL"
+        bigint BlacklistID FK "NULL"
+        nvarchar Description "NULL"
+        bit Active
+        datetime CreateDate
+    }
+    SupplierCompany {
+        int SupplierID PK,FK
+        varchar CompID PK,FK
+    }
+    Company {
+        varchar CompID PK
+    }
+    VehicleType {
+        int VehicleTypeID PK
+        varchar VehicleTypeCode UK
+        nvarchar NameType
+        bit Active
+        decimal WeightCar "NULL"
+        decimal MaxLoad "NULL"
+        int Seat "NULL"
+    }
+    DetailVehicle {
+        int IDVehicle PK
+        varchar NoVehicle UK
+        varchar NoSTNK UK
+        int VehicleType FK "NULL"
+        bigint BlacklistID FK "NULL"
+        bit Active
+        datetime CreateDate
+    }
+    VehicleDriver {
+        int VehicleDriverID PK
+        int IDVehicle FK
+        bigint UserID FK
+        bit IsMain
+        bit Active
+        bigint CreateBy FK "NULL"
+        datetime CreateDate
+        datetime UpdateDate
+    }
+    VehicleContract {
+        int VehicleContractID PK
+        varchar ContractNumber "NULL"
+        int IDVehicle FK
+        int SupplierID FK
+        int ProductID FK "NULL"
+        varchar TransactionType FK "NULL"
+        date StartDate
+        date EndDate "NULL"
+        bit Active
+        varchar Description "NULL"
+        bigint CreateBy FK "NULL"
+        datetime CreateDate
+    }
+    ProductType {
+        int ProductTypeID PK
+        varchar ProductTypeCode UK
+        nvarchar ProductTypeName
+        varchar Description "NULL"
+        bit Active
+    }
+    Product {
+        int ProductID PK
+        varchar ProductName
+        varchar Category FK
+        int FlowID FK
+        float StandardFFA
+        float StandardMoist
+        float StandardDirt
+        bit Active
+    }
+    ProductPrice {
+        bigint ProductPriceID PK
+        int ProductID FK
+        date PriceDate
+        decimal Price
+        int CurrencyID FK "NULL"
+        datetime CreateDate
+        bigint CreateBy FK "NULL"
+        bit IsVoid
+        datetime VoidDate "NULL"
+        bigint VoidBy FK "NULL"
+    }
+    DailyPrice {
+        date PriceDate PK
+        decimal CPOPrice
+        decimal KernelPrice
+        decimal OERCPO
+        decimal ProcessingCost
+        bigint UpdateBy FK "NULL"
+        datetime UpdateDate
+    }
+    Contract {
+        int ContractID PK
+        varchar ContractNumber UK
+        varchar TransactionType FK
+        int SupplierID FK
+        int ProductID FK
+        date ContractDate
+        decimal ContractQty "NULL"
+        decimal Price "NULL"
+        bit PPN
+        bit IncludePPN
+        int CurrencyID FK "NULL"
+        varchar CompID FK "NULL"
+        varchar Description "NULL"
+        bit Active
+        bigint CreateBy FK "NULL"
+        datetime CreateDate
+    }
+    DeliveryOrder {
+        int DeliveryOrderID PK
+        varchar DONumber UK
+        int ContractID FK,UK
+        date DODate
+        date ExpiredDate "NULL"
+        varchar Description "NULL"
+        bit Active
+        bigint CreateBy FK "NULL"
+        datetime CreateDate
+    }
+    DOTransport {
+        int DOTransportID PK
+        int DeliveryOrderID FK
+        varchar TransportMode
+        int TransportID FK "NULL"
+        decimal DOQty "NULL"
+        decimal PriceTransport "NULL"
+    }
+    Invoice {
+        bigint InvoiceID PK
+        varchar InvoiceNumber UK
+        date InvoiceDate
+        int DeliveryOrderID FK
+        int SupplierID FK
+        int TransportID FK "NULL"
+        decimal PriceTransport "NULL"
+        decimal DOQty "NULL"
+        decimal DOShipped "NULL"
+        decimal Amount "NULL"
+        int CurrencyID FK "NULL"
+        date PaidDate "NULL"
+        bit Active
+        bigint CreateBy FK "NULL"
+        datetime CreateDate
+    }
+    WeightBridgeType {
+        int WeightTypeID PK
+    }
+    Flow {
+        int FlowID PK
+    }
+    Users {
+        bigint UserID PK
+    }
+    Currency |o--o{ Bank : "CurrencyID"
+    Bank ||--o{ BankDetails : "BankAccountID"
+    Company |o--o{ Contract : "CompID"
+    Currency |o--o{ Contract : "CurrencyID"
+    Product ||--o{ Contract : "ProductID"
+    Supplier ||--o{ Contract : "SupplierID"
+    WeightBridgeType ||--o{ Contract : "TransactionType"
+    Contract ||--o| DeliveryOrder : "ContractID"
+    VehicleType |o--o{ DetailVehicle : "VehicleType"
+    DeliveryOrder ||--o{ DOTransport : "DeliveryOrderID"
+    Supplier |o--o{ DOTransport : "TransportID"
+    Currency |o--o{ Invoice : "CurrencyID"
+    DeliveryOrder ||--o{ Invoice : "DeliveryOrderID"
+    Supplier ||--o{ Invoice : "SupplierID"
+    Supplier |o--o{ Invoice : "TransportID"
+    ProductType ||--o{ Product : "Category"
+    Flow ||--o{ Product : "FlowID"
+    Currency |o--o{ ProductPrice : "CurrencyID"
+    Product ||--o{ ProductPrice : "ProductID"
+    BankDetails |o--o{ Supplier : "BankAccountDetailsID"
+    SupplierGroup |o--o{ Supplier : "SupplierGroupID"
+    Company ||--o{ SupplierCompany : "CompID"
+    Supplier ||--o{ SupplierCompany : "SupplierID"
+    Supplier ||--o{ SupplierTypeDetails : "SupplierID"
+    SupplierType ||--o{ SupplierTypeDetails : "TypeCode"
+    DetailVehicle ||--o{ VehicleContract : "IDVehicle"
+    Product |o--o{ VehicleContract : "ProductID"
+    Supplier ||--o{ VehicleContract : "SupplierID"
+    WeightBridgeType |o--o{ VehicleContract : "TransactionType"
+    DetailVehicle ||--o{ VehicleDriver : "IDVehicle"

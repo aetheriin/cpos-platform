@@ -1,0 +1,303 @@
+from flask import Blueprint, request, jsonify
+from utils.area import area_data, company_user
+from utils.db_admin import supplier_boleh
+from flask_login import login_required, current_user
+from utils.face_utils import (embedding_frontal, extract_embedding, extract_embedding_tunggal, embedding_to_binary,
+                              cek_liveness, TANPA_TANTANGAN)
+from utils.plat_utils import normalisasi_plat
+from utils import pengaturan
+from utils.db_kontrak import get_do
+from utils.db_blacklist import supplier_diblacklist
+from utils import verifikasi_state as verif
+from utils.keamanan import id_pos
+from utils.upload_utils import simpan_upload, simpan_frames, hapus_file
+from utils.db_utils import (
+    cari_transaksi_aktif, buat_transaksi_full, get_list_tiket_aktif, get_history_driver,
+    get_driver_by_id, cari_driver_by_nik, cek_nik_ada, cari_wajah_mirip_driver,
+    insert_driver, update_driver_dengan_audit, get_kendaraan_by_plat, get_semua_supplier, get_semua_produk
+)
+from utils.serializers import serialisasi_driver
+from utils.audit_utils import catat_security_audit
+from utils.personel_utils import format_nama_personel, nik_valid
+from utils.face_cache import slot_proses_wajah, cari_terdekat_konsisten
+from utils.hak_akses import izin
+from utils.db_personel import sim_dipakai
+from utils import alur
+from utils.db_master import stnk_dipakai
+from utils.db_aktivitas import area_akun
+
+security_bp = Blueprint('security', __name__)
+
+@security_bp.route("/api/security/list-tiket-aktif")
+@login_required
+def list_tiket_aktif():
+    return jsonify([{**t, "created_at": t["created_at"].strftime("%Y-%m-%d %H:%M"),
+                     "alur_tahap": alur.tahap_alur(t.get("id_alur")) if t.get("id_alur") else []}
+                    for t in get_list_tiket_aktif(area_data(current_user.id))])
+
+@security_bp.route("/api/security/history-driver")
+@login_required
+def history_driver():
+    return jsonify(get_history_driver())
+
+JENIS_TRANSAKSI = ("PEMBELIAN", "PENJUALAN", "PENIMBANGAN_SAJA")
+
+
+@security_bp.route("/api/security/buat-tiket", methods=["POST"])
+@login_required
+@izin('FORM_SECURITY', 'tambah')
+def buat_tiket():
+    f = request.form
+    no_tiket = f.get("no_tiket", "").strip()
+    no_plat, error_plat = normalisasi_plat(f.get("no_plat"))
+    id_driver = f.get("id_driver")
+
+    if error_plat:
+        return jsonify({"error": error_plat}), 400
+    if not all([no_tiket, id_driver]):
+        return jsonify({"error": "No tiket dan supir wajib diisi"}), 400
+    # Ada DO dari HO -> form sudah terisi otomatis (tetap boleh diubah); tanpa DO -> security mengisi sendiri
+    no_do = f.get("no_do", "").strip().upper() or None
+    if no_do and len(no_do) > 50:
+        return jsonify({"error": "No DO maksimal 50 karakter"}), 400
+    do = get_do(no_do) if no_do else None
+    jenis, id_supplier, id_produk = f.get("jenis_transaksi", "").strip(), f.get("id_supplier", ""), f.get("id_produk", "")
+    if jenis not in JENIS_TRANSAKSI:
+        return jsonify({"error": "Pilih jenis transaksi"}), 400
+    if (not id_supplier.isdigit() or int(id_supplier) not in {s.id_supplier for s in get_semua_supplier() if s.is_customer}
+            or not supplier_boleh(int(id_supplier), company_user(current_user.id))):
+        return jsonify({"error": "Pilih customer dari daftar"}), 400
+    # Pengangkutan tidak diisi Security: ikut pengangkut pertama di DO (data HO / Ascend), tanpa DO = kendaraan pengirim
+    angkut_do = do["angkutan"][0] if do and do.get("angkutan") else None
+    cara, id_angkut = (angkut_do["cara_angkut"], angkut_do["id_pengangkutan"]) if angkut_do else ("PENGIRIM", None)
+    if not id_produk.isdigit() or int(id_produk) not in {p.id_produk for p in get_semua_produk()}:
+        return jsonify({"error": "Pilih produk dari daftar"}), 400
+
+    existing = cari_transaksi_aktif(no_plat=no_plat)
+    if existing:
+        return jsonify({"error": f"Plat ini sudah memiliki tiket aktif: {existing.no_tiket}"}), 400
+
+    ip = request.remote_addr
+    driver = get_driver_by_id(id_driver) if str(id_driver).isdigit() else None
+    if not driver:
+        return jsonify({"error": "Supir tidak ditemukan"}), 404
+    nama_driver = format_nama_personel(driver.kode_personel, driver.id_driver, driver.nama_driver)
+    if driver.kategori != 'DRIVER':
+        return jsonify({"error": f"{nama_driver} terdaftar sebagai {driver.kategori}, bukan supir"}), 400
+
+    # Blacklist = PERINGATAN: tiket tetap boleh dibuat, tetapi selalu tercatat di Log Audit untuk HO
+    kendaraan = get_kendaraan_by_plat(no_plat)
+    if kendaraan and not kendaraan.is_active:
+        return jsonify({"error": f"Kendaraan {no_plat} dinonaktifkan di Data Master > Kendaraan"}), 400
+    # STNK wajib & unik (migrasi 014)
+    no_stnk = f.get("no_stnk", "").strip().upper()
+    if not no_stnk:
+        return jsonify({"error": "No. STNK wajib diisi"}), 400
+    if len(no_stnk) > 50:
+        return jsonify({"error": "No. STNK maksimal 50 karakter"}), 400
+    plat_stnk = stnk_dipakai(no_stnk, kecuali=kendaraan.id_kendaraan if kendaraan else None)
+    if plat_stnk:
+        return jsonify({"error": f"No. STNK {no_stnk} sudah dipakai kendaraan {plat_stnk}"}), 400
+    peringatan = []
+    if kendaraan and kendaraan.is_blacklisted:
+        peringatan.append(f"kendaraan {no_plat}")
+    if driver.is_blacklisted:
+        peringatan.append(f"supir {nama_driver}")
+    for id_s in {int(id_supplier), id_angkut} - {None}:          # Supplier Blacklist (customer / pengangkutan)
+        nama_bl = supplier_diblacklist(id_s)
+        if nama_bl:
+            peringatan.append(f"supplier {nama_bl}")
+
+    v = verif.ambil(id_pos(), current_user.id)
+    terverifikasi = bool(v) and str(v["id_driver"]) == str(id_driver)
+    if pengaturan.nilai("WAJIB_SCAN_WAJAH", area_akun(current_user.id)) and not terverifikasi:
+        return jsonify({"error": "Supir belum terverifikasi wajah. Silakan lakukan scan wajah."}), 400
+
+    # Supir berbeda dari saran (supir utama / terakhir truk ini) -> dicatat
+    saran = f.get("id_driver_saran", "").strip()
+    prev_driver_id = int(saran) if saran.isdigit() and saran != str(id_driver) else None
+
+    # Alur tahap: aturan Area + Produk (Admin › Alur Tiket), selain itu alur bawaan produk; penimbangan saja = TIMBANG_SAJA.
+    # Area = area akun security.
+    produk = next(p for p in get_semua_produk() if p.id_produk == int(id_produk))
+    id_alur = alur.alur_tiket(jenis, alur.alur_untuk(area_akun(current_user.id), int(id_produk), produk.id_alur))
+
+    buat_transaksi_full(no_tiket, no_plat, no_stnk, jenis,
+                        int(id_supplier), int(id_produk), id_driver, no_do,
+                        current_user.id, id_angkut, area_akun(current_user.id), id_alur, do["id_do"] if do else None, cara)
+
+    if prev_driver_id:
+        lama = get_driver_by_id(prev_driver_id)
+        nama_lama = format_nama_personel(lama.kode_personel, lama.id_driver, lama.nama_driver) if lama else prev_driver_id
+        catat_security_audit(current_user.id, "OVERRIDE_DRIVER", no_tiket, ip_address=ip,
+                             details={"keterangan": f"Supir diganti: {nama_lama} → {nama_driver}",
+                                      "prev_driver_id": prev_driver_id, "id_driver": driver.id_driver})
+    if not terverifikasi:
+        catat_security_audit(current_user.id, "MANUAL_INPUT", no_tiket, ip_address=ip,
+                             details={"keterangan": f"Tiket dibuat tanpa scan wajah (supir {nama_driver})"})
+    if peringatan:
+        catat_security_audit(current_user.id, "TRY_SCAN_BLACKLIST", no_tiket, ip_address=ip,
+                             details={"keterangan": f"Tiket dibuat walau {' & '.join(peringatan)} masuk blacklist",
+                                      "no_plat": no_plat, "sumber": "TIKET", "tindakan": "DILOLOSKAN",
+                                      "id_personel": driver.id_driver if driver.is_blacklisted else None,
+                                      "id_kendaraan": kendaraan.id_kendaraan if kendaraan and kendaraan.is_blacklisted else None})
+
+    verif.hapus(id_pos(), current_user.id)
+    pesan = "Tiket berhasil dibuat & tervalidasi"
+    if peringatan:
+        pesan += f". Perhatian: {' & '.join(peringatan)} masuk blacklist (tercatat di Log Audit)"
+    return jsonify({"message": pesan, "no_tiket": no_tiket, "blacklist": bool(peringatan)}), 200
+
+# ===== DRIVER =====
+
+@security_bp.route("/api/driver/cari-by-nik", methods=["POST"])
+@login_required
+def driver_cari_nik():
+    row = cari_driver_by_nik(request.form.get("nik", "").strip())
+    if not row:
+        return jsonify({"status": "TIDAK_DITEMUKAN"}), 200
+    return jsonify({"status": "DITEMUKAN", **serialisasi_driver(row)}), 200
+
+def _simpan_foto(file):
+    """Foto supir: divalidasi & disimpan privat. Kembalikan (path_disk, path_relatif 'uploads/personel/...')."""
+    return simpan_upload(file, "personel")
+
+def _data_verif(d, is_updated=None):
+    """Baris driver -> argumen verif.simpan_hasil_*."""
+    return {"id_driver": d.id_driver, "nama": d.nama_driver, "nik": d.nik, "no_sim": d.no_sim,
+            "is_updated": bool(d.is_updated) if is_updated is None else is_updated, "foto_path": d.foto_path,
+            "kode_personel": d.kode_personel, "kategori": d.kategori, "is_blacklisted": bool(d.is_blacklisted)}
+
+
+@security_bp.route("/api/driver/tambah", methods=["POST"])
+@login_required
+@izin(('FORM_SECURITY', 'POS_SECURITY'), 'tambah')
+def driver_tambah():
+    nik = request.form.get("nik", "").strip()
+    nama = request.form.get("nama", "").strip()
+    no_sim = request.form.get("no_sim", "").strip().upper()
+    file = request.files.get("foto")
+
+    if not all([nik, nama, no_sim, file]):
+        return jsonify({"error": "Semua kolom wajib diisi, termasuk foto wajah"}), 400
+    if not nik_valid(nik):
+        return jsonify({"error": "NIK harus 16 digit angka"}), 400
+    if cek_nik_ada(nik):
+        return jsonify({"error": f"NIK '{nik}' sudah terdaftar"}), 400
+    if sim_dipakai(no_sim):
+        return jsonify({"error": f"No. SIM {no_sim} sudah dipakai personel lain"}), 400
+
+    try:
+        filepath, foto_path = _simpan_foto(file)
+    except ValueError as e:
+        return jsonify({"error": f"Foto: {e}"}), 400
+    with slot_proses_wajah():
+        embedding, jumlah_wajah = extract_embedding_tunggal(filepath)
+    if embedding is None:
+        hapus_file(filepath)
+        return jsonify({"error": "Wajah tidak terdeteksi" if jumlah_wajah == 0
+                        else f"Terdeteksi {jumlah_wajah} wajah, foto harus berisi 1 orang"}), 400
+    mirip = cari_wajah_mirip_driver(embedding)
+    if mirip:
+        hapus_file(filepath)
+        lama = get_driver_by_id(mirip[0])
+        nama_lama = format_nama_personel(lama.kode_personel, lama.id_driver, lama.nama_driver)
+        if lama.is_blacklisted:
+            catat_security_audit(current_user.id, "TRY_SCAN_BLACKLIST", ip_address=request.remote_addr,
+                                 details={"keterangan": f"Tambah supir: wajah cocok dengan {nama_lama} (blacklist)",
+                                          "id_personel": lama.id_driver, "sumber": "TAMBAH_SUPIR", "tindakan": "DITOLAK"})
+            return jsonify({"error": f"Wajah sudah terdaftar sebagai {nama_lama} (BLACKLIST). "
+                                     "Gunakan data supir tersebut lewat Ubah Supir."}), 400
+        return jsonify({"error": f"Wajah sudah terdaftar sebagai {nama_lama}"}), 400
+
+    driver_id, kode = insert_driver(nik, nama, no_sim, embedding_to_binary(embedding), foto_path, current_user.id)
+    verif.simpan_hasil_user(id_pos(), current_user.id, id_driver=driver_id, nama=nama, nik=nik, no_sim=no_sim,
+                            is_updated=False, foto_path=foto_path, kode_personel=kode, kategori="DRIVER",
+                            is_blacklisted=False)
+    return jsonify({"message": f"Supir {nama} ({kode}) berhasil ditambahkan",
+                    "id_driver": driver_id, "kode_personel": kode, "foto_path": foto_path}), 200
+
+@security_bp.route("/api/driver/update-identitas", methods=["POST"])
+@login_required
+@izin(('FORM_SECURITY', 'POS_SECURITY'), 'ubah')
+def driver_update_identitas():
+    f = request.form
+    id_driver, nik, nama, no_sim = f.get("id_driver", "").strip(), f.get("nik", "").strip(), \
+        f.get("nama", "").strip(), f.get("no_sim", "").strip().upper()
+    file = request.files.get("foto")
+
+    if not all([id_driver, nik, nama, no_sim]) or not id_driver.isdigit():
+        return jsonify({"error": "Semua kolom wajib diisi"}), 400
+    if not nik_valid(nik):
+        return jsonify({"error": "NIK harus 16 digit angka"}), 400
+    if cek_nik_ada(nik, exclude_id=int(id_driver)):
+        return jsonify({"error": f"NIK '{nik}' sudah dipakai supir lain"}), 400
+    if sim_dipakai(no_sim, int(id_driver)):
+        return jsonify({"error": f"No. SIM {no_sim} sudah dipakai personel lain"}), 400
+
+    embedding_binary, foto_path = None, None
+    if file and file.filename:
+        try:
+            filepath, foto_path = _simpan_foto(file)
+        except ValueError as e:
+            return jsonify({"error": f"Foto: {e}"}), 400
+        with slot_proses_wajah():
+            embedding = extract_embedding(filepath)
+        if embedding is None:
+            hapus_file(filepath)
+            return jsonify({"error": "Wajah tidak terdeteksi"}), 400
+        embedding_binary = embedding_to_binary(embedding)
+
+    update_driver_dengan_audit(int(id_driver), nik, nama, no_sim, current_user.id, embedding_binary, foto_path)
+    d = get_driver_by_id(int(id_driver))
+    v = verif.ambil(id_pos(), current_user.id)
+    if v and str(v["id_driver"]) == str(id_driver):
+        verif.simpan_hasil_user(id_pos(), current_user.id, **_data_verif(d, is_updated=True))
+    return jsonify({
+        "message": f"Data {nama} berhasil diperbarui dan tercatat di Log Audit",
+        "driver": serialisasi_driver(d)
+    }), 200
+
+# ===== SCAN WAJAH SUPIR (webcam browser di PC Security) =====
+# Hasil hanya berlaku untuk user yang men-scan & kedaluwarsa 5 menit (utils/verifikasi_state.py).
+MAKS_FRAME = 20
+
+@security_bp.route("/api/security/scan-wajah", methods=["POST"])
+@login_required
+@izin(('FORM_SECURITY', 'POS_SECURITY'), 'tambah')
+def scan_wajah_supir():
+    area = area_akun(current_user.id)
+    wajib = pengaturan.nilai("TANTANGAN_SECURITY", area)
+    tantangan = request.form.get("tantangan", "") if wajib else TANPA_TANTANGAN
+    try:
+        filepaths = simpan_frames(request.files.getlist("frames"), maks=MAKS_FRAME)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    try:
+        with slot_proses_wajah():
+            if not cek_liveness(filepaths, tantangan, wajib):
+                return jsonify({"error": "Uji wajah hidup gagal. Ikuti instruksi di layar, lalu ulangi scan."}), 400
+            embeddings, _, _ = embedding_frontal(filepaths)       # frame paling menghadap kamera
+        if not embeddings:
+            return jsonify({"error": "Wajah tidak terdeteksi. Silakan ulangi scan sambil menghadap kamera"}), 400
+
+        id_cocok, _, jarak = cari_terdekat_konsisten(embeddings, pengaturan.nilai("AMBANG_WAJAH", area))
+        if id_cocok is None:
+            return jsonify({"error": "Supir tidak dikenali. Silakan tambahkan sebagai data baru"}), 404
+
+        d = get_driver_by_id(id_cocok)
+        nama = format_nama_personel(d.kode_personel, d.id_driver, d.nama_driver)
+        if d.kategori != 'DRIVER':
+            return jsonify({"error": f"{nama} terdaftar sebagai {d.kategori}, bukan supir", "id_driver": d.id_driver}), 400
+        # Blacklist = peringatan: tetap terverifikasi, tercatat di Log Audit
+        data = _data_verif(d)
+        verif.simpan_hasil_user(id_pos(), current_user.id, **data)
+        if d.is_blacklisted:
+            catat_security_audit(current_user.id, "TRY_SCAN_BLACKLIST", ip_address=request.remote_addr,
+                                 details={"keterangan": f"Scan wajah: {nama} blacklist", "id_personel": d.id_driver,
+                                          "sumber": "SCAN_WAJAH", "tindakan": "PERINGATAN", "jarak": jarak})
+        return jsonify({"terverifikasi": True, "message": f"Verifikasi berhasil: {nama}", **data})
+    finally:
+        for path in filepaths:
+            hapus_file(path)

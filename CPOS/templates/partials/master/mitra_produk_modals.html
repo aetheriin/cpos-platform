@@ -1,0 +1,91 @@
+<!-- MODAL: Tambah / Ubah Supplier (tabel mitra) -->
+<div id="modalMitra" class="modal-overlay">
+    <form id="formMitra" class="modal-box" autocomplete="off">
+        <div class="modal-header">
+            <h3 id="judulModalMitra" class="font-bold">Tambah Supplier</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalMitra" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 space-y-3">
+            <input type="hidden" name="id_supplier">
+            <div>
+                <label class="field-label" for="mitraKode">Kode</label>
+                <input type="text" id="mitraKode" name="kode_supplier" required maxlength="20" class="input-field uppercase">
+            </div>
+            <div>
+                <label class="field-label" for="mitraNama">Nama</label>
+                <input type="text" id="mitraNama" name="nama_supplier" required maxlength="100" class="input-field">
+            </div>
+            <div>
+                <label class="field-label" for="mitraAlamat">Alamat <span class="text-slate-400 font-normal">(opsional)</span></label>
+                <input type="text" id="mitraAlamat" name="alamat" maxlength="255" class="input-field">
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="field-label" for="mitraGrup">Grup Supplier <span class="text-slate-400 font-normal">(opsional)</span></label>
+                    <select id="mitraGrup" name="id_grup" class="input-field">
+                        <option value="">-</option>
+                        {% for g in grup_supplier_list or [] %}<option value="{{ g.id }}">{{ g.label }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="field-label" for="mitraRekening">Rekening <span class="text-slate-400 font-normal">(opsional)</span></label>
+                    <select id="mitraRekening" name="id_rekening" class="input-field">
+                        <option value="">-</option>
+                        {% for r in rekening_list or [] %}<option value="{{ r.id }}">{{ r.label }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <span class="field-label">Peran (boleh keduanya)</span>
+                <div class="flex gap-5 text-sm">
+                    <label class="flex items-center gap-2"><input type="checkbox" name="is_customer" value="1"> Customer</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="is_angkutan" value="1"> Pengangkutan</label>
+                </div>
+            </div>
+            <div>
+                <span class="field-label">Berlaku di Perusahaan</span>
+                <div data-pilih-banyak data-semua data-cari="Ketik untuk mencari perusahaan..." data-kosong="Kosong = berlaku di semua perusahaan"><div>
+                    {% for c in company_list %}<label><input type="checkbox" name="company" value="{{ c.id_company }}"> {{ c.kode }} · {{ c.nama }}</label>{% endfor %}
+                </div></div>
+                <p class="field-hint">Kosongkan semua centang bila supplier ini berlaku di semua perusahaan.</p>
+            </div>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalMitra" class="btn-secondary">Batal</button>
+            <button type="submit" class="btn-primary">Simpan</button>
+        </div>
+    </form>
+</div>
+
+<!-- MODAL: Tambah / Ubah Produk -->
+<div id="modalProduk" class="modal-overlay">
+    <form id="formProduk" class="modal-box" autocomplete="off">
+        <div class="modal-header">
+            <h3 id="judulModalProduk" class="font-bold">Tambah Produk</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalProduk" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 space-y-3">
+            <input type="hidden" name="id_produk">
+            <div>
+                <label class="field-label" for="prodNama">Nama Produk</label>
+                <input type="text" id="prodNama" name="nama_produk" required maxlength="100" class="input-field">
+            </div>
+            <div>
+                <label class="field-label" for="prodKategori">Kategori</label>
+                <select id="prodKategori" name="kategori" required class="input-field">
+                    {% for k in kategori_produk %}<option value="{{ k }}">{{ k.replace('_', ' ').title() }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="field-label" for="prodAlur">Alur Tahap</label>
+                <select id="prodAlur" name="id_alur" required class="input-field">
+                    {% for a in alur_list if a.kode != 'TIMBANG_SAJA' %}<option value="{{ a.id_alur }}">{{ a.nama }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalProduk" class="btn-secondary">Batal</button>
+            <button type="submit" class="btn-primary">Simpan</button>
+        </div>
+    </form>
+</div>

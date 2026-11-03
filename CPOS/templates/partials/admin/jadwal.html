@@ -1,0 +1,19 @@
+{% from "partials/layout/_macros.html" import section_header %}
+<div class="filter-bar">
+    <label class="field-label mb-0" for="jadwalArea">Area</label>
+    <select id="jadwalArea" class="input-field w-64" data-on-change="muatJadwal">
+        {% for a in area_list %}<option value="{{ a.id_comp_area }}">{{ a.label }}</option>{% endfor %}
+    </select>
+</div>
+<div class="section-box">
+    {{ section_header('jadwal-kerja', 'Jadwal Kerja Mingguan (per area)') }}
+    <div id="body-jadwal-kerja" class="section-body overflow-x-auto">
+        <table data-tanpa-urut class="w-full text-left text-sm">
+            <thead class="table-header-row">
+                <tr><th class="table-cell">Hari</th><th class="table-cell">Libur</th><th class="table-cell">Jam Masuk</th>
+                    <th class="table-cell">Jam Pulang</th><th class="table-cell">Toleransi (menit)</th><th class="table-cell text-right">Aksi</th></tr>
+            </thead>
+            <tbody data-per-halaman="20" id="tabelJadwal" class="divide-y divide-slate-100"></tbody>
+        </table>
+    </div>
+</div>

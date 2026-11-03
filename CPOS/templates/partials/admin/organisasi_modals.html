@@ -1,0 +1,148 @@
+<!-- MODAL: Perusahaan -->
+<div id="modalOrg-company" class="modal-overlay">
+    <form id="formOrg-company" class="modal-box" autocomplete="off" data-url="/api/admin/organisasi/company/simpan">
+        <div class="modal-header">
+            <h3 class="font-bold" data-judul>Perusahaan</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalOrg-company" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 grid grid-cols-3 gap-3">
+            <input type="hidden" name="id_company">
+            <div><label class="field-label" for="orgCompKode">Kode</label>
+                <input type="text" id="orgCompKode" name="kode" required maxlength="5" class="input-field uppercase"></div>
+            <div class="col-span-2"><label class="field-label" for="orgCompNama">Nama</label>
+                <input type="text" id="orgCompNama" name="nama" required maxlength="100" class="input-field"></div>
+            <div class="col-span-3"><label class="field-label" for="orgCompAlamat">Alamat</label>
+                <input type="text" id="orgCompAlamat" name="alamat" maxlength="255" class="input-field"></div>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalOrg-company" class="btn-secondary">Batal</button>
+            <button type="submit" class="btn-primary">Simpan</button>
+        </div>
+    </form>
+</div>
+
+<!-- MODAL: Area Perusahaan (CompanyArea), mis. YBS · REFINERY bertipe Mill DOWNSTREAM -->
+<div id="modalOrg-area" class="modal-overlay">
+    <form id="formOrg-area" class="modal-box" autocomplete="off" data-url="/api/admin/organisasi/area/simpan">
+        <div class="modal-header">
+            <h3 class="font-bold" data-judul>Area Perusahaan</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalOrg-area" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 grid grid-cols-2 gap-3">
+            <input type="hidden" name="id_comp_area">
+            <div><label class="field-label" for="orgAreaCompany">Perusahaan</label>
+                <select id="orgAreaCompany" name="id_company" required class="input-field"></select></div>
+            <div><label class="field-label" for="orgAreaMill">Mill (tipe area)</label>
+                <select id="orgAreaMill" name="id_lokasi" required class="input-field"></select></div>
+            <div class="col-span-2"><label class="field-label" for="orgAreaNama">Nama Area</label>
+                <input type="text" id="orgAreaNama" name="nama" required maxlength="100" placeholder="REFINERY" class="input-field uppercase"></div>
+            <div class="col-span-2"><label class="field-label" for="orgAreaKet">Keterangan</label>
+                <input type="text" id="orgAreaKet" name="keterangan" maxlength="255" class="input-field">
+                <p class="field-hint">Kode area mengikuti kode Mill yang dipilih.</p></div>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalOrg-area" class="btn-secondary">Batal</button>
+            <button type="submit" class="btn-primary">Simpan</button>
+        </div>
+    </form>
+</div>
+
+<!-- MODAL: Mill = tipe area untuk semua perusahaan (mis. 300 HO, 600 PKS) -->
+<div id="modalOrg-lokasi" class="modal-overlay">
+    <form id="formOrg-lokasi" class="modal-box" autocomplete="off" data-url="/api/admin/organisasi/lokasi/simpan">
+        <div class="modal-header">
+            <h3 class="font-bold" data-judul>Mill</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalOrg-lokasi" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 grid grid-cols-3 gap-3">
+            <input type="hidden" name="id_lokasi">
+            <div><label class="field-label" for="orgLokKode">Kode</label>
+                <input type="text" id="orgLokKode" name="kode" required maxlength="10" placeholder="600" class="input-field uppercase font-mono"></div>
+            <div class="col-span-2"><label class="field-label" for="orgLokNama">Nama</label>
+                <input type="text" id="orgLokNama" name="nama" required maxlength="100" placeholder="PKS" class="input-field uppercase"></div>
+            <div class="col-span-3"><label class="field-label" for="orgLokKet">Keterangan</label>
+                <input type="text" id="orgLokKet" name="keterangan" maxlength="255" class="input-field"></div>
+            <label class="col-span-3 flex items-start gap-2 text-sm">
+                <input type="checkbox" name="is_pusat" value="1" class="w-4 h-4 mt-0.5">
+                <span>Kantor pusat <span class="block text-xs text-slate-500">Pengguna di area bertipe ini mengelola semua perusahaan.</span></span>
+            </label>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalOrg-lokasi" class="btn-secondary">Batal</button>
+            <button type="submit" class="btn-primary">Simpan</button>
+        </div>
+    </form>
+</div>
+
+<!-- MODAL: Departemen -->
+<div id="modalOrg-department" class="modal-overlay">
+    <form id="formOrg-department" class="modal-box" autocomplete="off" data-url="/api/admin/organisasi/department/simpan">
+        <div class="modal-header">
+            <h3 class="font-bold" data-judul>Departemen</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalOrg-department" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 space-y-3">
+            <input type="hidden" name="id_department">
+            <div class="grid grid-cols-3 gap-3">
+                <div><label class="field-label" for="orgDeptKode">Kode</label>
+                    <input type="text" id="orgDeptKode" name="kode" required maxlength="5" placeholder="TBG" class="input-field uppercase"></div>
+                <div class="col-span-2"><label class="field-label" for="orgDeptNama">Nama</label>
+                    <input type="text" id="orgDeptNama" name="nama" required maxlength="100" class="input-field"></div>
+            </div>
+            <div><label class="field-label" for="orgDeptKet">Keterangan</label>
+                <input type="text" id="orgDeptKet" name="keterangan" maxlength="255" class="input-field"></div>
+            <div><p class="field-label">Ada di Area</p>
+                <div data-pilih-banyak data-cari="Ketik untuk mencari area..." data-kosong="Area yang dipilih akan muncul di sini..."><div id="orgDeptArea"></div></div>
+                <p class="field-hint">Pengguna hanya bisa diberi departemen yang ada di areanya (Location SITE / HO mengikuti Mill area).</p></div>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalOrg-department" class="btn-secondary">Batal</button>
+            <button type="submit" class="btn-primary">Simpan</button>
+        </div>
+    </form>
+</div>
+
+<!-- MODAL: Jabatan umum (= Level di ERD): Manager, Supervisor, Staff, ... Hak menu per departemen di Hak Akses -->
+<div id="modalOrg-jabatan" class="modal-overlay">
+    <form id="formOrg-jabatan" class="modal-box" autocomplete="off" data-url="/api/admin/organisasi/jabatan/simpan">
+        <div class="modal-header">
+            <h3 class="font-bold" data-judul>Jabatan</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalOrg-jabatan" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 grid grid-cols-3 gap-3">
+            <input type="hidden" name="id_jabatan">
+            <div class="col-span-2"><label class="field-label" for="orgJabNama">Nama</label>
+                <input type="text" id="orgJabNama" name="nama" required maxlength="100" placeholder="Supervisor" class="input-field"></div>
+            <div><label class="field-label" for="orgJabUrutan">Urutan</label>
+                <input type="number" id="orgJabUrutan" name="urutan" min="0" max="999" class="input-field" placeholder="10"></div>
+            <div class="col-span-3"><label class="field-label" for="orgJabKet">Keterangan</label>
+                <input type="text" id="orgJabKet" name="keterangan" maxlength="255" class="input-field"></div>
+            <p class="col-span-3 field-hint">Urutan menentukan posisi di daftar pilihan (kecil di atas). Hak menu tiap departemen + jabatan diatur di Admin › Hak Akses.</p>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalOrg-jabatan" class="btn-secondary">Batal</button>
+            <button type="submit" class="btn-primary">Simpan</button>
+        </div>
+    </form>
+</div>
+
+<!-- MODAL: Status Tiket (nama & warna) -->
+<div id="modalOrg-status" class="modal-overlay">
+    <form id="formOrg-status" class="modal-box" autocomplete="off">
+        <div class="modal-header">
+            <h3 class="font-bold">Ubah Status Tiket <span id="kodeStatusOrg" class="font-mono font-normal text-slate-500"></span></h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalOrg-status" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 space-y-3">
+            <input type="hidden" name="kode">
+            <div><label class="field-label" for="orgStatusNama">Nama</label>
+                <input type="text" id="orgStatusNama" name="nama" required maxlength="50" class="input-field"></div>
+            <div><p class="field-label">Warna</p>
+                <div id="orgStatusWarna" class="flex flex-wrap gap-3 text-sm"></div></div>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalOrg-status" class="btn-secondary">Batal</button>
+            <button type="submit" class="btn-primary">Simpan</button>
+        </div>
+    </form>
+</div>

@@ -1,0 +1,17 @@
+.env
+venv/
+__pycache__/
+*.pyc
+static/uploads/*
+!static/uploads/.gitkeep
+.vscode/
+*.db
+data/
+logs/
+paket_offline/
+agen/venv/
+agen/.env
+agen/build/
+agen/dist/
+agen/*.spec
+agen/agen_timbang.exe

@@ -1,0 +1,19 @@
+{% from "partials/layout/_macros.html" import section_header %}
+<div class="filter-bar">
+    <div class="seg flex-wrap">
+        <button type="button" class="chip chip-active" data-status="" data-on-click="filterStatusDO" data-arg="$el">Semua</button>
+        <button type="button" class="chip" data-status="1" data-on-click="filterStatusDO" data-arg="$el">Aktif</button>
+        <button type="button" class="chip" data-status="0" data-on-click="filterStatusDO" data-arg="$el">Nonaktif</button>
+    </div>
+    <div class="flex-1"></div>
+    <div class="relative">
+        <input type="text" id="cariDO" placeholder="Cari No DO / Kontrak / Customer" class="input-field pl-9 w-64" data-on-input="cariDaftarDO" data-arg="$value">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+    </div>
+    {% if boleh_ubah %}
+    <button type="button" class="btn-primary" data-on-click="bukaDO"><i class="fa-solid fa-plus mr-1"></i> Tambah Kontrak & DO</button>
+    {% endif %}
+</div>
+
+{# Satu kartu per DO: customer, produk, kontrak, pengangkut, realisasi vs kuota (bar) #}
+<div data-boleh-ubah="{{ 1 if boleh_ubah else 0 }}" id="tabelDO" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>

@@ -1,0 +1,118 @@
+<div data-tab-content="timbangan" class="hidden">
+    <div class="grid grid-cols-1 xl:grid-cols-5 gap-5">
+
+        {# Panel indikator (gelap): berat live dari jembatan yang dipilih PC ini, status stabil, tombol simpan #}
+        <div class="xl:col-span-2 indikator-panel flex flex-col">
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span id="lampuIndikator" class="w-2 h-2 rounded-full bg-slate-500 flex-shrink-0"></span>
+                    {# Jembatan timbang yang dipakai PC ini (diingat di browser). Masuk & keluar wajib di jembatan yang sama. #}
+                    <select id="pilihJembatan" class="indikator-pilih" data-on-change="pilihJembatanTimbang" data-arg="$value" title="Jembatan timbang PC ini">
+                        {% if not jembatan_dipilih %}<option value="">-- Pilih jembatan --</option>{% endif %}
+                        {% for j in jembatan_list %}
+                        <option value="{{ j.id_jembatan }}"{% if jembatan_dipilih and j.id_jembatan == jembatan_dipilih.id_jembatan %} selected{% endif %}>INDIKATOR {{ j.kode }} · {{ j.nama }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <span id="badgeStabil" class="indikator-badge indikator-badge-mati">TERPUTUS</span>
+            </div>
+            {# Angka berat mengisi ruang tengah panel (tinggi panel mengikuti kartu kanan); tombol di dasar panel #}
+            <div class="flex-1 flex flex-col items-center justify-center text-center py-10">
+                {# Label mengikuti tiket: timbang ke-berapa & disimpan sebagai bruto / tara (timbangan.js aturLabelBerat) #}
+                <p id="labelBeratLive" class="text-xs font-mono uppercase tracking-widest text-slate-400 mb-3">Berat di jembatan</p>
+                <p class="flex items-baseline justify-center font-mono font-bold tracking-tight text-white tabular-nums leading-none">
+                    <span id="beratLiveDisplay" class="text-8xl">0</span><span class="text-3xl font-normal text-slate-400 ml-3">kg</span>
+                </p>
+                <p id="statusBeratLive" class="text-sm mt-5 text-slate-400">&nbsp;</p>
+            </div>
+            <div class="mt-auto pt-4 border-t border-slate-800 grid grid-cols-3 gap-2">
+                <button type="button" data-on-click="bukaScanQRTimbangan" class="indikator-btn">
+                    <i class="fa-solid fa-qrcode"></i> Scan QR
+                </button>
+                <button type="button" data-on-click="simpanHasilTimbangan" data-arg="$el" class="indikator-btn indikator-btn-utama col-span-2">
+                    <i class="fa-solid fa-circle-check"></i> Kunci &amp; Simpan Berat
+                </button>
+            </div>
+        </div>
+
+        {# Data tiket + rincian berat tersimpan #}
+        <div class="xl:col-span-3 card">
+            <div class="flex items-start justify-between gap-3 pb-3 mb-4 border-b border-slate-100">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900">Data Tiket Penimbangan</h3>
+                    <p class="text-xs text-slate-500">Ketik plat di info bar atas (Enter) atau Scan QR tiket</p>
+                </div>
+                <span id="tbJembatanMasuk" class="kpi-tanggal hidden"></span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div><label class="field-label" for="tbJenisTransaksi">Jenis Transaksi</label><input type="text" id="tbJenisTransaksi" readonly class="input-field bg-slate-50"></div>
+                <div><label class="field-label" for="tbSupplier">Customer</label><input type="text" id="tbSupplier" readonly class="input-field bg-slate-50"></div>
+                <div><label class="field-label" for="tbProduk">Produk</label><input type="text" id="tbProduk" readonly class="input-field bg-slate-50"></div>
+            </div>
+            <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                <p class="text-xs font-bold text-slate-800 mb-3">Rincian Kalkulasi Berat (kg)</p>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div class="berat-kotak"><p class="berat-kotak-label">1. Bruto</p><p id="tbBruto" class="berat-kotak-nilai">-</p></div>
+                    <div class="berat-kotak"><p class="berat-kotak-label">2. Tara</p><p id="tbTara" class="berat-kotak-nilai">-</p></div>
+                    <div class="berat-kotak"><p class="berat-kotak-label">3. Netto</p><p id="tbNetto" class="berat-kotak-nilai text-blue-700">-</p></div>
+                    <div class="berat-kotak"><p class="berat-kotak-label">4. Potongan sortasi</p><p id="tbPotongan" class="berat-kotak-nilai text-red-600">-</p></div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-slate-200 flex items-end justify-between gap-3">
+                    <div>
+                        <p class="text-xs font-bold text-slate-800 uppercase tracking-wide">Netto akhir</p>
+                        <p class="text-xs text-slate-500">Netto setelah potongan sortasi</p>
+                    </div>
+                    <p class="font-mono font-bold text-3xl text-slate-900 tabular-nums"><span id="tbNettoAkhir">-</span> <span class="text-base font-normal text-slate-500">kg</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-box mt-5">
+        <div class="section-header" data-on-click="toggleSection" data-arg="history-timbangan">
+            <span class="section-header-text">
+                <i id="chevron-history-timbangan" class="fa-solid fa-chevron-down section-chevron"></i>
+                Riwayat Timbangan
+            </span>
+        </div>
+        <div id="body-history-timbangan" class="section-body">
+            <div class="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-slate-100 text-sm">
+                <label for="filterTanggalTimbang" class="text-slate-600">Tanggal</label>
+                <input type="date" id="filterTanggalTimbang" class="input-field w-auto py-1.5"
+                       data-on-change="muatHistoryTimbanganUlang">
+                <button data-on-click="resetTanggalTimbang" class="btn-secondary text-xs">7 hari terakhir</button>
+                <span id="keteranganHistoryTimbang" class="text-xs text-slate-500">Menampilkan 7 hari terakhir</span>
+            </div>
+            <table class="w-full text-left text-sm">
+                <thead class="table-header-row">
+                    <tr><th class="table-cell">Tanggal</th><th class="table-cell">No. Plat</th><th class="table-cell">Customer</th><th class="table-cell">Bruto</th><th class="table-cell">Tara</th><th class="table-cell">Netto</th></tr>
+                </thead>
+                <tbody data-per-halaman="20" id="tabelHistoryTimbangan" class="divide-y divide-slate-100">
+                    <tr><td colspan="6" class="table-cell text-slate-400 text-center py-6">Pilih plat di atas untuk melihat riwayat</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="modalScanQRTimbangan" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 class="font-bold">Scan QR Tiket</h3>
+                <button data-on-click="tutupScanQR" title="Tutup"><i class="fa-solid fa-xmark"></i> <span class="text-xs">Tutup</span></button>
+            </div>
+            <div class="p-4 space-y-3">
+                <div id="qr-reader-timbang"></div>
+                <p id="statusScanQR" class="text-xs text-slate-500"></p>
+                <div>
+                    <label class="field-label">Scanner barcode / ketik No. Tiket</label>
+                    <input type="text" id="inputScanTiket" placeholder="Ketik / scan No. Tiket, mis. TKT-BM1455JJ-..." class="input-field uppercase"
+                        data-on-enter="prosesScanTiket" data-arg="$value">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" data-on-click="tutupScanQR" class="btn-secondary">Batal</button>
+                    <button type="button" data-on-click="kirimScanTiket" class="btn-primary"><i class="fa-solid fa-magnifying-glass mr-1"></i> Cari Tiket</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

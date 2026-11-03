@@ -1,0 +1,137 @@
+@import "tailwindcss";
+
+/* Tampilan disamakan dengan CPOS: font Plus Jakarta Sans & JetBrains Mono (public/fonts, sama dengan CPOS static/vendor/fonts)
+   dan warna utama biru CPOS (blue-600). Komponen Analytics memakai kelas sky-*, jadi skala sky diganti nilai blue. */
+@theme {
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --color-sky-50: #eff6ff;
+  --color-sky-100: #dbeafe;
+  --color-sky-200: #bfdbfe;
+  --color-sky-300: #93c5fd;
+  --color-sky-400: #60a5fa;
+  --color-sky-500: #3b82f6;
+  --color-sky-600: #2563eb;
+  --color-sky-700: #1d4ed8;
+  --color-sky-800: #1e40af;
+  --color-sky-900: #1e3a8a;
+  --color-sky-950: #172554;
+}
+
+/* Klik mouse pada grafik tidak memunculkan kotak fokus; navigasi keyboard tetap menampilkannya */
+.recharts-wrapper:focus:not(:focus-visible),
+.recharts-wrapper :focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Scrollbar tipis untuk SEMUA yang menggulir: halaman, sidebar, laci filter, daftar pilihan, popup, dan tabel detail (tegak dan mendatar).
+   Batang abu-abu lembut di atas latar transparan, tanpa tombol panah; warnanya dari skala slate, jadi ikut berubah di mode gelap.
+   Firefox memakai scrollbar-width/scrollbar-color; Chrome, Edge, dan Safari memakai ::-webkit-scrollbar. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-slate-300) transparent;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-button { display: none; }
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-slate-300);
+  border-radius: 9999px;
+  border: 3px solid transparent;   /* batang terlihat 4px, area yang bisa diklik tetap 10px */
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--color-slate-400); border-width: 2px; }
+
+/* Panel yang menggulir sendiri (laci filter, daftar pilihan): ruang scrollbar disisakan tetap supaya isinya tidak bergeser saat scrollbar
+   muncul atau hilang. */
+.gulir-halus { scrollbar-gutter: stable; }
+
+/* Sidebar: scrollbar hanya terlihat saat kursor di atasnya. Ruangnya tetap disisakan supaya menu tidak bergeser saat scrollbar muncul. */
+.gulir-sembunyi { scrollbar-gutter: stable; scrollbar-color: transparent transparent; }
+.gulir-sembunyi:hover { scrollbar-color: var(--color-slate-300) transparent; }
+.gulir-sembunyi::-webkit-scrollbar-thumb { background-color: transparent; }
+.gulir-sembunyi:hover::-webkit-scrollbar-thumb { background-color: var(--color-slate-300); }
+.gulir-sembunyi:hover::-webkit-scrollbar-thumb:hover { background-color: var(--color-slate-400); }
+
+/* Di dalam bingkai CPOS (html[data-sematan], lib/cpos.js): bingkai mengisi area di bawah topbar CPOS dari tepi ke tepi dan halaman ini
+   yang menggulir (scrollbar-nya di tepi kanan layar, sama seperti halaman CPOS), jadi laci filter, tab Filter, dan popup diam di layar
+   tanpa bantuan skrip. Bilah atas Analytics disembunyikan di sini, jadi laci filter mulai dari atas bingkai (tepat di bawah topbar CPOS). */
+html[data-sematan] .panel-filter { top: 0; }
+/* Jarak tepi isi laporan disamakan dengan halaman CPOS (--tepi dari sematan.js) supaya sejajar */
+html[data-sematan] main { padding: 1rem var(--tepi, 1rem) 1.5rem; }
+
+/* Tata letak padat (KisiGrafik), layar lg ke atas: tinggi baris ditentukan kartu tertinggi, lalu grafik di kartu lain memanjang mengisi
+   sisa tingginya supaya tidak ada ruang kosong di bawah. Ditulis di sini, bukan di tiap komponen grafik, karena hanya mengubah
+   pembungkus grafik (kelas h-52 sampai h-80 di folder grafik); tinggi bawaannya menjadi tinggi minimum. */
+@media (min-width: 64rem) {
+  .kisi-padat section > .flex-1,
+  .kisi-padat section > .flex-1 > * { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  /* "section" ikut ditulis supaya aturan ini lebih kuat dari min-height: 0 di atas */
+  .kisi-padat section .h-80 { height: auto; flex: 1 1 auto; min-height: 15rem; }
+  .kisi-padat section .h-72 { height: auto; flex: 1 1 auto; min-height: 14rem; }
+  .kisi-padat section .h-64 { height: auto; flex: 1 1 auto; min-height: 13rem; }
+  .kisi-padat section .h-52 { height: auto; flex: 1 1 auto; min-height: 10rem; max-height: 16rem; }
+}
+
+/* GrafikBesar: grafik mengisi tinggi jendela. Pembungkus tinggi tetap (h-52 sampai h-80) memanjang, dan semua pembungkus di atasnya
+   dijadikan kolom flex supaya tingginya sampai ke grafik. */
+.grafik-besar,
+.grafik-besar div:has(:is(.h-52, .h-64, .h-72, .h-80)) { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.grafik-besar :is(.h-52, .h-64, .h-72, .h-80) { height: auto; flex: 1 1 auto; min-height: 16rem; }
+.grafik-besar .latar-sumbu { fill: white; }
+[data-tema="gelap"] .grafik-besar .latar-sumbu { fill: #121a2b; }
+
+/* Mode gelap (html[data-tema="gelap"], diatur tombol di bilah atas).
+   Skala slate dibalik lewat variabel warna Tailwind, jadi teks, garis, dan latar abu-abu di semua komponen ikut tanpa kelas dark: satu per satu.
+   Putih tidak dibalik (tombol berwarna tetap bertulisan putih); latar kartu putih diganti di bawah. */
+:root[data-tema="gelap"] {
+  color-scheme: dark;
+  --color-slate-50: #0b1120;
+  --color-slate-100: #1a2335;
+  --color-slate-200: #253046;
+  --color-slate-300: #354157;
+  --color-slate-400: #64748b;
+  --color-slate-500: #94a3b8;
+  --color-slate-600: #b4c0cf;
+  --color-slate-700: #cbd5e1;
+  --color-slate-800: #e2e8f0;
+  --color-slate-900: #f1f5f9;
+}
+
+[data-tema="gelap"] .bg-white { background-color: #121a2b; }
+[data-tema="gelap"] .bg-white\/90 { background-color: rgb(18 26 43 / 0.9); }
+
+/* Latar dan teks berwarna yang dirancang untuk latar terang */
+[data-tema="gelap"] .bg-sky-50 { background-color: #0c2a3e; }
+[data-tema="gelap"] .bg-red-50 { background-color: #3a1218; }
+[data-tema="gelap"] .bg-emerald-50 { background-color: #0b2e22; }
+[data-tema="gelap"] .bg-amber-50 { background-color: #33240a; }
+[data-tema="gelap"] .border-red-200 { border-color: #7f1d1d; }
+[data-tema="gelap"] .border-emerald-200 { border-color: #065f46; }
+[data-tema="gelap"] .border-amber-200 { border-color: #78350f; }
+[data-tema="gelap"] .text-sky-700, [data-tema="gelap"] .text-sky-800 { color: #7dd3fc; }
+[data-tema="gelap"] .text-red-700, [data-tema="gelap"] .text-red-800 { color: #fca5a5; }
+[data-tema="gelap"] .text-emerald-700, [data-tema="gelap"] .text-emerald-800 { color: #6ee7b7; }
+[data-tema="gelap"] .text-amber-700, [data-tema="gelap"] .text-amber-800 { color: #fcd34d; }
+[data-tema="gelap"] .hover\:bg-red-50:hover { background-color: #3a1218; }
+[data-tema="gelap"] .hover\:bg-red-100:hover { background-color: #4c1d24; }
+
+/* Grafik Recharts: warna teks dan garis ditulis sebagai atribut SVG, jadi ditimpa lewat CSS */
+[data-tema="gelap"] .recharts-wrapper text { fill: #b4c0cf; }
+[data-tema="gelap"] .recharts-cartesian-grid line { stroke: #253046; }
+[data-tema="gelap"] .recharts-cartesian-axis-line { stroke: #354157; }
+[data-tema="gelap"] .recharts-tooltip-cursor { fill: rgb(255 255 255 / 0.06); }
+[data-tema="gelap"] .recharts-default-tooltip {
+  background-color: #121a2b !important;
+  border-color: #253046 !important;
+  color: #e2e8f0;
+}
+/* Tooltip bawaan menulis judul dengan warna hitam dan nilai dengan warna seri (sering biru atau hijau tua): di latar gelap dibuat terang.
+   Warna seri tetap terlihat di batang, garis, dan ikon legenda. */
+[data-tema="gelap"] .recharts-tooltip-label { color: #f1f5f9 !important; }
+[data-tema="gelap"] .recharts-tooltip-item { color: #cbd5e1 !important; }
+[data-tema="gelap"] .recharts-legend-item-text { color: #cbd5e1 !important; }
+
+/* Garis dan titik berwarna tinta (hampir hitam) dibalik menjadi terang supaya tetap terlihat */
+[data-tema="gelap"] .tinta-grafik .recharts-curve { stroke: #e2e8f0; }
+[data-tema="gelap"] .tinta-grafik .recharts-symbols { fill: #f1f5f9; stroke: #0b1120; }

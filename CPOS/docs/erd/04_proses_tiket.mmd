@@ -1,0 +1,200 @@
+erDiagram
+    WeightBridge {
+        bigint WeightID PK
+        varchar TicketNumber UK
+        datetime TicketDate
+        varchar WeightTypeCode FK
+        int SupplierID FK
+        int ProductID FK
+        int IDVehicle FK
+        bigint DriverID FK
+        varchar TransportMode
+        int TransportID FK "NULL"
+        int VehicleContractID FK "NULL"
+        varchar DONumber "NULL"
+        int DeliveryOrderID FK "NULL"
+        varchar StatusCode FK
+        bit IsVoid "NULL"
+        bit IsQRActive
+        datetime QRExpiredDate
+        int QRReprintCount
+        varchar DriverPhotoPath "NULL"
+        int ScaleID FK "NULL"
+        bigint CompAreaID FK
+        int FlowID FK "NULL"
+        varchar ParentTicketNumber FK "NULL"
+        decimal SplitWeight "NULL"
+        bigint CreateBy FK
+        datetime CheckDate "NULL"
+        bigint CheckBy FK "NULL"
+        bit IsCheck "NULL"
+        datetime ExitDate "NULL"
+        bigint ExitBy FK "NULL"
+    }
+    WeightBridgeType {
+        int WeightTypeID PK
+        varchar WeightTypeCode UK
+        nvarchar WeightTypeName
+        bit IsPayment
+        bit Active
+    }
+    Status {
+        int StatusID PK
+        varchar StatusCode UK
+        nvarchar StatusName
+        varchar StatusColor
+        tinyint SortOrder
+        nvarchar Description "NULL"
+    }
+    FlowStage {
+        varchar StageCode PK
+        nvarchar StageName
+        tinyint SortOrder
+    }
+    Flow {
+        int FlowID PK
+        varchar FlowCode UK
+        nvarchar FlowName
+        bit Active
+    }
+    FlowStep {
+        int FlowID PK,FK
+        tinyint StepNo PK
+        varchar StageCode FK
+    }
+    CompanyArea {
+        bigint CompAreaID PK
+    }
+    Scale {
+        int ScaleID PK
+        bigint CompAreaID FK
+        varchar ScaleCode
+        nvarchar ScaleName
+        varchar Port
+        int BaudRate
+        bit Active
+        datetime CreateDate
+        varchar Mode
+        tinyint DataBits
+        char Parity
+        decimal StopBits
+        varchar DataFormat
+        varchar Pattern "NULL"
+        decimal Factor
+        decimal ToleranceKg
+        decimal StableSeconds
+        decimal MinWeightKg
+        bit RequireST
+    }
+    Weighing {
+        varchar TicketNumber PK,FK
+        tinyint WeighNo PK
+        int ScaleID FK
+        decimal Weight
+        datetime WeighDate
+        bigint OperatorID FK "NULL"
+        char Hash "NULL"
+    }
+    Grading {
+        int GradingID PK
+        varchar TicketNumber FK,UK
+        float UnripePct "NULL"
+        float RottenPct "NULL"
+        float LongStalkPct "NULL"
+        float DirtPct "NULL"
+        float RipePct "NULL"
+        float LooseFruitPct "NULL"
+        float DeductionKg "NULL"
+        varchar Notes "NULL"
+        bigint GradedBy FK "NULL"
+        datetime GradingDate "NULL"
+    }
+    LabResult {
+        int LabResultID PK
+        varchar TicketNumber FK,UK
+        float FFA "NULL"
+        float Moisture "NULL"
+        float Dirt "NULL"
+        varchar LovibondColor "NULL"
+        varchar Decision "NULL"
+        int COADocID FK "NULL"
+        bigint TestedBy FK "NULL"
+        datetime TestDate "NULL"
+    }
+    TicketVoid {
+        varchar TicketNumber PK,FK
+        varchar VoidType
+        nvarchar Reason
+        int DocumentID FK "NULL"
+        bigint VoidBy FK "NULL"
+        datetime VoidDate
+    }
+    DOExcess {
+        int ExcessID PK
+        varchar TicketNumber FK,UK
+        varchar SplitTicketNumber FK
+        int DeliveryOrderID FK
+        decimal QuotaKg
+        decimal RealizedKg
+        decimal TicketNettoKg
+        decimal ExcessKg
+        varchar NewDONumber "NULL"
+        varchar Status
+        nvarchar Notes "NULL"
+        bigint SubmitBy FK "NULL"
+        datetime SubmitDate "NULL"
+        bigint ConfirmBy FK "NULL"
+        datetime ConfirmDate "NULL"
+        nvarchar ReturnReason "NULL"
+        bigint CompAreaID FK "NULL"
+        datetime CreateDate
+    }
+    Product {
+        int ProductID PK
+    }
+    Supplier {
+        int SupplierID PK
+    }
+    DetailVehicle {
+        int IDVehicle PK
+    }
+    DeliveryOrder {
+        int DeliveryOrderID PK
+    }
+    VehicleContract {
+        int VehicleContractID PK
+    }
+    Document {
+        int DocumentID PK
+    }
+    Users {
+        bigint UserID PK
+    }
+    CompanyArea |o--o{ DOExcess : "CompAreaID"
+    DeliveryOrder ||--o{ DOExcess : "DeliveryOrderID"
+    WeightBridge ||--o{ DOExcess : "SplitTicketNumber"
+    WeightBridge ||--o| DOExcess : "TicketNumber"
+    Flow ||--o{ FlowStep : "FlowID"
+    FlowStage ||--o{ FlowStep : "StageCode"
+    WeightBridge ||--o| Grading : "TicketNumber"
+    Document |o--o{ LabResult : "COADocID"
+    WeightBridge ||--o| LabResult : "TicketNumber"
+    Flow ||--o{ Product : "FlowID"
+    CompanyArea ||--o{ Scale : "CompAreaID"
+    Document |o--o{ TicketVoid : "DocumentID"
+    WeightBridge ||--o| TicketVoid : "TicketNumber"
+    WeightBridgeType |o--o{ VehicleContract : "TransactionType"
+    Scale ||--o{ Weighing : "ScaleID"
+    WeightBridge ||--o{ Weighing : "TicketNumber"
+    CompanyArea ||--o{ WeightBridge : "CompAreaID"
+    DeliveryOrder |o--o{ WeightBridge : "DeliveryOrderID"
+    Flow |o--o{ WeightBridge : "FlowID"
+    DetailVehicle ||--o{ WeightBridge : "IDVehicle"
+    WeightBridge |o--o{ WeightBridge : "ParentTicketNumber"
+    Product ||--o{ WeightBridge : "ProductID"
+    Scale |o--o{ WeightBridge : "ScaleID"
+    Status ||--o{ WeightBridge : "StatusCode"
+    Supplier ||--o{ WeightBridge : "SupplierID"
+    Supplier |o--o{ WeightBridge : "TransportID"
+    VehicleContract |o--o{ WeightBridge : "VehicleContractID"
+    WeightBridgeType ||--o{ WeightBridge : "WeightTypeCode"
