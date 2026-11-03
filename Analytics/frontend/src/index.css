@@ -135,3 +135,6 @@ html[data-sematan] main { padding: 1rem var(--tepi, 1rem) 1.5rem; }
 /* Garis dan titik berwarna tinta (hampir hitam) dibalik menjadi terang supaya tetap terlihat */
 [data-tema="gelap"] .tinta-grafik .recharts-curve { stroke: #e2e8f0; }
 [data-tema="gelap"] .tinta-grafik .recharts-symbols { fill: #f1f5f9; stroke: #0b1120; }
+
+/* Saat tema berganti (lib/tema.js): tanpa transisi, semua warna berubah serentak */
+.ganti-tema *, .ganti-tema *::before, .ganti-tema *::after { transition: none !important; }

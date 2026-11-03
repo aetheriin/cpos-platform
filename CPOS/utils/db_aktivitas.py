@@ -77,7 +77,7 @@ def sudah_masuk_hari_ini(id_user, tanggal):
 _KOLOM = f"""a.ActivityID AS id_aktivitas, a.LogDate AS waktu, a.ActivityType AS jenis, s.StatusCode AS status, s.StatusName AS nama_status,
              s.StatusColor AS warna_status, a.Description AS keterangan, a.NoVehicle AS no_plat, a.TimeStatus AS status_waktu,
              a.DiffMinutes AS selisih_menit, a.FaceDistance AS jarak_wajah, a.Device AS perangkat, f.PhotoPath AS foto_scan,
-             p.UserID AS id_personel, p.UserCode AS kode_personel, p.Nama AS nama_personel, p.PersonType AS kategori,
+             p.UserID AS id_personel, p.Nama AS nama_personel, p.PersonType AS kategori,
              {jenis_orang.sql_nama('p.PersonType')} AS nama_kategori, p.IsBlacklisted AS is_blacklisted, p.PhotoPath AS foto_path,
              p.CompanyFrom AS asal_perusahaan, d.Nama AS nama_dituju, ar.CompID + ' · ' + ar.AreaName AS area, u.Nama AS dicatat_oleh"""
 _FROM = """FROM FaceActivity a
@@ -112,8 +112,8 @@ def logs(tanggal, id_area, jenis=None, status=None, cari=None, batas=500):
         params.append(status)
     if cari:
         pola = f"%{cari}%"
-        sql += " AND (p.Nama LIKE ? OR p.UserCode LIKE ? OR p.NoKTP LIKE ? OR a.NoVehicle LIKE ?)"
-        params += [pola] * 4
+        sql += " AND (p.Nama LIKE ? OR p.NoKTP LIKE ? OR a.NoVehicle LIKE ?)"
+        params += [pola] * 3
     return _rapikan(_query(sql + " ORDER BY a.LogDate DESC, a.ActivityID DESC", *params))
 
 
@@ -153,7 +153,7 @@ def ringkasan(tanggal, id_area):
 
 def daftar_dituju():
     """Orang yang bisa ditemui tamu: karyawan aktif."""
-    return _query("""SELECT p.UserID AS id_personel, p.UserCode AS kode_personel, p.Nama AS nama_personel, ld.LevelDetName AS peran
+    return _query("""SELECT p.UserID AS id_personel, p.Nama AS nama_personel, ld.LevelDetName AS peran
                      FROM Users p LEFT JOIN LevelDetails ld ON ld.LevelDetID = p.UserLevelID
                      WHERE p.Active = 1 AND p.UserLevelID IS NOT NULL ORDER BY p.Nama""")
 
@@ -173,7 +173,7 @@ def rekap_harian(tanggal, id_area):
     f_area, a_area = sql_area("p.CompAreaID", id_area)
     st = id_status()[BERHASIL]
     rows = _query(f"""
-        SELECT p.UserID AS id_personel, p.UserCode AS kode_personel, p.Nama AS nama_personel, ld.LevelDetName AS peran,
+        SELECT p.UserID AS id_personel, p.Nama AS nama_personel, ld.LevelDetName AS peran,
                p.IsBlacklisted AS is_blacklisted,
                m.waktu AS jam_masuk, m.status_waktu AS status_masuk, m.selisih AS selisih_masuk,
                k.waktu AS jam_pulang, k.status_waktu AS status_pulang, k.selisih AS selisih_pulang
@@ -198,7 +198,7 @@ def rekap_bulanan(tahun, bulan, id_area):
     akhir = date(tahun + (bulan == 12), bulan % 12 + 1, 1)
     f_area, a_area = sql_area("p.CompAreaID", id_area)
     return _query(f"""
-        SELECT p.UserID AS id_personel, p.UserCode AS kode_personel, p.Nama AS nama_personel, ld.LevelDetName AS peran,
+        SELECT p.UserID AS id_personel, p.Nama AS nama_personel, ld.LevelDetName AS peran,
                COUNT(DISTINCT CASE WHEN a.ActivityType = 'MASUK' THEN a.LogDay END) AS hari_hadir,
                SUM(CASE WHEN a.ActivityType = 'MASUK' AND a.TimeStatus = 'TERLAMBAT' THEN 1 ELSE 0 END) AS jml_terlambat,
                SUM(CASE WHEN a.ActivityType = 'MASUK' AND a.TimeStatus = 'TERLAMBAT' THEN a.DiffMinutes ELSE 0 END) AS menit_terlambat,
@@ -207,7 +207,7 @@ def rekap_bulanan(tahun, bulan, id_area):
         LEFT JOIN LevelDetails ld ON ld.LevelDetID = p.UserLevelID
         LEFT JOIN FaceActivity a ON a.UserID = p.UserID AND a.StatusID = ? AND a.LogDay >= ? AND a.LogDay < ?
         WHERE p.Active = 1 AND p.PersonType = 'KARYAWAN'{f_area}
-        GROUP BY p.UserID, p.UserCode, p.Nama, ld.LevelDetName
+        GROUP BY p.UserID, p.Nama, ld.LevelDetName
         HAVING COUNT(a.ActivityID) > 0
         ORDER BY p.Nama""", id_status()[BERHASIL], awal, akhir, *a_area)
 

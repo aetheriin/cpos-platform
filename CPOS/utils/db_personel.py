@@ -5,11 +5,10 @@ from datetime import datetime
 
 from utils.db_utils import get_connection, _rows_to_dicts, hitung_hash_driver, user_id_baru
 from utils import jenis_orang
-from utils.personel_utils import PREFIX_KODE, kode_berikutnya
 from utils.face_cache import invalidate as reset_cache_wajah
 from utils import log_aktivitas
 
-KOLOM_PERSONEL = """p.UserID AS id_personel, p.UserCode AS kode_personel, p.NoKTP AS nik, p.Nama AS nama_personel, p.LicenseNumber AS no_sim, p.PersonType AS kategori,
+KOLOM_PERSONEL = """p.UserID AS id_personel, p.NoKTP AS nik, p.Nama AS nama_personel, p.LicenseNumber AS no_sim, p.PersonType AS kategori,
                     p.LicenseID AS id_jenis_sim, p.LicenseCode AS kode_jenis_sim, p.ExpiredSIM AS sim_berlaku_sampai,
                     p.IsBlacklisted AS is_blacklisted, p.BlacklistID AS id_blacklist, p.PhotoPath AS foto_path, p.IsUpload AS is_updated, p.Active AS is_active, p.UpdateDate AS updated_at,
                     p.CompanyFrom AS asal_perusahaan, p.VisitorNeeds AS keperluan, p.UserName AS akun, p.CompAreaID AS id_comp_area,
@@ -38,9 +37,9 @@ def get_daftar_personel(kategori=None, cari=None, hanya_blacklist=False, batas=2
     if hanya_blacklist:
         sql += " AND p.IsBlacklisted = 1"
     if cari:
-        sql += " AND (p.UserCode LIKE ? OR p.NoKTP LIKE ? OR p.Nama LIKE ? OR CAST(p.UserID AS VARCHAR) = ?)"
+        sql += " AND (p.NoKTP LIKE ? OR p.Nama LIKE ? OR CAST(p.UserID AS VARCHAR) = ?)"
         pola = f"%{cari}%"
-        params += [pola, pola, pola, cari.lstrip("0") or "0"]
+        params += [pola, pola, cari.lstrip("0") or "0"]
     sql += " ORDER BY p.UserID"
     conn = get_connection()
     cursor = conn.cursor()
@@ -59,38 +58,8 @@ def get_personel(id_personel):
     return _normalisasi(data[0]) if data else None
 
 
-def cek_kode_ada(kode, exclude_id=None):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT UserID AS id_personel FROM Users WHERE UserCode = ? AND UserID <> ?",
-                   kode, exclude_id or 0)
-    ada = cursor.fetchone() is not None
-    conn.close()
-    return ada
-
-
-def prefix_kategori(kategori):
-    """'DRV-' / 'KRY-' / 'TMU-' per jenis orang, selain itu PREFIX_KODE lama."""
-    prefix = ((jenis_orang.JENIS.get(kategori or "") or {}).get("prefix_kode") or "").strip().upper()
-    return f"{prefix}-" if prefix else PREFIX_KODE
-
-
-def saran_kode_personel(kategori=None):
-    """Kode berikutnya untuk kategori: nomor terbesar prefix itu + 1 (unik, tidak menimpa kode lama)."""
-    prefix = prefix_kategori(kategori)
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT UserCode AS kode_personel FROM Users WHERE UserCode LIKE ?",
-                       prefix.replace("[", "[[]").replace("_", "[_]").replace("%", "[%]") + "%")
-        kode = [r.kode_personel for r in cursor.fetchall()]
-    finally:
-        conn.close()
-    return kode_berikutnya(kode, prefix)
-
-
 def _catat_audit(cursor, id_personel, aksi, lama, baru, user_id):
-    """lama / baru: dict {kode_personel, nik, nama, no_sim} (lama None untuk TAMBAH). Dicatat di log_aktivitas."""
+    """lama / baru: dict {nik, nama, no_sim} (lama None untuk TAMBAH). Dicatat di log_aktivitas."""
     log_aktivitas.catat("PERSONEL", aksi, tabel="Users", id_baris=id_personel, lama=lama, baru=baru,
                         user_id=user_id, cursor=cursor)
 
@@ -167,26 +136,26 @@ def simpan_profil(cursor, id_personel, kategori, profil):
 
 
 def _data_lama(cursor, id_personel):
-    cursor.execute("SELECT UserCode AS kode_personel, NoKTP AS nik, Nama AS nama_personel, LicenseNumber AS no_sim FROM UserProfile WHERE UserID = ?", id_personel)
+    cursor.execute("SELECT NoKTP AS nik, Nama AS nama_personel, LicenseNumber AS no_sim FROM UserProfile WHERE UserID = ?", id_personel)
     r = cursor.fetchone()
-    return {"kode_personel": r.kode_personel, "nik": r.nik, "nama": r.nama_personel, "no_sim": r.no_sim}
+    return {"nik": r.nik, "nama": r.nama_personel, "no_sim": r.no_sim}
 
 
-def insert_personel(nik, nama, no_sim, kategori, kode, embedding_binary, foto_path, foto_sumber, user_id,
+def insert_personel(nik, nama, no_sim, kategori, embedding_binary, foto_path, foto_sumber, user_id,
                     id_jenis_sim=None, sim_berlaku=None, profil=None):
     conn = get_connection()
     try:
         cursor = conn.cursor()
         id_personel = user_id_baru(cursor)
-        cursor.execute("""INSERT INTO Users (UserID, UserCode, NoKTP, Nama, CurrentHash) VALUES (?, ?, ?, ?, ?)""",
-                       id_personel, kode or None, nik, nama, hitung_hash_driver(nik, nama, no_sim, datetime.now()))
+        cursor.execute("""INSERT INTO Users (UserID, NoKTP, Nama, CurrentHash) VALUES (?, ?, ?, ?)""",
+                       id_personel, nik, nama, hitung_hash_driver(nik, nama, no_sim, datetime.now()))
         simpan_profil(cursor, id_personel, kategori, profil)
         simpan_sim(cursor, id_personel, no_sim or None, id_jenis_sim, sim_berlaku, user_id)
         if embedding_binary is not None:
             simpan_wajah(cursor, id_personel, embedding_binary, foto_path, foto_sumber, user_id)
         if user_id:
             _catat_audit(cursor, id_personel, "TAMBAH", None,
-                         {"kode_personel": kode or None, "nik": nik, "nama": nama, "no_sim": no_sim or None}, user_id)
+                         {"nik": nik, "nama": nama, "no_sim": no_sim or None}, user_id)
         conn.commit()
     except Exception:
         conn.rollback()
@@ -197,16 +166,16 @@ def insert_personel(nik, nama, no_sim, kategori, kode, embedding_binary, foto_pa
     return id_personel
 
 
-def update_personel(id_personel, kode, nik, nama, no_sim, kategori, user_id,
+def update_personel(id_personel, nik, nama, no_sim, kategori, user_id,
                     embedding_binary=None, foto_path=None, foto_sumber=None, id_jenis_sim=None, sim_berlaku=None, profil=None):
     conn = get_connection()
     try:
         cursor = conn.cursor()
         lama = _data_lama(cursor, id_personel)
-        baru = {"kode_personel": kode or None, "nik": nik, "nama": nama, "no_sim": no_sim or None}
+        baru = {"nik": nik, "nama": nama, "no_sim": no_sim or None}
         hash_baru = hitung_hash_driver(nik, nama, no_sim, datetime.now())
-        cursor.execute("""UPDATE Users SET UserCode = ?, NoKTP = ?, Nama = ?, IsUpload = 1, CurrentHash = ?, UpdateDate = GETDATE()
-                          WHERE UserID = ?""", kode or None, nik, nama, hash_baru, id_personel)
+        cursor.execute("""UPDATE Users SET NoKTP = ?, Nama = ?, IsUpload = 1, CurrentHash = ?, UpdateDate = GETDATE()
+                          WHERE UserID = ?""", nik, nama, hash_baru, id_personel)
         simpan_profil(cursor, id_personel, kategori, profil)
         simpan_sim(cursor, id_personel, no_sim or None, id_jenis_sim, sim_berlaku, user_id)
         if embedding_binary is not None:
@@ -251,13 +220,11 @@ def get_riwayat_perubahan_personel(hari=7, batas=300):
     cursor = conn.cursor()
     cursor.execute("""
         SELECT TOP (?) l.LogID AS id_log, p.UserID AS id_personel, l.LogActionType AS aksi,
-               JSON_VALUE(l.OldValue, '$.kode_personel') AS kode_personel_lama,
-               JSON_VALUE(l.NewValue, '$.kode_personel') AS kode_personel_baru,
                JSON_VALUE(l.OldValue, '$.nik') AS nik_lama, JSON_VALUE(l.NewValue, '$.nik') AS nik_baru,
                JSON_VALUE(l.OldValue, '$.nama') AS nama_lama, JSON_VALUE(l.NewValue, '$.nama') AS nama_baru,
                JSON_VALUE(l.OldValue, '$.no_sim') AS no_sim_lama, JSON_VALUE(l.NewValue, '$.no_sim') AS no_sim_baru,
                CAST(l.LogDate AS DATETIME) AS updated_at, u.Nama AS oleh, lv.LevelDetCode AS role_oleh,
-               p.UserCode AS kode_personel, p.Nama AS nama_personel
+               p.Nama AS nama_personel
         FROM Log l
         JOIN Users p ON p.UserID = TRY_CAST(l.RowID AS BIGINT)
         LEFT JOIN Users u ON l.CreateBy = u.UserID

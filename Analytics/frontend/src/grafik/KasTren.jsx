@@ -134,7 +134,7 @@ export const KreditToDate = memo(function KreditToDate({ harian, bulanan, period
               const d = active && payload?.[0]?.payload
               if (!d) return null
               return <KotakInfo judul={perHari ? tglLengkap(d.hari) : d.label} baris={[
-                ['Debit', uangPenuh(d.debit, satuan)], ['Credit', uangPenuh(d.kredit, satuan)], ['Credit to date', uangPenuh(d.kredit_td, satuan)]]} />
+                ['Credit', uangPenuh(d.kredit, satuan)], ['Credit to date', uangPenuh(d.kredit_td, satuan)]]} />
             }} />
             <Bar yAxisId="periode" dataKey="kredit" fill={WARNA_KELUAR} radius={[2, 2, 0, 0]} maxBarSize={perHari ? 14 : 28} isAnimationActive={false} />
             <Line yAxisId="td" dataKey="kredit_td" stroke={WARNA_TD} strokeWidth={2.5} dot={!perHari && { r: 3, fill: WARNA_TD }} isAnimationActive={false} />

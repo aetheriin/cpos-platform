@@ -38,8 +38,8 @@ function formatIdPersonel(id) {
     return String(id ?? '').padStart(3, '0');
 }
 
-function formatNamaPersonel(kode, id, nama) {
-    return kode ? `${kode} · ${nama}` : `ID ${formatIdPersonel(id)} · ${nama}`;
+function formatNamaPersonel(id, nama) {
+    return `ID ${formatIdPersonel(id)} · ${nama}`;
 }
 
 // Jenis orang (utils/jenis_orang.py)
@@ -64,10 +64,6 @@ function badge(label, warna) {
 function badgeKategori(kategori) {
     const [label, warna] = LABEL_KATEGORI[kategori] || [kategori, 'bg-slate-200 text-slate-600'];
     return badge(label, warna);
-}
-
-function kodeAtauKosong(kode) {
-    return kode ? escapeHtml(kode) : '<span class="text-amber-700 font-medium">Belum ada kode</span>';
 }
 
 // Kode sistem -> teks tampilan: 'SECURITY_REGISTER' -> 'Security Register' (untuk kode yang belum punya label)
@@ -263,13 +259,13 @@ document.addEventListener('input', e => {
 document.addEventListener('focusout', e => { if (e.target.matches && e.target.matches('input[data-plat]')) rapikanKotakPlat(e.target); });
 
 // ===== HURUF KECIL / BESAR =====
-// <input data-huruf-kecil> (mis. username): diketik / ditempel -> langsung huruf kecil tanpa spasi.
+// <input data-username> (username login / tambah pengguna): diketik / ditempel -> langsung huruf besar tanpa spasi.
 // <input class="uppercase"> (kode, No. DO, SIM, ...): isinya benar-benar dijadikan huruf besar, bukan hanya tampilannya,
 // supaya yang terlihat sama dengan yang dikirim (pola isian / pengecekan server tidak menolak huruf kecil tersembunyi).
 document.addEventListener('input', e => {
     const el = e.target;
     if (!el.matches || el.matches('[data-plat]')) return;
-    const baru = el.matches('input[data-huruf-kecil]') ? el.value.toLowerCase().replace(/\s+/g, '')
+    const baru = el.matches('input[data-username]') ? el.value.toUpperCase().replace(/\s+/g, '')
         : el.matches('input.uppercase, input.info-field-input.uppercase') ? el.value.toUpperCase() : el.value;
     if (baru === el.value) return;
     const posisi = Math.min(el.selectionStart, baru.length);

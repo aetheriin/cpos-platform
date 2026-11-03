@@ -115,6 +115,9 @@ PALM_TOP_OPERATOR = angka("PALM_TOP_OPERATOR", 12)
 # Kedua SP menerima @PERIOD (YYYYMM) dan mengembalikan satu bulan untuk semua perusahaan; laporan memanggilnya per bulan di periode yang dimuat.
 SP_KAS_GIRO = nama_sp("SP_KAS_GIRO", "test.dbo.SP_GET_GIROTRANSACTION")
 TABEL_KAS_KURS = nama_sp("TABEL_KAS_KURS", "test.dbo.EXC_RATE")   # kurs ke rupiah per perusahaan, CURRENCYID, dan tahun
+# kurs yang diinput user di CPOS (Data Master › Kurs Mata Uang): riwayat per tanggal berlaku, dipakai lebih dulu dari TABEL_KAS_KURS
+TABEL_KAS_KURS_INPUT = nama_sp("TABEL_KAS_KURS_INPUT", "CPOS.dbo.ExchangeRate")
+TABEL_KAS_MATA_UANG = nama_sp("TABEL_KAS_MATA_UANG", "CPOS.dbo.Currency")
 KAS_HARI_BAWAAN = angka("KAS_HARI_BAWAAN", 30)          # rentang tampilan bawaan: sekian hari terakhir (yang dimuat: 1 Januari sampai hari ini)
 # kurs harian dari internet untuk mata uang yang tidak ada di TABEL_KAS_KURS; {dari} {sampai} {kode} diisi.
 KAS_KURS_INTERNET = teks("KAS_KURS_INTERNET", "https://api.frankfurter.dev/v1/{dari}..{sampai}?base={kode}&symbols=IDR")

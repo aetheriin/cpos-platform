@@ -41,7 +41,7 @@ function tampilTargetLog() {
             ${t.kode === targetLog ? 'bg-slate-900 text-white' : 'hover:bg-slate-50'}" data-on-click="pilihTargetLog" data-arg="${t.kode}">
             <span class="min-w-0">
                 <span class="font-semibold ${t.tipe === 'KENDARAAN' ? 'font-mono' : ''}">${escapeHtml(t.tipe === 'PERSONEL'
-                    ? formatNamaPersonel(t.kode_personel, Number(t.kode.slice(1)), t.nama) : t.nama)}</span>
+                    ? formatNamaPersonel(Number(t.kode.slice(1)), t.nama) : t.nama)}</span>
                 <span class="block text-xs ${t.kode === targetLog ? 'text-slate-300' : 'text-slate-500'}">
                     ${t.tipe === 'PERSONEL' ? 'Personel' : 'Kendaraan'} · ${t.jumlah}× terdeteksi · pertama ${t.pertama} · terakhir ${t.terakhir}</span>
             </span>

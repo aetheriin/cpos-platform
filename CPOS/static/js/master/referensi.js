@@ -91,6 +91,7 @@ function bukaRef(jenis, id = null) {
     meta.kolom.forEach(f => { isi[f.kunci] = r ? (r[f.kunci] ?? '') : (f.tipe === 'tanggal' ? new Date().toISOString().slice(0, 10) : ''); });
     isiForm(form, isi);
     document.getElementById('judulModalRef').textContent = `${r ? 'Ubah' : 'Tambah'} ${meta.judul}`;
+    if (jenis === 'kurs' && typeof pasangSaranKurs === 'function') pasangSaranKurs();     // js/master/kurs.js
     openModal('modalRef');
     form.querySelector('input:not([type=hidden]):not([readonly]), select')?.focus();
 }

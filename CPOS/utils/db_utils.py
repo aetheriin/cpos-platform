@@ -239,7 +239,7 @@ def get_supir_kendaraan(id_kendaraan):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT d.UserID AS id_driver, d.UserCode AS kode_personel, d.NoKTP AS nik, d.Nama AS nama_driver, d.LicenseNumber AS no_sim,
+        SELECT d.UserID AS id_driver, d.NoKTP AS nik, d.Nama AS nama_driver, d.LicenseNumber AS no_sim,
                d.PhotoPath AS foto_path, d.IsUpload AS is_updated, d.IsBlacklisted AS is_blacklisted, kd.IsMain AS is_utama
         FROM VehicleDriver kd
         JOIN UserProfile d ON kd.UserID = d.UserID
@@ -377,7 +377,7 @@ def akhiri_kontrak(id_kontrak):
 # Supir adalah orang berjenis DRIVER (visitor dengan SIM). Kolom dialias ke nama lama (id_driver, nama_driver)
 # supaya kode & JSON tab Security / Timbangan / Sortasi / Lab tidak perlu berubah.
 
-SQL_KOLOM_DRIVER = """d.UserID AS id_driver, d.UserCode AS kode_personel, d.NoKTP AS nik, d.Nama AS nama_driver, d.LicenseNumber AS no_sim,
+SQL_KOLOM_DRIVER = """d.UserID AS id_driver, d.NoKTP AS nik, d.Nama AS nama_driver, d.LicenseNumber AS no_sim,
                       d.PersonType AS kategori, d.IsBlacklisted AS is_blacklisted, d.IsUpload AS is_updated, d.PhotoPath AS foto_path"""
 
 def get_all_driver_embeddings():
@@ -421,11 +421,9 @@ def cari_wajah_mirip_driver(embedding_baru, threshold=None, exclude_id=None):
     return (id_personel, nama) if id_personel is not None else None
 
 def insert_driver(nik, nama, no_sim, embedding_binary, foto_path=None, user_id=None, foto_sumber='KAMERA'):
-    """Supir baru dari modal Tambah di Form Create Ticket = orang berjenis DRIVER, kode otomatis (mis. DRV-012).
-    Kembalikan (id_personel, kode_personel)."""
-    from utils.db_personel import insert_personel, saran_kode_personel
-    kode = saran_kode_personel('DRIVER')
-    return insert_personel(nik, nama, no_sim, 'DRIVER', kode, embedding_binary, foto_path, foto_sumber, user_id), kode
+    """Supir baru dari modal Tambah di Form Create Ticket = orang berjenis DRIVER. Kembalikan id_personel."""
+    from utils.db_personel import insert_personel
+    return insert_personel(nik, nama, no_sim, 'DRIVER', embedding_binary, foto_path, foto_sumber, user_id)
 
 def hitung_hash_driver(nik, nama, no_sim, timestamp, secret_key=None):
     if secret_key is None:
@@ -439,7 +437,7 @@ def update_driver_dengan_audit(driver_id, nik_baru, nama_baru, sim_baru, updated
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT NoKTP AS nik, Nama AS nama_personel, LicenseNumber AS no_sim, UserCode AS kode_personel FROM UserProfile WHERE UserID = ?", driver_id)
+    cursor.execute("SELECT NoKTP AS nik, Nama AS nama_personel, LicenseNumber AS no_sim FROM UserProfile WHERE UserID = ?", driver_id)
     lama = cursor.fetchone()
 
     timestamp = datetime.now()
@@ -451,9 +449,9 @@ def update_driver_dengan_audit(driver_id, nik_baru, nama_baru, sim_baru, updated
         simpan_wajah(cursor, driver_id, embedding_binary, foto_path, "KAMERA", updated_by)
     from utils import log_aktivitas
     log_aktivitas.catat("PERSONEL", "UPDATE", tabel="Users", id_baris=driver_id, user_id=updated_by, cursor=cursor,
-                        lama={"kode_personel": lama.kode_personel, "nik": lama.nik, "nama": lama.nama_personel,
+                        lama={"nik": lama.nik, "nama": lama.nama_personel,
                               "no_sim": lama.no_sim},
-                        baru={"kode_personel": lama.kode_personel, "nik": nik_baru, "nama": nama_baru, "no_sim": sim_baru})
+                        baru={"nik": nik_baru, "nama": nama_baru, "no_sim": sim_baru})
     conn.commit()
     conn.close()
     if embedding_binary is not None:
@@ -498,7 +496,7 @@ def cari_transaksi_aktif(no_plat=None, no_tiket=None):
         SELECT t.TicketNumber AS no_tiket, t.WeightTypeCode AS jenis_transaksi, t.DONumber AS no_do, t.StatusCode AS status_alur, t.QRExpiredDate AS qr_expired_at,
                t.TicketDate AS created_at, t.QRReprintCount AS qr_reprint_count, t.SupplierID AS id_supplier, t.ProductID AS id_produk, s.SupplierName AS nama_supplier, p.ProductName AS nama_produk, p.Category AS kategori,
                t.CompAreaID AS id_comp_area, t.FlowID AS id_alur, t.TransportMode AS cara_angkut, t.TransportID AS id_pengangkutan, k.NoVehicle AS no_plat, k.NoSTNK AS no_stnk,
-               d.UserID AS id_driver, d.UserCode AS kode_personel, d.NoKTP AS nik, d.Nama AS nama_driver, d.LicenseNumber AS no_sim,
+               d.UserID AS id_driver, d.NoKTP AS nik, d.Nama AS nama_driver, d.LicenseNumber AS no_sim,
                d.IsUpload AS is_updated, d.IsBlacklisted AS is_blacklisted, d.PhotoPath AS foto_path
         FROM WeightBridge t
         JOIN DetailVehicle k ON t.IDVehicle = k.IDVehicle
@@ -745,8 +743,7 @@ def get_history_driver(limit=20):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(f"""
-        SELECT TOP {int(limit)} k.NoVehicle AS no_plat, d.UserID AS id_driver, d.UserCode AS kode_personel,
-               d.Nama AS nama_driver, d.NoKTP AS nik, d.LicenseNumber AS no_sim, d.IsBlacklisted AS is_blacklisted
+        SELECT TOP {int(limit)} k.NoVehicle AS no_plat, d.UserID AS id_driver, d.Nama AS nama_driver, d.NoKTP AS nik, d.LicenseNumber AS no_sim, d.IsBlacklisted AS is_blacklisted
         FROM WeightBridge t
         JOIN DetailVehicle k ON t.IDVehicle = k.IDVehicle
         JOIN UserProfile d ON t.DriverID = d.UserID

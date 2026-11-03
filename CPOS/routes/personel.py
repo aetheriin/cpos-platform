@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from utils.face_utils import extract_embedding_tunggal, embedding_to_binary
 from utils.db_utils import cek_nik_ada, cari_wajah_mirip_driver
-from utils.db_personel import (get_daftar_personel, get_personel, cek_kode_ada, saran_kode_personel,
+from utils.db_personel import (get_daftar_personel, get_personel,
                                insert_personel, update_personel, hapus_personel, akun_personel, daftar_kategori, daftar_jenis_sim,
                                sim_dipakai)
 from utils.personel_utils import validasi_personel, format_nama_personel
@@ -40,7 +40,7 @@ def _cek_foto(file, exclude_id=None):
     hasil["tidak_mirip_blacklist"] = not (target and target["is_blacklisted"])
     hasil["tidak_mirip_personel"] = target is None or target["is_blacklisted"]
     if target:
-        nama = format_nama_personel(target["kode_personel"], target["id_personel"], target["nama_personel"])
+        nama = format_nama_personel(target["id_personel"], target["nama_personel"])
         hasil["pesan"] = (f"Wajah cocok dengan personel BLACKLIST: {nama}" if target["is_blacklisted"]
                           else f"Wajah sudah terdaftar sebagai {nama}")
         hasil["id_mirip"] = target["id_personel"]
@@ -61,7 +61,7 @@ def _catat_jika_blacklist(hasil):
 
 def _data_form():
     f = request.form
-    data = {"kode": f.get("kode_personel", "").strip().upper() or None, "nik": f.get("nik", "").strip(),
+    data = {"nik": f.get("nik", "").strip(),
             "nama": f.get("nama", "").strip(), "kategori": f.get("kategori", "").strip().upper(),
             "no_sim": f.get("no_sim", "").strip().upper() or None,
             "id_jenis_sim": int(f["id_jenis_sim"]) if (f.get("id_jenis_sim") or "").isdigit() else None,
@@ -128,8 +128,6 @@ def _validasi(data, exclude_id=None):
             return f"No. SIM {data['no_sim']} sudah dipakai personel lain"
     if cek_nik_ada(data["nik"], exclude_id=exclude_id):
         return f"NIK '{data['nik']}' sudah terdaftar (termasuk personel yang sudah dihapus)"
-    if data["kode"] and cek_kode_ada(data["kode"], exclude_id):
-        return f"Kode '{data['kode']}' sudah dipakai personel lain"
     return None
 
 
@@ -142,23 +140,11 @@ def personel_daftar():
                                        request.args.get("blacklist") == "1"))
 
 
-@personel_bp.route("/api/personel/saran-kode")
-@login_required
-def personel_saran_kode():
-    """Saran kode per kategori (prefix di Admin › Organisasi › Kategori Personel), mis. DRV-012."""
-    return jsonify({"kode": saran_kode_personel((request.args.get("kategori") or "").strip().upper() or None)})
-
-
-def _rapikan(data, lama=None):
-    """SIM hanya untuk kategori wajib SIM. Kode: hanya level dengan hak ubah Personel (HO) boleh mengisi sendiri;
-    selain itu otomatis per kategori (tambah) atau tetap kode lama (ubah)."""
+def _rapikan(data):
+    """SIM hanya untuk kategori wajib SIM."""
     kategori = daftar_kategori(semua=True).get(data["kategori"]) or {}
     if not kategori.get("wajib_sim"):
         data["no_sim"] = data["id_jenis_sim"] = data["sim_berlaku"] = None
-    if not boleh("PERSONEL", "ubah"):
-        data["kode"] = lama["kode_personel"] if lama else None
-    if not data["kode"]:
-        data["kode"] = saran_kode_personel(data["kategori"])
 
 
 @personel_bp.route("/api/personel/<int:id_personel>")
@@ -208,7 +194,7 @@ def personel_tambah():
         return jsonify({"error": hasil["pesan"], "cek": hasil}), 400
 
     try:
-        id_baru = insert_personel(data["nik"], data["nama"], data["no_sim"], data["kategori"], data["kode"],
+        id_baru = insert_personel(data["nik"], data["nama"], data["no_sim"], data["kategori"],
                                   embedding_to_binary(embedding), relatif, data["foto_sumber"], current_user.id,
                                   data["id_jenis_sim"], data["sim_berlaku"], profil)
     except ValueError as e:
@@ -259,7 +245,7 @@ def personel_update(id_personel):
     ditolak = _cek_role_kategori("ubah", lama["kategori"], data["kategori"])
     if ditolak:
         return ditolak
-    _rapikan(data, lama)
+    _rapikan(data)
     error = _validasi(data, exclude_id=id_personel)
     if error:
         return jsonify({"error": error}), 400
@@ -282,7 +268,7 @@ def personel_update(id_personel):
         embedding_binary = embedding_to_binary(embedding)
 
     try:
-        update_personel(id_personel, data["kode"], data["nik"], data["nama"], data["no_sim"], data["kategori"],
+        update_personel(id_personel, data["nik"], data["nama"], data["no_sim"], data["kategori"],
                         current_user.id, embedding_binary, relatif, data["foto_sumber"] if relatif else None,
                         data["id_jenis_sim"], data["sim_berlaku"], profil)
     except ValueError as e:
@@ -306,5 +292,5 @@ def personel_hapus(id_personel):
     if akun_personel(id_personel):
         return jsonify({"error": "Personel ini punya akun login aktif. Nonaktifkan akunnya di Admin › Kelola Pengguna terlebih dahulu."}), 400
     hapus_personel(id_personel, current_user.id)
-    return jsonify({"message": f"{format_nama_personel(p['kode_personel'], id_personel, p['nama_personel'])} berhasil dihapus. "
+    return jsonify({"message": f"{format_nama_personel(id_personel, p['nama_personel'])} berhasil dihapus. "
                                "Riwayat tiket & absensi tetap tersimpan."})

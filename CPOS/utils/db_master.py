@@ -5,13 +5,13 @@ def daftar_kendaraan(cari="", batas=500):
     sql = f"""
         SELECT TOP {int(batas)} k.IDVehicle AS id_kendaraan, k.NoVehicle AS no_plat, k.NoSTNK AS no_stnk, k.Active AS is_active, CAST(CASE WHEN k.BlacklistID IS NULL THEN 0 ELSE 1 END AS BIT) AS is_blacklisted, k.CreateDate AS created_at,
                k.VehicleType AS id_jenis_kendaraan, jk.NameType AS jenis_kendaraan,
-               u.id_driver AS id_supir_utama, u.nama_personel AS nama_supir_utama, u.kode_personel AS kode_supir_utama,
+               u.id_driver AS id_supir_utama, u.nama_personel AS nama_supir_utama,
                (SELECT COUNT(*) FROM VehicleDriver kd JOIN Users p ON p.UserID = kd.UserID
                 WHERE kd.IDVehicle = k.IDVehicle AND kd.Active = 1 AND p.Active = 1) AS jumlah_supir,
                (SELECT MAX(t.TicketDate) FROM WeightBridge t WHERE t.IDVehicle = k.IDVehicle) AS transaksi_terakhir
         FROM DetailVehicle k
         LEFT JOIN VehicleType jk ON jk.VehicleTypeID = k.VehicleType
-        OUTER APPLY (SELECT TOP 1 kd.UserID AS id_driver, p.Nama AS nama_personel, p.UserCode AS kode_personel
+        OUTER APPLY (SELECT TOP 1 kd.UserID AS id_driver, p.Nama AS nama_personel
                      FROM VehicleDriver kd JOIN Users p ON p.UserID = kd.UserID
                      WHERE kd.IDVehicle = k.IDVehicle AND kd.Active = 1 AND kd.IsMain = 1
                        AND p.Active = 1) u
@@ -191,7 +191,7 @@ def daftar_driver_aktif():
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("""SELECT UserID AS id_personel, UserCode AS kode_personel, Nama AS nama_personel, NoKTP AS nik FROM UserProfile
+        cursor.execute("""SELECT UserID AS id_personel, Nama AS nama_personel, NoKTP AS nik FROM UserProfile
                           WHERE PersonType = 'DRIVER' AND Active = 1 AND IsBlacklisted = 0
                           ORDER BY Nama""")
         return _rows_to_dicts(cursor)

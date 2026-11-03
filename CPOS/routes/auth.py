@@ -57,7 +57,7 @@ def login():
     if request.method == "GET":
         return render_template("auth/login.html", error=None, info=info)
 
-    username = request.form.get("username", "").strip()
+    username = request.form.get("username", "").strip().upper()   # username selalu huruf besar
     ip = request.remote_addr
     tunggu = sisa_kunci(username, ip)
     if tunggu:

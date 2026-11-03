@@ -125,7 +125,7 @@ function kartuOrang(d, isi, warna = 'border-slate-200') {
             <div class="flex-1 min-w-0">
                 <div class="flex flex-wrap items-center gap-2"><p class="text-lg font-bold text-slate-900">${escapeHtml(d.nama_personel)}</p>${badgeKategori(d.kategori)}
                     ${d.is_blacklisted ? badge('BLACKLIST', WARNA_BADGE.merah) : ''}</div>
-                <p class="text-sm text-slate-500">${escapeHtml(d.kode_personel || '-')} · NIK ${escapeHtml(d.nik || '-')}
+                <p class="text-sm text-slate-500">ID ${formatIdPersonel(d.id_personel)} · NIK ${escapeHtml(d.nik || '-')}
                     ${d.peran ? ` · ${escapeHtml(d.peran)}` : ''}${d.asal_perusahaan ? ` · ${escapeHtml(d.asal_perusahaan)}` : ''}</p>
                 <div class="mt-3">${isi}</div>
             </div>

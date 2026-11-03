@@ -81,7 +81,7 @@ def buat_tiket():
     driver = get_driver_by_id(id_driver) if str(id_driver).isdigit() else None
     if not driver:
         return jsonify({"error": "Supir tidak ditemukan"}), 404
-    nama_driver = format_nama_personel(driver.kode_personel, driver.id_driver, driver.nama_driver)
+    nama_driver = format_nama_personel(driver.id_driver, driver.nama_driver)
     if driver.kategori != 'DRIVER':
         return jsonify({"error": f"{nama_driver} terdaftar sebagai {driver.kategori}, bukan supir"}), 400
 
@@ -128,7 +128,7 @@ def buat_tiket():
 
     if prev_driver_id:
         lama = get_driver_by_id(prev_driver_id)
-        nama_lama = format_nama_personel(lama.kode_personel, lama.id_driver, lama.nama_driver) if lama else prev_driver_id
+        nama_lama = format_nama_personel(lama.id_driver, lama.nama_driver) if lama else prev_driver_id
         catat_security_audit(current_user.id, "OVERRIDE_DRIVER", no_tiket, ip_address=ip,
                              details={"keterangan": f"Supir diganti: {nama_lama} → {nama_driver}",
                                       "prev_driver_id": prev_driver_id, "id_driver": driver.id_driver})
@@ -166,7 +166,7 @@ def _data_verif(d, is_updated=None):
     """Baris driver -> argumen verif.simpan_hasil_*."""
     return {"id_driver": d.id_driver, "nama": d.nama_driver, "nik": d.nik, "no_sim": d.no_sim,
             "is_updated": bool(d.is_updated) if is_updated is None else is_updated, "foto_path": d.foto_path,
-            "kode_personel": d.kode_personel, "kategori": d.kategori, "is_blacklisted": bool(d.is_blacklisted)}
+            "kategori": d.kategori, "is_blacklisted": bool(d.is_blacklisted)}
 
 
 @security_bp.route("/api/driver/tambah", methods=["POST"])
@@ -201,7 +201,7 @@ def driver_tambah():
     if mirip:
         hapus_file(filepath)
         lama = get_driver_by_id(mirip[0])
-        nama_lama = format_nama_personel(lama.kode_personel, lama.id_driver, lama.nama_driver)
+        nama_lama = format_nama_personel(lama.id_driver, lama.nama_driver)
         if lama.is_blacklisted:
             catat_security_audit(current_user.id, "TRY_SCAN_BLACKLIST", ip_address=request.remote_addr,
                                  details={"keterangan": f"Tambah supir: wajah cocok dengan {nama_lama} (blacklist)",
@@ -210,12 +210,12 @@ def driver_tambah():
                                      "Gunakan data supir tersebut lewat Ubah Supir."}), 400
         return jsonify({"error": f"Wajah sudah terdaftar sebagai {nama_lama}"}), 400
 
-    driver_id, kode = insert_driver(nik, nama, no_sim, embedding_to_binary(embedding), foto_path, current_user.id)
+    driver_id = insert_driver(nik, nama, no_sim, embedding_to_binary(embedding), foto_path, current_user.id)
     verif.simpan_hasil_user(id_pos(), current_user.id, id_driver=driver_id, nama=nama, nik=nik, no_sim=no_sim,
-                            is_updated=False, foto_path=foto_path, kode_personel=kode, kategori="DRIVER",
+                            is_updated=False, foto_path=foto_path, kategori="DRIVER",
                             is_blacklisted=False)
-    return jsonify({"message": f"Supir {nama} ({kode}) berhasil ditambahkan",
-                    "id_driver": driver_id, "kode_personel": kode, "foto_path": foto_path}), 200
+    return jsonify({"message": f"Supir {nama} berhasil ditambahkan",
+                    "id_driver": driver_id, "foto_path": foto_path}), 200
 
 @security_bp.route("/api/driver/update-identitas", methods=["POST"])
 @login_required
@@ -287,7 +287,7 @@ def scan_wajah_supir():
             return jsonify({"error": "Supir tidak dikenali. Silakan tambahkan sebagai data baru"}), 404
 
         d = get_driver_by_id(id_cocok)
-        nama = format_nama_personel(d.kode_personel, d.id_driver, d.nama_driver)
+        nama = format_nama_personel(d.id_driver, d.nama_driver)
         if d.kategori != 'DRIVER':
             return jsonify({"error": f"{nama} terdaftar sebagai {d.kategori}, bukan supir", "id_driver": d.id_driver}), 400
         # Blacklist = peringatan: tetap terverifikasi, tercatat di Log Audit

@@ -27,7 +27,7 @@
                 <select id="kendSupir" name="id_supir_utama" class="input-field" data-cari>
                     <option value="">-- Tanpa supir utama --</option>
                     {% for d in driver_list %}
-                    <option value="{{ d.id_personel }}">{{ d.nama_personel }} · {{ d.kode_personel or 'ID %03d' % d.id_personel }} · NIK {{ d.nik }}</option>
+                    <option value="{{ d.id_personel }}">{{ d.nama_personel }} · ID {{ '%03d' % d.id_personel }} · NIK {{ d.nik }}</option>
                     {% endfor %}
                 </select>
             </div>

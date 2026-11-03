@@ -49,7 +49,7 @@ HALAMAN = {
     "kesehatan": ("Kesehatan Sistem", "fa-heart-pulse", "Database, cadangan data (backup), disk, versi aplikasi"),
 }
 
-POLA_USERNAME = re.compile(r"^[a-z0-9._]{3,50}$")
+POLA_USERNAME = re.compile(r"^[A-Z0-9._]{3,50}$")
 # Pilihan "Halaman awal setelah login" (admin memilih nama menu, bukan mengetik alamat)
 # /weighbridge?tab=... (tanpa view=form) = Daftar Tiket dengan tahap terpilih; view=form&tab=... = tab Stasiun Timbang
 HALAMAN_AWAL = [("/dashboard", "Dashboard"), ("/pos-security", "Pos Security"), ("/logbook", "Logbook Kendaraan"),
@@ -206,7 +206,7 @@ def users_cek_nik(nik):
 @_admin
 def users_tambah():
     def aksi():
-        username = _teks("username", maks=50).lower()
+        username = _teks("username", maks=50).upper()
         if not POLA_USERNAME.match(username):
             raise GalatIsian("Username 3-50 karakter: huruf, angka, titik, garis bawah", "username")
         if db.username_dipakai(username):

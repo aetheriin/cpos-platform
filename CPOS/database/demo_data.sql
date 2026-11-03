@@ -50,8 +50,8 @@ DECLARE @areaYBS BIGINT = (SELECT CompAreaID FROM dbo.CompanyArea WHERE CompID =
 DECLARE @areaHO BIGINT = (SELECT CompAreaID FROM dbo.CompanyArea WHERE CompID = 'HO');
 
 /* ---------- Akun per peran (Users + PasswordManager) ---------- */
-INSERT INTO dbo.Users (UserID, UserName, Nama, UserLevelID, UserDeptID, CompAreaID, NoKTP, UserCode, Email)
-SELECT @p + v.n, v.u, v.nama, ld.LevelDetID, dd.DeptDetailID, a.CompAreaID, v.nik, v.kode, v.email
+INSERT INTO dbo.Users (UserID, UserName, Nama, UserLevelID, UserDeptID, CompAreaID, NoKTP, Email)
+SELECT @p + v.n, v.u, v.nama, ld.LevelDetID, dd.DeptDetailID, a.CompAreaID, v.nik, v.email
 FROM (VALUES (11, 'ho',        N'Andi Wijaya',     'HO',                           'HO',  'HO',  '1471010101800011', 'KRY-001', 'andi@contoh.co.id'),
              (12, 'security',  N'Budi Santoso',    'SECURITY',                     'SEC', 'PT',  '1471010101850012', 'SEC-001', NULL),
              (13, 'security2', N'Hendra Gunawan',  'SECURITY',                     'SEC', 'YBS', '1471010101860013', 'SEC-002', NULL),
@@ -75,8 +75,8 @@ VALUES (N'PT Angkut Lancar', N'Antar TBS', '1471020202800021', N'DRV-001'), (N'P
        (N'KUD Sawit Jaya', N'Antar TBS', '1471020202880029', N'DRV-009'), (N'UD Berkah Tani', N'Antar TBS', '1471020202890030', N'DRV-010'),
        (N'Lembaga Sertifikasi ISPO', N'Audit / Inspeksi', '3171040404920033', N'TMU-001'),
        (N'PT Timbang Presisi', N'Perbaikan / Servis', '1271040404930034', N'TMU-002');
-INSERT INTO dbo.Users (UserID, Nama, NoKTP, UserCode, IsUpload, GuestID)
-SELECT @p + v.n, v.nama, v.nik, v.kode, v.upd, g.GuestID
+INSERT INTO dbo.Users (UserID, Nama, NoKTP, IsUpload, GuestID)
+SELECT @p + v.n, v.nama, v.nik, v.upd, g.GuestID
 FROM (VALUES (21, N'Joko Susilo',      '1471020202800021', 'DRV-001', 1), (22, N'Agus Salim',       '1471020202810022', 'DRV-002', 1),
              (23, N'Bambang Prasetyo', '1471020202820023', 'DRV-003', 1), (24, N'Dedi Kurniawan',   '1471020202830024', 'DRV-004', 1),
              (25, N'Eko Saputra',      '1471020202840025', 'DRV-005', 1), (26, N'Fajar Nugroho',    '1471020202850026', 'DRV-006', 1),
@@ -85,8 +85,8 @@ FROM (VALUES (21, N'Joko Susilo',      '1471020202800021', 'DRV-001', 1), (22, N
              (33, N'Lina Kusuma',      '3171040404920033', 'TMU-001', 0), (34, N'Rudy Tanjung',     '1271040404930034', 'TMU-002', 0)
      ) v (n, nama, nik, kode, upd)
 JOIN dbo.Guest g ON g.NoKTP = v.nik;
-INSERT INTO dbo.Users (UserID, Nama, NoKTP, UserCode, IsUpload, UserLevelID, UserDeptID, CompAreaID)
-SELECT @p + v.n, v.nama, v.nik, v.kode, v.upd, ld.LevelDetID, dd.DeptDetailID, @areaPT
+INSERT INTO dbo.Users (UserID, Nama, NoKTP, IsUpload, UserLevelID, UserDeptID, CompAreaID)
+SELECT @p + v.n, v.nama, v.nik, v.upd, ld.LevelDetID, dd.DeptDetailID, @areaPT
 FROM (VALUES (31, N'Rina Marlina',  '1471030303900031', 'KRY-005', 1, 'UMUM',        'UMUM'),
              (32, N'Tono Sugiarto', '1471030303910032', 'BHL-001', 0, 'SORTASI_BHL', 'SRT')) v (n, nama, nik, kode, upd, peran, dept)
 JOIN dbo.LevelDetails ld ON ld.LevelDetCode = v.peran

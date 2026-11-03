@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function muatLogbook() {
     const d = await ambilJson(`/api/pos/logbook?tanggal=${encodeURIComponent(document.getElementById('lbTanggal').value || hariIni())}`);
     if (d.error) { Notif.gagal(d.error); return; }
-    const ubah = r => ({ ...r, plat: r.no_plat, kode: r.kode_personel || formatIdPersonel(r.id_driver), angkut: r.pengangkutan || 'Kendaraan pengirim',
+    const ubah = r => ({ ...r, plat: r.no_plat, kode: formatIdPersonel(r.id_driver), angkut: r.pengangkutan || 'Kendaraan pengirim',
                          masuk: keDate(r.waktu_masuk), keluar: r.waktu_keluar ? keDate(r.waktu_keluar) : null,
                          petugas: r.petugas_masuk || '-', petugas_keluar: r.petugas_keluar || '-' });
     dataDalam = d.dalam.map(ubah);

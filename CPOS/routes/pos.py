@@ -108,7 +108,7 @@ def cek_plat():
         "kendaraan": k and {"id_kendaraan": k["id_kendaraan"], "no_stnk": k["no_stnk"], "jenis": k["jenis"],
                             "id_jenis_kendaraan": k["id_jenis_kendaraan"],
                             "is_active": bool(k["is_active"]), "blacklist": bl or ({} if k["is_blacklisted"] else None)},
-        "terakhir": t and {**{x: t[x] for x in ("id_driver", "kode_personel", "nik", "nama", "no_sim", "kategori",
+        "terakhir": t and {**{x: t[x] for x in ("id_driver", "nik", "nama", "no_sim", "kategori",
                                                  "foto_path")},
                            "is_blacklisted": bool(t["is_blacklisted"]), "is_updated": bool(t["is_updated"]),
                            "waktu": _waktu(t["waktu"])},
@@ -171,7 +171,7 @@ def simpan_masuk():
     driver = get_driver_by_id(id_driver) if id_driver.isdigit() else None
     if not driver:
         return jsonify({"error": "Scan wajah atau pilih supir terlebih dahulu"}), 400
-    nama_driver = format_nama_personel(driver.kode_personel, driver.id_driver, driver.nama_driver)
+    nama_driver = format_nama_personel(driver.id_driver, driver.nama_driver)
     if driver.kategori != "DRIVER":
         return jsonify({"error": f"{nama_driver} terdaftar sebagai {driver.kategori}, bukan supir"}), 400
 
@@ -214,7 +214,7 @@ def simpan_masuk():
     saran = f.get("id_driver_saran", "").strip()
     if saran.isdigit() and saran != str(driver.id_driver):
         lama = get_driver_by_id(int(saran))
-        nama_lama = format_nama_personel(lama.kode_personel, lama.id_driver, lama.nama_driver) if lama else saran
+        nama_lama = format_nama_personel(lama.id_driver, lama.nama_driver) if lama else saran
         catat_security_audit(current_user.id, "OVERRIDE_DRIVER", no_tiket, ip_address=ip,
                              details={"keterangan": f"Supir berbeda dari supir terakhir: {nama_lama} → {nama_driver}",
                                       "prev_driver_id": int(saran), "id_driver": driver.id_driver})

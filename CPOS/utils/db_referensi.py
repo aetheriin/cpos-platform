@@ -1,16 +1,16 @@
 """Data Master › tabel referensi sederhana (satu pola untuk semua): Mata Uang, Bank, Rekening, Jenis & Grup Supplier,
-Jenis Produk, Harga Produk. Tiap jenis = satu tabel; kolom, validasi, pilihan, dan hak menunya dari REF di bawah.
+Jenis Produk, Harga Produk, Kurs Mata Uang. Tiap jenis = satu tabel; kolom, validasi, pilihan, dan hak menunya dari REF di bawah.
 Kunci JSON memakai nama Indonesia (kunci field), kolom database memakai nama ERD."""
 from datetime import date
 
 from utils.db_utils import get_connection, _rows_to_dicts
 
 
-def F(kolom, kunci, label, tipe="teks", wajib=False, maks=None, unik=False, pilihan=None, kunci_tetap=False):
+def F(kolom, kunci, label, tipe="teks", wajib=False, maks=None, unik=False, pilihan=None, kunci_tetap=False, positif=False):
     """tipe: teks | kode (huruf besar) | angka | tanggal | pilih (pilihan = jenis sumber, lihat PILIHAN).
-    kunci_tetap = tidak bisa diubah setelah dibuat (kode yang dipakai aturan aplikasi)."""
+    kunci_tetap = tidak bisa diubah setelah dibuat (kode yang dipakai aturan aplikasi). positif = angka harus lebih dari 0."""
     return {"kolom": kolom, "kunci": kunci, "label": label, "tipe": tipe, "wajib": wajib, "maks": maks, "unik": unik,
-            "pilihan": pilihan, "kunci_tetap": kunci_tetap}
+            "pilihan": pilihan, "kunci_tetap": kunci_tetap, "positif": positif}
 
 
 REF = {
@@ -48,10 +48,30 @@ REF = {
                                F("CurrencyID", "id_mata_uang", "Mata Uang", "pilih", pilihan="mata_uang")],
                      "tambahan": "u.Nama AS dibuat_oleh, x.IsVoid AS is_void, v.Nama AS void_oleh",
                      "join": "LEFT JOIN Users u ON u.UserID = x.CreateBy LEFT JOIN Users v ON v.UserID = x.VoidBy"},
+    # Kurs: riwayat per tanggal berlaku (utils/db_kurs.py: impor, saran internet, peringatan selisih); dibaca laporan Analytics
+    "kurs": {"judul": "Kurs Mata Uang", "tabel": "ExchangeRate", "id": "ExchangeRateID", "menu": "MASTER_KURS",
+             "urut": "x.RateDate DESC, x.ExchangeRateID DESC", "ubah": False, "aktif": False, "void": True, "batas": 500,
+             "kolom": [F("RateDate", "tanggal", "Berlaku Sejak", "tanggal", True),
+                       F("CurrencyID", "id_mata_uang", "Mata Uang", "pilih", True, pilihan="mata_uang_asing"),
+                       F("Rate", "kurs", "Kurs (Rp per 1 unit)", "angka", True, positif=True),
+                       F("RateType", "jenis", "Jenis Kurs", "pilih", True, pilihan="jenis_kurs"),
+                       F("CompID", "id_company", "Perusahaan (kosong = semua)", "pilih", pilihan="perusahaan"),
+                       F("Source", "sumber", "Sumber", "pilih", pilihan="sumber_kurs"),
+                       F("Description", "keterangan", "Keterangan", maks=255)],
+             # satu kurs berlaku per mata uang + jenis + tanggal + perusahaan (indeks UX_ExchangeRate_Berlaku)
+             "unik_gabungan": (("CurrencyID", "RateType", "RateDate", "CompID"),
+                               "Kurs untuk mata uang, jenis, tanggal, dan perusahaan ini sudah ada. Batalkan yang lama dulu bila ingin mengganti."),
+             "tambahan": "u.Nama AS dibuat_oleh, x.IsVoid AS is_void, v.Nama AS void_oleh",
+             "join": "LEFT JOIN Users u ON u.UserID = x.CreateBy LEFT JOIN Users v ON v.UserID = x.VoidBy"},
 }
 
 PILIHAN = {
     "mata_uang": "SELECT CurrencyID AS id, CurrencyCode + ' · ' + CurrencyName AS label FROM Currency WHERE Active = 1 ORDER BY CurrencyCode",
+    "mata_uang_asing": """SELECT CurrencyID AS id, CurrencyCode + ' · ' + CurrencyName AS label FROM Currency
+                          WHERE Active = 1 AND CurrencyCode <> 'IDR' ORDER BY CurrencyCode""",
+    "jenis_kurs": "SELECT id, label FROM (VALUES ('TRANSAKSI', 'Transaksi'), ('PENUTUPAN', 'Penutupan (akhir bulan)')) v (id, label)",
+    "sumber_kurs": """SELECT id, label FROM (VALUES ('JISDOR', 'JISDOR Bank Indonesia'), ('PAJAK', 'Kurs pajak (KMK)'), ('BANK', 'Kurs bank'),
+                      ('INTERNET', 'Internet (ECB)'), ('LAINNYA', 'Lainnya')) v (id, label)""",
     "area": "SELECT CompAreaID AS id, CompID + ' · ' + AreaName AS label FROM CompanyArea WHERE Active = 1 ORDER BY CompID, AreaName",
     "bank": "SELECT BankAccountID AS id, BankName + ISNULL(' · ' + BankRegion, '') AS label FROM Bank WHERE Active = 1 ORDER BY BankName",
     "produk": "SELECT ProductID AS id, ProductName AS label FROM Product WHERE Active = 1 ORDER BY ProductName",
@@ -125,8 +145,8 @@ def _nilai(f, teks, opsi):
             n = float(teks.replace(",", "."))
         except ValueError:
             raise ValueError(f"{f['label']} harus berupa angka")
-        if n < 0:
-            raise ValueError(f"{f['label']} tidak boleh negatif")
+        if n < 0 or (f.get("positif") and n == 0):
+            raise ValueError(f"{f['label']} harus lebih dari 0" if f.get("positif") else f"{f['label']} tidak boleh negatif")
         return n
     if f["tipe"] == "tanggal":
         try:
@@ -160,6 +180,13 @@ def simpan(jenis, id_baris, form, user_id):
                 cursor.execute(f"SELECT 1 FROM {c['tabel']} WHERE {f['kolom']} = ? AND {c['id']} <> ?", nilai[f["kolom"]], id_baris or 0)
                 if cursor.fetchone():
                     raise ValueError(f"{f['label']} {nilai[f['kolom']]} sudah dipakai")
+        if c.get("unik_gabungan") and id_baris is None:
+            kolom, pesan = c["unik_gabungan"]
+            syarat = " AND ".join(f"{k} = ?" if nilai.get(k) is not None else f"{k} IS NULL" for k in kolom)
+            batal = " AND IsVoid = 0" if c.get("void") else ""
+            cursor.execute(f"SELECT 1 FROM {c['tabel']} WHERE {syarat}{batal}", *[nilai[k] for k in kolom if nilai.get(k) is not None])
+            if cursor.fetchone():
+                raise ValueError(pesan)
         if id_baris is None:
             if c.get("void"):
                 nilai["CreateBy"] = user_id

@@ -35,7 +35,7 @@ function aturBlacklist(jenis, data) {
 
 async function aturBlacklistSupir(dr) {
     if (!dr || !dr.is_blacklisted) { aturBlacklist('supir', null); return; }
-    const siapa = formatNamaPersonel(dr.kode_personel, dr.id_driver, dr.nama);
+    const siapa = formatNamaPersonel(dr.id_driver, dr.nama);
     aturBlacklist('supir', { siapa, info: null });
     const info = await ambilJson(`/api/blacklist/info/PERSONEL/${dr.id_driver}`);
     if (blacklistForm.supir && blacklistForm.supir.siapa === siapa && !info.error) aturBlacklist('supir', { siapa, info });
@@ -66,7 +66,7 @@ function tampilkanPengemudiTerakhir(dr, utama = null) {
         foto.innerHTML = '<i class="fa-solid fa-user text-slate-300 text-3xl"></i>';
         return;
     }
-    info.innerHTML = `<p class="text-xs text-slate-500">${escapeHtml(dr.kode_personel || 'Belum ada kode')} · ID ${formatIdPersonel(dr.id_driver)}</p>` +
+    info.innerHTML = `<p class="text-xs text-slate-500">ID ${formatIdPersonel(dr.id_driver)}</p>` +
         `<p class="font-semibold text-slate-700">${escapeHtml(dr.nama)}</p><p>NIK: ${escapeHtml(dr.nik)}</p>` +
         (dr.is_blacklisted ? '<p class="mt-1"><span class="px-2 py-0.5 rounded bg-red-600 text-white text-xs font-bold">BLACKLIST</span></p>' : '') +
         (dr.is_updated ? '<p class="text-amber-600 text-xs">⚠ Data Pernah Diperbarui</p>' : '') + barisUtama;
@@ -125,7 +125,7 @@ function setSupirTerverifikasi(ok) {
 
 function resetValidasiForm() {
     saranDriver = null;
-    ['driverIdDriver', 'driverIdTampil', 'driverKode', 'driverNama', 'driverNik', 'driverSim']
+    ['driverIdDriver', 'driverIdTampil', 'driverNama', 'driverNik', 'driverSim']
         .forEach(id => document.getElementById(id).value = '');
     document.getElementById('driverStatusBadge').innerHTML = '';
     document.getElementById('fotoDriverBox').innerHTML = '<i class="fa-solid fa-user text-slate-300 text-5xl"></i>';
@@ -316,7 +316,7 @@ async function mulaiScanWajah() {
 
 function terapkanHasilScanWajah(data) {
     const status = document.getElementById('statusScanWajah');
-    const nama = formatNamaPersonel(data.kode_personel, data.id_driver, data.nama);
+    const nama = formatNamaPersonel(data.id_driver, data.nama);
     if (data.is_blacklisted) Notif.peringatan(`${nama} terdaftar dalam daftar blacklist`);   // banner diisi isiDriver()
     if (data.kategori && data.kategori !== 'DRIVER') {
         status.innerHTML = `<span class="text-red-600">${escapeHtml(nama)} terdaftar sebagai ${escapeHtml((LABEL_KATEGORI[data.kategori] || [labelKode(data.kategori)])[0])}, bukan supir.</span>`;
@@ -383,9 +383,7 @@ function bukaTambahSupir(konteks) {
     ['tambahNama', 'tambahNik', 'tambahSim'].forEach(id => document.getElementById(id).value = '');
     streamState['tambahBlob'] = null;
     document.getElementById('tambahFotoPreview').innerHTML = '<i class="fa-solid fa-camera text-slate-300 text-2xl"></i>';
-    document.getElementById('tambahKode').value = '';
     openModal('modalTambahSupir');
-    ambilJson('/api/personel/saran-kode?kategori=DRIVER').then(s => { if (s.kode) document.getElementById('tambahKode').value = s.kode; });
 }
 
 async function simpanSupirBaru(btn) {
@@ -407,7 +405,7 @@ async function simpanSupirBaru(btn) {
             setModeUpdate('truk');
             return;
         }
-        isiDriver({ id_driver: data.id_driver, kode_personel: data.kode_personel, nik: document.getElementById('tambahNik').value.trim(),
+        isiDriver({ id_driver: data.id_driver, nik: document.getElementById('tambahNik').value.trim(),
                     nama: document.getElementById('tambahNama').value.trim(),
                     no_sim: document.getElementById('tambahSim').value.trim(),
                     is_updated: false, foto_path: data.foto_path });
@@ -477,8 +475,8 @@ async function cariSupirByNik(inputEl) {
     if (data.error) { Notif.gagal(data.error); return; }
 
     if (data.status === 'DITEMUKAN') {
-        driverHasilCari = data;             // id_driver, kode_personel, nik, nama, no_sim, is_blacklisted, ...
-        document.getElementById('hasilNama').textContent = formatNamaPersonel(data.kode_personel, data.id_driver, data.nama);
+        driverHasilCari = data;             // id_driver, nik, nama, no_sim, is_blacklisted, ...
+        document.getElementById('hasilNama').textContent = formatNamaPersonel(data.id_driver, data.nama);
         document.getElementById('hasilNik').textContent = data.nik;
         document.getElementById('hasilSim').textContent = data.no_sim;
         document.getElementById('hasilBadgeUpdate').classList.toggle('hidden', !data.is_updated);
@@ -583,8 +581,6 @@ function tandaiBorderDriver(warna) {   // 'biru' | 'hijau' | null
 function isiDriver(dr) {
     document.getElementById('driverIdDriver').value = dr.id_driver;
     document.getElementById('driverIdTampil').value = formatIdPersonel(dr.id_driver);
-    document.getElementById('driverKode').value = dr.kode_personel || '';
-    document.getElementById('driverKode').placeholder = dr.kode_personel ? '' : 'Belum ada kode';
     document.getElementById('driverStatusBadge').innerHTML = badgeStatusPersonel(dr.is_blacklisted);
     document.getElementById('driverNama').value = dr.nama;
     document.getElementById('driverNik').value = dr.nik;

@@ -29,7 +29,7 @@ function tampilkanKendaraan() {
             <td class="table-cell font-mono whitespace-nowrap">${escapeHtml(k.no_plat)}</td>
             <td class="table-cell">${k.no_stnk ? escapeHtml(k.no_stnk) : badge('Belum diisi', WARNA_BADGE.oranye)}</td>
             <td class="table-cell">${escapeHtml(k.jenis_kendaraan || '-')}</td>
-            <td class="table-cell">${k.id_supir_utama ? escapeHtml(formatNamaPersonel(k.kode_supir_utama, k.id_supir_utama, k.nama_supir_utama))
+            <td class="table-cell">${k.id_supir_utama ? escapeHtml(formatNamaPersonel(k.id_supir_utama, k.nama_supir_utama))
                                                       : '<span class="text-slate-400">Belum ada</span>'}</td>
             <td class="table-cell">${Number(k.jumlah_supir)}</td>
             <td class="table-cell whitespace-nowrap text-xs">${escapeHtml(k.transaksi_terakhir || '-')}</td>

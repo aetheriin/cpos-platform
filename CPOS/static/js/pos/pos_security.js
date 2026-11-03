@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 const fmtWaktu = s => s ? `${s.slice(8, 10)}-${s.slice(5, 7)}-${s.slice(0, 4)} ${s.slice(11, 16)}` : '-';
 const teksPilihan = id => { const o = document.getElementById(id).selectedOptions[0]; return o && o.value ? o.textContent.trim() : ''; };
-const namaSupir = d => formatNamaPersonel(d.kode_personel, d.id_driver, d.nama);
+const namaSupir = d => formatNamaPersonel(d.id_driver, d.nama);
 
 function lamaSejak(teks) {
     const menit = Math.max(0, Math.floor((Date.now() - new Date(teks.replace(' ', 'T'))) / 60000));
@@ -79,7 +79,7 @@ function tampilTerakhir() {
             : '<i class="fa-solid fa-user text-slate-300 text-2xl"></i>'}</div>
         <div class="min-w-0">
             <p class="font-semibold text-slate-900">${escapeHtml(t.nama)}${t.is_blacklisted ? ' <span class="badge-status bg-red-600 text-white">BLACKLIST</span>' : ''}</p>
-            <p class="text-xs text-slate-500 font-mono">${escapeHtml(t.kode_personel || formatIdPersonel(t.id_driver))}</p>
+            <p class="text-xs text-slate-500 font-mono">${escapeHtml(formatIdPersonel(t.id_driver))}</p>
             <p class="text-xs text-slate-500 mt-1"><i class="fa-regular fa-clock mr-1"></i>Terakhir masuk ${escapeHtml(fmtWaktu(t.waktu))}</p>
             ${!POS.supir ? `<button type="button" class="link-aksi text-blue-600 text-xs mt-2" data-on-click="pakaiTerakhirPos">Pakai supir ini (perlu scan wajah)</button>`
               : sama ? '<p class="mt-2 text-xs font-semibold px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 inline-block"><i class="fa-solid fa-check mr-1"></i>Sama dengan supir sekarang</p>'
@@ -124,7 +124,7 @@ function tampilSupir() {
             BERLAKU: '<span class="badge-status bg-emerald-100 text-emerald-700 ml-1">Berlaku</span>' }[sim.status];
     const baris = (lbl, nilai) => `<div class="flex justify-between gap-3 text-sm"><span class="text-slate-500">${lbl}</span><span class="text-slate-900 text-right">${nilai}</span></div>`;
     document.getElementById('kartuSupir').innerHTML = `
-        <p class="font-bold text-slate-900">${escapeHtml(s.nama)} <span class="text-xs font-mono font-normal text-slate-500">${escapeHtml(s.kode_personel || '')}</span></p>
+        <p class="font-bold text-slate-900">${escapeHtml(s.nama)}</p>
         <p class="text-xs mt-0.5 ${POS.terverifikasi ? 'text-emerald-700' : 'text-blue-700'}">
             <i class="fa-solid ${POS.terverifikasi ? 'fa-circle-check' : 'fa-hand-pointer'} mr-1"></i>${POS.terverifikasi ? 'Terverifikasi wajah' : 'Dipilih manual, belum scan wajah'}</p>
         <div class="mt-2 space-y-1.5">
@@ -225,11 +225,10 @@ function resetFoto(awalan) {
 }
 
 function bukaSupirBaruPos() {
-    ['psbNama', 'psbNik', 'psbSim', 'psbKode'].forEach(id => { document.getElementById(id).value = ''; });
+    ['psbNama', 'psbNik', 'psbSim'].forEach(id => { document.getElementById(id).value = ''; });
     resetFoto('psb');
     openModal('modalPosSupirBaru');
     document.getElementById('psbNama').focus();
-    ambilJson('/api/personel/saran-kode?kategori=DRIVER').then(s => { if (s.kode) document.getElementById('psbKode').value = s.kode; });
 }
 
 function tutupSupirBaruPos() { hentikanFoto('psb'); closeModal('modalPosSupirBaru'); }

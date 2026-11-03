@@ -2406,6 +2406,7 @@ window.KAMUS_EN = {
 "Hapus orang?": "Delete person?",
 "Wajahnya tidak lagi dikenali saat scan. Riwayat scan & tiket tetap tersimpan.": "Their face will no longer be recognised at scan. Scan & ticket history is kept.",
 "3-50 karakter: huruf, angka, titik ( . ), garis bawah ( _ ). Otomatis jadi huruf kecil.": "3-50 characters: letters, numbers, dot ( . ), underscore ( _ ). Converted to lowercase automatically.",
+"3-50 karakter: huruf, angka, titik ( . ), garis bawah ( _ ). Otomatis jadi huruf besar.": "3-50 characters: letters, numbers, dot ( . ), underscore ( _ ). Converted to uppercase automatically.",
 "Username 3-50 karakter: huruf, angka, titik, garis bawah": "Username 3-50 characters: letters, numbers, dot, underscore",
 "Ringkasan harga harian dan request operator di perusahaan Anda.": "Daily price summary and operator requests in your company.",
 "Data Harga": "Price Data",

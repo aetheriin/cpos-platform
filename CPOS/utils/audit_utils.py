@@ -17,5 +17,5 @@ def catat_security_audit(user_id, action_type, no_tiket=None, details=None, ip_a
 def get_security_audit(hari=1, batas=300):
     return [{"id_log": r["id_log"], "created_at": r["waktu"].strftime("%Y-%m-%d %H:%M:%S"), "action_type": r["aksi"],
              "no_tiket": r["id_baris"], "details": r["nilai_baru"], "ip_address": r["ip"], "nama_user": r["oleh"],
-             "role": r["role_oleh"], "kode_personel": r["kode_oleh"]}
+             "role": r["role_oleh"]}
             for r in log_aktivitas.daftar("SECURITY", hari, batas)]

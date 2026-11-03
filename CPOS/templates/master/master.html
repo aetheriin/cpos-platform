@@ -3,15 +3,15 @@
 {% block title %}Data Master · CPOS{% endblock %}
 
 {# Data Master: Supir (personel kategori DRIVER), Kendaraan, Supplier (customer & pengangkutan, jenis & grup), Produk (jenis & harga),
-   Mata Uang & Bank. Tombol tambah / ubah sesuai Admin › Hak Akses. #}
+   Mata Uang & Bank, Kurs Mata Uang. Tombol tambah / ubah sesuai Admin › Hak Akses. #}
 {% block info_bar %}{% endblock %}
 {% block info_bar_script %}{% endblock %}
 
 {% block tab_header %}
-    {{ judul_halaman('Data Master', 'Supir, kendaraan, supplier, produk, mata uang & bank', 'fa-database') }}
+    {{ judul_halaman('Data Master', 'Supir, kendaraan, supplier, produk, mata uang, bank & kurs', 'fa-database') }}
     {{ tab_header(tab_lihat([('personel', 'Supir', 'MASTER_DRIVER'), ('kendaraan', 'Kendaraan', 'MASTER_KENDARAAN'),
                             ('mitra', 'Supplier', 'MASTER_MITRA'), ('produk', 'Produk', 'MASTER_PRODUK'),
-                            ('keuangan', 'Mata Uang & Bank', 'MASTER_KEUANGAN')])) }}
+                            ('keuangan', 'Mata Uang & Bank', 'MASTER_KEUANGAN'), ('kurs', 'Kurs Mata Uang', 'MASTER_KURS')])) }}
 {% endblock %}
 
 {% block tab_content %}
@@ -20,6 +20,7 @@
     {% include "partials/master/mitra_tab.html" %}
     {% include "partials/master/produk_tab.html" %}
     {% include "partials/master/keuangan_tab.html" %}
+    {% include "partials/master/kurs_tab.html" %}
 {% endblock %}
 
 {% block modals %}
@@ -27,6 +28,7 @@
     {% if boleh_kendaraan %}{% include "partials/master/kendaraan_modal.html" %}{% endif %}
     {% if hak.mitra.tambah or hak.mitra.ubah or hak.produk.tambah or hak.produk.ubah %}{% include "partials/master/mitra_produk_modals.html" %}{% endif %}
     {% include "partials/master/referensi_modal.html" %}
+    {% if hak.kurs.tambah %}{% include "partials/master/kurs_modal.html" %}{% endif %}
 {% endblock %}
 
 {% block extra_scripts %}
@@ -36,4 +38,5 @@
 <script defer src="{{ url_for('static', filename='js/master/kendaraan.js') }}"></script>
 <script defer src="{{ url_for('static', filename='js/master/mitra_produk.js') }}"></script>
 <script defer src="{{ url_for('static', filename='js/master/referensi.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/master/kurs.js') }}"></script>
 {% endblock %}

@@ -43,7 +43,7 @@ def halaman():
     return render_template("visitor/visitor.html", halaman="visitor", kode_aktif="KUNJUNGAN", tabs=tab_lihat(TAB),
                            boleh_scan=boleh("VSL_SCAN", "tambah"), boleh_keluar=boleh("VSL_SCAN", "ubah"),
                            boleh_ubah=boleh("PERSONEL"), boleh_tambah_orang=boleh("PERSONEL", "tambah"),
-                           boleh_kode=boleh("PERSONEL", "ubah"), kategori_list=list(daftar_kategori().values()),
+                           kategori_list=list(daftar_kategori().values()),
                            jenis_sim_list=daftar_jenis_sim(),
                            area_list=[a for a in daftar_area() if a["is_active"]],
                            department_list=[d for d in daftar_department() if d["is_active"]],
@@ -55,11 +55,11 @@ def _area():
 
 
 def _info(p, jarak=None):
-    return {"id_personel": p["id_personel"], "kode_personel": p["kode_personel"], "nama_personel": p["nama_personel"],
+    return {"id_personel": p["id_personel"], "nama_personel": p["nama_personel"],
             "nik": p["nik"], "kategori": p["kategori"], "is_blacklisted": p["is_blacklisted"], "foto_path": p["foto_path"],
             "asal_perusahaan": p.get("asal_perusahaan"), "keperluan": p.get("keperluan"), "peran": p.get("peran"),
             "no_sim": p.get("no_sim"), "sim_berlaku_sampai": p.get("sim_berlaku_sampai"),
-            "nama_tampil": format_nama_personel(p["kode_personel"], p["id_personel"], p["nama_personel"]),
+            "nama_tampil": format_nama_personel(p["id_personel"], p["nama_personel"]),
             "jarak_wajah": round(jarak, 3) if jarak is not None else None}
 
 
@@ -117,7 +117,7 @@ def scan():
                  perangkat=perangkat, ip=ip, waktu=sekarang)
         return jsonify({"status": "TIDAK_DIKENALI", "foto_scan": foto})
 
-    nama = format_nama_personel(p["kode_personel"], id_personel, p["nama_personel"])
+    nama = format_nama_personel(id_personel, p["nama_personel"])
     if p["is_blacklisted"]:
         db.catat(id_personel, None, db.DITOLAK, area, current_user.id, nama_wajah=p["nama_personel"], embedding=emb, foto_path=foto,
                  id_blacklist=p.get("id_blacklist"), jarak=jarak, perangkat=perangkat, ip=ip, waktu=sekarang)

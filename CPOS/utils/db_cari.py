@@ -56,10 +56,10 @@ def cari_do(kata, batas=5):
 def cari_personel(kata, batas=5):
     pola = _pola(kata)
     return _query(f"""
-        SELECT TOP {int(batas)} UserID AS id_personel, UserCode AS kode_personel, Nama AS nama_personel, NoKTP AS nik, PersonType AS kategori, IsBlacklisted AS is_blacklisted
+        SELECT TOP {int(batas)} UserID AS id_personel, Nama AS nama_personel, NoKTP AS nik, PersonType AS kategori, IsBlacklisted AS is_blacklisted
         FROM UserProfile
-        WHERE Active = 1 AND (Nama LIKE ? OR NoKTP LIKE ? OR UserCode LIKE ?)
-        ORDER BY Nama""", pola, pola, pola)
+        WHERE Active = 1 AND (Nama LIKE ? OR NoKTP LIKE ?)
+        ORDER BY Nama""", pola, pola)
 
 
 def cari_kendaraan(kata, batas=5):

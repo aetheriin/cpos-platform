@@ -7,12 +7,15 @@ di latar belakang. Giro tetap dari SP_KAS_GIRO (@PERIOD, @PERIOD_AKHIR), sekali 
 
 Saldo dihitung ulang di sini dari baris "Beginning Balance" di awal periode ditambah mutasi berurutan tanggal: kolom AmtBalance dari SP
 mengikuti urutan baris SP, yang untuk beberapa rekening tidak berurutan tanggal.
-Rekening USD tidak dikonversi oleh SP (ExchangeRate selalu 1), jadi dikonversi di sini. Kurs diambil dari kurs tahunan TABEL_KAS_KURS
+Rekening USD tidak dikonversi oleh SP (ExchangeRate selalu 1), jadi dikonversi di sini. Urutan kurs: kurs transaksi yang diinput di CPOS
+(TABEL_KAS_KURS_INPUT, Data Master › Kurs Mata Uang: kurs terakhir yang berlaku pada tanggal transaksi, kurs perusahaan itu lebih dulu dari
+kurs untuk semua perusahaan), lalu kurs tahunan TABEL_KAS_KURS
 (EXC_RATE: COMPID, CURRENCYID, YR, RATE; kode CURRENCYID dibaca dari CO_Currency perusahaan pertama) kalau ada untuk perusahaan dan tahun
 itu, selain itu kurs harian dari internet (KAS_KURS_INTERNET, kurs referensi ECB lewat frankfurter.dev; hari libur memakai kurs hari kerja
 sebelumnya). Semua nilai jadi rupiah; nilai asli di nilai_asli, kurs dan sumbernya di kurs dan sumber_kurs. Rekening yang tetap tanpa kurs
 (mis. internet tidak terjangkau) ditandai tanpa_kurs dan tidak ikut dijumlahkan.
 """
+import bisect
 import json
 import logging
 import threading
@@ -176,6 +179,46 @@ def ambil_kurs(buka=get_connection):
         conn.close()
 
 
+_KURS_INPUT = """
+    SELECT x.CompID, c.CurrencyCode, x.RateDate, x.Rate
+    FROM {tabel} x JOIN {mata_uang} c ON c.CurrencyID = x.CurrencyID
+    WHERE x.IsVoid = 0 AND x.RateType = 'TRANSAKSI'
+    ORDER BY x.RateDate
+"""
+
+
+def ambil_kurs_input(buka=get_connection):
+    """{(comp atau None = semua perusahaan, kode): ([tanggal berlaku naik], [kurs])} dari kurs input CPOS. Kosong kalau tidak terbaca."""
+    conn = None
+    try:
+        conn = buka()
+        cur = conn.cursor()
+        cur.execute(_KURS_INPUT.format(tabel=konfigurasi.TABEL_KAS_KURS_INPUT, mata_uang=konfigurasi.TABEL_KAS_MATA_UANG))
+        hasil = {}
+        for comp, kode, tgl, kurs in cur.fetchall():
+            t, k = hasil.setdefault((str(comp).strip() if comp else None, str(kode).strip().upper()), ([], []))
+            t.append(pd.Timestamp(tgl))
+            k.append(float(kurs))
+        return hasil
+    except Exception as e:      # laporan tetap jalan dengan kurs tabel tahunan / internet
+        log.warning("Kurs input CPOS (%s) tidak terbaca: %s", konfigurasi.TABEL_KAS_KURS_INPUT, e)
+        return {}
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def _kurs_berlaku(masukan, comp, kode, tgl):
+    """Kurs input yang berlaku pada tgl (perusahaan itu dulu, lalu semua perusahaan), atau None."""
+    for kunci in ((comp, kode), (None, kode)):
+        if kunci in masukan:
+            t, k = masukan[kunci]
+            i = bisect.bisect_right(t, tgl)
+            if i:
+                return k[i - 1]
+    return None
+
+
 def kurs_internet(kode, mulai, akhir, baca=None):
     """Series kurs harian 1 `kode` dalam rupiah, indeks tanggal mulai..akhir (hari tanpa kurs diisi kurs sebelumnya). Kosong kalau gagal."""
     mulai, akhir = pd.Timestamp(mulai), pd.Timestamp(akhir)
@@ -203,13 +246,17 @@ def _mata_uang(rekening, bank):
     return ["USD" if "USD" in f"{r} {b}".upper() else "IDR" for r, b in zip(rekening, bank)]
 
 
-def _rupiahkan(d, kurs, internet=None):
-    """nilai (dan saldo awal) ke rupiah. Kurs = 1 untuk IDR, lalu kurs tahunan tabel, lalu kurs harian internet ({kode: Series})."""
-    internet = internet or {}
+def _rupiahkan(d, kurs, internet=None, masukan=None):
+    """nilai (dan saldo awal) ke rupiah. Kurs = 1 untuk IDR, lalu kurs input CPOS (ambil_kurs_input), lalu kurs tahunan tabel,
+    lalu kurs harian internet ({kode: Series})."""
+    internet, masukan = internet or {}, masukan or {}
     k, sumber = [], []
     for c, u, t in zip(d["comp"], d["mata_uang"], d["tgl"]):
+        v = _kurs_berlaku(masukan, c, u, t) if pd.notna(t) and u != "IDR" else None
         if u == "IDR":
             k.append(1.0); sumber.append("")
+        elif v is not None:
+            k.append(v); sumber.append("CPOS")
         elif pd.notna(t) and (c, u, t.year) in kurs:
             k.append(kurs[(c, u, t.year)]); sumber.append("EXC_RATE")
         else:
@@ -223,7 +270,7 @@ def _rupiahkan(d, kurs, internet=None):
     return d
 
 
-def bersihkan_mutasi(raw, kurs=None, internet=None):
+def bersihkan_mutasi(raw, kurs=None, internet=None, masukan=None):
     if raw.empty:
         raise RuntimeError("Database ERP tidak mengembalikan mutasi bank untuk periode ini")
     angka = lambda k: pd.to_numeric(raw[k], errors="coerce").fillna(0.0)
@@ -245,7 +292,7 @@ def bersihkan_mutasi(raw, kurs=None, internet=None):
         "urut": range(len(raw)),
     })
     d["mata_uang"] = _mata_uang(d["rekening"], d["bank"])
-    d = _rupiahkan(d, kurs or {}, internet)
+    d = _rupiahkan(d, kurs or {}, internet, masukan)
     d["akun"] = d["comp"] + " · " + d["rekening"]   # kode rekening yang sama (mis. CIMB-NIAGA) dipakai beberapa perusahaan
     # Lawan transaksi berupa rekening perusahaan sendiri (mis. OCBC PINJAMAN, CIMB-NIAGA) = transfer antar rekening, bukan supplier/customer
     # (nama bisa tertulis dua kali di ERP, mis. "BANK CIMB NIAGA A/C 8001996683 BANK CIMB NIAGA A/C 8001996683", jadi cukup diawali namanya)
@@ -266,7 +313,7 @@ def bersihkan_mutasi(raw, kurs=None, internet=None):
     return d.reset_index(drop=True)
 
 
-def bersihkan_giro(raw, mutasi, kurs=None, internet=None):
+def bersihkan_giro(raw, mutasi, kurs=None, internet=None, masukan=None):
     if raw.empty:
         return pd.DataFrame(columns=["comp", "rekening", "bank", "tgl", "no", "nilai", "nilai_asli", "kurs", "sumber_kurs", "tanpa_kurs", "mata_uang", "akun",
                                      "hari", "periode"])
@@ -282,7 +329,7 @@ def bersihkan_giro(raw, mutasi, kurs=None, internet=None):
     # Mata uang mengikuti rekeningnya di mutasi (nama bank di data giro adalah nama lawan transaksi, mis. "CIMB USD")
     uang = mutasi.drop_duplicates(["comp", "rekening"]).set_index(["comp", "rekening"])["mata_uang"]
     d["mata_uang"] = [uang.get((c, r), m) for c, r, m in zip(d["comp"], d["rekening"], _mata_uang(d["rekening"], d["bank"]))]
-    d = _rupiahkan(d, kurs or {}, internet)
+    d = _rupiahkan(d, kurs or {}, internet, masukan)
     d["akun"] = d["comp"] + " · " + d["rekening"]
     d["hari"] = d["tgl"].dt.strftime("%Y-%m-%d")
     return d
@@ -294,12 +341,12 @@ def muat(mulai, akhir, kendali=None):
     raw_mutasi, raw_giro = ambil(mulai, akhir, kendali)
     if kendali:
         kendali.periksa()
-    kurs = ambil_kurs()
+    kurs, masukan = ambil_kurs(), ambil_kurs_input()
     # kurs internet hanya untuk mata uang asing yang ada di data (nama rekening/bank memuat kodenya)
     valas = sorted({u for u in _mata_uang(raw_mutasi.get("BankAccountCode", []), raw_mutasi.get("BankName", [])) if u != "IDR"})
     internet = {u: kurs_internet(u, mulai, akhir) for u in valas}
-    mutasi = bersihkan_mutasi(raw_mutasi, kurs, internet)
+    mutasi = bersihkan_mutasi(raw_mutasi, kurs, internet, masukan)
     # Data giro ikut dataset yang sama di Gudang, sebagai daftar biasa (attrs ikut tersalin di setiap operasi pandas, jadi dibuat ringan)
-    mutasi.attrs["giro"] = bersihkan_giro(raw_giro, mutasi, kurs, internet).to_dict("records")
+    mutasi.attrs["giro"] = bersihkan_giro(raw_giro, mutasi, kurs, internet, masukan).to_dict("records")
     return mutasi, {"baris_sp": int(((mutasi["tgl"] >= pd.Timestamp(mulai)) & (mutasi["tgl"] <= pd.Timestamp(akhir)) & ~mutasi["awal"]).sum()),
                "bulan": len(bulan_di(mulai, akhir))}

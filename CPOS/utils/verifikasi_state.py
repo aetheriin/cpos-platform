@@ -11,9 +11,9 @@ _lock = threading.Lock()
 _pos = {}       # pos -> {"pemilik", "hasil"}
 
 
-def _data(id_driver, nama, nik, no_sim, is_updated, foto_path, kode_personel, kategori, is_blacklisted):
+def _data(id_driver, nama, nik, no_sim, is_updated, foto_path, kategori, is_blacklisted):
     return {"id_driver": id_driver, "nama": nama, "nik": nik, "no_sim": no_sim, "is_updated": is_updated,
-            "foto_path": foto_path, "kode_personel": kode_personel, "kategori": kategori,
+            "foto_path": foto_path, "kategori": kategori,
             "is_blacklisted": is_blacklisted, "dilog": False, "waktu": datetime.now()}
 
 

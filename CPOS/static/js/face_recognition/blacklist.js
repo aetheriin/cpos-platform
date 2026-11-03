@@ -27,14 +27,14 @@ window.addEventListener('tabChange', e => {
 function namaTarget(r) {
     if (r.tipe_entitas === 'KENDARAAN') return r.no_plat;
     if (r.tipe_entitas === 'SUPPLIER') return r.nama_supplier;
-    return formatNamaPersonel(r.kode_personel, r.id_personel, r.nama_personel);
+    return formatNamaPersonel(r.id_personel, r.nama_personel);
 }
 
 // Teks utama & keterangan kecil baris List Blacklist per tipe target
 function labelBarisBlacklist(r) {
     if (r.tipe_entitas === 'KENDARAAN') return { utama: r.no_plat, sub: 'Kendaraan', mono: true };
     if (r.tipe_entitas === 'SUPPLIER') return { utama: r.nama_supplier, sub: `Supplier · ${r.kode_supplier || '-'}`, mono: false };
-    return { utama: r.nama_personel, sub: r.kode_personel || formatIdPersonel(r.id_personel), mono: false };
+    return { utama: r.nama_personel, sub: formatIdPersonel(r.id_personel), mono: false };
 }
 
 // ===== RIWAYAT =====
@@ -184,7 +184,7 @@ async function cariTargetBlacklist() {
     hasilCariTarget = Array.isArray(data) ? data : [];
     list.innerHTML = hasilCariTarget.map((t, i) => {
         const nama = tipeBlacklistBaru === 'PERSONEL'
-            ? `${formatNamaPersonel(t.kode_personel, t.id_target, t.nama_personel)} <span class="text-slate-400">· NIK ${escapeHtml(t.nik)}</span>`
+            ? `${formatNamaPersonel(t.id_target, t.nama_personel)} <span class="text-slate-400">· NIK ${escapeHtml(t.nik)}</span>`
             : tipeBlacklistBaru === 'SUPPLIER'
             ? `<span class="font-semibold">${escapeHtml(t.nama_supplier)}</span> <span class="text-slate-400">· ${escapeHtml(t.kode_supplier)}` +
               `${t.jenis ? ' · ' + escapeHtml(t.jenis) : ''}</span>`
@@ -228,7 +228,7 @@ function pilihTargetBlacklist(index) {
         </div>
         <div class="flex-1">
             <p class="font-semibold text-slate-800">${escapeHtml(t.nama_personel)}</p>
-            <p class="text-xs text-slate-500">${t.kode_personel ? escapeHtml(t.kode_personel) : 'Belum ada kode'} · ID ${formatIdPersonel(t.id_target)} · ${escapeHtml((LABEL_KATEGORI[t.kategori] || [t.kategori])[0])} · NIK ${escapeHtml(t.nik)}</p>
+            <p class="text-xs text-slate-500">ID ${formatIdPersonel(t.id_target)} · ${escapeHtml((LABEL_KATEGORI[t.kategori] || [t.kategori])[0])} · NIK ${escapeHtml(t.nik)}</p>
             <p class="text-xs text-slate-500">SIM ${escapeHtml(t.no_sim || '-')}${t.jarak_wajah != null ? ` · kemiripan wajah ${escapeHtml(t.jarak_wajah)}` : ''}</p>
             ${t.plat_terakhir ? `<p class="text-xs text-slate-500">Terakhir membawa ${escapeHtml(t.plat_terakhir)} · ${escapeHtml(t.waktu_terakhir || '')}</p>` : ''}
         </div>
@@ -238,9 +238,9 @@ function pilihTargetBlacklist(index) {
             <p class="font-semibold text-slate-800 font-mono">${escapeHtml(t.no_plat)}</p>
             <p class="text-xs text-slate-500">STNK ${escapeHtml(t.no_stnk || '-')} · ${Number(t.jumlah_supir)} supir terdaftar</p>
             <p class="text-xs text-slate-500">Supir utama: ${t.id_supir_utama
-                ? escapeHtml(formatNamaPersonel(t.kode_supir_utama, t.id_supir_utama, t.nama_supir_utama)) : '-'}</p>
+                ? escapeHtml(formatNamaPersonel(t.id_supir_utama, t.nama_supir_utama)) : '-'}</p>
             ${t.waktu_terakhir ? `<p class="text-xs text-slate-500">Terakhir ${escapeHtml(t.waktu_terakhir)} · supir
-                ${escapeHtml(formatNamaPersonel(t.kode_supir_terakhir, t.id_supir_terakhir, t.nama_supir_terakhir))} ·
+                ${escapeHtml(formatNamaPersonel(t.id_supir_terakhir, t.nama_supir_terakhir))} ·
                 customer ${escapeHtml(t.customer_terakhir)}${t.pengangkutan_terakhir ? ` · angkutan ${escapeHtml(t.pengangkutan_terakhir)}` : ''}</p>`
                 : '<p class="text-xs text-slate-400">Belum pernah bertransaksi</p>'}
         </div>

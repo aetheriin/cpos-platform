@@ -107,7 +107,7 @@ def log_hari(tanggal, id_area):
     rows = _query(f"""SELECT d.DetectionID AS id_deteksi, d.DetectDate AS waktu, d.CompAreaID AS id_comp_area, d.UserID AS id_personel, d.IDVehicle AS id_kendaraan, d.NoVehicle AS no_plat, d.Source AS sumber,
                              d.Action AS tindakan, d.FaceDistance AS jarak_wajah, d.Description AS keterangan, d.TicketNumber AS no_tiket, u.Nama AS petugas,
                              c.CompID + ' · ' + ar.AreaName AS site, c.CompID AS company,
-                             p.UserCode AS kode_personel, p.Nama AS nama_personel, p.PersonType AS kategori, k.NoVehicle AS plat_kendaraan
+                             p.Nama AS nama_personel, p.PersonType AS kategori, k.NoVehicle AS plat_kendaraan
                       FROM BlacklistDetection d
                       LEFT JOIN Users u ON u.UserID = d.CreateBy
                       LEFT JOIN CompanyArea ar ON ar.CompAreaID = d.CompAreaID
@@ -122,7 +122,7 @@ def log_hari(tanggal, id_area):
         t = target.setdefault(kode, {
             "kode": kode, "tipe": "PERSONEL" if r["id_personel"] else "KENDARAAN",
             "nama": r["nama_personel"] if r["id_personel"] else r["plat_kendaraan"],
-            "kode_personel": r["kode_personel"], "kategori": r["kategori"],
+            "kategori": r["kategori"],
             "jumlah": 0, "ditolak": 0, "pertama": r["waktu"], "terakhir": r["waktu"], "site": set()})
         t["jumlah"] += 1
         t["ditolak"] += r["tindakan"] == "DITOLAK"

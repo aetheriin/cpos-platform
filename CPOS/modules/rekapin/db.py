@@ -68,7 +68,7 @@ def set_aktif_kategori(id_kategori, aktif):
 # ===== Operator (karyawan siapa saja dalam cakupan user) =====
 def daftar_operator(id_user):
     """Karyawan aktif dalam cakupan area user yang login: [{id_user, nama, nik, id_company, area}]"""
-    return _query("""SELECT u.UserID AS id_user, u.Nama AS nama, u.UserCode AS nik, a.CompID AS id_company,
+    return _query("""SELECT u.UserID AS id_user, u.Nama AS nama, u.NoKTP AS nik, a.CompID AS id_company,
                             a.CompID + ' · ' + a.AreaName AS area
                      FROM Users u JOIN CompanyArea a ON a.CompAreaID = u.CompAreaID
                      WHERE u.Active = 1 AND u.UserLevelID IS NOT NULL

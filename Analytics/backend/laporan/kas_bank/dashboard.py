@@ -249,5 +249,6 @@ def detail(df, jenis, ds, filt=None, cari=None, urut=None, arah=None, halaman=1,
         hasil = susun(t, KOLOM_GIRO, ["no", "akun", "bank"], cari, urut, arah, "tgl", "desc", halaman, ukuran, pembanding="no")
     else:
         t = saring(_dalam(df, dari, sampai), filt, DIM).reset_index(drop=True)
+        t["nilai_asli"] = t["nilai_asli"].abs()   # arah sudah ditunjukkan kolom Debit / Credit; di ledger uang keluar bertanda minus
         hasil = susun(t, KOLOM_MUTASI, KOLOM_CARI, cari, urut, arah, "tgl", "desc", halaman, ukuran, pembanding="no")
     return {"jenis": jenis, "judul": JENIS_DETAIL[jenis], "periode": {"mulai": tgl(dari), "akhir": tgl(sampai)}, **hasil}

@@ -23,7 +23,7 @@ def _perubahan_personel(hari, batas=300):
     hasil = []
     for r in get_riwayat_perubahan_personel(hari, batas):
         hasil.append({"waktu": r["updated_at"].strftime("%Y-%m-%d %H:%M"), "id_personel": format_id(r["id_personel"]),
-                      "kode_personel": r["kode_personel"], "nama_personel": r["nama_personel"], "aksi": r["aksi"],
+                      "nama_personel": r["nama_personel"], "aksi": r["aksi"],
                       "perubahan": [{"kolom": k, "lama": lama, "baru": baru} for k, lama, baru in daftar_perubahan(r)],
                       "oleh": f"{r['oleh']} ({r['role_oleh']})"})
     return hasil
@@ -55,9 +55,9 @@ def audit_export():
                         json.dumps(r["details"], ensure_ascii=False), r["ip_address"] or ""])
     tulis.writerow([])
     tulis.writerow(["PERUBAHAN DATA PERSONEL"])
-    tulis.writerow(["Waktu", "ID", "Kode", "Aksi", "Perubahan", "Oleh"])
+    tulis.writerow(["Waktu", "ID", "Aksi", "Perubahan", "Oleh"])
     for r in _perubahan_personel(hari, BATAS_EXPORT):
         ubah = ", ".join(f"{p['kolom']}: {p['lama'] or '-'} -> {p['baru'] or '-'}" for p in r["perubahan"])
-        tulis.writerow([r["waktu"], r["id_personel"], r["kode_personel"] or "", r["aksi"], ubah, r["oleh"]])
+        tulis.writerow([r["waktu"], r["id_personel"], r["aksi"], ubah, r["oleh"]])
     return Response("﻿" + buf.getvalue(), mimetype="text/csv",
                     headers={"Content-Disposition": f"attachment; filename=audit_log_{hari}_hari.csv"})

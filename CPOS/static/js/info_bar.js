@@ -87,7 +87,7 @@ function terapkanHasilLookup(data) {
         statusValidasi = 'draft';
     }
     document.getElementById('infoSupir').value = data.driver
-        ? formatNamaPersonel(data.driver.kode_personel, data.driver.id_driver, data.driver.nama) : '';
+        ? formatNamaPersonel(data.driver.id_driver, data.driver.nama) : '';
     // Blacklist ditandai merah + label di info bar (terlihat di semua tab); detail & banner ada di tab Security
     const supirBlacklist = !!(data.driver && data.driver.is_blacklisted);
     document.getElementById('infoPlat').classList.toggle('border-red-500', !!data.kendaraan_blacklist);

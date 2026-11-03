@@ -91,11 +91,11 @@ def _pilihan_koreksi(t):
     pt = company_user(current_user.id)
     supir = daftar_driver_aktif()
     if t["id_driver"] not in {d["id_personel"] for d in supir}:
-        supir.append({"id_personel": t["id_driver"], "nama_personel": t["nama_driver"], "kode_personel": None})
+        supir.append({"id_personel": t["id_driver"], "nama_personel": t["nama_driver"]})
     return {"customer": [{"id": s.id_supplier, "nama": s.nama_supplier} for s in get_semua_supplier()
                          if s.is_customer and supplier_boleh(s.id_supplier, pt)],
             "produk": [{"id": p.id_produk, "nama": p.nama_produk} for p in get_semua_produk()],
-            "supir": [{"id": d["id_personel"], "nama": d["nama_personel"] + (f" ({d['kode_personel']})" if d.get("kode_personel") else "")}
+            "supir": [{"id": d["id_personel"], "nama": d["nama_personel"]}
                       for d in supir]}
 
 
@@ -228,7 +228,7 @@ def api_plat_lookup():
     utama = next((s for s in supir_terdaftar if s["is_utama"]), None)
     driver_utama = None
     if utama:
-        driver_utama = {"id_driver": utama["id_driver"], "kode_personel": utama["kode_personel"],
+        driver_utama = {"id_driver": utama["id_driver"],
                         "nik": utama["nik"], "nama": utama["nama_driver"], "no_sim": utama["no_sim"],
                         "kategori": "DRIVER", "is_blacklisted": utama["is_blacklisted"],
                         "is_updated": utama["is_updated"], "foto_path": utama["foto_path"]}

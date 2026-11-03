@@ -164,7 +164,6 @@ GO
 CREATE TABLE dbo.Users (
     UserID            BIGINT        NOT NULL PRIMARY KEY,
     CompAreaID        BIGINT        NULL CONSTRAINT FK_Users_Area REFERENCES dbo.CompanyArea (CompAreaID),
-    UserCode          VARCHAR(20)   NULL,                                   -- kode orang, mis. DRV-001
     UserName          VARCHAR(50)   NULL,                                   -- username login; NULL = tanpa akun
     UserDeptID        BIGINT        NULL CONSTRAINT FK_Users_DeptDet REFERENCES dbo.DepartmentDetails (DeptDetailID),   -- NULL = admin sistem
     UserLevelID       INT           NULL CONSTRAINT FK_Users_LevelDet REFERENCES dbo.LevelDetails (LevelDetID),
@@ -187,8 +186,7 @@ CREATE TABLE dbo.Users (
 );
 CREATE UNIQUE INDEX UX_Users_UserName ON dbo.Users (UserName) WHERE UserName IS NOT NULL;
 CREATE UNIQUE INDEX UX_Users_NoKTP ON dbo.Users (NoKTP) WHERE NoKTP IS NOT NULL;
-CREATE UNIQUE INDEX UX_Users_UserCode ON dbo.Users (UserCode) WHERE UserCode IS NOT NULL;
-CREATE INDEX IX_Users_Active ON dbo.Users (Active) INCLUDE (UserCode, Nama, GuestID, UserLevelID);
+CREATE INDEX IX_Users_Active ON dbo.Users (Active) INCLUDE (Nama, GuestID, UserLevelID);
 -- Password (hash) + riwayat (History JSON: hash terakhir, terbaru dulu) untuk menolak pemakaian ulang.
 -- MustChange = 1 -> wajib buat password baru saat login.
 CREATE TABLE dbo.PasswordManager (
@@ -281,7 +279,7 @@ CREATE INDEX IX_DokFile_Dokumen ON dbo.DocumentFile (DocumentID, SortOrder);
 GO
 -- Profil orang + jenis orang + SIM aktif terbaru + wajah terdaftar
 CREATE OR ALTER VIEW dbo.UserProfile AS
-SELECT u.UserID, u.UserCode, u.NoKTP, u.Nama, u.Email, u.IsUpload, u.CurrentHash,
+SELECT u.UserID, u.NoKTP, u.Nama, u.Email, u.IsUpload, u.CurrentHash,
        CAST(CASE WHEN u.UserLevelID IS NOT NULL THEN 'KARYAWAN' WHEN s.LicenseNumber IS NOT NULL THEN 'DRIVER' ELSE 'TAMU' END
             AS VARCHAR(10)) AS PersonType,
        CAST(CASE WHEN u.BlacklistID IS NULL THEN 0 ELSE 1 END AS BIT) AS IsBlacklisted, u.BlacklistID,
@@ -422,6 +420,26 @@ CREATE TABLE dbo.ProductPrice (
     VoidBy          BIGINT NULL CONSTRAINT FK_ProductPrice_VoidBy REFERENCES dbo.Users (UserID)
 );
 CREATE INDEX IX_ProductPrice_Product_Date ON dbo.ProductPrice (ProductID, PriceDate DESC) WHERE IsVoid = 0;
+GO
+
+-- Kurs mata uang ke rupiah (Data Master › Kurs Mata Uang). Riwayat: berlaku sejak RateDate sampai kurs berikutnya; salah input di-void.
+-- TRANSAKSI = kurs transaksi (JISDOR / pajak), PENUTUPAN = kurs akhir bulan. CompID NULL = semua perusahaan. Dibaca laporan Analytics.
+CREATE TABLE dbo.ExchangeRate (
+    ExchangeRateID  BIGINT IDENTITY(1,1) PRIMARY KEY,
+    CurrencyID      INT NOT NULL CONSTRAINT FK_ExchangeRate_Currency REFERENCES dbo.Currency (CurrencyID),
+    RateType        VARCHAR(10) NOT NULL CONSTRAINT CK_ExchangeRate_Type CHECK (RateType IN ('TRANSAKSI', 'PENUTUPAN')),
+    RateDate        DATE NOT NULL,
+    Rate            DECIMAL(18, 4) NOT NULL CONSTRAINT CK_ExchangeRate_Rate CHECK (Rate > 0),
+    CompID          VARCHAR(5) NULL CONSTRAINT FK_ExchangeRate_Company REFERENCES dbo.Company (CompID),
+    Source          VARCHAR(10) NULL,
+    Description     NVARCHAR(255) NULL,
+    CreateDate      DATETIME NOT NULL CONSTRAINT DF_ExchangeRate_Create DEFAULT (GETDATE()),
+    CreateBy        BIGINT NULL CONSTRAINT FK_ExchangeRate_CreateBy REFERENCES dbo.Users (UserID),
+    IsVoid          BIT NOT NULL CONSTRAINT DF_ExchangeRate_Void DEFAULT (0),
+    VoidDate        DATETIME NULL,
+    VoidBy          BIGINT NULL CONSTRAINT FK_ExchangeRate_VoidBy REFERENCES dbo.Users (UserID)
+);
+CREATE UNIQUE INDEX UX_ExchangeRate_Berlaku ON dbo.ExchangeRate (CurrencyID, RateType, RateDate, CompID) WHERE IsVoid = 0;
 GO
 
 -- Jenis kendaraan. Kapasitas: peringatan di timbangan; kosong = tidak dicek
@@ -1346,6 +1364,7 @@ FROM (VALUES ('AN_PR_PO',         N'PR & PO Outstanding',       'AN_DASHBOARD', 
              ('MASTER_MITRA',     N'Supplier',                  'MASTER', '/master?tab=mitra',     3),
              ('MASTER_PRODUK',    N'Produk',                    'MASTER', '/master?tab=produk',    4),
              ('MASTER_KEUANGAN',  N'Mata Uang & Bank',          'MASTER', '/master?tab=keuangan',  5),
+             ('MASTER_KURS',      N'Kurs Mata Uang',            'MASTER', '/master?tab=kurs',      6),
              ('VSL_SCAN',         N'Scan Wajah',                'KUNJUNGAN', '/visitor-logs?tab=scan',   1),
              ('VSL_LOGS',         N'Logs',                      'KUNJUNGAN', '/visitor-logs?tab=logs',   2),
              ('PERSONEL',         N'Data Orang',                'KUNJUNGAN', '/visitor-logs?tab=orang',  3)
@@ -1367,7 +1386,7 @@ INSERT INTO dbo.MenuAction (MenuID, ActionID)
 SELECT m.MenuID, CAST(x.value AS INT)
 FROM (VALUES ('DASHBOARD', '3'), ('LIST', '3,5'), ('FORM_SECURITY', '2,3'), ('FORM_TIMBANGAN', '2'),
              ('FORM_SORTASI', '2'), ('FORM_LAB', '2,3'), ('PERSONEL', '2,3,0,5'), ('MASTER_DRIVER', '2,3,0'),
-             ('MASTER_KENDARAAN', '2,3'), ('MASTER_MITRA', '2,3'), ('MASTER_PRODUK', '2,3'), ('MASTER_KEUANGAN', '2,3'),
+             ('MASTER_KENDARAAN', '2,3'), ('MASTER_MITRA', '2,3'), ('MASTER_PRODUK', '2,3'), ('MASTER_KEUANGAN', '2,3'), ('MASTER_KURS', '2,3'),
              ('KONTRAK_DO', '2,3'), ('BLACKLIST', '2,0,5'), ('VSL_SCAN', '2,3'), ('KELEBIHAN_DO', '2,3'),
              ('POS_SECURITY', '2,3'), ('LOGBOOK', '3'),
              -- RekapIn: request operator (tambah, ubah, hapus, setujui, tolak, selesai), harga & kategori request
@@ -1390,7 +1409,7 @@ INSERT INTO @hak VALUES
     ('HO', 'DASHBOARD', 0, 0, 1, 0, 0), ('HO', 'PERSONEL', 0, 1, 1, 1, 0), ('HO', 'BLACKLIST', 0, 1, 0, 0, 1),
     ('HO', 'KONTRAK_DO', 0, 1, 1, 1, 0), ('HO', 'MASTER_DRIVER', 0, 1, 1, 1, 0), ('HO', 'MASTER_KENDARAAN', 0, 1, 1, 0, 0),
     ('HO', 'KELEBIHAN_DO', 0, 0, 1, 0, 0), ('OPERATOR_TIMBANG', 'KELEBIHAN_DO', 0, 1, 0, 0, 0),
-    ('HO', 'MASTER_MITRA', 0, 1, 1, 0, 0), ('HO', 'MASTER_PRODUK', 0, 1, 1, 0, 0), ('HO', 'MASTER_KEUANGAN', 0, 1, 1, 0, 0),
+    ('HO', 'MASTER_MITRA', 0, 1, 1, 0, 0), ('HO', 'MASTER_PRODUK', 0, 1, 1, 0, 0), ('HO', 'MASTER_KEUANGAN', 0, 1, 1, 0, 0), ('HO', 'MASTER_KURS', 0, 1, 1, 0, 0),
     ('SECURITY', 'FORM_SECURITY', 0, 1, 1, 0, 0), ('SECURITY', 'MASTER_DRIVER', 0, 1, 1, 1, 0), ('SECURITY', 'MASTER_KENDARAAN', 0, 1, 1, 0, 0),
     ('OPERATOR_TIMBANG', 'FORM_TIMBANGAN', 0, 1, 0, 0, 0), ('SORTASI', 'FORM_SORTASI', 0, 1, 0, 0, 0), ('LAB', 'FORM_LAB', 0, 1, 1, 0, 0),
     ('SECURITY', 'POS_SECURITY', 1, 1, 1, 0, 0), ('SECURITY', 'LOGBOOK', 1, 0, 1, 0, 0), ('SECURITY', 'VSL_SCAN', 0, 1, 1, 0, 0), ('SECURITY', 'PERSONEL', 0, 1, 1, 0, 0),
@@ -2171,7 +2190,7 @@ BEGIN
         UPDATE dbo.UserSession SET LastActive = GETDATE()
         WHERE SessionID = @SessionID AND EndDate IS NULL
           AND LastActive >= DATEADD(MINUTE, -@idle, GETDATE()) AND LoginDate >= DATEADD(HOUR, -@maks, GETDATE());
-    SELECT s.SessionID, u.UserID, u.UserName, u.UserCode, u.Nama, u.UserLevelID AS LevelDetID, ld.LevelDetName, lv.IsAdmin,
+    SELECT s.SessionID, u.UserID, u.UserName, u.Nama, u.UserLevelID AS LevelDetID, ld.LevelDetName, lv.IsAdmin,
            u.CompAreaID, ld.HomeUrl, s.LoginDate, s.LastActive,
            CASE WHEN DATEADD(MINUTE, @idle, s.LastActive) < DATEADD(HOUR, @maks, s.LoginDate)
                 THEN DATEADD(MINUTE, @idle, s.LastActive) ELSE DATEADD(HOUR, @maks, s.LoginDate) END AS ExpireDate

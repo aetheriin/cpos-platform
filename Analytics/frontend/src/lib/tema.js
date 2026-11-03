@@ -10,7 +10,12 @@ export function useTema() {
   const [tema, setTema] = useState(temaAwal)
   const ganti = () => {
     const baru = tema === 'gelap' ? 'terang' : 'gelap'
+    // Matikan semua transisi selama tema berganti, supaya sidebar dan isi berubah warna bersamaan (tanpa jeda transition-colors)
+    const akar = document.documentElement
+    akar.classList.add('ganti-tema')
     document.documentElement.dataset.tema = baru
+    void akar.offsetHeight   // paksa gaya baru diterapkan sebelum transisi dinyalakan lagi
+    requestAnimationFrame(() => requestAnimationFrame(() => akar.classList.remove('ganti-tema')))
     try {
       localStorage.setItem(KUNCI, baru)
     } catch {

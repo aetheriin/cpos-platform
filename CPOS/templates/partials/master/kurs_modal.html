@@ -1,0 +1,35 @@
+<!-- MODAL: Impor kurs dari Excel / CSV (js/master/kurs.js). Diperiksa dulu, baru disimpan. -->
+<div id="modalImporKurs" class="modal-overlay">
+    <div class="modal-box modal-box-lg">
+        <div class="modal-header">
+            <h3 class="font-bold">Impor Kurs</h3>
+            <button type="button" data-on-click="closeModal" data-arg="modalImporKurs" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 space-y-4">
+            <p class="text-sm text-slate-600">Kolom: <b>Tanggal</b>, <b>Mata Uang</b> (mis. USD), <b>Kurs</b>, lalu opsional Jenis (Transaksi / Penutupan,
+                kosong = Transaksi), Perusahaan (kosong = semua), Sumber (JISDOR / PAJAK / BANK / INTERNET / LAINNYA), Keterangan.
+                Baris pertama = judul kolom. Unduh <a href="{{ url_for('master.kurs_contoh') }}" class="text-blue-600 underline">templat</a>.</p>
+            <div class="flex flex-wrap items-center gap-2">
+                <input type="file" id="berkasKurs" accept=".xlsx,.csv" class="input-field flex-1 min-w-0">
+                <button type="button" class="btn-secondary" data-on-click="periksaImporKurs" data-arg="$el">Periksa</button>
+            </div>
+            <div id="hasilImporKurs" class="hidden">
+                <p id="ringkasImporKurs" class="text-sm mb-2"></p>
+                <div class="max-h-80 overflow-y-auto border border-slate-200 rounded-lg">
+                    <table class="w-full text-left text-sm">
+                        <thead class="table-header-row sticky top-0">
+                            <tr><th class="table-cell">Baris</th><th class="table-cell">Tanggal</th><th class="table-cell">Mata Uang</th>
+                                <th class="table-cell text-right">Kurs</th><th class="table-cell">Jenis</th><th class="table-cell">Perusahaan</th>
+                                <th class="table-cell">Status</th></tr>
+                        </thead>
+                        <tbody id="tabelImporKurs" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="closeModal" data-arg="modalImporKurs" class="btn-secondary">Batal</button>
+            <button type="button" id="btnSimpanImporKurs" class="btn-primary" data-on-click="simpanImporKurs" data-arg="$el" disabled>Simpan</button>
+        </div>
+    </div>
+</div>

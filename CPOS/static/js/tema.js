@@ -8,7 +8,26 @@
     document.documentElement.classList.toggle('dark', tema === 'gelap');
 })();
 
+// Selama tema berganti semua transisi dimatikan (kelas ganti-tema), supaya sidebar (transition-all), header, dan laporan Analytics
+// di dalam bingkai berubah warna bersamaan, tanpa ada yang memudar lebih lambat.
+const gaya_ganti_tema = '.ganti-tema, .ganti-tema *, .ganti-tema *::before, .ganti-tema *::after { transition: none !important; }';
+(function () {
+    const gaya = document.createElement('style');
+    gaya.textContent = gaya_ganti_tema;
+    document.head.appendChild(gaya);
+})();
+
 function gantiTema() {
+    let bingkai = null;
+    try { bingkai = document.getElementById('bingkaiAnalytics')?.contentDocument?.documentElement || null; } catch (e) { /* beda alamat */ }
+    if (bingkai && !bingkai.querySelector('#gaya-ganti-tema')) {   // laporan versi lama belum punya aturan ganti-tema
+        const g = bingkai.ownerDocument.createElement('style');
+        g.id = 'gaya-ganti-tema';
+        g.textContent = gaya_ganti_tema;
+        bingkai.ownerDocument.head.appendChild(g);
+    }
+    const akar = [document.documentElement, bingkai].filter(Boolean);
+    akar.forEach((a) => a.classList.add('ganti-tema'));
     const gelap = document.documentElement.classList.toggle('dark');
     const tema = gelap ? 'gelap' : 'terang';
     try { localStorage.setItem('tema', tema); } catch (e) { /* abaikan */ }
@@ -18,6 +37,8 @@ function gantiTema() {
         const doc = document.getElementById('bingkaiAnalytics')?.contentDocument;
         if (doc) doc.documentElement.dataset.tema = tema;
     } catch (e) { /* bingkai beda alamat: ikut tema saat dibuka berikutnya */ }
+    akar.forEach((a) => void a.offsetHeight);   // terapkan warna baru selagi transisi mati
+    requestAnimationFrame(() => requestAnimationFrame(() => akar.forEach((a) => a.classList.remove('ganti-tema'))));
 }
 
 // Label tombol menyebut apa yang terjadi bila diklik

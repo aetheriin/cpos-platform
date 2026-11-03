@@ -1,0 +1,15 @@
+{% from "partials/master/_referensi.html" import kotak_referensi %}
+{# Kurs mata uang ke rupiah (js/master/kurs.js + js/master/referensi.js). Hak: Admin › Hak Akses › Kurs Mata Uang.
+   Dibaca laporan Analytics (Cash Flow) untuk mengonversi transaksi valas. #}
+<div data-tab-content="kurs" class="hidden">
+    <div class="filter-bar">
+        <p class="text-sm text-slate-500">Rupiah per 1 unit mata uang. Berlaku sejak tanggalnya sampai ada kurs berikutnya.
+            <b>Transaksi</b> untuk mengonversi transaksi, <b>Penutupan</b> untuk saldo akhir bulan.</p>
+        <div class="flex-1"></div>
+        {% if hak.kurs.tambah %}
+        <a href="{{ url_for('master.kurs_contoh') }}" class="btn-secondary"><i class="fa-solid fa-download mr-1"></i> Templat</a>
+        <button type="button" class="btn-secondary" data-on-click="bukaImporKurs"><i class="fa-solid fa-file-import mr-1"></i> Impor Excel</button>
+        {% endif %}
+    </div>
+    {{ kotak_referensi('kurs', 'Kurs Mata Uang', 'Salah input: Batalkan lalu input ulang (riwayat tetap tersimpan). Perusahaan kosong = berlaku untuk semua perusahaan.') }}
+</div>

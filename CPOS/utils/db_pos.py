@@ -10,8 +10,7 @@ from utils.db_utils import get_connection, _rows_to_dicts, AREA_TIKET
 
 DI_DALAM = "t.ExitDate IS NULL AND t.StatusCode <> 'VOID'"
 
-_KOLOM = """t.TicketNumber AS no_tiket, k.NoVehicle AS no_plat, t.DriverID AS id_driver, d.Nama AS supir, d.UserCode AS kode_personel,
-            s.SupplierName AS customer, p.ProductName AS produk, t.WeightTypeCode AS jenis_transaksi, t.StatusCode AS status_alur,
+_KOLOM = """t.TicketNumber AS no_tiket, k.NoVehicle AS no_plat, t.DriverID AS id_driver, d.Nama AS supir, s.SupplierName AS customer, p.ProductName AS produk, t.WeightTypeCode AS jenis_transaksi, t.StatusCode AS status_alur,
             ISNULL(ang.SupplierName, '') AS pengangkutan, t.TicketDate AS waktu_masuk, t.ExitDate AS waktu_keluar,
             um.Nama AS petugas_masuk, uk.Nama AS petugas_keluar, a.FlowCode AS kode_alur"""
 _DARI = """FROM WeightBridge t
@@ -73,7 +72,7 @@ def atur_jenis_kendaraan(no_plat, id_jenis):
 
 
 def supir_terakhir(no_plat):
-    rows = _query("""SELECT TOP 1 t.TicketDate AS waktu, d.UserID AS id_driver, d.UserCode AS kode_personel, d.NoKTP AS nik,
+    rows = _query("""SELECT TOP 1 t.TicketDate AS waktu, d.UserID AS id_driver, d.NoKTP AS nik,
                             d.Nama AS nama, d.LicenseNumber AS no_sim, d.PersonType AS kategori, d.IsBlacklisted AS is_blacklisted, d.IsUpload AS is_updated, d.PhotoPath AS foto_path
                      FROM WeightBridge t JOIN DetailVehicle k ON k.IDVehicle = t.IDVehicle
                      JOIN UserProfile d ON d.UserID = t.DriverID

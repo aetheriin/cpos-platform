@@ -1,13 +1,9 @@
-"""Aturan tampilan & kode personel (tanpa database, bisa di-unit-test)."""
-import re
-
-PREFIX_KODE = "PRGBS-"      # format sementara (keputusan 4), tidak dikunci CHECK di database
+"""Aturan tampilan personel (tanpa database, bisa di-unit-test)."""
 KATEGORI_VALID = ("KARYAWAN", "DRIVER", "TAMU")     # utils/jenis_orang.py
 WAJIB_SIM = ("DRIVER",)
 
 # kolom audit -> label yang ditampilkan di menu Log Audit
 KOLOM_AUDIT = (
-    ("kode_personel", "kode_personel_lama", "kode_personel_baru"),
     ("nik", "nik_lama", "nik_baru"),
     ("nama", "nama_lama", "nama_baru"),
     ("no_sim", "no_sim_lama", "no_sim_baru"),
@@ -18,16 +14,9 @@ def format_id(id_personel):
     return f"{int(id_personel):03d}"
 
 
-def format_nama_personel(kode, id_personel, nama):
-    """`Kode · Nama`, atau `ID 014 · Nama` bila kode masih kosong."""
-    return f"{kode} · {nama}" if kode else f"ID {format_id(id_personel)} · {nama}"
-
-
-def kode_berikutnya(daftar_kode, prefix=PREFIX_KODE):
-    """Saran kode berikutnya dari kode yang sudah ada, mis. ['PRGBS-001', 'PRGBS-009'] -> 'PRGBS-010'."""
-    pola = re.compile(rf"^{re.escape(prefix)}(\d+)$")
-    nomor = [int(m.group(1)) for k in daftar_kode if k and (m := pola.match(k.strip().upper()))]
-    return f"{prefix}{(max(nomor) if nomor else 0) + 1:03d}"
+def format_nama_personel(id_personel, nama):
+    """`ID 014 · Nama`."""
+    return f"ID {format_id(id_personel)} · {nama}"
 
 
 def nik_valid(nik):

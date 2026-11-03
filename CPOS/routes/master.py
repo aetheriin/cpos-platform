@@ -1,9 +1,11 @@
-"""Menu Data Master: Driver (personel kategori DRIVER), Kendaraan, Supplier, Produk, Mata Uang & Bank, dan tabel referensi
-(utils/db_referensi.py). Aksi sesuai Admin › Hak Akses."""
-from flask import Blueprint, render_template, request, jsonify
+"""Menu Data Master: Driver (personel kategori DRIVER), Kendaraan, Supplier, Produk, Mata Uang & Bank, Kurs Mata Uang, dan tabel
+referensi (utils/db_referensi.py). Aksi sesuai Admin › Hak Akses."""
+from datetime import date
+
+from flask import Blueprint, render_template, request, jsonify, Response
 from flask_login import login_required, current_user
 
-from utils import db_master as db, db_admin, alur, log_aktivitas, kolom_wajib, db_referensi as ref
+from utils import db_master as db, db_admin, alur, log_aktivitas, kolom_wajib, db_referensi as ref, db_kurs
 from utils.plat_utils import normalisasi_plat
 from utils.galat_isian import GalatIsian, isi_galat
 from utils.hak_akses import izin, boleh, boleh_lihat, halaman as lihat_halaman
@@ -18,10 +20,10 @@ master_bp = Blueprint("master", __name__)
 def master_halaman():
     return render_template("master/master.html", halaman="master", kategori_tetap="DRIVER",
                            boleh_ubah=boleh("MASTER_DRIVER"), boleh_kendaraan=boleh("MASTER_KENDARAAN"),
-                           hak={k: {a: boleh(f"MASTER_{k.upper()}", a) for a in ("tambah", "ubah")} for k in ("mitra", "produk", "keuangan")},
+                           hak={k: {a: boleh(f"MASTER_{k.upper()}", a) for a in ("tambah", "ubah")} for k in ("mitra", "produk", "keuangan", "kurs")},
                            grup_supplier_list=ref.opsi("grup_supplier"), rekening_list=ref.opsi("rekening"),
                            driver_list=db.daftar_driver_aktif(), jenis_sim_list=daftar_jenis_sim(),
-                           kategori_list=list(daftar_kategori().values()), boleh_kode=boleh("PERSONEL", "ubah"),
+                           kategori_list=list(daftar_kategori().values()),
                            jenis_kendaraan_list=db.daftar_jenis_kendaraan(),
                            company_list=[c for c in daftar_company() if c["is_active"]],
                            alur_list=alur.daftar_alur(), kategori_produk=db_admin.KATEGORI_PRODUK)
@@ -290,7 +292,8 @@ def ref_simpan(jenis):
     def aksi():
         id_baru = ref.simpan(jenis, id_baris, request.form, current_user.id)
         _catat(f"REF_{'UBAH' if id_baris else 'TAMBAH'}", f"{c['tabel']}:{id_baru}")
-        return jsonify({"message": f"{c['judul']} berhasil disimpan", "id": id_baru})
+        awas = db_kurs.peringatan(request.form) if jenis == "kurs" else None
+        return jsonify({"message": f"{c['judul']} berhasil disimpan" + (f". Periksa lagi: {awas}" if awas else ""), "id": id_baru})
     return _jalankan(aksi)
 
 
@@ -319,3 +322,52 @@ def ref_void(jenis, id_baris):
         _catat("REF_VOID", f"{c['tabel']}:{id_baris}")
         return jsonify({"message": f"{c['judul']} dibatalkan"})
     return _jalankan(aksi)
+
+
+# ===== KURS MATA UANG: saran dari internet & impor Excel / CSV (utils/db_kurs.py) =====
+@master_bp.route("/api/master/kurs/internet")
+@login_required
+@izin('MASTER_KURS', 'tambah')
+def kurs_internet():
+    def aksi():
+        kode = next((o["label"].split(" · ")[0] for o in ref.opsi("mata_uang_asing") if str(o["id"]) == request.args.get("id_mata_uang", "")), None)
+        if not kode:
+            raise ValueError("Pilih mata uang dahulu")
+        try:
+            tanggal = date.fromisoformat(request.args.get("tanggal") or "")
+        except ValueError:
+            raise ValueError("Isi tanggal dahulu")
+        tgl_kurs, kurs = db_kurs.kurs_internet(kode, tanggal)
+        return jsonify({"kurs": round(kurs, 4), "tanggal": tgl_kurs.isoformat(), "kode": kode})
+    return _jalankan(aksi)
+
+
+@master_bp.route("/api/master/kurs/contoh")
+@login_required
+def kurs_contoh():
+    return Response(db_kurs.contoh_csv(), mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=templat_kurs.csv"})
+
+
+@master_bp.route("/api/master/kurs/impor", methods=["POST"])
+@login_required
+@izin('MASTER_KURS', 'tambah')
+def kurs_impor():
+    """simpan=0: periksa saja (pratinjau); simpan=1: periksa ulang lalu simpan baris yang lolos."""
+    def aksi():
+        berkas = request.files.get("berkas")
+        if not berkas or not berkas.filename:
+            raise ValueError("Pilih berkas .xlsx atau .csv")
+        isi = berkas.read(5 * 1024 * 1024 + 1)
+        if len(isi) > 5 * 1024 * 1024:
+            raise ValueError("Berkas maksimal 5 MB")
+        hasil = db_kurs.periksa_impor(db_kurs.baca_berkas(berkas.filename, isi))
+        disimpan = None
+        if request.form.get("simpan") == "1":
+            disimpan = db_kurs.simpan_impor(hasil, current_user.id)
+            _catat("KURS_IMPOR", berkas.filename[:100], f"{disimpan} kurs")
+        baris = [{**r, "tanggal": r.get("tanggal").isoformat() if r.get("tanggal") else None} for r in hasil]
+        return jsonify({"baris": baris, "disimpan": disimpan,
+                        "message": f"{disimpan} kurs berhasil diimpor" if disimpan is not None else None})
+    return _jalankan(aksi)
+

@@ -34,7 +34,7 @@ function tampilkanDataKendaraan(data) {
 function renderSupirTruk(list) {
     document.getElementById('tabelSupirTruk').innerHTML = list.map(s => `
         <tr class="hover:bg-slate-50">
-            <td class="table-cell">${escapeHtml(formatNamaPersonel(s.kode_personel, s.id_driver, s.nama_driver))}${s.is_updated ? ' <span class="text-amber-600 text-xs">⚠</span>' : ''}${s.is_blacklisted ? ' ' + badge('BLACKLIST', WARNA_BADGE.merah) : ''}
+            <td class="table-cell">${escapeHtml(formatNamaPersonel(s.id_driver, s.nama_driver))}${s.is_updated ? ' <span class="text-amber-600 text-xs">⚠</span>' : ''}${s.is_blacklisted ? ' ' + badge('BLACKLIST', WARNA_BADGE.merah) : ''}
                 <div class="text-xs text-slate-400">SIM ${escapeHtml(s.no_sim)}</div></td>
             <td class="table-cell">${escapeHtml(s.nik)}</td>
             <td class="table-cell">${s.is_utama
@@ -132,7 +132,7 @@ async function lepasSupirTruk(idDriver) {
 function pakaiSupirDariTruk(idDriver) {
     const s = supirTrukTerakhir.find(x => x.id_driver === idDriver);
     if (!s) return;
-    gantiSupirTiket({ id_driver: s.id_driver, kode_personel: s.kode_personel, nik: s.nik, nama: s.nama_driver,
+    gantiSupirTiket({ id_driver: s.id_driver, nik: s.nik, nama: s.nama_driver,
                       no_sim: s.no_sim, is_blacklisted: s.is_blacklisted, is_updated: s.is_updated, foto_path: s.foto_path });
 }
 

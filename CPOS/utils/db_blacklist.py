@@ -25,7 +25,7 @@ def get_riwayat_blacklist(tipe=None, cari=None, batas=200, status="AKTIF", pt=No
         SELECT TOP (?) b.BlacklistID AS id_blacklist, b.TargetType AS tipe_entitas, dk.DocNumber AS no_surat_blacklist, b.Reason AS alasan_blacklist,
                df.file_path AS file_surat_blacklist, COALESCE(dk.DocDate, CAST(b.CreateDate AS DATE)) AS tgl_blacklist,
                b.BlacklistDoc AS id_dokumen, b.CreateDate AS created_at, u.Nama AS oleh, lv.LevelDetCode AS role_oleh, ar.AreaName AS area_oleh,
-               p.UserID AS id_personel, p.UserCode AS kode_personel, p.Nama AS nama_personel, k.NoVehicle AS no_plat, b.NoVehicle AS no_plat_terkait,
+               p.UserID AS id_personel, p.Nama AS nama_personel, k.NoVehicle AS no_plat, b.NoVehicle AS no_plat_terkait,
                c.SupplierName AS customer_terkait, a.SupplierName AS pengangkutan_terkait,
                b.RevokeDate AS dicabut_at, b.RevokeReason AS alasan_cabut, uc.Nama AS dicabut_oleh, p.NoKTP AS nik, b.AliasName AS nama_alias, b.CategoryCode AS kategori,
                CASE b.TargetType WHEN 'KENDARAAN' THEN 'Kendaraan' WHEN 'SUPPLIER' THEN 'Supplier' ELSE CASE b.CategoryCode WHEN 'KARYAWAN' THEN N'Karyawan' WHEN 'DRIVER' THEN N'Supir' WHEN 'TAMU' THEN N'Tamu' END END AS nama_kategori,
@@ -72,10 +72,10 @@ def get_riwayat_blacklist(tipe=None, cari=None, batas=200, status="AKTIF", pt=No
         sql += " AND b.RevokeDate IS NOT NULL"
     if cari:
         pola = f"%{cari}%"
-        sql += """ AND (p.UserCode LIKE ? OR p.Nama LIKE ? OR p.NoKTP LIKE ?
+        sql += """ AND (p.Nama LIKE ? OR p.NoKTP LIKE ?
                         OR k.NoVehicle LIKE ? OR dk.DocNumber LIKE ? OR b.AliasName LIKE ? OR b.NoVehicle LIKE ?
                         OR sb.SupplierName LIKE ? OR sb.SupplierCode LIKE ?)"""
-        params += [pola] * 9
+        params += [pola] * 8
     sql += " ORDER BY b.CreateDate DESC, b.BlacklistID DESC"
     conn = get_connection()
     cursor = conn.cursor()
@@ -88,7 +88,7 @@ def get_riwayat_blacklist(tipe=None, cari=None, batas=200, status="AKTIF", pt=No
 # Data personel + transaksi terakhirnya sebagai SUPIR (plat, customer, pengangkutan saat itu).
 # Bukan supir / belum pernah membawa truk -> kolom transaksi NULL (form blacklist tidak menampilkannya).
 _SELECT_PERSONEL = """
-    SELECT {top} p.UserID AS id_target, p.UserCode AS kode_personel, p.Nama AS nama_personel, p.NoKTP AS nik, p.LicenseNumber AS no_sim, p.PersonType AS kategori,
+    SELECT {top} p.UserID AS id_target, p.Nama AS nama_personel, p.NoKTP AS nik, p.LicenseNumber AS no_sim, p.PersonType AS kategori,
            CASE p.PersonType WHEN 'KARYAWAN' THEN N'Karyawan' WHEN 'DRIVER' THEN N'Supir' WHEN 'TAMU' THEN N'Tamu' END AS nama_kategori, p.PhotoPath AS foto_path, p.IsBlacklisted AS is_blacklisted, tr.no_plat AS plat_terakhir,
            tr.id_supplier AS id_customer_terakhir, tr.customer AS customer_terakhir,
            tr.id_pengangkutan AS id_pengangkutan_terakhir, tr.pengangkutan AS pengangkutan_terakhir,
@@ -113,16 +113,16 @@ def _rapikan_target(data):
 
 
 def cari_target(tipe, kata, batas=8):
-    """Kandidat target: personel (kode / NIK / nama / no SIM / ID) atau kendaraan (plat)."""
+    """Kandidat target: personel (NIK / nama / no SIM / ID) atau kendaraan (plat)."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
         pola = f"%{kata}%"
         if tipe == "PERSONEL":
             cursor.execute(_SELECT_PERSONEL.format(top=f"TOP {int(batas)}") + """
-                AND (p.UserCode LIKE ? OR p.NoKTP LIKE ? OR p.Nama LIKE ? OR p.LicenseNumber LIKE ?
+                AND (p.NoKTP LIKE ? OR p.Nama LIKE ? OR p.LicenseNumber LIKE ?
                      OR CAST(p.UserID AS VARCHAR) = ?)
-                ORDER BY p.Nama""", pola, pola, pola, pola, kata.lstrip("0") or "0")
+                ORDER BY p.Nama""", pola, pola, pola, kata.lstrip("0") or "0")
         elif tipe == "SUPPLIER":
             # Kode / nama supplier, jenis (customer / pengangkutan), PT, transaksi 90 hari & terakhir
             cursor.execute(f"""
@@ -144,18 +144,18 @@ def cari_target(tipe, kata, batas=8):
             # Plat + STNK, supir utama, jumlah supir terdaftar, dan transaksi terakhir (supir, customer, angkutan)
             cursor.execute(f"""
                 SELECT TOP {int(batas)} k.IDVehicle AS id_target, k.NoVehicle AS no_plat, k.NoSTNK AS no_stnk, CAST(CASE WHEN k.BlacklistID IS NULL THEN 0 ELSE 1 END AS BIT) AS is_blacklisted, k.Active AS is_active,
-                       u.id_personel AS id_supir_utama, u.kode_personel AS kode_supir_utama, u.nama_personel AS nama_supir_utama,
+                       u.id_personel AS id_supir_utama, u.nama_personel AS nama_supir_utama,
                        (SELECT COUNT(*) FROM VehicleDriver kd JOIN Users p ON p.UserID = kd.UserID
                         WHERE kd.IDVehicle = k.IDVehicle AND kd.Active = 1 AND p.Active = 1) AS jumlah_supir,
-                       tr.id_driver AS id_supir_terakhir, tr.kode_personel AS kode_supir_terakhir,
+                       tr.id_driver AS id_supir_terakhir,
                        tr.nama_personel AS nama_supir_terakhir, tr.customer AS customer_terakhir,
                        tr.id_supplier AS id_customer_terakhir, tr.id_pengangkutan AS id_pengangkutan_terakhir,
                        tr.pengangkutan AS pengangkutan_terakhir, tr.produk AS produk_terakhir, tr.created_at AS waktu_terakhir
                 FROM DetailVehicle k
-                OUTER APPLY (SELECT TOP 1 p.UserID AS id_personel, p.UserCode AS kode_personel, p.Nama AS nama_personel
+                OUTER APPLY (SELECT TOP 1 p.UserID AS id_personel, p.Nama AS nama_personel
                              FROM VehicleDriver kd JOIN Users p ON p.UserID = kd.UserID
                              WHERE kd.IDVehicle = k.IDVehicle AND kd.Active = 1 AND kd.IsMain = 1) u
-                OUTER APPLY (SELECT TOP 1 t.DriverID AS id_driver, p.UserCode AS kode_personel, p.Nama AS nama_personel, s.SupplierName AS customer,
+                OUTER APPLY (SELECT TOP 1 t.DriverID AS id_driver, p.Nama AS nama_personel, s.SupplierName AS customer,
                                     t.SupplierID AS id_supplier, t.TransportID AS id_pengangkutan, a.SupplierName AS pengangkutan,
                                     pr.ProductName AS produk, t.TicketDate AS created_at
                              FROM WeightBridge t JOIN Users p ON p.UserID = t.DriverID
@@ -304,11 +304,11 @@ def get_surat_blacklist(tipe, id_target):
 def nama_target(tipe, id_target):
     """(nama tampilan, sudah_blacklist) target; ValueError bila tidak ada."""
     if tipe == "PERSONEL":
-        rows = _query_satu("SELECT UserCode AS kode_personel, Nama AS nama_personel, CAST(CASE WHEN BlacklistID IS NULL THEN 0 ELSE 1 END AS BIT) AS is_blacklisted FROM Users WHERE UserID = ?", id_target)
+        rows = _query_satu("SELECT Nama AS nama_personel, CAST(CASE WHEN BlacklistID IS NULL THEN 0 ELSE 1 END AS BIT) AS is_blacklisted FROM Users WHERE UserID = ?", id_target)
         if not rows:
             raise ValueError("Target tidak ditemukan")
         r = rows[0]
-        return (f"{r['kode_personel']} · {r['nama_personel']}" if r["kode_personel"] else r["nama_personel"]), bool(r["is_blacklisted"])
+        return r["nama_personel"], bool(r["is_blacklisted"])
     if tipe == "SUPPLIER":
         rows = _query_satu("""SELECT SupplierName AS nama, CAST(CASE WHEN BlacklistID IS NULL THEN 0 ELSE 1 END AS BIT) AS is_blacklisted
                               FROM Supplier WHERE SupplierID = ?""", id_target)

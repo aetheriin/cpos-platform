@@ -117,7 +117,7 @@ function tampilkanCari(kata, data) {
             ikon: `<span class="font-mono text-[10px] font-bold">${escapeHtml((p.nama_personel || '?').slice(0, 2).toUpperCase())}</span>`,
             kiri: `<span class="block font-semibold text-slate-900 truncate">${escapeHtml(p.nama_personel)}
                    ${p.is_blacklisted ? '<span class="ml-1 text-[10px] font-bold text-red-600 bg-red-50 px-1.5 rounded">BLACKLIST</span>' : ''}</span>
-                   <span class="block text-xs text-slate-500">${escapeHtml(p.kode_personel || '-')} · NIK ${escapeHtml(p.nik)}</span>`,
+                   <span class="block text-xs text-slate-500">ID ${formatIdPersonel(p.id_personel)} · NIK ${escapeHtml(p.nik)}</span>`,
             kanan: `<span class="text-[11px] font-semibold text-slate-500">${escapeHtml(labelKode(p.kategori))}</span>`,
         })).join(''));
         html += grupCari(`Kendaraan (${data.kendaraan.length})`, data.kendaraan.map(v => itemCari({

@@ -43,11 +43,10 @@ async function muatPersonel() {
 
     const data = await ambilJson(`/api/personel?${params}`);
     const tbody = document.getElementById('tabelPersonel');
-    if (data.error) { tbody.innerHTML = barisKosong(7, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisKosong(6, data.error); return; }
     daftarPersonel = data;
     tbody.innerHTML = data.map(p => `
         <tr class="hover:bg-slate-50">
-            <td class="table-cell">${kodeAtauKosong(p.kode_personel)}</td>
             <td class="table-cell">${escapeHtml(p.nama_personel)}</td>
             <td class="table-cell font-mono">${escapeHtml(p.nik || '-')}</td>
             <td class="table-cell">${badgeKategori(p.kategori)}</td>
@@ -57,8 +56,8 @@ async function muatPersonel() {
                 <button type="button" data-on-click="bukaEditPersonel" data-arg="${Number(p.id_personel)}" class="link-aksi text-blue-600">Ubah</button>
                 ${p.is_blacklisted ? '' : `<button type="button" data-on-click="bukaHapusPersonel" data-arg="${Number(p.id_personel)}" class="link-aksi text-red-600">Hapus</button>`}`}
             </td>
-        </tr>`).join('') || barisKosong(7, 'Belum ada data', aksiKosong('bukaTambahPersonel', 'Tambah Orang'));
-    catatanBatas(tbody, data.length, 200, 7);
+        </tr>`).join('') || barisKosong(6, 'Belum ada data', aksiKosong('bukaTambahPersonel', 'Tambah Orang'));
+    catatanBatas(tbody, data.length, 200, 6);
 }
 
 function keteranganOrang(p) {
@@ -81,7 +80,7 @@ function tanggalHariIni() {
 
 // ===== MODAL TAMBAH / UPDATE =====
 function resetFormPersonel() {
-    ['personelKode', 'personelNama', 'personelNik', 'personelSim', 'personelJenisSim', 'personelSimBerlaku',
+    ['personelNama', 'personelNik', 'personelSim', 'personelJenisSim', 'personelSimBerlaku',
      'personelArea', 'personelDept', 'personelJabatan', 'personelAsal', 'personelKeperluan']
         .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     adaAkunPersonel = false;
@@ -106,8 +105,6 @@ async function bukaTambahPersonel() {
     document.getElementById('btnSimpanPersonel').textContent = 'Simpan';
     document.getElementById('personelDropTeks').textContent = 'Seret foto ke sini atau klik untuk memilih';
     openModal('modalPersonel');
-
-    if (KATEGORI_TETAP) isiSaranKodePersonel();
 }
 
 // Dari Scan Wajah (wajah tidak dikenali): form tambah dengan foto hasil scan, jenis dipilih dari dropdown
@@ -130,18 +127,8 @@ function aturDeptPersonel(pilih) {
     sel.value = [...sel.options].some(o => o.value === lama) ? lama : '';
 }
 
-// Kode otomatis per kategori (mis. DRV-012); HO masih bisa mengubahnya
-async function isiSaranKodePersonel() {
-    const kategori = document.getElementById('personelKategori').value;
-    const kode = document.getElementById('personelKode');
-    if (!kategori) { kode.value = ''; return; }
-    const saran = await ambilJson(`/api/personel/saran-kode?kategori=${encodeURIComponent(kategori)}`);
-    if (saran.kode && document.getElementById('personelKategori').value === kategori) kode.value = saran.kode;
-}
-
 function gantiKategoriPersonel() {
     perbaruiHintSim();
-    if (modePersonel === 'tambah') isiSaranKodePersonel();     // ubah: kode lama tetap
 }
 
 async function bukaEditPersonel(id) {
@@ -151,10 +138,9 @@ async function bukaEditPersonel(id) {
     idPersonelEdit = id;
     resetFormPersonel();
     document.getElementById('personelJudul').textContent = 'Ubah Data';
-    document.getElementById('personelSubjudul').textContent = formatNamaPersonel(p.kode_personel, p.id_personel, p.nama_personel);
+    document.getElementById('personelSubjudul').textContent = formatNamaPersonel(p.id_personel, p.nama_personel);
     document.getElementById('btnSimpanPersonel').textContent = 'Simpan Perubahan';
     document.getElementById('personelDropTeks').textContent = 'Foto saat ini · klik untuk mengganti (opsional)';
-    document.getElementById('personelKode').value = p.kode_personel || '';
     document.getElementById('personelNama').value = p.nama_personel;
     document.getElementById('personelNik').value = p.nik;
     document.getElementById('personelKategori').value = p.kategori;
@@ -168,8 +154,6 @@ async function bukaEditPersonel(id) {
     tampilkanPreviewPersonel(p.foto_path ? urlBerkas(p.foto_path) : null);
     perbaruiHintSim();
     openModal('modalPersonel');
-
-    if (!p.kode_personel) isiSaranKodePersonel();
 }
 
 function tutupModalPersonel() {
@@ -288,7 +272,7 @@ async function simpanPersonel() {
     if (!document.getElementById('personelKategori').value) { Notif.peringatan('Pilih jenis orang'); return; }
     if (modePersonel === 'tambah' && !fotoPersonel) { Notif.peringatan('Foto wajah wajib diisi (upload atau kamera)'); return; }
     const formData = new FormData();
-    [['kode_personel', 'personelKode'], ['nama', 'personelNama'], ['nik', 'personelNik'],
+    [['nama', 'personelNama'], ['nik', 'personelNik'],
      ['kategori', 'personelKategori'], ['no_sim', 'personelSim'], ['id_jenis_sim', 'personelJenisSim'],
      ['sim_berlaku', 'personelSimBerlaku'], ['id_comp_area', 'personelArea'], ['id_department', 'personelDept'],
      ['id_jabatan', 'personelJabatan'], ['asal_perusahaan', 'personelAsal'], ['keperluan', 'personelKeperluan']]
@@ -320,7 +304,7 @@ async function bukaHapusPersonel(id) {
     const p = daftarPersonel.find(x => x.id_personel === id);
     if (!p) return;
     const ok = await Dialog.konfirmasi({ judul: 'Hapus orang?', teksYa: 'Hapus', bahaya: true,
-        pesan: `${p.nama_personel} (${p.kode_personel || 'belum ada kode'} · ${(LABEL_KATEGORI[p.kategori] || [p.kategori])[0]})\n`
+        pesan: `${p.nama_personel} (ID ${formatIdPersonel(p.id_personel)} · ${(LABEL_KATEGORI[p.kategori] || [p.kategori])[0]})\n`
             + 'Wajahnya tidak lagi dikenali saat scan. Riwayat scan & tiket tetap tersimpan.' });
     if (!ok) return;
     if (tampilkanHasil(await kirimForm(`/api/personel/${id}/hapus`, {}))) muatPersonel();

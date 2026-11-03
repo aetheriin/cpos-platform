@@ -33,13 +33,13 @@ def serialisasi_tiket(row):
         "driver": {
             "id_driver": row.id_driver, "nik": row.nik, "nama": row.nama_driver,
             "no_sim": row.no_sim, "is_updated": bool(row.is_updated), "foto_path": row.foto_path,
-            "kode_personel": row.kode_personel, "is_blacklisted": bool(row.is_blacklisted)
+            "is_blacklisted": bool(row.is_blacklisted)
         }
     }
 
 def serialisasi_driver(row):
     if row is None:
         return None
-    return {"id_driver": row.id_driver, "kode_personel": row.kode_personel, "nik": row.nik, "nama": row.nama_driver,
+    return {"id_driver": row.id_driver, "nik": row.nik, "nama": row.nama_driver,
             "no_sim": row.no_sim, "kategori": row.kategori, "is_blacklisted": bool(row.is_blacklisted),
             "is_updated": bool(row.is_updated), "foto_path": row.foto_path}
