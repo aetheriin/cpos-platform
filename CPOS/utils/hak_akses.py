@@ -1,10 +1,3 @@
-"""Hak akses dari database: aturan per menu (AccessMenu) untuk Semua user / Peran / Jabatan / Departemen / User,
-Izinkan atau Larang per aksi (Larang menang). Peran = Departemen + Jabatan (LevelDetails), mis. Security · Staff.
-Menu 3 level (flowchart navbar): Lv1 grup, Lv2 halaman, Lv3 bagian; menu hanya terlihat bila dirinya dan semua induknya
-boleh dilihat (aturan induk menjadi gerbang). Peran admin (Level.IsAdmin) hanya area Admin.
-Aturan hak efektif ada di database (dbo.fn_UserAccess / sp_UserMenu / sp_CekAkses) agar CPOS, Analytics & RekapIn memakai
-aturan yang sama; aksi yang berlaku per menu = MenuAction. Dibaca dari cache memori 30 detik per pengguna
-(tidak menambah query per request); disimpan ulang -> hapus_cache()."""
 import json
 import re
 from functools import wraps
@@ -475,6 +468,16 @@ def sumber_akses(id_user):
 def daftar_widget():
     return _query("""SELECT WidgetCode AS kode, WidgetName AS nama, Description AS keterangan FROM Widget
                      WHERE Active = 1 ORDER BY SortOrder, WidgetCode""")
+
+def halaman_awal_pilihan():
+    """Pilihan "Halaman awal setelah login": semua menu aktif ber-alamat (Lv2 & Lv3), otomatis mengikuti tabel Menu (Admin › Kelola Menu)."""
+    return _query("""SELECT m.Url AS url,
+                            CASE WHEN m.MenuLevel = 3 AND p.MenuName IS NOT NULL THEN p.MenuName + N' › ' + m.MenuName ELSE m.MenuName END AS nama
+                     FROM dbo.Menu m
+                     LEFT JOIN dbo.Menu p ON p.MenuID = m.ParentMenuID
+                     LEFT JOIN dbo.Menu g ON g.MenuID = p.ParentMenuID
+                     WHERE m.Active = 1 AND ISNULL(m.Url, '') <> '' AND m.Url NOT LIKE '/admin%'
+                     ORDER BY COALESCE(g.SortOrder, p.SortOrder, m.SortOrder), COALESCE(p.SortOrder, m.SortOrder), m.SortOrder, m.MenuName""")
 
 
 @cache_ttl(30)

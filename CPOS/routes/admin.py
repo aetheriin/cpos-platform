@@ -21,7 +21,7 @@ from utils.hak_akses import admin_required
 from utils.dokumen import simpan_file, hapus_file_info
 from utils import db_admin as db, db_organisasi as org, hak_akses, pengaturan, login_guard, sesi_aktif, kiosk
 from utils.db_utils import cek_koneksi_db, get_password_hash, get_user_by_id, cek_nik_ada, password_pernah_dipakai, pesan_riwayat_password
-from utils.personel_utils import nik_valid
+from utils.personel_utils import nik_akun_valid, nik_valid
 from utils.db_absensi import get_jadwal_kerja
 from utils.keamanan import log_keamanan, baca_log_keamanan
 from utils.serial_reader import semua_status, atur as atur_pembaca, data_mentah, FORMAT as FORMAT_TIMBANGAN
@@ -49,20 +49,7 @@ HALAMAN = {
     "kesehatan": ("Kesehatan Sistem", "fa-heart-pulse", "Database, cadangan data (backup), disk, versi aplikasi"),
 }
 
-POLA_USERNAME = re.compile(r"^[A-Z0-9._]{3,50}$")
-# Pilihan "Halaman awal setelah login" (admin memilih nama menu, bukan mengetik alamat)
-# /weighbridge?tab=... (tanpa view=form) = Daftar Tiket dengan tahap terpilih; view=form&tab=... = tab Stasiun Timbang
-HALAMAN_AWAL = [("/dashboard", "Dashboard"), ("/pos-security", "Pos Security"), ("/logbook", "Logbook Kendaraan"),
-                ("/weighbridge?view=list", "Daftar Tiket › Semua tahap"),
-                ("/weighbridge?tab=security", "Daftar Tiket › Security"), ("/weighbridge?tab=timbangan", "Daftar Tiket › Timbangan"),
-                ("/weighbridge?tab=sortasi", "Daftar Tiket › Sortasi"), ("/weighbridge?tab=lab", "Daftar Tiket › Laboratorium"),
-                ("/weighbridge?view=form&tab=security", "Stasiun Timbang › Security"),
-                ("/weighbridge?view=form&tab=timbangan", "Stasiun Timbang › Timbangan"),
-                ("/weighbridge?view=form&tab=sortasi", "Stasiun Timbang › Sortasi"),
-                ("/weighbridge?view=form&tab=lab", "Stasiun Timbang › Laboratorium"),
-                ("/face-recognition", "Pengenalan Wajah"), ("/blacklist", "Blacklist"), ("/tamu", "Tamu"),
-                ("/kontrak", "Kontrak & DO"), ("/master", "Data Master"), ("/kelebihan-do", "Kelebihan DO"),
-                ("/admin", "Admin (khusus level admin)")]
+POLA_USERNAME = re.compile(r"^[A-Z0-9._-]{3,50}$")
 PILIHAN_HALAMAN = {"users": ("jabatan", "department", "area", "company"), "persetujuan": ("jabatan", "department"),
                    "jadwal": ("area",), "pengaturan": ("area",), "perangkat": ("area",)}
 POLA_JAM = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
@@ -176,8 +163,8 @@ def _personel_form(user_lama=None):
     (kategorinya harus boleh punya akun). Personel baru otomatis berkategori Karyawan.
     Akun lama yang belum punya NIK boleh disimpan tanpa NIK."""
     nama, nik = _teks("nama"), (request.form.get("nik") or "").strip()
-    if nik and not nik_valid(nik):
-        raise GalatIsian("NIK harus 16 digit angka.", "nik")
+    if nik and not nik_akun_valid(nik):
+        raise GalatIsian("NIK hanya boleh angka dan strip (-), 5-20 karakter.", "nik")
     if not nik and (user_lama is None or user_lama["nik"]):
         raise GalatIsian("NIK wajib diisi.", "nik")
     id_personel = user_lama["id_personel"] if user_lama else None
@@ -198,7 +185,7 @@ def _personel_form(user_lama=None):
 @_admin
 def users_cek_nik(nik):
     """Untuk form Tambah Pengguna: NIK yang sudah terdaftar sebagai personel langsung mengisi nama & kategorinya."""
-    ada = db.personel_untuk_nik(nik) if nik_valid(nik) else None
+    ada = db.personel_untuk_nik(nik) if nik_akun_valid(nik) else None
     return jsonify(ada or {})
 
 
@@ -208,7 +195,7 @@ def users_tambah():
     def aksi():
         username = _teks("username", maks=50).upper()
         if not POLA_USERNAME.match(username):
-            raise GalatIsian("Username 3-50 karakter: huruf, angka, titik, garis bawah", "username")
+            raise GalatIsian("Username 3-50 karakter: huruf, angka, titik, garis bawah, strip", "username")
         if db.username_dipakai(username):
             raise GalatIsian(f"Username {username} sudah dipakai", "username")
         personel, (level, id_department, id_area), pw = _personel_form(), _akun_form(), _password_form()
@@ -324,7 +311,7 @@ def akses_awal():
                     "peran": [{"id": lv["id_level"], "nama": lv["nama"], "halaman_awal": lv["halaman_awal"],
                                "jumlah_user": lv["jumlah_user"], "is_active": lv["is_active"]}
                               for lv in hak_akses.daftar_level() if not lv["is_admin"]],
-                    "halaman_awal": [{"url": u, "nama": n} for u, n in HALAMAN_AWAL if u != "/admin"]})
+                    "halaman_awal": hak_akses.halaman_awal_pilihan()})
 
 
 @admin_bp.route("/api/admin/akses/menu/<int:id_menu>")
@@ -447,7 +434,7 @@ def level_halaman_awal(id_level):
     def aksi():
         lv = _level_atau_404(id_level)
         halaman_awal = _teks("halaman_awal", maks=100)
-        if halaman_awal not in dict(HALAMAN_AWAL) and halaman_awal != lv["halaman_awal"]:
+        if halaman_awal != lv["halaman_awal"] and halaman_awal not in {p["url"] for p in hak_akses.halaman_awal_pilihan()}:
             raise ValueError("Pilih halaman awal dari daftar")
         hak_akses.simpan_halaman_awal(id_level, halaman_awal)
         get_user_by_id.hapus()

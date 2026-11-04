@@ -1,6 +1,6 @@
 // ===== ADMIN > SESI AKTIF =====
-// Diperbarui otomatis tiap 10 detik (selama tab browser terlihat): login dari PC lain dan kunci login baru langsung muncul.
-const pollingSesi = new Poller(() => muatSesi({ polling: true }), 10000);
+// Terus diperbarui selama tab browser terlihat: login dari PC lain dan kunci login baru langsung muncul.
+const pollingSesi = new Poller(() => muatSesi({ polling: true }), 2000);
 
 document.addEventListener('DOMContentLoaded', () => pollingSesi.start());
 
@@ -52,7 +52,7 @@ async function muatSesi(opsi = {}) {
         </tr>`).join('') || barisKosong(5, 'Tidak ada login yang terkunci');
 
     document.getElementById('infoSesiOtomatis').textContent =
-        `Diperbarui otomatis tiap 10 detik · terakhir ${new Date().toLocaleTimeString('id-ID')}`;
+        `Terakhir diperbarui ${new Date().toLocaleTimeString('id-ID')}`;
     return true;
 }
 

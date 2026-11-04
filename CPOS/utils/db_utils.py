@@ -65,10 +65,11 @@ _DARI_USER = """FROM Users u JOIN LevelDetails ld ON ld.LevelDetID = u.UserLevel
 def get_user_by_username(username):
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute(f"""SELECT {_KOLOM_USER}, pm.UserPasswd AS password,
+    cursor.execute(f"""SELECT TOP 1 {_KOLOM_USER}, pm.UserPasswd AS password,
                               CASE WHEN pm.MustChange = 1 THEN NULL ELSE pm.CreateDate END AS password_changed_at
                        {_DARI_USER} JOIN PasswordManager pm ON pm.UserID = u.UserID
-                       WHERE u.UserName = ? AND u.Active = 1 AND ld.Active = 1""", username)
+                       WHERE (u.UserName = ? OR u.NoKTP = ?) AND u.Active = 1 AND ld.Active = 1
+                       ORDER BY CASE WHEN u.UserName = ? THEN 0 ELSE 1 END""", username, username, username)
     row = cursor.fetchone()
     conn.close()
     return row

@@ -98,7 +98,8 @@ try {
     Write-Host "Port $port dibuka untuk jaringan kantor (Domain / Private)."
 
     Langkah '4. Tugas terjadwal'
-    if (Get-ScheduledTask -TaskName $NamaTugas -ErrorAction SilentlyContinue) {
+    $adaTugas = [bool](Get-ScheduledTask -TaskName $NamaTugas -ErrorAction SilentlyContinue)
+    if ($adaTugas) {
         Stop-ScheduledTask -TaskName $NamaTugas -ErrorAction SilentlyContinue
         Unregister-ScheduledTask -TaskName $NamaTugas -Confirm:$false
     }
@@ -106,11 +107,21 @@ try {
     Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
         Where-Object { $_.ExecutablePath -like "$data\*" } |
         ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-    Start-Sleep 2
     $portDeteksi = 8000
     $baris = Select-String (Join-Path $akar 'Deteksi\.env') -Pattern '^\s*PORT_WEB\s*=\s*(\d+)' -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($baris) { $portDeteksi = [int]$baris.Matches[0].Groups[1].Value }
-    Cek-Port-Bebas (@($port, 8001) + $(if ($adaDeteksi) { $portDeteksi } else { @() }))
+    $portApp = @($port, 8001) + $(if ($adaDeteksi) { $portDeteksi } else { @() })
+    # Memperbarui pasangan lama: python.exe venv hanya peluncur, proses sebenarnya memakai python induk di luar folder data dan tetap memegang portnya.
+    # Pemasangan pertama tidak mematikan apa pun, jadi port yang dipakai aplikasi lain tetap dilaporkan oleh Cek-Port-Bebas.
+    if ($adaTugas) {
+        foreach ($p in $portApp) {
+            Get-NetTCPConnection -State Listen -LocalPort $p -ErrorAction SilentlyContinue | ForEach-Object {
+                Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue | Where-Object ProcessName -eq 'python' | Stop-Process -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+    Start-Sleep 2
+    Cek-Port-Bebas $portApp
     $aksi = New-ScheduledTaskAction -Execute 'powershell.exe' -WorkingDirectory $akar `
         -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$(Join-Path $PSScriptRoot 'layanan.ps1')`""
     $pemicu = New-ScheduledTaskTrigger -AtStartup

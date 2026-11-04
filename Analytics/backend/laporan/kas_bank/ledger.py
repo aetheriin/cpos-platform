@@ -238,6 +238,26 @@ SELECT BankAccountID, BankAccountCode, BankName FROM #Rek
 """
 
 
+GIRO = """
+SELECT h.VOUCHERDATE, h.VOUCHERNO, h.ASSOCIATENAME, h.BANKACCOUNTID, h.AMOUNTPAID AS AMOUNT
+  FROM FI_ARAP h
+  JOIN FI_ARAPEXTRAITEMS d ON h.VOUCHERID = d.VOUCHERID
+  JOIN AC_ACCOUNTS A ON d.ACCOUNTID = A.ACCOUNTID
+ WHERE h.ISAR = 1 AND h.VOID = 0 AND h.VOUCHERDATE >= @Mulai AND h.VOUCHERDATE < @Selesai
+   AND '|' + @Akun + '|' LIKE '%|' + RTRIM(A.ACCOUNTCODE) + '|%'
+   AND '|' + @Rekening + '|' LIKE '%|' + CAST(h.BANKACCOUNTID AS VARCHAR(20)) + '|%'
+"""
+
+
+def ambil_giro(cur, comp, server, db, mulai, selesai, akun_giro, id_kode):
+    """Jasa giro satu perusahaan, mulai <= tanggal < selesai, dengan aturan SP_GET_GIROTRANSACTION. id_kode: {BankAccountID: kode rekening}."""
+    cur.execute(f"EXEC [{server}].[{db}].dbo.sp_executesql ?, N'@Mulai DATETIME, @Selesai DATETIME, @Akun NVARCHAR(MAX), @Rekening NVARCHAR(MAX)', ?, ?, ?, ?",
+                GIRO, pd.Timestamp(mulai).to_pydatetime(), pd.Timestamp(selesai).to_pydatetime(), "|".join(akun_giro), "|".join(str(i) for i in id_kode))
+    d = pd.DataFrame([tuple(r) for r in cur.fetchall()], columns=[c[0] for c in cur.description])
+    d["VOUCHERDATE"] = pd.to_datetime(d["VOUCHERDATE"])
+    return d.assign(COMPID=comp, BANKACCOUNTCODE=d["BANKACCOUNTID"].map(id_kode), PERIODE=d["VOUCHERDATE"].dt.strftime("%Y%m"))
+
+
 def _hasil(cur):
     """Semua result set berurutan sebagai DataFrame."""
     hasil = []

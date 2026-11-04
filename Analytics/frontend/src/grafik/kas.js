@@ -2,7 +2,7 @@
 const penuh = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 })
 const bulat = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 })
 
-export const uangPenuh = (v, satuan = 'IDR') => (v == null ? '–' : `${satuan === 'USD' ? 'USD ' : 'Rp '}${penuh.format(v)}`)
+export const uangPenuh = (v, satuan = 'IDR') => (v == null ? '–' : `${satuan === 'IDR' ? 'Rp' : satuan} ${penuh.format(v)}`)
 
 // Sumbu grafik: angka lengkap tanpa awalan mata uang dan tanpa sen
 export const sumbuUang = (v) => bulat.format(v)

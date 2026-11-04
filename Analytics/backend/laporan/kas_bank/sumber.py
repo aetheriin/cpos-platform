@@ -1,9 +1,10 @@
-"""Laporan Cash Flow: mutasi rekening bank harian dan jasa giro, dari dua SP di database test.
+"""Laporan Cash Flow: mutasi rekening bank harian dan jasa giro, dengan query langsung ke database ERP tiap perusahaan.
 
 Mutasi diambil langsung dari database ERP tiap perusahaan (ledger.py, aturan sama dengan ledger bank ERP yang dipanggil
 SP_GET_BANKDAILYDETAILS), satu panggilan per perusahaan, bersamaan. Saldo awal pada 1 Januari tahun periode dihitung terpisah dan disimpan
 di KAS_CACHE_FOLDER karena perhitungannya membaca seluruh riwayat (lambat); simpanan yang lebih tua dari KAS_SALDO_AWAL_JAM dihitung ulang
-di latar belakang. Giro tetap dari SP_KAS_GIRO (@PERIOD, @PERIOD_AKHIR), sekali untuk seluruh periode.
+di latar belakang. Giro juga per perusahaan (ledger.ambil_giro, aturan sama dengan SP_GET_GIROTRANSACTION). Daftar rekening, perusahaan, dan akun
+giro dari tabel TABEL_KAS_* di database Main.
 
 Saldo dihitung ulang di sini dari baris "Beginning Balance" di awal periode ditambah mutasi berurutan tanggal: kolom AmtBalance dari SP
 mengikuti urutan baris SP, yang untuk beberapa rekening tidak berurutan tanggal.
@@ -58,18 +59,25 @@ def _jalankan(perintah, parameter, periode, buka, kendali):
 
 
 def _rekening(buka):
-    """{perusahaan: (server tertaut, database ERP, [kode rekening aktif])} dari tabel company dan BANK di database SP giro."""
-    db = konfigurasi.SP_KAS_GIRO.rsplit(".", 1)[0]   # mis. test.dbo
+    """{perusahaan: (server tertaut, database ERP, [kode rekening aktif], {BankAccountID: kode}, [kode akun giro])}."""
     conn = buka()
     try:
         cur = conn.cursor()
-        cur.execute(f"SELECT C.COMPNM, C.IPADDRESS, C.[DBID], B.BANKACCOUNTCODE FROM {db}.company C "
-                    f"JOIN {db}.BANK B ON B.COMPID = C.COMPNM AND B.ACTIVE = 1 WHERE C.[TYPE] = 'CLOUD' ORDER BY C.COMPNM")
+        cur.execute(f"SELECT RTRIM(C.CompName), RTRIM(C.CompAddr), RTRIM(C.CompDataBase), B.BANKACCOUNTCODE, B.BANKACCOUNTID "
+                    f"FROM {konfigurasi.TABEL_KAS_PERUSAHAAN} C JOIN {konfigurasi.TABEL_KAS_BANK} B ON B.COMPID = C.CompName AND B.ACTIVE = 1 "
+                    "WHERE C.CompType = 'CLOUD' AND C.Status = 1 ORDER BY C.CompName")
+        baris = cur.fetchall()
+        cur.execute(f"SELECT COMPID, RTRIM(ACCOUNTCODE) FROM {konfigurasi.TABEL_KAS_GIRO} WHERE ACTIVE = 1")
+        giro = {}
+        for comp, akun in cur.fetchall():
+            giro.setdefault(str(comp).strip(), []).append(str(akun))
         hasil = {}
-        for comp, server, basis, kode in cur.fetchall():
+        for comp, server, basis, kode, id_bank in baris:
             if not all(str(n).replace("_", "").isalnum() for n in (server, basis)):
                 raise RuntimeError(f"Server/database perusahaan {comp} di tabel company tidak valid: {server}.{basis}")
-            hasil.setdefault(str(comp), (str(server), str(basis), []))[2].append(str(kode).strip())
+            isi = hasil.setdefault(str(comp), (str(server), str(basis), [], {}, giro.get(str(comp), [])))
+            isi[2].append(str(kode).strip())
+            isi[3][int(id_bank)] = str(kode).strip()
         return hasil
     finally:
         conn.close()
@@ -128,7 +136,7 @@ def _saldo_awal(comp, server, db, patokan, kode, buka):
 
 
 def _mutasi_perusahaan(comp, lokasi, patokan, akhir, buka, kendali):
-    server, db, kode = lokasi
+    server, db, kode = lokasi[:3]
     if kendali:
         kendali.periksa()
     awal = _saldo_awal(comp, server, db, patokan, kode, buka)
@@ -142,18 +150,34 @@ def _mutasi_perusahaan(comp, lokasi, patokan, akhir, buka, kendali):
         conn.close()
 
 
+def _giro_perusahaan(comp, lokasi, mulai, selesai, buka, kendali):
+    server, db, _, id_kode, akun = lokasi
+    if not akun or not id_kode:
+        return pd.DataFrame()
+    if kendali:
+        kendali.periksa()
+    conn = buka()
+    try:
+        cur = conn.cursor()
+        if kendali:
+            kendali.daftarkan(cur)
+        return ledger.ambil_giro(cur, comp, server, db, mulai, selesai, akun, id_kode)
+    finally:
+        conn.close()
+
+
 def ambil(mulai, akhir, kendali=None, buka=get_connection):
     """(mutasi mentah, giro mentah). Mutasi dari 1 Januari tahun `mulai` (patokan saldo awal) sampai akhir bulan `akhir`."""
-    awal, ujung = bulan_di(mulai, akhir)[0], bulan_di(mulai, akhir)[-1]
+    awal = bulan_di(mulai, akhir)[0]
     patokan = pd.Timestamp(year=pd.Timestamp(mulai).year, month=1, day=1)
     sampai = pd.Timestamp(akhir) + pd.offsets.MonthEnd(0)
     rekening = _rekening(buka)
     with ThreadPoolExecutor(max_workers=max(1, min(konfigurasi.KAS_PARALEL, len(rekening) + 1))) as pool:
-        giro = pool.submit(_jalankan, f"SET NOCOUNT ON; EXEC {konfigurasi.SP_KAS_GIRO} @PERIOD = ?, @PERIOD_AKHIR = ?", (awal, ujung), awal,
-                           buka, kendali)
+        giro = [pool.submit(_giro_perusahaan, comp, lok, pd.Timestamp(f"{awal}01"), sampai + pd.Timedelta(days=1), buka, kendali)
+                for comp, lok in rekening.items()]
         mutasi = [pool.submit(_mutasi_perusahaan, comp, lok, patokan, sampai, buka, kendali) for comp, lok in rekening.items()]
         mutasi = [m.result() for m in mutasi]
-        giro = giro.result()
+        giro = pd.concat([g for g in (x.result() for x in giro) if len(g)] or [pd.DataFrame()], ignore_index=True)
     mutasi = pd.concat([m for m in mutasi if len(m)] or [pd.DataFrame()], ignore_index=True)
     return mutasi.assign(__periode=awal), giro
 
@@ -306,10 +330,17 @@ def bersihkan_mutasi(raw, kurs=None, internet=None, masukan=None):
     d["masuk"] = d["nilai"].clip(lower=0)
     d["keluar"] = (-d["nilai"]).clip(lower=0)
     d["hari"] = d["tgl"].dt.strftime("%Y-%m-%d")
-    # Saldo setelah tiap mutasi: saldo awal bulan + mutasi berurutan tanggal (waktu dokumen, lalu urutan SP sebagai pemecah seri)
-    d = d.sort_values(["comp", "rekening", "periode", "awal", "tgl", "waktu", "urut"], ascending=[True, True, True, False, True, True, True],
-                      kind="stable")
-    d["saldo"] = d.groupby(["comp", "rekening", "periode"])["nilai"].cumsum()
+    # Saldo setelah tiap mutasi: saldo awal + mutasi berurutan tanggal. Dalam satu hari uang masuk dihitung lebih dulu, supaya saldo tidak terlihat
+    # minus hanya karena voucher keluar diinput lebih awal; saldo akhir harinya tetap sama. Lalu waktu dokumen, dan urutan SP sebagai pemecah seri.
+    d["__keluar"] = d["nilai_asli"] < 0
+    d = d.sort_values(["comp", "rekening", "periode", "awal", "tgl", "__keluar", "waktu", "urut"],
+                      ascending=[True, True, True, False, True, True, True, True], kind="stable").drop(columns="__keluar")
+    grup = ["comp", "rekening", "periode"]
+    d["saldo"] = d.groupby(grup)["nilai"].cumsum()
+    # Valas: saldo mata uang aslinya dikali kurs hari itu. Menjumlahkan nilai rupiah meninggalkan selisih kurs, jadi rekening yang saldo dolarnya
+    # sudah 0 masih terlihat punya saldo rupiah.
+    valas = (d["mata_uang"] != "IDR") & d["kurs"].notna()
+    d.loc[valas, "saldo"] = d["nilai_asli"].groupby([d[k] for k in grup]).cumsum().round(4)[valas] * d.loc[valas, "kurs"]
     return d.reset_index(drop=True)
 
 

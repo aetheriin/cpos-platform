@@ -12,6 +12,6 @@ LAPORAN = Laporan(
     awal_tahun=True,   # dimuat dari 1 Januari supaya kredit to date lengkap; tampilan bawaannya bulan berjalan
     bangun=lambda ds, n, mg, f: dashboard.bangun(ds.df, ds, f),
     detail=lambda ds, jenis, n, mg, f, cari, urut, arah, hal, uk: dashboard.detail(ds.df, jenis, ds, f, cari, urut, arah, hal, uk),
-    filter_didukung=tuple(kunci for kunci, *_ in dashboard.FILTER),
-    label_filter={kunci: nama for kunci, nama, *_ in dashboard.FILTER},
+    filter_didukung=(*(kunci for kunci, *_ in dashboard.FILTER), "tampilan"),   # tampilan=asli: tabel memakai mata uang rekening
+    label_filter={**{kunci: nama for kunci, nama, *_ in dashboard.FILTER}, "tampilan": "Mata uang"},
 )

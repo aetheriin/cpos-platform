@@ -52,7 +52,7 @@ def susun(t, kolom, kolom_cari, cari, urut, arah, urut_awal, arah_awal, halaman,
         kunci = t[urut_pakai]
         if urut_pakai == "aging":
             kunci = pd.to_numeric(kunci, errors="coerce")
-        elif tipe[urut_pakai] == "teks":
+        elif tipe.get(urut_pakai) == "teks":   # urut_awal boleh kolom yang tidak ditampilkan
             kunci = kunci.fillna("").astype(str).str.lower()
         t = (
             t.assign(_k=kunci)

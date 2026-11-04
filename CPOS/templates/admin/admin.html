@@ -21,5 +21,6 @@
 
 {% block extra_scripts %}
 <script defer src="{{ url_for('static', filename='js/admin/admin.js') }}"></script>
+{% if admin_aktif == 'users' %}<script defer src="{{ url_for('static', filename='js/lihat_password.js') }}"></script>{% endif %}
 <script defer src="{{ url_for('static', filename='js/admin/' ~ admin_aktif ~ '.js') }}"></script>
 {% endblock %}

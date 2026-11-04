@@ -12,8 +12,8 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="field-label" for="userNik">NIK</label>
-                    <input type="text" id="userNik" name="nik" data-nik maxlength="16" inputmode="numeric" class="input-field"
-                           data-on-change="cekNikUser" data-arg="$value" placeholder="16 digit">
+                    <input type="text" id="userNik" name="nik" maxlength="20" class="input-field"
+                           data-on-change="cekNikUser" data-arg="$value" placeholder="NIK (angka dan strip)">
                 </div>
                 <div>
                     <label class="field-label" for="userNama">Nama Lengkap</label>
@@ -25,7 +25,7 @@
                 <label class="field-label" for="userUsername">Username</label>
                 <input type="text" id="userUsername" name="username" required minlength="3" maxlength="50" class="input-field" data-username
                        autocomplete="off" spellcheck="false">
-                <p class="field-hint">3-50 karakter: huruf, angka, titik ( . ), garis bawah ( _ ). Otomatis jadi huruf besar.</p>
+                <p class="field-hint">3-50 karakter: huruf, angka, titik ( . ), garis bawah ( _ ), strip ( - ). Otomatis jadi huruf besar.</p>
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div>
@@ -57,11 +57,17 @@
             <div id="blokPasswordUser" class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="field-label" for="userPassword">Password</label>
-                    <input type="password" id="userPassword" name="password" minlength="{{ password_min }}" class="input-field" autocomplete="new-password">
+                    <div class="input-field kotak-sandi">
+                    <input type="password" id="userPassword" name="password" minlength="{{ password_min }}" autocomplete="new-password">
+                    <button type="button" data-lihat-password title="Tampilkan password" aria-label="Tampilkan password"><i class="fa-regular fa-eye"></i></button>
+                </div>
                 </div>
                 <div>
                     <label class="field-label" for="userPasswordUlang">Ulangi Password</label>
-                    <input type="password" id="userPasswordUlang" name="password_ulang" minlength="{{ password_min }}" class="input-field" autocomplete="new-password">
+                    <div class="input-field kotak-sandi">
+                    <input type="password" id="userPasswordUlang" name="password_ulang" minlength="{{ password_min }}" autocomplete="new-password">
+                    <button type="button" data-lihat-password title="Tampilkan password" aria-label="Tampilkan password"><i class="fa-regular fa-eye"></i></button>
+                </div>
                 </div>
                 <p class="field-hint col-span-2">Minimal {{ password_min }} karakter.</p>
             </div>
@@ -85,11 +91,17 @@
             <p class="text-sm text-slate-600">Password baru untuk <b id="resetUsername"></b>. Sesi user yang sedang login akan diakhiri.</p>
             <div>
                 <label class="field-label" for="resetPassword">Password Baru</label>
-                <input type="password" id="resetPassword" name="password" required minlength="{{ password_min }}" class="input-field" autocomplete="new-password">
+                <div class="input-field kotak-sandi">
+                    <input type="password" id="resetPassword" name="password" required minlength="{{ password_min }}" autocomplete="new-password">
+                    <button type="button" data-lihat-password title="Tampilkan password" aria-label="Tampilkan password"><i class="fa-regular fa-eye"></i></button>
+                </div>
             </div>
             <div>
                 <label class="field-label" for="resetPasswordUlang">Ulangi Password Baru</label>
-                <input type="password" id="resetPasswordUlang" name="password_ulang" required minlength="{{ password_min }}" class="input-field" autocomplete="new-password">
+                <div class="input-field kotak-sandi">
+                    <input type="password" id="resetPasswordUlang" name="password_ulang" required minlength="{{ password_min }}" autocomplete="new-password">
+                    <button type="button" data-lihat-password title="Tampilkan password" aria-label="Tampilkan password"><i class="fa-regular fa-eye"></i></button>
+                </div>
             </div>
         </div>
         <div class="px-6 pb-6 flex justify-end gap-2">

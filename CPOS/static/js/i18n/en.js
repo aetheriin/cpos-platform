@@ -540,7 +540,7 @@ window.KAMUS_EN = {
 "Dipakai kalau yang datang bukan supir saran. Data supir lain tidak diubah, hanya tiket ini yang memakainya.": "Use when the arriving driver is not the suggested one. The other driver's data is not changed; only this ticket uses it.",
 "Dipakai Perusahaan": "Used by Companies",
 "diperbarui": "updated",
-"Diperbarui otomatis tiap 10 detik · terakhir {0}": "Auto-refreshed every 10 seconds · last {0}",
+"Terakhir diperbarui {0}": "Last updated {0}",
 "Diperbarui tiap detik. Teks acak / kotak-kotak = baudrate / parity salah. Teks jelas tapi kolom \"Terbaca\" kosong = format salah.": "Updated every second. Random text / boxes = wrong baud rate / parity. Clear text but an empty \"Read\" column = wrong format.",
 "Diperbarui tiap detik. Teks acak / kotak-kotak = baudrate / parity salah. Teks jelas tapi kolom \"Terbaca\" kosong = format salah. Ubah di tombol Ubah, simpan, lalu lihat lagi di sini.": "Updated every second. Random text / boxes = wrong baud rate / parity. Clear text but an empty \"Read\" column = wrong format. Change it with the Edit button, save, then check here again.",
 "Diperiksa {0}": "Checked by {0}",

@@ -1,4 +1,5 @@
 """Aturan tampilan personel (tanpa database, bisa di-unit-test)."""
+import re
 KATEGORI_VALID = ("KARYAWAN", "DRIVER", "TAMU")     # utils/jenis_orang.py
 WAJIB_SIM = ("DRIVER",)
 
@@ -23,6 +24,9 @@ def nik_valid(nik):
     """NIK KTP: tepat 16 angka."""
     return bool(nik) and nik.isdigit() and len(nik) == 16
 
+def nik_akun_valid(nik):
+    """NIK pada akun pengguna: 5-20 karakter, angka dan strip (-), minimal 5 angka. NIK KTP 16 digit (nik_valid) tetap dipakai di form Personel & Pos Security."""
+    return bool(nik) and re.fullmatch(r"[0-9-]{5,20}", nik) is not None and sum(c.isdigit() for c in nik) >= 5
 
 def validasi_personel(nik, nama, kategori, no_sim, kategori_valid=KATEGORI_VALID, wajib_sim=WAJIB_SIM):
     """Kembalikan pesan error, atau None kalau data valid. kategori = jenis orang (utils/jenis_orang.py)."""

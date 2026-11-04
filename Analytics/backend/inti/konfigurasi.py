@@ -112,9 +112,11 @@ PALM_MIN_TRANSAKSI_PERSEN = angka("PALM_MIN_TRANSAKSI_PERSEN", 10)  # di bawah i
 PALM_TOP_OPERATOR = angka("PALM_TOP_OPERATOR", 12)
 
 # ---------- Kas & Bank ----------
-# Kedua SP menerima @PERIOD (YYYYMM) dan mengembalikan satu bulan untuk semua perusahaan; laporan memanggilnya per bulan di periode yang dimuat.
-SP_KAS_GIRO = nama_sp("SP_KAS_GIRO", "test.dbo.SP_GET_GIROTRANSACTION")
-TABEL_KAS_KURS = nama_sp("TABEL_KAS_KURS", "test.dbo.EXC_RATE")   # kurs ke rupiah per perusahaan, CURRENCYID, dan tahun
+# Daftar rekening, perusahaan, dan akun giro. Mutasi dan giro dibaca dengan query langsung ke database ERP tiap perusahaan (kas_bank/ledger.py).
+TABEL_KAS_BANK = nama_sp("TABEL_KAS_BANK", "Main.dbo.Bank")
+TABEL_KAS_PERUSAHAAN = nama_sp("TABEL_KAS_PERUSAHAAN", "Main.dbo.Company")
+TABEL_KAS_GIRO = nama_sp("TABEL_KAS_GIRO", "Main.dbo.GiroAccount")
+TABEL_KAS_KURS = nama_sp("TABEL_KAS_KURS", "Main.dbo.exc_rate")   # kurs ke rupiah per perusahaan, CURRENCYID, dan tahun
 # kurs yang diinput user di CPOS (Data Master › Kurs Mata Uang): riwayat per tanggal berlaku, dipakai lebih dulu dari TABEL_KAS_KURS
 TABEL_KAS_KURS_INPUT = nama_sp("TABEL_KAS_KURS_INPUT", "CPOS.dbo.ExchangeRate")
 TABEL_KAS_MATA_UANG = nama_sp("TABEL_KAS_MATA_UANG", "CPOS.dbo.Currency")

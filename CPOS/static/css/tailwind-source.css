@@ -460,3 +460,14 @@ html.dark .hal-error-latar .daun { fill: #1e293b; }
 html.dark .hal-error-gembok { fill: #e2e8f0; }
 html.dark .hal-error-gembok-tali { stroke: #e2e8f0; }
 html.dark .hal-error-tombol-2 { color: #e2e8f0; background: #1e293b; border-color: #334155; }
+
+/* Edge menampilkan tombol mata bawaannya sendiri di samping tombol mata aplikasi */
+input::-ms-reveal, input::-ms-clear { display: none; }
+
+/* Kotak password: bingkai ada di pembungkus, jadi input dan tombol mata selalu satu baris di dalam bingkai yang sama */
+.kotak-sandi { display: flex; align-items: center; gap: .25rem; padding: 0 .25rem 0 .75rem; }
+.kotak-sandi:focus-within { border-color: #3b82f6; box-shadow: 0 0 0 2px rgb(59 130 246 / .2); }
+.kotak-sandi:has(.isian-galat) { border-color: #f87171; box-shadow: 0 0 0 2px rgb(239 68 68 / .15); }
+.kotak-sandi > input { flex: 1 1 auto; min-width: 0; height: 2.25rem; padding: 0; border: 0; outline: 0; box-shadow: none; background: transparent; color: inherit; font: inherit; }
+.kotak-sandi > button { flex: none; width: 2rem; height: 2rem; border: 0; border-radius: .375rem; background: transparent; color: rgb(var(--slate-400, 148 163 184)); cursor: pointer; }
+.kotak-sandi > button:hover { color: rgb(var(--slate-700, 51 65 85)); background: rgb(var(--slate-100, 241 245 249)); }

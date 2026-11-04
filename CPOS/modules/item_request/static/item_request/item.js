@@ -41,6 +41,21 @@ async function muatUlangItem() {
 
 const angkaItem = (v, desimal) => v == null ? '-' : Number(v).toLocaleString('en-US', { minimumFractionDigits: desimal, maximumFractionDigits: desimal });
 
+function hapusKolomGudangItem() {
+    const tabel = document.getElementById('tabelItem')?.closest('table');
+    const kepala = tabel?.tHead?.rows[0];
+    if (!kepala) return;
+
+    [...kepala.cells].forEach((sel, indeks) => {
+        const label = sel.textContent.replace(/\s+/g, ' ').trim().toLowerCase();
+        if (label === 'warehouse name / code' || label === 'warehouse balance' || label === 'qty per warehouse') {
+            [...tabel.rows].forEach(baris => baris.cells[indeks]?.remove());
+        }
+    });
+}
+
+hapusKolomGudangItem();
+
 document.getElementById('formCariItem').addEventListener('submit', async e => {
     e.preventDefault();
     const form = e.target;
