@@ -118,11 +118,9 @@ TABEL_KAS_KURS = nama_sp("TABEL_KAS_KURS", "test.dbo.EXC_RATE")   # kurs ke rupi
 # kurs yang diinput user di CPOS (Data Master › Kurs Mata Uang): riwayat per tanggal berlaku, dipakai lebih dulu dari TABEL_KAS_KURS
 TABEL_KAS_KURS_INPUT = nama_sp("TABEL_KAS_KURS_INPUT", "CPOS.dbo.ExchangeRate")
 TABEL_KAS_MATA_UANG = nama_sp("TABEL_KAS_MATA_UANG", "CPOS.dbo.Currency")
-KAS_HARI_BAWAAN = angka("KAS_HARI_BAWAAN", 30)          # rentang tampilan bawaan: sekian hari terakhir (yang dimuat: 1 Januari sampai hari ini)
 # kurs harian dari internet untuk mata uang yang tidak ada di TABEL_KAS_KURS; {dari} {sampai} {kode} diisi.
 KAS_KURS_INTERNET = teks("KAS_KURS_INTERNET", "https://api.frankfurter.dev/v1/{dari}..{sampai}?base={kode}&symbols=IDR")
 KAS_HARI_GRAFIK = angka("KAS_HARI_GRAFIK", 31)  # rentang tampilan lebih panjang dari ini: grafik deret waktu per bulan
-KAS_HARI_RAMAL = angka("KAS_HARI_RAMAL", 14)   # perkiraan running balance sekian hari ke depan (0 = tanpa perkiraan)
 KAS_PARALEL = angka("KAS_PARALEL", 6)                   # perusahaan yang diambil bersamaan
 # Saldo awal rekening per 1 Januari (membaca seluruh riwayat ERP, lambat) disimpan di folder ini; dihitung ulang di latar belakang kalau
 # simpanannya lebih tua dari KAS_SALDO_AWAL_JAM jam, untuk menangkap transaksi mundur tanggal sebelum 1 Januari.

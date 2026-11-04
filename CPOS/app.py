@@ -24,7 +24,6 @@ from routes.kendaraan import kendaraan_bp
 from routes.personel import personel_bp
 from routes.blacklist import blacklist_bp
 from routes.visitor import visitor_bp
-from routes.cctv import cctv_bp
 from routes.deteksi_plat import deteksi_plat_bp
 from routes.audit import audit_bp
 from routes.sistem import sistem_bp
@@ -81,7 +80,7 @@ def belum_login():
     return redirect("/login")
 
 for bp in (auth_bp, main_bp, security_bp, timbangan_bp, sortasi_bp, lab_bp, kendaraan_bp,
-           personel_bp, blacklist_bp, visitor_bp, cctv_bp, deteksi_plat_bp, audit_bp, sistem_bp, admin_bp, kontrak_bp, dashboard_bp, master_bp, agen_bp,
+           personel_bp, blacklist_bp, visitor_bp, deteksi_plat_bp, audit_bp, sistem_bp, admin_bp, kontrak_bp, dashboard_bp, master_bp, agen_bp,
            kelebihan_do_bp, cari_bp, persetujuan_bp, pos_bp, analytics_bp, rekapin_bp, item_request_bp):
     app.register_blueprint(bp)
 

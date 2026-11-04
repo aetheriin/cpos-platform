@@ -12,3 +12,6 @@ Analytics/frontend/node_modules/
 Analytics/frontend/dist/
 CPOS/logs/
 CPOS/data/
+
+# paket deploy hasil deploy\buat_paket.bat
+deploy/paket/

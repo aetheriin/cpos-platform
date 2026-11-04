@@ -218,130 +218,6 @@ function ubahAktifJembatan(id) {
     });
 }
 
-// ===== GATEWAY VIDEO & KAMERA CCTV (Monitoring CCTV, routes/cctv.py) =====
-let dataCctv = { gateway: [], kamera: [], jembatan: [], titik: {}, peran: {}, ai: {} };
-
-document.addEventListener('DOMContentLoaded', muatCctv);
-
-async function muatCctv() {
-    const data = await ambilJson('/api/admin/cctv');
-    const tGw = document.getElementById('tabelGateway'), tKam = document.getElementById('tabelKamera');
-    if (data.error) { tGw.innerHTML = barisKosong(7, data.error); tKam.innerHTML = barisKosong(9, data.error); return; }
-    dataCctv = data;
-    const opsi = obj => Object.entries(obj).map(([k, v]) => `<option value="${k}">${escapeHtml(v)}</option>`).join('');
-    // Pilihan tetap: diisi sekali saja (mengisi ulang saat form terbuka akan mengganti pilihan yang sedang dipakai)
-    [['kamTitik', data.titik], ['kamPeran', data.peran], ['kamAi', data.ai]].forEach(([id, isi]) => {
-        const sel = document.getElementById(id);
-        if (!sel.options.length || sel.options.length === 1 && !sel.options[0].value) sel.innerHTML = opsi(isi);
-    });
-    tGw.innerHTML = data.gateway.map(g => `
-        <tr class="hover:bg-slate-50${g.is_active ? '' : ' text-slate-400'}">
-            <td class="table-cell font-semibold">${escapeHtml(g.nama)}</td><td class="table-cell">${escapeHtml(g.area)}</td>
-            <td class="table-cell font-mono text-xs">${escapeHtml(g.url)}</td><td class="table-cell text-right font-mono">${g.jumlah_kamera}</td>
-            <td class="table-cell">${escapeHtml(g.terakhir || 'Belum terhubung')}</td><td class="table-cell text-center">${badgeAktif(g.is_active)}</td>
-            <td class="table-cell text-right"><button type="button" class="link-aksi text-blue-600" data-on-click="bukaGateway" data-arg="${g.id_gateway}">Ubah</button></td>
-        </tr>`).join('') || barisKosong(7, 'Belum ada gateway video. Pasang go2rtc di server cabang / HO, lalu tambahkan di sini.');
-    tKam.innerHTML = data.kamera.map(k => `
-        <tr class="hover:bg-slate-50${k.is_active ? '' : ' text-slate-400'}">
-            <td class="table-cell font-mono font-semibold">${escapeHtml(k.kode)}</td><td class="table-cell">${escapeHtml(k.nama)}</td>
-            <td class="table-cell">${escapeHtml(k.area)}</td>
-            <td class="table-cell">${escapeHtml(data.titik[k.titik] || k.titik)}${k.jembatan ? `<span class="text-slate-400"> · ${escapeHtml(k.jembatan)}</span>` : ''}</td>
-            <td class="table-cell">${escapeHtml(data.peran[k.peran] || k.peran)}</td><td class="table-cell text-slate-600">${escapeHtml(k.merk || '-')}</td>
-            <td class="table-cell">${badge(data.ai[k.ai] || k.ai, k.ai === 'NONE' ? WARNA_BADGE.abu : 'bg-violet-100 text-violet-700')}</td>
-            <td class="table-cell text-center">${!k.is_active ? badgeAktif(false) : k.terakhir ? badge('Terhubung ' + k.terakhir.slice(5), WARNA_BADGE.hijau)
-                : badge('Belum dites', WARNA_BADGE.oranye)}</td>
-            <td class="table-cell text-right"><button type="button" class="link-aksi text-blue-600" data-on-click="bukaKamera" data-arg="${k.id_kamera}">Ubah</button></td>
-        </tr>`).join('') || barisKosong(9, 'Belum ada kamera');
-}
-
-function bukaGateway(id) {
-    const form = document.getElementById('formGateway');
-    const g = dataCctv.gateway.find(x => x.id_gateway === Number(id));
-    form.reset();
-    document.getElementById('gwHasilTes').textContent = '';
-    if (g) isiForm(form, { id_gateway: g.id_gateway, nama: g.nama, id_comp_area: g.id_comp_area, url: g.url });
-    else form.elements.id_gateway.value = '';
-    form.elements.is_active.checked = g ? !!g.is_active : true;
-    document.getElementById('judulModalGateway').textContent = g ? 'Ubah Gateway Video' : 'Tambah Gateway Video';
-    openModal('modalGateway');
-}
-
-async function tesGateway(btn) {
-    const hasil = document.getElementById('gwHasilTes');
-    const data = await denganTombol(btn, () => kirimForm('/api/admin/cctv/gateway/tes', { url: document.getElementById('gwUrl').value.trim() }), 'Menguji...');
-    hasil.className = `field-hint ${data.error ? 'text-red-600' : 'text-emerald-700'}`;
-    hasil.textContent = data.error || data.message;
-}
-
-function dataFormCctv(form) {
-    const fd = new FormData(form);
-    fd.set('is_active', form.elements.is_active.checked ? '1' : '0');
-    return fd;
-}
-
-document.getElementById('formGateway').addEventListener('submit', async e => {
-    e.preventDefault();
-    const data = await denganTombol(e.submitter, () => kirimForm('/api/admin/cctv/gateway', dataFormCctv(e.target)));
-    if (!tampilkanHasil(data)) return;
-    closeModal('modalGateway');
-    muatCctv();
-});
-
-function aturPilihanKamera(pilihGateway, pilihJembatan) {
-    const area = document.getElementById('kamArea').value;
-    const gw = document.getElementById('kamGateway');
-    const lamaGw = typeof pilihGateway === 'number' ? String(pilihGateway) : gw.value;
-    gw.innerHTML = dataCctv.gateway.filter(g => String(g.id_comp_area) === area && g.is_active)
-        .map(g => `<option value="${g.id_gateway}">${escapeHtml(g.nama)}</option>`).join('') || '<option value="">-- Belum ada gateway di area ini --</option>';
-    if ([...gw.options].some(o => o.value === lamaGw)) gw.value = lamaGw;
-    const jb = document.getElementById('kamJembatan');
-    const lamaJb = typeof pilihJembatan === 'number' ? String(pilihJembatan) : jb.value;
-    jb.innerHTML = '<option value="">-- Pilih --</option>' + dataCctv.jembatan.filter(j => String(j.id_comp_area) === area)
-        .map(j => `<option value="${j.id}">${escapeHtml(j.nama)}</option>`).join('');
-    if ([...jb.options].some(o => o.value === lamaJb)) jb.value = lamaJb;
-    const jembatan = document.getElementById('kamTitik').value === 'JEMBATAN';
-    document.getElementById('blokKamJembatan').classList.toggle('hidden', !jembatan);
-    if (!jembatan) jb.value = '';
-}
-
-let idKameraTes = null;
-function bukaKamera(id) {
-    const form = document.getElementById('formKamera');
-    const k = dataCctv.kamera.find(x => x.id_kamera === Number(id));
-    form.reset();
-    idKameraTes = k ? k.id_kamera : null;
-    if (k) isiForm(form, { id_kamera: k.id_kamera, kode: k.kode, nama: k.nama, id_comp_area: k.id_comp_area, titik: k.titik, peran: k.peran,
-                           merk: k.merk || '', stream_utama: k.stream_utama, stream_ringan: k.stream_ringan || '', ai: k.ai, urutan: k.urutan });
-    else form.elements.id_kamera.value = '';
-    form.elements.is_active.checked = k ? !!k.is_active : true;
-    aturPilihanKamera(k ? k.id_gateway : null, k ? k.id_jembatan : null);
-    document.getElementById('judulModalKamera').textContent = k ? `Ubah Kamera · ${k.kode}` : 'Tambah Kamera';
-    document.getElementById('btnTesKamera').disabled = !k;
-    document.getElementById('kamTesGambar').classList.add('hidden');
-    document.getElementById('kamTesPesan').classList.remove('hidden');
-    document.getElementById('kamTesPesan').textContent = k ? 'Klik Tes Koneksi' : 'Simpan dulu, lalu Tes Koneksi';
-    openModal('modalKamera');
-}
-
-async function tesKamera() {
-    if (!idKameraTes) return;
-    const img = document.getElementById('kamTesGambar'), pesan = document.getElementById('kamTesPesan');
-    pesan.textContent = 'Mengambil gambar...';
-    pesan.classList.remove('hidden'); img.classList.add('hidden');
-    const r = await fetch(`/api/admin/cctv/kamera/${idKameraTes}/tes?t=${Date.now()}`);
-    if (!r.ok) { pesan.textContent = (await r.json().catch(() => ({}))).error || 'Kamera tidak terhubung'; return; }
-    img.src = URL.createObjectURL(await r.blob());
-    img.classList.remove('hidden'); pesan.classList.add('hidden');
-}
-
-document.getElementById('formKamera').addEventListener('submit', async e => {
-    e.preventDefault();
-    const data = await denganTombol(e.submitter, () => kirimForm('/api/admin/cctv/kamera', dataFormCctv(e.target)));
-    if (!tampilkanHasil(data)) return;
-    closeModal('modalKamera');
-    muatCctv();
-});
-
 // ===== KAMERA DETEKSI PLAT (RTSP langsung, dibaca backend deteksi; routes/deteksi_plat.py) =====
 
 async function muatKameraPlat() {
@@ -374,9 +250,15 @@ function bukaKameraPlat(id) {
     openModal('modalKameraPlat');
 }
 
+function dataFormPlat(form) {
+    const fd = new FormData(form);
+    fd.set('is_active', form.elements.is_active.checked ? '1' : '0');
+    return fd;
+}
+
 document.getElementById('formKameraPlat').addEventListener('submit', async e => {
     e.preventDefault();
-    const data = await denganTombol(e.submitter, () => kirimForm('/api/admin/deteksi-plat/kamera', dataFormCctv(e.target)));
+    const data = await denganTombol(e.submitter, () => kirimForm('/api/admin/deteksi-plat/kamera', dataFormKameraPlat(e.target)));
     if (!tampilkanHasil(data)) return;
     closeModal('modalKameraPlat');
     muatKameraPlat();

@@ -32,9 +32,32 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_RiwDet_Kejadian' AND o
     CREATE INDEX IX_RiwDet_Kejadian ON dbo.RiwayatDeteksi (KejadianID);
 GO
 -- login detektor (mis. plat_agen) menulis kejadian & melengkapi bacaan
-GRANT SELECT, INSERT, UPDATE ON dbo.KejadianPlat TO plat_agen;
-GRANT UPDATE ON dbo.RiwayatDeteksi (KejadianID, Sisi) TO plat_agen;
+
+-- Pastikan user database plat_agen tersedia.
+IF SUSER_ID(N'plat_agen') IS NOT NULL
+   AND USER_ID(N'plat_agen') IS NULL
+BEGIN
+    CREATE USER [plat_agen] FOR LOGIN [plat_agen];
+END
 GO
+
+-- Hak akses backend deteksi plat.
+IF USER_ID(N'plat_agen') IS NOT NULL
+BEGIN
+    GRANT SELECT, INSERT, UPDATE
+        ON dbo.KejadianPlat TO [plat_agen];
+
+    GRANT UPDATE
+        ON dbo.RiwayatDeteksi (KejadianID, Sisi)
+        TO [plat_agen];
+END
+ELSE
+BEGIN
+    PRINT 'PERINGATAN: Login plat_agen belum tersedia.';
+    PRINT 'GRANT dilewati. Buat login terlebih dahulu.';
+END
+GO
+
 IF NOT EXISTS (SELECT 1 FROM dbo.SchemaLog WHERE Script = 'database/perubahan/008_kejadian_plat.sql')
     INSERT INTO dbo.SchemaLog (Script, App) VALUES ('database/perubahan/008_kejadian_plat.sql', 'CPOS');
 GO

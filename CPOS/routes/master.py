@@ -345,15 +345,16 @@ def kurs_internet():
 @master_bp.route("/api/master/kurs/contoh")
 @login_required
 def kurs_contoh():
-    return Response(db_kurs.contoh_csv(), mimetype="text/csv",
-                    headers={"Content-Disposition": "attachment; filename=templat_kurs.csv"})
+    return Response(db_kurs.contoh_xlsx(), mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": "attachment; filename=templat_kurs.xlsx"})
 
 
 @master_bp.route("/api/master/kurs/impor", methods=["POST"])
 @login_required
 @izin('MASTER_KURS', 'tambah')
 def kurs_impor():
-    """simpan=0: periksa saja (pratinjau); simpan=1: periksa ulang lalu simpan baris yang lolos."""
+    """simpan=0: periksa saja (pratinjau); simpan=1: periksa ulang lalu simpan baris yang lolos.
+    bawaan_* = nilai untuk kolom yang tidak ada / kosong di berkas; timpa=1 = kurs beda pada tanggal yang sudah ada diganti."""
     def aksi():
         berkas = request.files.get("berkas")
         if not berkas or not berkas.filename:
@@ -361,13 +362,23 @@ def kurs_impor():
         isi = berkas.read(5 * 1024 * 1024 + 1)
         if len(isi) > 5 * 1024 * 1024:
             raise ValueError("Berkas maksimal 5 MB")
-        hasil = db_kurs.periksa_impor(db_kurs.baca_berkas(berkas.filename, isi))
-        disimpan = None
+        pilihan = ref.pilihan("kurs")
+        bawaan = {}
+        for kunci, label in (("id_mata_uang", "mata uang"), ("jenis", "jenis kurs"), ("id_company", "perusahaan"), ("sumber", "sumber")):
+            teks = (request.form.get(f"bawaan_{kunci}") or "").strip()
+            if teks:
+                cocok = [o["id"] for o in pilihan[kunci] if str(o["id"]) == teks]
+                if not cocok:
+                    raise ValueError(f"Pilih {label} dari daftar")
+                bawaan[kunci] = cocok[0]
+        hasil = db_kurs.periksa_impor(db_kurs.baca_berkas(berkas.filename, isi), bawaan, request.form.get("timpa") == "1")
+        pesan = None
         if request.form.get("simpan") == "1":
-            disimpan = db_kurs.simpan_impor(hasil, current_user.id)
-            _catat("KURS_IMPOR", berkas.filename[:100], f"{disimpan} kurs")
-        baris = [{**r, "tanggal": r.get("tanggal").isoformat() if r.get("tanggal") else None} for r in hasil]
-        return jsonify({"baris": baris, "disimpan": disimpan,
-                        "message": f"{disimpan} kurs berhasil diimpor" if disimpan is not None else None})
+            baru, diganti = db_kurs.simpan_impor(hasil, current_user.id)
+            _catat("KURS_IMPOR", berkas.filename[:100], f"{baru} baru, {diganti} diganti")
+            pesan = f"{baru} kurs baru disimpan" + (f", {diganti} kurs diganti" if diganti else "")
+        baris = [{k: v for k, v in r.items() if k != "id_lama"} | {"tanggal": r["tanggal"].isoformat() if r.get("tanggal") else None}
+                 for r in hasil]
+        return jsonify({"baris": baris, "message": pesan})
     return _jalankan(aksi)
 

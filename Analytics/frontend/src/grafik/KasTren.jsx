@@ -1,7 +1,7 @@
 import { memo } from 'react'
-import { Area, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { angka, lintasTahun, tgl, tglLengkap } from '../lib/data'
-import { sumbuUang, uangPenuh, uangRingkas, WARNA_KELUAR, WARNA_MASUK } from './kas'
+import { sumbuUang, uangPenuh, WARNA_KELUAR, WARNA_MASUK } from './kas'
 
 const NAMA_BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
 const sumbu = { tickLine: false, axisLine: false, tick: { fontSize: 11, fill: '#64748b' } }
@@ -9,6 +9,7 @@ const sumbu = { tickLine: false, axisLine: false, tick: { fontSize: 11, fill: '#
 const WARNA_SALDO = '#16a34a'
 const WARNA_TD = '#db2777'
 const labelBulan = (b) => `${NAMA_BULAN[Number(b.slice(5, 7)) - 1]} ${b.slice(2, 4)}`
+const LEBAR_SUMBU = 104   // cukup untuk angka lengkap sampai ratusan miliar
 
 // Pilihan Harian / Bulanan untuk grafik deret waktu (hanya ditampilkan kalau rentangnya lebih dari sebulan)
 export function PilihPeriode({ nilai, onUbah }) {
@@ -39,7 +40,7 @@ function Kunci({ isi }) {
 }
 
 const kotak = (warna) => ({ width: 10, height: 10, borderRadius: 2, background: warna })
-const garis = (warna, putus) => (putus ? { width: 16, borderTop: `2px dashed ${warna}` } : { width: 16, height: 2, background: warna })
+const garis = (warna) => ({ width: 16, height: 2, background: warna })
 
 function KotakInfo({ judul, baris }) {
   return (
@@ -55,57 +56,31 @@ function KotakInfo({ judul, baris }) {
 const kosong = <div className="py-10 text-center text-sm text-slate-500">Tidak ada data</div>
 const redup = (terpilih, nilai) => (terpilih.length && !terpilih.includes(nilai) ? 0.3 : 1)
 
-// Balance (garis, sumbu kiri) dengan debit dan credit per periode (batang, sumbu kanan). Harian: ditambah forecast beberapa hari
-// ke depan; klik tanggal untuk memfilter laporan. Bulanan (rentang panjang): ending balance tiap bulan.
-export const SaldoBerjalan = memo(function SaldoBerjalan({ running, bulanan, periode, satuan, terpilih = [], onPilih }) {
-  const harian = periode === 'hari'
-  const sumber = harian ? running : bulanan
-  if (sumber.length === 0) return kosong
-  const label = harian ? (lintasTahun(running) ? tglLengkap : tgl) : labelBulan
-  const data = sumber.map((r) => {
-    const debit = r.debit ?? r.masuk
-    const kredit = r.kredit ?? r.keluar
-    return { ...r, label: label(harian ? r.hari : r.bulan), debit, kredit, kreditNeg: kredit ? -kredit : null, pita: r.bawah != null ? [r.bawah, r.atas] : null }
-  })
-  const proyeksi = harian && data.some((d) => d.ramal != null)
-  const klik = (st, e) => {
-    const d = data[Number(st?.activeTooltipIndex)]
-    if (harian && onPilih && d?.saldo != null) onPilih(d.hari, e)
-  }
+// Ending balance (garis, sumbu kiri) dengan debit dan credit (batang, sumbu kanan) per bulan.
+export const SaldoBerjalan = memo(function SaldoBerjalan({ bulanan, satuan }) {
+  if (bulanan.length === 0) return kosong
+  const data = bulanan.map((r) => ({ ...r, label: labelBulan(r.bulan), kreditNeg: r.kredit ? -r.kredit : null }))
   return (
     <div className="flex h-full flex-col">
-      <Kunci isi={[
-        ['Balance', garis(WARNA_SALDO)], ['Debit', kotak(WARNA_MASUK)], ['Credit', kotak(WARNA_KELUAR)],
-        ...(proyeksi ? [['Forecast', garis(WARNA_SALDO, true)]] : []),
-      ]} />
+      <Kunci isi={[['Balance', garis(WARNA_SALDO)], ['Debit', kotak(WARNA_MASUK)], ['Credit', kotak(WARNA_KELUAR)]]} />
       <div className="min-h-64 w-full flex-1">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} stackOffset="sign" margin={{ top: 6, right: 0, bottom: 0, left: 0 }} onClick={klik}
-            className={harian && onPilih ? 'cursor-pointer' : undefined}>
+          <ComposedChart data={data} stackOffset="sign" margin={{ top: 6, right: 0, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-slate-200)" />
-            <XAxis dataKey="label" {...sumbu} tick={{ fontSize: 10, fill: '#64748b' }} minTickGap={12} />
-            <YAxis yAxisId="saldo" width={56} {...sumbu} tickFormatter={sumbuUang} domain={['auto', 'auto']} />
-            <YAxis yAxisId="arus" orientation="right" width={52} {...sumbu} tickFormatter={sumbuUang} />
+            <XAxis dataKey="label" {...sumbu} />
+            <YAxis yAxisId="saldo" width={LEBAR_SUMBU} {...sumbu} tickFormatter={sumbuUang} domain={['auto', 'auto']} />
+            <YAxis yAxisId="arus" orientation="right" width={LEBAR_SUMBU} {...sumbu} tickFormatter={sumbuUang} />
             <Tooltip cursor={{ stroke: '#94a3b8', strokeDasharray: '3 3' }} content={({ active, payload }) => {
               const d = active && payload?.[0]?.payload
               if (!d) return null
-              return <KotakInfo judul={harian ? tglLengkap(d.hari) : d.label} baris={d.saldo != null
-                ? [['Debit', uangPenuh(d.debit, satuan)], ['Credit', uangPenuh(d.kredit, satuan)], ['Ending balance', uangPenuh(d.saldo, satuan)]]
-                : [['Forecast', uangPenuh(d.ramal, satuan)], ['Batas bawah', uangPenuh(d.bawah, satuan)], ['Batas atas', uangPenuh(d.atas, satuan)]]} />
+              return <KotakInfo judul={d.label} baris={[['Debit', uangPenuh(d.debit, satuan)], ['Credit', uangPenuh(d.kredit, satuan)], ['Ending balance', uangPenuh(d.saldo, satuan)]]} />
             }} />
-            <Bar yAxisId="arus" dataKey="debit" stackId="arus" fill={WARNA_MASUK} maxBarSize={harian ? 14 : 28} isAnimationActive={false}>
-              {data.map((d) => <Cell key={d.label} fillOpacity={harian ? redup(terpilih, d.hari) : 1} />)}
-            </Bar>
-            <Bar yAxisId="arus" dataKey="kreditNeg" stackId="arus" fill={WARNA_KELUAR} maxBarSize={harian ? 14 : 28} isAnimationActive={false}>
-              {data.map((d) => <Cell key={d.label} fillOpacity={harian ? redup(terpilih, d.hari) : 1} />)}
-            </Bar>
-            {proyeksi && <Area yAxisId="saldo" dataKey="pita" stroke="none" fill={WARNA_SALDO} fillOpacity={0.12} isAnimationActive={false} />}
-            <Line yAxisId="saldo" dataKey="saldo" stroke={WARNA_SALDO} strokeWidth={2.5} dot={!harian && { r: 3, fill: WARNA_SALDO }} isAnimationActive={false} />
-            {proyeksi && <Line yAxisId="saldo" dataKey="ramal" stroke={WARNA_SALDO} strokeWidth={2} strokeDasharray="5 4" dot={false} isAnimationActive={false} />}
+            <Bar yAxisId="arus" dataKey="debit" stackId="arus" fill={WARNA_MASUK} maxBarSize={36} isAnimationActive={false} />
+            <Bar yAxisId="arus" dataKey="kreditNeg" stackId="arus" fill={WARNA_KELUAR} maxBarSize={36} isAnimationActive={false} />
+            <Line yAxisId="saldo" dataKey="saldo" stroke={WARNA_SALDO} strokeWidth={2.5} dot={{ r: 3, fill: WARNA_SALDO }} isAnimationActive={false} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-      {proyeksi && <p className="mt-1 text-xs text-slate-500">Forecast: tren linier 60 hari terakhir; area = rentang 95%.</p>}
     </div>
   )
 })
@@ -121,15 +96,15 @@ export const KreditToDate = memo(function KreditToDate({ harian, bulanan, period
     <div className="flex h-full flex-col">
       <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
         <Kunci isi={[['Credit', kotak(WARNA_KELUAR)], ['Credit to date', garis(WARNA_TD)]]} />
-        <span className="text-xs tabular-nums text-slate-600">{uangRingkas(data.at(-1).kredit_td, satuan)}</span>
+        <span className="text-xs tabular-nums text-slate-600">{uangPenuh(data.at(-1).kredit_td, satuan)}</span>
       </div>
       <div className="min-h-56 w-full flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 6, right: 0, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-slate-200)" />
             <XAxis dataKey="label" {...sumbu} tick={{ fontSize: 10, fill: '#64748b' }} minTickGap={12} />
-            <YAxis yAxisId="periode" width={52} {...sumbu} tickFormatter={sumbuUang} />
-            <YAxis yAxisId="td" orientation="right" width={52} {...sumbu} tickFormatter={sumbuUang} domain={['auto', 'auto']} />
+            <YAxis yAxisId="periode" width={LEBAR_SUMBU} {...sumbu} tickFormatter={sumbuUang} />
+            <YAxis yAxisId="td" orientation="right" width={LEBAR_SUMBU} {...sumbu} tickFormatter={sumbuUang} domain={['auto', 'auto']} />
             <Tooltip cursor={{ fill: 'rgba(100,116,139,0.08)' }} content={({ active, payload }) => {
               const d = active && payload?.[0]?.payload
               if (!d) return null
@@ -154,10 +129,10 @@ export const JenisDokumen = memo(function JenisDokumen({ dokumen, satuan, terpil
       <Kunci isi={[['Debit', kotak(WARNA_MASUK)], ['Credit', kotak(WARNA_KELUAR)]]} />
       <div className="w-full flex-1" style={{ minHeight: tinggi }}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={dokumen} layout="vertical" margin={{ top: 4, right: 20, bottom: 0, left: 0 }} barGap={1} className="cursor-pointer"
+          <BarChart data={dokumen} layout="vertical" margin={{ top: 4, right: 44, bottom: 0, left: 0 }} barGap={1} className="cursor-pointer"
             onClick={(st, e) => { const d = dokumen[Number(st?.activeTooltipIndex)]; if (d && onPilih) onPilih(d.jenis, e) }}>
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-slate-200)" />
-            <XAxis type="number" {...sumbu} tickFormatter={sumbuUang} />
+            <XAxis type="number" {...sumbu} tickFormatter={sumbuUang} minTickGap={24} />
             <YAxis type="category" dataKey="jenis" width={150} {...sumbu} />
             <Tooltip cursor={{ fill: 'rgba(100,116,139,0.08)' }} content={({ active, payload }) => {
               const d = active && payload?.[0]?.payload

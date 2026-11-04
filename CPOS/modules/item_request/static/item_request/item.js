@@ -59,6 +59,8 @@ document.getElementById('formCariItem').addEventListener('submit', async e => {
         <td class="table-cell font-mono">${r.beli ? escapeHtml(r.beli.no ?? '-') : '-'}</td>
         <td class="table-cell font-mono">${r.beli && r.beli.tanggal ? escapeHtml(r.beli.tanggal) : '-'}</td>
         <td class="table-cell text-right font-mono">${r.beli && r.beli.qty != null ? escapeHtml(String(r.beli.qty)) : '-'}</td>
-        <td class="table-cell text-right font-mono">${r.beli ? angkaItem(r.beli.harga, 2) : '-'}</td></tr>`).join('')
-        || barisKosong(9, 'Tidak ditemukan item yang sesuai.');
+        <td class="table-cell text-right font-mono">${r.beli ? angkaItem(r.beli.harga, 2) : '-'}</td>
+        <td class="table-cell">${r.beli && r.beli.supplier ? escapeHtml(r.beli.supplier) : '-'}</td>
+        <td class="table-cell text-right font-mono">${r.beli ? angkaItem(r.beli.total_balance, 2) : '-'}</td></tr>`).join('')
+        || barisKosong(11, 'Tidak ditemukan item yang sesuai.');
 });

@@ -48,41 +48,6 @@
     </div>
 </div>
 
-{# Monitoring CCTV: gateway video (go2rtc) per area & kamera. Panduan: docs/PANDUAN_CCTV.md #}
-<div class="section-box">
-    {% call section_header('gateway-video', 'Gateway Video (CCTV)') %}
-    <div class="flex items-center gap-2" data-henti-klik>
-        <button type="button" class="btn-primary py-1.5" data-on-click="bukaGateway"><i class="fa-solid fa-plus mr-1"></i> Tambah Gateway</button>
-    </div>
-    {% endcall %}
-    <div id="body-gateway-video" class="section-body overflow-x-auto">
-        <table class="w-full text-left text-sm">
-            <thead class="table-header-row">
-                <tr><th class="table-cell">Nama</th><th class="table-cell">Area</th><th class="table-cell">Alamat</th>
-                    <th class="table-cell text-right">Kamera</th><th class="table-cell">Terakhir Terhubung</th>
-                    <th class="table-cell text-center">Status</th><th class="table-cell text-right">Aksi</th></tr>
-            </thead>
-            <tbody data-per-halaman="20" id="tabelGateway" class="divide-y divide-slate-100"></tbody>
-        </table>
-    </div>
-</div>
-<div class="section-box">
-    {% call section_header('kamera-cctv', 'Kamera CCTV') %}
-    <div class="flex items-center gap-2" data-henti-klik>
-        <button type="button" class="btn-primary py-1.5" data-on-click="bukaKamera"><i class="fa-solid fa-plus mr-1"></i> Tambah Kamera</button>
-    </div>
-    {% endcall %}
-    <div id="body-kamera-cctv" class="section-body overflow-x-auto">
-        <table class="w-full text-left text-sm">
-            <thead class="table-header-row">
-                <tr><th class="table-cell">Kode</th><th class="table-cell">Nama</th><th class="table-cell">Area</th><th class="table-cell">Titik</th>
-                    <th class="table-cell">Peran</th><th class="table-cell">Merk / Tipe</th><th class="table-cell">AI</th>
-                    <th class="table-cell text-center">Status</th><th class="table-cell text-right">Aksi</th></tr>
-            </thead>
-            <tbody data-per-halaman="20" id="tabelKamera" class="divide-y divide-slate-100"></tbody>
-        </table>
-    </div>
-</div>
 {# Kamera deteksi plat: alamat RTSP dibaca backend deteksi plat (tanpa gateway). Routes: routes/deteksi_plat.py #}
 <div class="section-box">
     {% call section_header('kamera-plat', 'Kamera Deteksi Plat (RTSP)') %}

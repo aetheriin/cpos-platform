@@ -18,8 +18,26 @@ CREATE TABLE dbo.CameraDeteksi (
 );
 GO
 -- login yang dipakai detektor (mis. plat_agen) perlu membaca kamera & pengaturan
-GRANT SELECT ON dbo.CameraDeteksi TO plat_agen;
-GRANT SELECT ON dbo.Setting TO plat_agen;
+
+-- Pastikan user plat_agen tersedia pada database CPOS.
+IF SUSER_ID(N'plat_agen') IS NOT NULL
+   AND USER_ID(N'plat_agen') IS NULL
+BEGIN
+    CREATE USER [plat_agen] FOR LOGIN [plat_agen];
+END
+GO
+
+-- Berikan izin hanya jika user database sudah tersedia.
+IF USER_ID(N'plat_agen') IS NOT NULL
+BEGIN
+    GRANT SELECT ON dbo.CameraDeteksi TO [plat_agen];
+    GRANT SELECT ON dbo.Setting TO [plat_agen];
+END
+ELSE
+BEGIN
+    PRINT 'PERINGATAN: Login plat_agen belum ada di SQL Server.';
+    PRINT 'GRANT dilewati. Buat login terlebih dahulu.';
+END
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.SchemaLog WHERE Script = 'database/perubahan/007_kamera_deteksi.sql')
     INSERT INTO dbo.SchemaLog (Script, App) VALUES ('database/perubahan/007_kamera_deteksi.sql', 'CPOS');

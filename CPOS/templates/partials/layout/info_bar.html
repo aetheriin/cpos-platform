@@ -1,45 +1,56 @@
-{# Kontainer atas halaman site. Logika di static/js/info_bar.js #}
+{# Kontainer atas halaman site. Logika di static/js/info_bar.js.
+   Tab Security: hanya No. Tiket + Bruto / Tara / Netto (data-info="security"); tab Timbangan, Sortasi, Lab: info bar lengkap (data-info="umum").
+   Elemen yang disembunyikan tetap ada di halaman karena security.js dan lookup plat masih mengisinya. #}
 <div class="info-bar">
     <div class="info-grid">
         <div>
             <label class="info-field-label" for="infoNoTiket">No. Tiket</label>
             <input type="text" id="infoNoTiket" readonly class="info-field-input">
         </div>
-        <div>
+        <div data-info="security" class="hidden">
+            <label class="info-field-label" for="infoBruto">Bruto (kg)</label>
+            <input type="text" id="infoBruto" readonly value="-" class="info-field-input font-mono">
+        </div>
+        <div data-info="security" class="hidden">
+            <label class="info-field-label" for="infoTara">Tara (kg)</label>
+            <input type="text" id="infoTara" readonly value="-" class="info-field-input font-mono">
+        </div>
+        <div data-info="security" class="hidden">
+            <label class="info-field-label" for="infoNetto">Netto (kg)</label>
+            <input type="text" id="infoNetto" readonly value="-" class="info-field-input font-mono">
+        </div>
+        <div data-info="umum">
             <label class="info-field-label flex items-center gap-2" for="infoPlat">No. Plat
                 {# Diisi info_bar.js: kendaraan dan / atau supir tiket ini masuk blacklist (tampil di semua tab) #}
                 <span id="infoBlacklist" class="hidden text-[10px] font-bold text-white bg-red-600 px-1.5 py-px rounded"></span></label>
-            <input type="text" id="infoPlat" data-plat class="info-field-input uppercase" 
+            <input type="text" id="infoPlat" data-plat class="info-field-input uppercase"
             data-on-enter="lookupPlat" data-arg="$value" data-plat-otomatis>
         </div>
-        <div>
+        <div data-info="umum">
             <label class="info-field-label" for="infoNoDO">Nomor DO</label>
             <input type="text" id="infoNoDO" readonly class="info-field-input">
         </div>
-        <div>
+        <div data-info="umum">
             <label class="info-field-label" for="infoSupplier">Customer</label>
             <input type="text" id="infoSupplier" readonly class="info-field-input">
         </div>
-        <div>
+        <div data-info="umum">
             <label class="info-field-label" for="infoProduk">Produk</label>
             <input type="text" id="infoProduk" readonly class="info-field-input">
         </div>
-        <div>
+        <div data-info="umum">
             <label class="info-field-label" for="infoJenis">Jenis Transaksi</label>
             <input type="text" id="infoJenis" readonly class="info-field-input">
         </div>
-        <div>
+        <div data-info="umum">
             <label class="info-field-label" for="infoSupir">Supir</label>
             <input type="text" id="infoSupir" readonly class="info-field-input">
         </div>
     </div>
 
-    <div class="text-center">
+    <div class="text-center" data-info="umum">
         <div id="infoFotoBox" class="info-photo-box">
             <i class="fa-solid fa-user text-slate-300 text-3xl"></i>
         </div>
-        <button type="button" id="btnValidasi" data-on-click="klikValidasi" class="btn-primary mt-2 text-xs hidden">
-            Validasi
-        </button>
     </div>
 </div>

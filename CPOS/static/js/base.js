@@ -114,3 +114,16 @@ document.addEventListener('DOMContentLoaded', () => {
         .observe(document.body, { childList: true, subtree: true });
     semua();
 });
+
+// Bilah tab disembunyikan (#tabHeader.hidden): tiap tab dibuka dari menu samping sebagai halaman sendiri; judul halaman ikut tab aktif
+window.addEventListener('tabChange', e => {
+    const bar = document.getElementById('tabHeader');
+    const judul = document.querySelector('.halaman-judul h1');
+    if (!bar || !judul || !bar.classList.contains('hidden') || bar.querySelectorAll('.tab-btn').length < 2) return;
+    const tombol = bar.querySelector(`.tab-btn[data-tab="${e.detail}"]`);
+    if (!tombol) return;
+    const sub = document.querySelector('.halaman-judul p');
+    if (!judul.dataset.induk) judul.dataset.induk = judul.textContent.trim();
+    judul.textContent = tombol.textContent.trim();
+    if (sub) sub.textContent = judul.dataset.induk;
+});

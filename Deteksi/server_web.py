@@ -310,7 +310,7 @@ def pekerja(args, daftar_konf, keadaan, berhenti):
         print("Pembaca plat & CPOS System berjalan.")
 
         def terapkan_pengaturan():
-        p = baca_pengaturan()
+            p = baca_pengaturan()
             if p:
                 pembaca.konf.min_conf_ocr = p["conf"]
                 for j in daftar_jalur:
@@ -445,6 +445,7 @@ def alamat_lan():
 def main():
     p = argparse.ArgumentParser(description="Web lokal deteksi plat CPOS")
     p.add_argument("--port", type=int, default=8000)
+    p.add_argument("--host", default="0.0.0.0", help="127.0.0.1 = hanya bisa dihubungi dari PC ini (CPOS di PC yang sama)")
     p.add_argument("--video", help="uji dari file video / foto alih-alih kamera (hanya kamera pertama)")
     args = p.parse_args()
 
@@ -463,7 +464,7 @@ def main():
     berhenti = threading.Event()
     threading.Thread(target=pekerja, args=(args, daftar_konf, keadaan, berhenti), daemon=True).start()
 
-    server = ThreadingHTTPServer(("0.0.0.0", args.port), Penangan)
+    server = ThreadingHTTPServer((args.host, args.port), Penangan)
     print(f"\n=======================================================")
     print(f"CPOS System Ready. Kamera terhubung: {', '.join(daftar_nama)}")
     print(f"Buka Web UI di browser:")

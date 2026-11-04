@@ -5,13 +5,42 @@
             <h3 class="font-bold">Impor Kurs</h3>
             <button type="button" data-on-click="closeModal" data-arg="modalImporKurs" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <div class="p-6 space-y-4">
-            <p class="text-sm text-slate-600">Kolom: <b>Tanggal</b>, <b>Mata Uang</b> (mis. USD), <b>Kurs</b>, lalu opsional Jenis (Transaksi / Penutupan,
-                kosong = Transaksi), Perusahaan (kosong = semua), Sumber (JISDOR / PAJAK / BANK / INTERNET / LAINNYA), Keterangan.
-                Baris pertama = judul kolom. Unduh <a href="{{ url_for('master.kurs_contoh') }}" class="text-blue-600 underline">templat</a>.</p>
-            <div class="flex flex-wrap items-center gap-2">
-                <input type="file" id="berkasKurs" accept=".xlsx,.csv" class="input-field flex-1 min-w-0">
-                <button type="button" class="btn-secondary" data-on-click="periksaImporKurs" data-arg="$el">Periksa</button>
+        <form id="formImporKurs" class="p-6 space-y-4" autocomplete="off">
+            <p class="text-sm text-slate-600">Baris pertama berkas berisi judul kolom. Cukup kolom <b>Tanggal</b> dan <b>Kurs</b>;
+                kolom lain yang tidak ada diisi dari pilihan di bawah. Kolom yang bisa dipakai: Tanggal, Mata Uang, Kurs, Jenis, Perusahaan,
+                Sumber, Keterangan (<a href="{{ url_for('master.kurs_contoh') }}" class="text-blue-700 underline">unduh templat .xlsx</a>).</p>
+            <div>
+                <label class="field-label" for="berkasKurs">Berkas (.xlsx atau .csv)</label>
+                <input type="file" id="berkasKurs" accept=".xlsx,.csv" class="input-field" data-on-change="ubahImporKurs">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="field-label" for="imporMataUang">Mata Uang <span class="text-slate-400 font-normal">(bila tidak ada kolomnya)</span></label>
+                    <select id="imporMataUang" name="bawaan_id_mata_uang" class="input-field" data-on-change="ubahImporKurs"></select>
+                </div>
+                <div>
+                    <label class="field-label" for="imporJenis">Jenis Kurs</label>
+                    <select id="imporJenis" name="bawaan_jenis" class="input-field" data-on-change="ubahImporKurs"></select>
+                </div>
+                <div>
+                    <label class="field-label" for="imporSumber">Sumber <span class="text-slate-400 font-normal">(opsional)</span></label>
+                    <select id="imporSumber" name="bawaan_sumber" class="input-field" data-on-change="ubahImporKurs"></select>
+                </div>
+                <div>
+                    <label class="field-label" for="imporPerusahaan">Perusahaan</label>
+                    <select id="imporPerusahaan" name="bawaan_id_company" class="input-field" data-on-change="ubahImporKurs"></select>
+                </div>
+            </div>
+            <fieldset>
+                <legend class="field-label">Tanggal yang kursnya sudah ada dengan nilai berbeda</legend>
+                <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+                    <label class="inline-flex items-center gap-2"><input type="radio" name="timpa" value="0" checked data-on-change="ubahImporKurs"> Lewati, kurs lama tetap</label>
+                    <label class="inline-flex items-center gap-2"><input type="radio" name="timpa" value="1" data-on-change="ubahImporKurs"> Ganti dengan kurs di berkas</label>
+                </div>
+                <p class="field-hint">Kurs yang sama persis selalu dilewati. Kurs yang diganti tetap tersimpan sebagai riwayat (Dibatalkan).</p>
+            </fieldset>
+            <div>
+                <button type="button" class="btn-secondary" data-on-click="periksaImporKurs" data-arg="$el">Periksa berkas</button>
             </div>
             <div id="hasilImporKurs" class="hidden">
                 <p id="ringkasImporKurs" class="text-sm mb-2"></p>
@@ -20,13 +49,13 @@
                         <thead class="table-header-row sticky top-0">
                             <tr><th class="table-cell">Baris</th><th class="table-cell">Tanggal</th><th class="table-cell">Mata Uang</th>
                                 <th class="table-cell text-right">Kurs</th><th class="table-cell">Jenis</th><th class="table-cell">Perusahaan</th>
-                                <th class="table-cell">Status</th></tr>
+                                <th class="table-cell">Hasil</th></tr>
                         </thead>
                         <tbody id="tabelImporKurs" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
             </div>
-        </div>
+        </form>
         <div class="px-6 pb-6 flex justify-end gap-2">
             <button type="button" data-on-click="closeModal" data-arg="modalImporKurs" class="btn-secondary">Batal</button>
             <button type="button" id="btnSimpanImporKurs" class="btn-primary" data-on-click="simpanImporKurs" data-arg="$el" disabled>Simpan</button>

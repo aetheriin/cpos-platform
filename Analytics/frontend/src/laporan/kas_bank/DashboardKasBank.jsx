@@ -1,19 +1,19 @@
 import { useMemo, useState } from 'react'
 import { angka, tambahDariEvent, tglLengkap, ubahPilihan } from '../../lib/data'
-import { chipDaftar, chipRentang, useDashboard } from '../../lib/filter'
+import { chipDaftar, useDashboard } from '../../lib/filter'
 import FilterMulti from '../../komponen/FilterMulti'
-import FilterTanggal from '../../komponen/FilterTanggal'
+import PilihRentang from '../../komponen/PilihRentang'
 import { GridKartu, Kartu, KartuGrafik, KisiGrafik, Petak } from '../../komponen/Kartu'
 import KepalaLaporan from '../../komponen/KepalaLaporan'
-import { useTataLetak } from '../../lib/tampilan'
 import PanelFilter from '../../komponen/PanelFilter'
 import TabelDetail from '../../komponen/TabelDetail'
-import { uangPenuh, uangRingkas, WARNA_KELUAR, WARNA_MASUK } from '../../grafik/kas'
+import { uangPenuh, WARNA_KELUAR, WARNA_MASUK } from '../../grafik/kas'
 import { JenisDokumen, KreditToDate, PilihPeriode, SaldoBerjalan } from '../../grafik/KasTren'
 
 const FILTER_AWAL = {}
 const KOSONG = []
 const TAB = [
+  { kunci: 'bank', nama: 'Rekap saldo bank', ket: (h) => `${tglLengkap(h.periode.mulai)} – ${tglLengkap(h.periode.akhir)}. Saldo akhir tiap hari per perusahaan dan rekening.` },
   { kunci: 'harian', nama: 'Rekap harian', ket: (h) => `${tglLengkap(h.periode.mulai)} – ${tglLengkap(h.periode.akhir)}. Debit/credit to date dihitung sejak awal data.` },
   { kunci: 'mutasi', nama: 'Mutasi', ket: (h) => `${tglLengkap(h.periode.mulai)} – ${tglLengkap(h.periode.akhir)}. Saldo per transaksi, urut tanggal.` },
   { kunci: 'giro', nama: 'Jasa giro', ket: (h) => `${tglLengkap(h.periode.mulai)} – ${tglLengkap(h.periode.akhir)}.` },
@@ -56,7 +56,7 @@ function LawanTransaksi({ mitra, satuan, terpilih, onPilih }) {
                   </span>
                   <span className="mt-0.5 flex items-center gap-2">
                     <span className="h-3 min-w-1 rounded-sm" style={{ width: `${(d.nilai / maks) * 78}%`, background: warna }} />
-                    <span className="shrink-0 text-xs tabular-nums text-slate-700">{uangRingkas(d.nilai, satuan)}</span>
+                    <span className="shrink-0 text-xs tabular-nums text-slate-700">{uangPenuh(d.nilai, satuan)}</span>
                   </span>
                 </button>
               </li>
@@ -69,37 +69,80 @@ function LawanTransaksi({ mitra, satuan, terpilih, onPilih }) {
   )
 }
 
-// Jasa giro per rekening: klik baris untuk memfilter rekening itu. % = jasa giro dibagi rata-rata saldo harian rekening di rentang ini.
-// Padat: tinggi mengikuti kartu di sebelahnya (isi diposisikan absolut, daftar panjang digulir), supaya tidak memanjangkan baris grafik.
-// Memanjang: kartu sendiri selebar halaman, jadi tabel tampil utuh.
+// Rekap jasa giro per bank, mengikuti sheet BANK GIRO. Klik rekening untuk memfilternya.
 function JasaGiro({ giro, satuan, terpilih, onPilih }) {
-  const padat = useTataLetak()[0] === 'padat'
-  if (giro.rekening.length === 0) return <p className="py-8 text-center text-sm text-slate-500">Tidak ada data</p>
+  if (giro.bank.length === 0) return <p className="py-8 text-center text-sm text-slate-500">Tidak ada data</p>
+  const angkaSel = 'py-1.5 pl-4 text-right tabular-nums whitespace-nowrap'
   return (
-    <div className={padat ? 'relative h-full min-h-48' : ''}>
-      <div className={padat ? 'absolute inset-0 overflow-y-auto' : 'max-w-2xl'}>
-      <table className="w-full table-fixed text-xs">
-        <thead className="sticky top-0 bg-white">
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[40rem] text-xs">
+        <thead>
           <tr className="text-left text-slate-500">
-            <th className="w-[46%] pb-1 font-medium">Rekening</th>
-            <th className="pb-1 text-right font-medium">Jasa giro</th>
-            <th className="w-[22%] pb-1 text-right font-medium" title="Jasa giro ÷ saldo rata-rata harian">% Saldo</th>
+            <th className="pb-1 font-medium">Bank / rekening</th>
+            <th className="pb-1 pl-4 text-right font-medium">Giro</th>
+            <th className="pb-1 pl-4 text-right font-medium">AVG balance</th>
+            <th className="pb-1 pl-4 text-right font-medium" title="Giro ÷ AVG balance × 12">% Giro per tahun</th>
           </tr>
         </thead>
-        <tbody>
-          {giro.rekening.map((r) => {
-            const pilih = terpilih.includes(r.akun)
-            return (
-              <tr key={r.akun} onClick={(e) => onPilih(r.akun, e)} aria-selected={pilih}
-                className={'cursor-pointer border-t border-slate-100 hover:bg-slate-50 ' + (pilih ? 'bg-sky-50 font-medium text-sky-900' : 'text-slate-700')}>
-                <td className="truncate py-1.5 pr-2" title={`${r.akun} (${r.bank})`}>{r.akun}</td>
-                <td className="py-1.5 text-right tabular-nums">{uangRingkas(r.nilai, satuan)}</td>
-                <td className="py-1.5 text-right tabular-nums text-slate-500">{persenGiro(r.imbal)}</td>
-              </tr>
-            )
-          })}
-        </tbody>
+        {giro.bank.map((b) => (
+          <tbody key={b.bank}>
+            <tr className="border-t border-slate-300 font-semibold text-slate-900">
+              <td className="py-1.5">{b.bank}</td>
+              <td className={angkaSel}>{uangPenuh(b.nilai, satuan)}</td>
+              <td className={angkaSel}>{uangPenuh(b.rata_saldo, satuan)}</td>
+              <td className={angkaSel}>{persenGiro(b.imbal)}</td>
+            </tr>
+            {b.rekening.map((r) => {
+              const pilih = terpilih.includes(r.akun)
+              return (
+                <tr key={r.akun} onClick={(e) => onPilih(r.akun, e)} aria-selected={pilih}
+                  className={'cursor-pointer border-t border-slate-100 hover:bg-slate-50 ' + (pilih ? 'bg-sky-50 font-medium text-sky-900' : 'text-slate-700')}>
+                  <td className="py-1.5 pl-3">{r.akun}</td>
+                  <td className={angkaSel}>{uangPenuh(r.nilai, satuan)}</td>
+                  <td className={angkaSel}>{uangPenuh(r.rata_saldo, satuan)}</td>
+                  <td className={angkaSel}>{persenGiro(r.imbal)}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        ))}
+        <tfoot>
+          <tr className="border-t-2 border-slate-400 font-semibold text-slate-900">
+            <td className="py-1.5">Grand total</td>
+            <td className={angkaSel}>{uangPenuh(giro.total, satuan)}</td>
+            <td className={angkaSel}>{uangPenuh(giro.rata_saldo, satuan)}</td>
+            <td className={angkaSel}>{persenGiro(giro.imbal)}</td>
+          </tr>
+        </tfoot>
       </table>
+    </div>
+  )
+}
+
+const NAMA_BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+const namaBulan = (b) => `${NAMA_BULAN[Number(b.slice(5, 7)) - 1]} ${b.slice(0, 4)}`
+const akhirBulan = (b) => `${b}-${String(new Date(Date.UTC(Number(b.slice(0, 4)), Number(b.slice(5, 7)), 0)).getUTCDate()).padStart(2, '0')}`
+
+const OPSI_BELAKANG = [3, 6, 12]
+
+// Panel filter: bulan laporan (bulan terbaru = rentang bawaan server, awal bulan sampai hari ini; bulan lain = satu bulan penuh)
+// dan berapa bulan ke belakang yang tampil di Running balance
+function PilihBulan({ bulan, filter, belakang, onBelakang, onUbah }) {
+  const nilai = !filter.dari ? bulan[0] : bulan.find((b) => filter.dari === `${b}-01` && filter.sampai === akhirBulan(b)) ?? ''
+  return (
+    <div className="space-y-3 border-b border-slate-200 pb-3">
+      <label className="block space-y-1 text-sm text-slate-600">
+        <span>Bulan</span>
+        <select value={nilai} onChange={(e) => onUbah(e.target.value === bulan[0] ? { dari: null, sampai: null } : { dari: `${e.target.value}-01`, sampai: akhirBulan(e.target.value) })}
+          className="block w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
+          {nilai === '' && <option value="">Pilih bulan</option>}
+          {bulan.map((b) => <option key={b} value={b}>{namaBulan(b)}</option>)}
+        </select>
+      </label>
+      <div className="space-y-1 text-sm text-slate-600">
+        <div>Running balance</div>
+        <PilihRentang label="Bulan ke belakang" nilai={belakang} onUbah={onBelakang}
+          opsi={OPSI_BELAKANG.map((n) => ({ nilai: n, label: `${n} bln`, judul: `${n} bulan terakhir` }))} />
       </div>
     </div>
   )
@@ -110,12 +153,13 @@ export default function DashboardKasBank({ dataId, onDataHilang }) {
 
   const pilih = useMemo(() => {
     const dari = (jenis) => (nilai, e) => setFilter((f) => ({ ...f, [jenis]: ubahPilihan(f[jenis] ?? [], nilai, tambahDariEvent(e)) }))
-    return { tanggal: dari('tanggal'), mitra: dari('mitra'), rekening: dari('rekening'), dokumen: dari('dokumen') }
+    return { mitra: dari('mitra'), rekening: dari('rekening'), dokumen: dari('dokumen') }
   }, [setFilter])
 
   const daftarFilter = data?.filter ?? KOSONG
   const tampil = (kunci, nilai) => (kunci === 'tanggal' ? tglLengkap(nilai) : nilai)
-  const aktif = [...chipRentang(filter), ...chipDaftar(daftarFilter, terpilih, tampil)]
+  const aktif = [...(filter.dari ? [['rentang', null, `Bulan ${namaBulan(filter.dari.slice(0, 7))}`]] : []), ...chipDaftar(daftarFilter, terpilih, tampil)]
+  const [belakang, setBelakang] = useState(OPSI_BELAKANG[0])
   const kpi = data?.kpi
   const satuan = data?.satuan ?? 'IDR'
   // Rentang tampilan lebih dari sebulan: grafik deret waktu bisa per bulan (bawaan) atau per hari; sebulan atau kurang: per hari saja
@@ -144,27 +188,20 @@ export default function DashboardKasBank({ dataId, onDataHilang }) {
               </p>
             )}
             <GridKartu kolom={4}>
-              <Kartu judul="Ending balance" nilai={uangRingkas(kpi.saldo_akhir, satuan)} info="Jumlah saldo rekening terpilih"
-                catatan={`per ${tglLengkap(kpi.tanggal_saldo)} · opening ${uangRingkas(kpi.saldo_awal, satuan)}`} />
-              <Kartu judul="Total debit" nilai={uangRingkas(kpi.masuk, satuan)} info="Penerimaan, termasuk transfer masuk antar rekening"
-                catatan={`${angka.format(kpi.jumlah_masuk)} transaksi · transfer ${uangRingkas(kpi.transfer_masuk, satuan)}`} />
-              <Kartu judul="Total credit" nilai={uangRingkas(kpi.keluar, satuan)} info="Pengeluaran, termasuk transfer keluar antar rekening"
-                catatan={`${angka.format(kpi.jumlah_keluar)} transaksi · transfer ${uangRingkas(kpi.transfer_keluar, satuan)}`} />
-              <Kartu judul="Jasa giro" nilai={uangRingkas(data.giro.total, satuan)} info="Jasa giro ÷ saldo rata-rata harian"
-                catatan={data.giro.imbal != null ? `${persenGiro(data.giro.imbal)} dari saldo rata-rata` : null} />
+              <Kartu judul="Ending balance" nilai={uangPenuh(kpi.saldo_akhir, satuan)} info="Jumlah saldo rekening terpilih"
+                catatan={`per ${tglLengkap(kpi.tanggal_saldo)} · opening ${uangPenuh(kpi.saldo_awal, satuan)}`} />
+              <Kartu judul="Total debit" nilai={uangPenuh(kpi.masuk, satuan)} info="Penerimaan, termasuk transfer masuk antar rekening"
+                catatan={`${angka.format(kpi.jumlah_masuk)} transaksi · transfer ${uangPenuh(kpi.transfer_masuk, satuan)}`} />
+              <Kartu judul="Total credit" nilai={uangPenuh(kpi.keluar, satuan)} info="Pengeluaran, termasuk transfer keluar antar rekening"
+                catatan={`${angka.format(kpi.jumlah_keluar)} transaksi · transfer ${uangPenuh(kpi.transfer_keluar, satuan)}`} />
+              <Kartu judul="Jasa giro" nilai={uangPenuh(data.giro.total, satuan)} info="Giro ÷ AVG balance × 12"
+                catatan={data.giro.imbal != null ? `${persenGiro(data.giro.imbal)} per tahun` : null} />
             </GridKartu>
 
             <KisiGrafik>
-              <Petak padat="lg:col-span-8">
-                <KartuGrafik judul="Running balance" perbesar aksi={pilihPeriode}
-                  petunjuk={periode === 'hari' ? 'Ending balance, debit, dan credit per hari. Klik tanggal untuk filter.' : 'Ending balance, debit, dan credit per bulan.'}>
-                  <SaldoBerjalan running={data.running} bulanan={data.deret.bulan} periode={periode} satuan={satuan}
-                    terpilih={terpilih('tanggal')} onPilih={pilih.tanggal} />
-                </KartuGrafik>
-              </Petak>
-              <Petak padat="lg:col-span-4">
-                <KartuGrafik judul="Jasa giro per rekening" petunjuk="Klik rekening untuk filter.">
-                  <JasaGiro giro={data.giro} satuan={satuan} terpilih={terpilih('rekening')} onPilih={pilih.rekening} />
+              <Petak padat="lg:col-span-6">
+                <KartuGrafik judul="Running balance" perbesar petunjuk={`Ending balance, debit, dan credit, ${belakang} bulan terakhir.`}>
+                  <SaldoBerjalan bulanan={data.running.slice(-belakang)} satuan={satuan} />
                 </KartuGrafik>
               </Petak>
               <Petak padat="lg:col-span-6">
@@ -173,25 +210,30 @@ export default function DashboardKasBank({ dataId, onDataHilang }) {
                   <KreditToDate harian={data.deret.hari} bulanan={data.deret.bulan} periode={periode} satuan={satuan} />
                 </KartuGrafik>
               </Petak>
+              <Petak padat="lg:col-span-12">
+                <KartuGrafik judul="Jasa giro per bank" petunjuk="Klik rekening untuk filter.">
+                  <JasaGiro giro={data.giro} satuan={satuan} terpilih={terpilih('rekening')} onPilih={pilih.rekening} />
+                </KartuGrafik>
+              </Petak>
               <Petak padat="lg:col-span-6">
                 <KartuGrafik judul="Jenis dokumen" petunjuk="Klik jenis untuk filter.">
                   <JenisDokumen dokumen={data.dokumen} satuan={satuan} terpilih={terpilih('dokumen')} onPilih={pilih.dokumen} />
                 </KartuGrafik>
               </Petak>
-              <Petak padat="lg:col-span-12">
+              <Petak padat="lg:col-span-6">
                 <KartuGrafik judul="Lawan transaksi terbesar" petunjuk="Klik nama untuk filter.">
                   <LawanTransaksi mitra={data.mitra} satuan={satuan} terpilih={terpilih('mitra')} onPilih={pilih.mitra} />
                 </KartuGrafik>
               </Petak>
             </KisiGrafik>
 
-            <TabelDetail laporanId="cash_flow" dataId={dataId} filter={filter} jumlah={{ harian: kpi.hari, mutasi: kpi.mutasi, giro: kpi.jumlah_giro }}
+            <TabelDetail laporanId="cash_flow" dataId={dataId} filter={filter} jumlah={{ harian: kpi.hari, bank: kpi.hari, mutasi: kpi.mutasi, giro: kpi.jumlah_giro }}
               tab={TAB} onDataHilang={onDataHilang} />
           </div>
         )}
       </div>
       <PanelFilter terbuka={panel} onTutup={() => setPanel(false)} jumlahAktif={aktif.length} onReset={reset}>
-        {data && <FilterTanggal dari={filter.dari} sampai={filter.sampai} efektif={data.rentang} satuan={data.rentang.satuan} bawaan={data.rentang.bawaan} dataset={data.dataset} onUbah={ubah} />}
+        {data && <PilihBulan bulan={data.bulan} filter={filter} belakang={belakang} onBelakang={setBelakang} onUbah={ubah} />}
         {daftarFilter
           .filter((f) => f.panel)
           .map(({ kunci, nama }) => (

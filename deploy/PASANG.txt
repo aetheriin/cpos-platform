@@ -1,0 +1,26 @@
+PEMASANGAN CPOS PLATFORM (CPOS + RekapIn + Analytics + Deteksi Plat)
+=====================================================================
+
+Kebutuhan PC tujuan
+- Windows 10 / 11 64-bit, akun administrator, internet (sekali, untuk memasang Python & library)
+- Bisa terhubung ke SQL Server yang tertulis di CPOS\.env dan Analytics\backend\.env
+- Python 3.11 dan ODBC Driver 18 for SQL Server: dipasang otomatis lewat winget bila belum ada
+
+Memasang
+1. Ekstrak zip ini ke folder tetap, mis. C:\CPOS-Platform (jangan di Downloads / Desktop).
+2. Periksa file pengaturan bila PC tujuan berbeda jaringan / server:
+     CPOS\.env                  database CPOS, PORT (port web), URL_DETEKTOR
+     Analytics\backend\.env     database ERP laporan, CPOS_URL (port sama dengan PORT CPOS)
+     Deteksi\.env               kamera & database deteksi plat, PORT_WEB (port internal)
+3. Klik kanan deploy\pasang.bat > Run as administrator.
+   Pertama kali memasang library Python (10-20 menit). Selesai bila muncul alamat CPOS berwarna hijau.
+4. Buka http://<IP PC ini>:<PORT> dari PC lain di jaringan kantor. Hanya port itu yang dibuka di firewall;
+   Analytics (8001) dan Deteksi Plat (PORT_WEB) hanya dipakai di dalam PC ini.
+
+Sesudah terpasang
+- CPOS menyala sendiri setiap Windows menyala (tugas terjadwal "CPOS Platform", akun SYSTEM, tanpa perlu login),
+  dan dinyalakan ulang otomatis bila berhenti.
+- Log: C:\ProgramData\CPOS-Platform\cpos-platform\log
+- Memperbarui aplikasi: ekstrak zip versi baru ke folder yang sama (timpa), lalu jalankan pasang.bat lagi.
+- Menghentikan sementara: Task Scheduler > CPOS Platform > End.
+- Mencopot: klik kanan deploy\copot.bat > Run as administrator.

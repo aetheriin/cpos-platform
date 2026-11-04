@@ -11,7 +11,7 @@
     {{ judul_halaman('Data Master', 'Supir, kendaraan, supplier, produk, mata uang, bank & kurs', 'fa-database') }}
     {{ tab_header(tab_lihat([('personel', 'Supir', 'MASTER_DRIVER'), ('kendaraan', 'Kendaraan', 'MASTER_KENDARAAN'),
                             ('mitra', 'Supplier', 'MASTER_MITRA'), ('produk', 'Produk', 'MASTER_PRODUK'),
-                            ('keuangan', 'Mata Uang & Bank', 'MASTER_KEUANGAN'), ('kurs', 'Kurs Mata Uang', 'MASTER_KURS')])) }}
+                            ('keuangan', 'Mata Uang & Bank', 'MASTER_KEUANGAN'), ('kurs', 'Kurs Mata Uang', 'MASTER_KURS')]), 'hidden') }}
 {% endblock %}
 
 {% block tab_content %}

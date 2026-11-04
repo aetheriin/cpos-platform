@@ -1,15 +1,9 @@
-# Menjalankan CPOS + Analytics di PC ini. Dipanggil oleh jalankan.bat.
-# - Python & library disimpan di PC ini (%LOCALAPPDATA%\cpos-platform), bukan di folder bersama, jadi tiap PC punya sendiri.
-#   Pertama kali dijalankan (atau setelah requirements.txt berubah) library dipasang otomatis.
-# - Backend Analytics berjalan di latar; CPOS di jendela ini. Laporan Analytics dibuka lewat CPOS di /analytics.
-# - Tutup jendela ini (atau Ctrl+C) untuk berhenti. Sisa proses dari sesi sebelumnya dibersihkan otomatis saat mulai.
 $ErrorActionPreference = 'Stop'
 $akar = $PSScriptRoot
 $lokal = Join-Path $env:LOCALAPPDATA 'cpos-platform'
 $log = Join-Path $lokal 'log'
 $PortAnalytics = 8001
 $PortDeteksi = 8000
-$Go2rtcExe = 'C:\go2rtc\go2rtc.exe'
 New-Item -ItemType Directory -Force $log | Out-Null
 $Host.UI.RawUI.WindowTitle = 'CPOS + Analytics'
 
@@ -55,10 +49,16 @@ function Siapkan-Venv($nama, $folder, $requirements, $tambahan) {
 }
 
 function Hentikan-Sisa {
-    # proses Python dari venv PC ini yang masih hidup (jendela ditutup paksa sebelumnya)
+    # Python dari venv PC ini yang masih hidup (jendela ditutup paksa sebelumnya). python.exe venv hanya peluncur: proses sebenarnya memakai
+    # python.exe induk di luar folder venv, jadi yang memegang port aplikasi ini juga dimatikan. Aplikasi lain di PC ini tidak disentuh.
     Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
-        Where-Object { $_.ExecutablePath -and ($_.ExecutablePath -like '*\cpos-platform\venv-*' -or $_.ExecutablePath -like '*\deteksi-plat\venv\*') } |
+        Where-Object { $_.ExecutablePath -and ($_.ExecutablePath -like "$lokal\venv-*" -or $_.ExecutablePath -like "$env:LOCALAPPDATA\deteksi-plat\venv\*") } |
         ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    foreach ($p in $portCpos, $PortAnalytics, $PortDeteksi) {
+        Get-NetTCPConnection -State Listen -LocalPort $p -ErrorAction SilentlyContinue | ForEach-Object {
+            Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue | Where-Object ProcessName -eq 'python' | Stop-Process -Force -ErrorAction SilentlyContinue
+        }
+    }
     Start-Sleep -Milliseconds 500
 }
 
@@ -88,6 +88,11 @@ try {
     $portCpos = 5000
     $baris = Select-String (Join-Path $akar 'CPOS\.env') -Pattern '^\s*PORT\s*=\s*(\d+)' -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($baris) { $portCpos = [int]$baris.Matches[0].Groups[1].Value }
+    # Deteksi\.env: PORT_WEB (bawaan 8000), HOST_WEB (bawaan semua alamat; 127.0.0.1 = hanya dari PC ini)
+    $baris = Select-String (Join-Path $akar 'Deteksi\.env') -Pattern '^\s*PORT_WEB\s*=\s*(\d+)' -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($baris) { $PortDeteksi = [int]$baris.Matches[0].Groups[1].Value }
+    $baris = Select-String (Join-Path $akar 'Deteksi\.env') -Pattern '^\s*HOST_WEB\s*=\s*(\S+)' -ErrorAction SilentlyContinue | Select-Object -First 1
+    $hostDeteksi = if ($baris) { $baris.Matches[0].Groups[1].Value } else { '0.0.0.0' }
 
     # Library modul CPOS (mis. modules\item_request\requirements.txt) ikut dipasang ke Python CPOS; modul baru otomatis ikut
     $reqCpos = @(Join-Path $akar 'CPOS\requirements.txt') + @(Get-ChildItem (Join-Path $akar 'CPOS\modules') -Recurse -Filter 'requirements.txt' |
@@ -112,10 +117,6 @@ try {
         -WorkingDirectory (Join-Path $akar 'Analytics\backend') -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput (Join-Path $log 'analytics.log') -RedirectStandardError (Join-Path $log 'analytics-galat.log')
     if (-not (Tunggu-Port $PortAnalytics 'Analytics' 60)) { throw "Backend Analytics gagal menyala. Lihat $log\analytics-galat.log" }
-    if ((Test-Path $Go2rtcExe) -and -not (Tunggu-Port 1984 'go2rtc' 1)) {
-    Write-Host 'Menyalakan go2rtc (video CCTV)...'
-    $gateway = Start-Process $Go2rtcExe -WorkingDirectory (Split-Path $Go2rtcExe) -WindowStyle Hidden -PassThru
-    }
     if ($adaDeteksi) {
         $envDeteksi = Join-Path $akar 'Deteksi\.env'
         if (-not (Test-Path $envDeteksi)) {
@@ -124,7 +125,7 @@ try {
         }
         Write-Host 'Menyalakan backend Deteksi Plat...'
         $env:PYTHONUNBUFFERED = '1'
-        $deteksi = Start-Process $pyDeteksi -ArgumentList 'server_web.py' -WorkingDirectory (Join-Path $akar 'Deteksi') -WindowStyle Hidden -PassThru `
+        $deteksi = Start-Process $pyDeteksi -ArgumentList 'server_web.py', '--port', $PortDeteksi, '--host', $hostDeteksi -WorkingDirectory (Join-Path $akar 'Deteksi') -WindowStyle Hidden -PassThru `
             -RedirectStandardOutput (Join-Path $log 'deteksi.log') -RedirectStandardError (Join-Path $log 'deteksi-galat.log')
         if (-not (Tunggu-Port $PortDeteksi 'Deteksi' 60)) {
             Write-Warning "Backend Deteksi belum siap (model AI masih dimuat, atau ada galat). Lihat $log\deteksi-galat.log. CPOS tetap dijalankan."
@@ -153,7 +154,6 @@ catch {
     Write-Host $_.Exception.Message -ForegroundColor Red
 }
 finally {
-    if ($analytics -and -not $analytics.HasExited) { Stop-Process -Id $analytics.Id -Force -ErrorAction SilentlyContinue }
+    if ($analytics -and -not $analytics.HasExited) { & taskkill /PID $analytics.Id /T /F | Out-Null }
     if ($deteksi -and -not $deteksi.HasExited) { & taskkill /PID $deteksi.Id /T /F | Out-Null }
-    if ($gateway -and -not $gateway.HasExited) { & taskkill /PID $gateway.Id /T /F | Out-Null }
 }

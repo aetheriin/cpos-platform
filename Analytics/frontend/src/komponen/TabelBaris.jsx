@@ -12,12 +12,32 @@ const WARNA_STATUS = {
 // Kolom bertulisan panjang dipotong dengan titik-titik; isi lengkap ada di tooltip.
 const KOLOM_PANJANG = new Set(['itemname', 'supplier_name', 'category', 'po_number'])
 
+// Kolom dengan k.grup: judul bertingkat, kolom berurutan bergrup sama digabung di bawah satu judul; k.label = judul pendek di bawahnya.
+const gabungGrup = (kolom) =>
+  kolom.reduce((hasil, k) => {
+    const akhir = hasil.at(-1)
+    if (akhir && akhir.nama === k.grup) akhir.lebar += 1
+    else hasil.push({ nama: k.grup, lebar: 1 })
+    return hasil
+  }, [])
+
 // onPilihBaris dan terpilih opsional: kalau ada, klik baris (atau Enter) memfilter semua grafik dan kartu.
 export default function TabelBaris({ kolom, baris, urut, arah, onUrut, onPilihBaris, terpilih }) {
+  const bergrup = kolom.some((k) => k.grup)
+  const awalGrup = (i) => bergrup && i > 0 && kolom[i].grup !== kolom[i - 1].grup ? 'border-l border-slate-300 ' : ''
   return (
     <div className="max-h-[30rem] overflow-auto rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-xs">
         <thead className="sticky top-0 z-10 bg-slate-50">
+          {bergrup && (
+            <tr>
+              {gabungGrup(kolom).map((g, i) => (
+                <th key={i} colSpan={g.lebar} className={'px-2 pt-2 text-left font-semibold text-slate-900 ' + (i === 0 ? 'sticky left-0 z-20 bg-slate-50 ' : 'border-l border-slate-300 ')}>
+                  {g.nama}
+                </th>
+              ))}
+            </tr>
+          )}
           <tr>
             {kolom.map((k, i) => {
               const aktif = urut === k.kunci
@@ -28,11 +48,12 @@ export default function TabelBaris({ kolom, baris, urut, arah, onUrut, onPilihBa
                   className={
                     'whitespace-nowrap border-b border-slate-200 px-2 py-2 font-medium text-slate-600 ' +
                     (k.tipe === 'angka' ? 'text-right ' : 'text-left ') +
+                    awalGrup(i) +
                     (i === 0 ? 'sticky left-0 z-20 bg-slate-50 ' : '')
                   }
                 >
                   <button type="button" className="inline-flex items-center gap-1 hover:text-slate-900" onClick={() => onUrut(k.kunci)}>
-                    {k.judul}
+                    {k.label ?? k.judul}
                     <span className="text-slate-400">{aktif ? (arah === 'asc' ? '▲' : '▼') : ''}</span>
                   </button>
                 </th>
@@ -60,6 +81,7 @@ export default function TabelBaris({ kolom, baris, urut, arah, onUrut, onPilihBa
                   'whitespace-nowrap px-2 py-1.5 tabular-nums ' +
                   (k.tipe === 'angka' ? 'text-right ' : '') +
                   (kosong ? 'text-slate-300 ' : '') +
+                  awalGrup(i) +
                   (i === 0 ? `sticky left-0 z-[5] ${latar} font-medium ` : '')
                 if (k.kunci === 'status' && !kosong) {
                   return (

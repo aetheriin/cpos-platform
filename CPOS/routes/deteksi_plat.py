@@ -8,16 +8,37 @@ from datetime import date, datetime
 from flask import Blueprint, Response, abort, jsonify, render_template, request, send_file
 from flask_login import current_user, login_required
 
-from routes.cctv import _angka, _jalankan, _teks
 from utils import db_kamera_plat as dbk, db_plat as db, detektor_video as dv
 from utils.area import area_data
 from utils.area_filter import area_cocok
-from utils.galat_isian import GalatIsian
+from utils.galat_isian import GalatIsian, isi_galat
 from utils.hak_akses import admin_required, izin, halaman as lihat_halaman
 
 deteksi_plat_bp = Blueprint("deteksi_plat", __name__)
 
 POLA_NAMA = re.compile(r"^[A-Z0-9_-]{2,30}$")
+
+def _teks(nama, maks, wajib=True):
+    v = (request.form.get(nama) or "").strip()[:maks]
+    if wajib and not v:
+        raise GalatIsian(f"Isi {nama.replace('_', ' ')}", nama)
+    return v or None
+
+
+def _angka(nama, wajib=True):
+    v = (request.form.get(nama) or "").strip()
+    if not v.isdigit():
+        if wajib:
+            raise GalatIsian(f"Pilih {nama.replace('id_', '').replace('_', ' ')}", nama)
+        return None
+    return int(v)
+
+
+def _jalankan(fn):
+    try:
+        return fn()
+    except ValueError as e:
+        return jsonify(isi_galat(e)), 400
 
 
 def _tanggal(nama):

@@ -60,5 +60,7 @@ def api_cari():
                       "item_name": r["ItemName"], "category": r["Category"],
                       "beli": {"no": beli["PurchaseNo"], "tanggal": _tanggal(beli["PurchaseDate"]),
                                "qty": None if beli["Qty"] is None else float(beli["Qty"]),
-                               "harga": None if beli["Price"] is None else float(beli["Price"])} if beli else None})
+                               "harga": None if beli["Price"] is None else float(beli["Price"]),
+                               "supplier": beli.get("SupplierName"),
+                               "total_balance": None if beli["TotalBalance"] is None else float(beli["TotalBalance"])} if beli else None})
     return jsonify({"query": query, "company": company, "category": category, "hasil": hasil})

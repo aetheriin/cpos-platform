@@ -13,7 +13,7 @@ function kotakRef(jenis) {
     return document.querySelector(`[data-ref="${CSS.escape(jenis)}"]`);
 }
 
-function labelPilihan(meta, kunci, id) {
+function labelPilihanRef(meta, kunci, id) {
     const o = (meta.pilihan[kunci] || []).find(x => x.id === id);
     return o ? o.label : `#${id}`;
 }
@@ -21,7 +21,7 @@ function labelPilihan(meta, kunci, id) {
 function nilaiRef(meta, f, r) {
     const v = r[f.kunci];
     if (v === null || v === undefined || v === '') return '<span class="text-slate-300">-</span>';
-    if (f.tipe === 'pilih') return escapeHtml(labelPilihan(meta, f.kunci, v));
+    if (f.tipe === 'pilih') return escapeHtml(labelPilihanRef(meta, f.kunci, v));
     if (f.tipe === 'angka') return `<span class="tabular-nums">${Number(v).toLocaleString('id-ID', { maximumFractionDigits: 4 })}</span>`;
     if (f.tipe === 'kode' || f.tipe === 'tanggal') return `<span class="font-mono text-xs">${escapeHtml(v)}</span>`;
     return escapeHtml(v);

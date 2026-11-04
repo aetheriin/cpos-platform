@@ -53,10 +53,10 @@ REF = {
              "urut": "x.RateDate DESC, x.ExchangeRateID DESC", "ubah": False, "aktif": False, "void": True, "batas": 500,
              "kolom": [F("RateDate", "tanggal", "Berlaku Sejak", "tanggal", True),
                        F("CurrencyID", "id_mata_uang", "Mata Uang", "pilih", True, pilihan="mata_uang_asing"),
+                       F("Source", "sumber", "Sumber", "pilih", pilihan="sumber_kurs"),
                        F("Rate", "kurs", "Kurs (Rp per 1 unit)", "angka", True, positif=True),
                        F("RateType", "jenis", "Jenis Kurs", "pilih", True, pilihan="jenis_kurs"),
-                       F("CompID", "id_company", "Perusahaan (kosong = semua)", "pilih", pilihan="perusahaan"),
-                       F("Source", "sumber", "Sumber", "pilih", pilihan="sumber_kurs"),
+                       F("CompID", "id_company", "Perusahaan", "pilih", pilihan="perusahaan"),
                        F("Description", "keterangan", "Keterangan", maks=255)],
              # satu kurs berlaku per mata uang + jenis + tanggal + perusahaan (indeks UX_ExchangeRate_Berlaku)
              "unik_gabungan": (("CurrencyID", "RateType", "RateDate", "CompID"),
@@ -70,8 +70,9 @@ PILIHAN = {
     "mata_uang_asing": """SELECT CurrencyID AS id, CurrencyCode + ' · ' + CurrencyName AS label FROM Currency
                           WHERE Active = 1 AND CurrencyCode <> 'IDR' ORDER BY CurrencyCode""",
     "jenis_kurs": "SELECT id, label FROM (VALUES ('TRANSAKSI', 'Transaksi'), ('PENUTUPAN', 'Penutupan (akhir bulan)')) v (id, label)",
-    "sumber_kurs": """SELECT id, label FROM (VALUES ('JISDOR', 'JISDOR Bank Indonesia'), ('PAJAK', 'Kurs pajak (KMK)'), ('BANK', 'Kurs bank'),
-                      ('INTERNET', 'Internet (ECB)'), ('LAINNYA', 'Lainnya')) v (id, label)""",
+    # Form tambah hanya menawarkan INTERNET (ada API) dan MANUAL (js/master/kurs.js); sisanya label asal kurs dari impor Excel
+    "sumber_kurs": """SELECT id, label FROM (VALUES ('INTERNET', 'Internet'), ('MANUAL', 'Manual'), ('JISDOR', 'JISDOR Bank Indonesia'),
+                      ('PAJAK', 'Kurs pajak (KMK)'), ('BANK', 'Kurs bank'), ('LAINNYA', 'Lainnya')) v (id, label)""",
     "area": "SELECT CompAreaID AS id, CompID + ' · ' + AreaName AS label FROM CompanyArea WHERE Active = 1 ORDER BY CompID, AreaName",
     "bank": "SELECT BankAccountID AS id, BankName + ISNULL(' · ' + BankRegion, '') AS label FROM Bank WHERE Active = 1 ORDER BY BankName",
     "produk": "SELECT ProductID AS id, ProductName AS label FROM Product WHERE Active = 1 ORDER BY ProductName",

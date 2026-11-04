@@ -94,15 +94,91 @@ def attach_last_purchase(results, top_n=LAST_PURCHASE_TOP):
                     item["ItemCode"]
                 )
 
-                row = cursor.fetchone()
+                rows = cursor.fetchall()
 
-                if row:
+                if rows:
+                    kolom = {
+                        re.sub(r"[^a-z0-9]", "", str(deskripsi[0]).lower()): indeks
+                        for indeks, deskripsi in enumerate(cursor.description or [])
+                    }
+
+                    def nilai(row, *nama):
+                        for kandidat in nama:
+                            indeks = kolom.get(re.sub(r"[^a-z0-9]", "", kandidat.lower()))
+                            if indeks is not None:
+                                return row[indeks]
+                        return None
+
+                    row = rows[0]
+                    warehouse_rows = []
+                    has_row_per_warehouse = any(
+                        re.sub(r"[^a-z0-9]", "", name.lower()) in kolom
+                        for name in (
+                            "WarehouseName",
+                            "WarehouseDescription",
+                            "WarehouseBalance",
+                            "BalancePerWarehouse",
+                        )
+                    )
+
+                    if has_row_per_warehouse:
+                        for warehouse_row in rows:
+                            warehouse_name = nilai(
+                                warehouse_row, "WarehouseName", "WarehouseDescription"
+                            )
+                            warehouse_code = nilai(
+                                warehouse_row, "WarehouseCode", "Warehouse"
+                            )
+                            warehouse_balance = nilai(
+                                warehouse_row, "WarehouseBalance", "BalancePerWarehouse"
+                            )
+                            if warehouse_name is not None or warehouse_code is not None or warehouse_balance is not None:
+                                warehouse_rows.append({
+                                    "Name": warehouse_name or warehouse_code,
+                                    "Code": warehouse_code,
+                                    "Balance": warehouse_balance,
+                                })
+                    else:
+                        kolom_ringkasan = {
+                            "company",
+                            "itemcode",
+                            "itemname",
+                            "purchaseno",
+                            "purchasedate",
+                            "supplierid",
+                            "suppliername",
+                            "supplier",
+                            "qty",
+                            "cost",
+                            "price",
+                            "totalbalance",
+                        }
+                        warehouse_rows = [
+                            {
+                                "Name": str(deskripsi[0]),
+                                "Code": None,
+                                "Balance": row[indeks],
+                            }
+                            for indeks, deskripsi in enumerate(cursor.description or [])
+                            if re.sub(r"[^a-z0-9]", "", str(deskripsi[0]).lower())
+                            not in kolom_ringkasan
+                            and row[indeks] is not None
+                        ]
+
+                    if not warehouse_rows:
+                        log.warning(
+                            "Kolom/hasil warehouse tidak ditemukan dari dbo.last_purchase_by_item; kolom tersedia: %s",
+                            list(kolom),
+                        )
 
                     item["LastPurchase"] = {
-                        "PurchaseNo": row.PurchaseNo,
-                        "PurchaseDate": row.PurchaseDate,
-                        "Qty": row.Qty,
-                        "Price": row.Cost,
+                        "PurchaseNo": nilai(row, "PurchaseNo"),
+                        "PurchaseDate": nilai(row, "PurchaseDate"),
+                        "Qty": nilai(row, "Qty"),
+                        "Price": nilai(row, "Cost", "Price"),
+                        "SupplierName": nilai(row, "SupplierName", "Supplier"),
+                        "Warehouses": warehouse_rows,
+                        "TotalBalance": nilai(row, "TotalBalance"),
                     }
 
         finally:

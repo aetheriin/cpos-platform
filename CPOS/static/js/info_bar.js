@@ -2,19 +2,31 @@
 let statusValidasi = 'none'; // none | draft | done
 const ICON_USER = '<i class="fa-solid fa-user text-slate-300 text-3xl"></i>';
 
-function perbaruiTombolValidasi() {
-    const btn = document.getElementById('btnValidasi');
-    if (!btn) return;
-    btn.classList.toggle('hidden', !(getTabAktif() === 'security' && statusValidasi !== 'done'));
+// Tab Security: info bar hanya No. Tiket + Bruto / Tara / Netto. Tab lain: info bar lengkap.
+// Yang disembunyikan tetap ada di halaman (security.js dan lookup masih mengisinya), hanya tidak terlihat.
+function aturInfoBarPerTab() {
+    const security = getTabAktif() === 'security';
+    document.querySelectorAll('[data-info="umum"]').forEach(el => el.classList.toggle('hidden', security));
+    document.querySelectorAll('[data-info="security"]').forEach(el => el.classList.toggle('hidden', !security));
 }
 
-window.addEventListener('tabChange', perbaruiTombolValidasi);
+window.addEventListener('tabChange', aturInfoBarPerTab);
+
+// Bruto / Tara / Netto tiket untuk info bar Security (sumber sama dengan tab Timbangan); tanpa tiket atau belum ditimbang = '-'
+let noTiketBerat = null;
+async function isiBeratInfoBar(noTiket) {
+    noTiketBerat = noTiket;
+    ['infoBruto', 'infoTara', 'infoNetto'].forEach(id => document.getElementById(id).value = '-');
+    if (!noTiket) return;
+    const tb = await ambilJson(`/api/timbang/data/${encodeURIComponent(noTiket)}`);
+    if (tb.error || noTiketBerat !== noTiket) return;          // jawaban lama: plat sudah ganti
+    const kg = v => v == null ? '-' : Number(v).toLocaleString('id-ID');
+    document.getElementById('infoBruto').value = kg(tb.berat_bruto);
+    document.getElementById('infoTara').value = kg(tb.berat_tara);
+    document.getElementById('infoNetto').value = kg(tb.berat_netto);
+}
 
 // ===== INPUT PLAT =====
-// Tab / Enter -> cari (data-on-enter di template, lihat aksi.js).
-// Selain itu plat juga otomatis dirapikan & dicari saat mouse meninggalkan kotak atau fokus pindah
-// (misal user lupa menekan Tab). Otomatis hanya bila format plat sudah lengkap, supaya ketikan yang
-// belum selesai tidak memunculkan pesan error.
 const POLA_PLAT = /^[A-Z]{1,2}[\s.\-]*[1-9][0-9]{0,3}[\s.\-]*[A-Z]{0,3}$/;
 let platTerakhirDicari = '';
 
@@ -94,7 +106,7 @@ function terapkanHasilLookup(data) {
     document.getElementById('infoSupir').classList.toggle('border-red-500', supirBlacklist);
     tandaiBlacklistInfoBar([data.kendaraan_blacklist && 'Kendaraan', supirBlacklist && 'Supir'].filter(Boolean));
     tampilkanFotoDriver(data.driver ? data.driver.foto_path : null);
-    perbaruiTombolValidasi();
+    isiBeratInfoBar(data.status === 'ADA_TIKET' ? data.no_tiket : null);
 
     window.dispatchEvent(new CustomEvent('platLookup', { detail: data }));
 }
@@ -106,7 +118,7 @@ function kosongkanInfoBar() {
     tandaiBlacklistInfoBar([]);
     tampilkanFotoDriver(null);
     statusValidasi = 'none';
-    perbaruiTombolValidasi();
+    isiBeratInfoBar(null);
 }
 
 function tandaiBlacklistInfoBar(siapa) {
@@ -124,17 +136,6 @@ function tampilkanFotoDriver(path) {
 }
 
 // ===== 3 JALUR MENUJU CREATE FORM =====
-// Jalur 1: tombol Validasi di bawah foto
-async function klikValidasi() {
-    const plat = document.getElementById('infoPlat').value.trim();
-    if (!plat) {
-        Notif.peringatan('Silakan masukkan nomor plat');
-        document.getElementById('infoPlat').focus();
-        return;
-    }
-    if (!document.getElementById('infoNoTiket').value) await lookupPlat(plat);
-    switchTab('security');
-}
 
 // Dari halaman List (tombol Buka): /weighbridge?view=form&tab=...&plat=BM 1455 JJ -> plat langsung dicari
 document.addEventListener('DOMContentLoaded', () => {

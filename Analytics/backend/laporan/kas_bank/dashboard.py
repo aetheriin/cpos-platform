@@ -3,7 +3,8 @@
 Saldo adalah milik rekening, jadi grafik dan kartu saldo hanya mengikuti filter perusahaan dan rekening; filter lain (lawan transaksi,
 jenis dokumen, pembuat, tanggal) menyaring mutasi masuk/keluar dan tabel.
 Semua nilai sudah dalam rupiah (rekening valas dikonversi di sumber.py); rekening yang tetap tanpa kurs tidak dihitung dan disebutkan.
-Data dimuat dari 1 Januari; rentang tampilan bawaannya KAS_HARI_BAWAAN hari terakhir. Istilah mengikuti rekening koran / file cashflow: kredit = uang keluar,
+Data dimuat dari 1 Januari; rentang tampilan bawaannya bulan berjalan (awal bulan sampai hari ini), dan bulan lain dipilih lewat filter
+tanggal. Grafik running balance tidak mengikuti rentang itu: semua bulan sampai bulan terpilih dikirim, layar memilih berapa bulan ke belakang. Istilah mengikuti rekening koran / file cashflow: kredit = uang keluar,
 debit = uang masuk; kredit/debit to date dihitung sejak awal data.
 """
 import pandas as pd
@@ -36,8 +37,10 @@ KOLOM_HARIAN = [
     ("tgl", "Tanggal", "tanggal"), ("masuk", "Debit", "angka"), ("keluar", "Credit", "angka"), ("debit", "Debit to Date", "angka"),
     ("kredit", "Credit to Date", "angka"), ("saldo", "Ending Balance", "angka"), ("mutasi", "Transaksi", "angka"),
 ]
-JENIS_DETAIL = {"harian": "Rekap harian", "mutasi": "Mutasi", "giro": "Jasa giro"}
+JENIS_DETAIL = {"bank": "Rekap saldo bank", "harian": "Rekap harian", "mutasi": "Mutasi", "giro": "Jasa giro"}
 SATUAN = "IDR"
+# Nama bank di data memakai banyak ejaan (BANK CIMB NIAGA A/C ..., CIMB-NIAGA, CIMB USD); rekap jasa giro mengelompokkannya per bank
+NAMA_BANK = [("CIMB", "CIMB NIAGA"), ("MANDIRI", "MANDIRI"), ("OCBC", "OCBC"), ("BNI", "BNI"), ("BRI", "BRI"), ("BCA", "BCA")]
 
 
 def _pilihan(df):
@@ -68,6 +71,20 @@ def _saldo_harian(df, filt, hari):
     return pd.DataFrame(kolom, index=hari)
 
 
+def _peta_bank(df):
+    return {a: _nama_bank(b) for a, b in df.drop_duplicates("akun").set_index("akun")["bank"].items()}
+
+
+def _nama_rekening(akun):
+    """'SUN · BANK CIMB NIAGA A/C 8001996683' -> 'CIMB NIAGA 8001996683'."""
+    return akun.split(" · ", 1)[-1].removeprefix("BANK ").replace(" A/C", "").strip()
+
+
+def _nama_bank(teks):
+    t = str(teks).upper()
+    return next((nama for kata, nama in NAMA_BANK if kata in t), t)
+
+
 def _bulat(x, digit=2):
     return None if x is None or pd.isna(x) else round(float(x), digit)
 
@@ -84,23 +101,44 @@ def _giro(df, filt, dari, sampai):
     return g[(g["tgl"] >= dari) & (g["tgl"] <= sampai) & ~g["tanpa_kurs"].astype(bool)]
 
 
-def _ringkas_giro(g, saldo):
-    """Per rekening: jasa giro, rata-rata saldo harian di rentang, dan perbandingannya. Per bulan: total jasa giro."""
-    if g.empty:
-        return {"rekening": [], "bulan": [], "total": 0, "imbal": None}
+def _ringkas_giro(g, saldo, peta_bank):
+    """Rekap per bank lalu per rekening, seperti sheet BANK GIRO: giro, AVG balance (rata-rata saldo akhir harian di rentang), dan % giro
+    per tahun (giro ÷ AVG balance × 12, dibagi jumlah bulan rentang). Rekening bersaldo yang belum menerima giro ikut, supaya bulan berjalan
+    tetap terisi. Semua dalam rupiah, termasuk rekening valas."""
     rata = saldo.mean() if not saldo.empty else pd.Series(dtype=float)
-    # per rekening; nama bank di data giro bisa berbeda-beda untuk rekening yang sama
-    per = g.groupby("akun", as_index=False).agg(bank=("bank", "first"), nilai=("nilai", "sum")).sort_values("nilai", ascending=False)
-    baris = []
-    for r in per.itertuples():
-        rs = rata.get(r.akun)
-        baris.append({"akun": r.akun, "bank": r.bank, "nilai": _bulat(r.nilai), "rata_saldo": _bulat(rs),
-                      "imbal": _bulat(r.nilai / rs, 8) if rs and rs > 0 else None})
-    bulan = g.groupby(g["tgl"].dt.strftime("%Y-%m"))["nilai"].sum()
-    total_rata = saldo.sum(axis=1).mean() if not saldo.empty else None
-    total = float(g["nilai"].sum())
-    return {"rekening": baris, "bulan": [{"bulan": b, "nilai": _bulat(v)} for b, v in bulan.items()], "total": _bulat(total),
-            "imbal": _bulat(total / total_rata, 8) if total_rata and total_rata > 0 else None}
+    nilai = g.groupby("akun")["nilai"].sum() if not g.empty else pd.Series(dtype=float)
+    bulan = len(saldo.index.to_period("M").unique()) or 1
+    persen = lambda n, r: _bulat(n / r * 12 / bulan, 8) if r and r > 0 else None
+    baris = {}
+    for akun in rata.index.union(nilai.index):
+        n, r = float(nilai.get(akun, 0)), rata.get(akun)
+        r = None if r is None or pd.isna(r) else float(r)
+        if n or r:
+            baris.setdefault(peta_bank.get(akun, _nama_bank(akun)), []).append({"akun": akun, "nilai": _bulat(n), "rata_saldo": _bulat(r), "imbal": persen(n, r)})
+    bank = []
+    for nama, isi in baris.items():
+        n, r = sum(x["nilai"] for x in isi), sum(x["rata_saldo"] or 0 for x in isi)
+        bank.append({"bank": nama, "nilai": _bulat(n), "rata_saldo": _bulat(r), "imbal": persen(n, r),
+                     "rekening": sorted(isi, key=lambda x: -(x["rata_saldo"] or 0))})
+    bank.sort(key=lambda b: -b["rata_saldo"])
+    n, r = sum(b["nilai"] for b in bank), sum(b["rata_saldo"] for b in bank)
+    return {"bank": bank, "total": _bulat(n), "rata_saldo": _bulat(r), "imbal": persen(n, r)}
+
+
+def _saldo_bank(saldo, giro):
+    """(kolom, tabel, kepala) tab Rekap saldo bank, seperti sheet SUMMARY: saldo akhir harian tiap rekening, dikelompokkan per perusahaan, dengan
+    kolom Total dan baris Rata-rata. Kolom tanggal berupa teks hari/bulan/tahun supaya Rata-rata tetap di urutan terakhir dalam satu bulan.
+    kepala: {kolom: (perusahaan, nama rekening)} untuk judul bertingkat di layar; judul kolom biasa (dipakai Excel) memuat keduanya."""
+    akun = sorted((r["akun"] for b in giro["bank"] for r in b["rekening"]), key=lambda a: a.split(" · ")[0])   # stabil: dalam perusahaan tetap urut bank
+    kepala = {f"r{i}": (a.split(" · ")[0], _nama_rekening(a)) for i, a in enumerate(akun)}
+    kolom = [("hari", "Tanggal", "teks")] + [(k, f"{comp} {nama}", "angka") for k, (comp, nama) in kepala.items()] + [("total", "Total", "angka")]
+    t = saldo[akun].copy()
+    t.columns = [k for k, _, _ in kolom[1:-1]]
+    t["total"] = t.sum(axis=1, min_count=1)
+    rata = t.mean().to_frame().T
+    t.insert(0, "hari", t.index.strftime("%d/%m/%Y"))
+    rata.insert(0, "hari", "Rata-rata")
+    return kolom, pd.concat([t, rata], ignore_index=True), kepala
 
 
 def _mitra(d):
@@ -123,7 +161,15 @@ def _siap(df):
 
 
 def _rentang(ds):
-    return rentang_tampil(ds, hari=konfigurasi.KAS_HARI_BAWAAN)
+    """(dari, sampai). Tanpa filter tanggal: awal bulan berjalan sampai akhir data (paling lambat hari ini)."""
+    dari, sampai = rentang_tampil(ds)
+    return (dari, sampai) if getattr(ds, "dari", None) is not None else (max(dari, sampai.replace(day=1)), sampai)
+
+
+def _bulan_tersedia(ds):
+    """Bulan yang bisa dipilih, terbaru dulu."""
+    akhir = min(pd.Timestamp(ds.akhir), pd.Timestamp.today().normalize())
+    return [str(p) for p in pd.period_range(pd.Timestamp(ds.mulai), max(akhir, pd.Timestamp(ds.mulai)), freq="M")][::-1]
 
 
 def _harian(df, filt, ds, dari, sampai):
@@ -152,34 +198,17 @@ def _deret(t, dari):
     return hari, bulan
 
 
+def _per_bulan(t):
+    """Debit, credit, dan ending balance tiap bulan dari tabel _harian; bulan terakhir sampai hari terakhirnya."""
+    b = t.groupby(t["tgl"].dt.to_period("M")).agg(debit=("masuk", "sum"), kredit=("keluar", "sum"), saldo=("saldo", "last"))
+    return [{"bulan": str(p), **{k: _bulat(v) for k, v in r.items()}} for p, r in b.iterrows()]
+
+
 def _dokumen(d):
     """Debit dan kredit per jenis dokumen."""
     g = d.groupby("jenis_dok").agg(debit=("masuk", "sum"), kredit=("keluar", "sum"), jumlah=("nilai", "size"))
     g = g.assign(total=g["debit"] + g["kredit"]).sort_values("total", ascending=False)
     return [{"jenis": j, "debit": _bulat(r.debit), "kredit": _bulat(r.kredit), "jumlah": int(r.jumlah)} for j, r in g.iterrows()]
-
-
-def _ramalan(df, filt, ds, dari, sampai):
-    """Running balance total per hari dalam rentang, ditambah perkiraan KAS_HARI_RAMAL hari ke depan: tren linier dari 60 hari terakhir,
-    dengan batas bawah/atas = tren ± 1,96 × simpangan baku sisaan (mirip Forecast Sheet di Excel, tapi tanpa musiman)."""
-    hari = pd.date_range(min(pd.Timestamp(ds.mulai), dari), sampai)
-    total = _saldo_harian(df, filt, hari).sum(axis=1, min_count=1)
-    titik = [{"hari": tgl(h), "saldo": _bulat(v)} for h, v in total.items() if h >= dari]
-    dasar = total.dropna().iloc[-60:]
-    n = konfigurasi.KAS_HARI_RAMAL
-    if len(dasar) < 14 or not n:
-        return titik
-    x = (dasar.index - dasar.index[0]).days.to_numpy(dtype=float)
-    import numpy as np
-    a, b = np.polyfit(x, dasar.to_numpy(dtype=float), 1)
-    sisa = float(np.std(dasar.to_numpy(dtype=float) - (a * x + b), ddof=1))
-    titik[-1].update(ramal=titik[-1]["saldo"], bawah=titik[-1]["saldo"], atas=titik[-1]["saldo"])   # garis perkiraan menyambung dari hari terakhir
-    for i in range(1, n + 1):
-        h = sampai + pd.Timedelta(days=i)
-        y = a * (x[-1] + i) + b
-        lebar = 1.96 * sisa * (1 + i / len(x)) ** 0.5
-        titik.append({"hari": tgl(h), "saldo": None, "ramal": _bulat(y), "bawah": _bulat(y - lebar), "atas": _bulat(y + lebar)})
-    return titik
 
 
 def bangun(df, ds, filt=None):
@@ -194,13 +223,15 @@ def bangun(df, ds, filt=None):
     saldo = _saldo_harian(df, filt, hari)
     total_saldo = saldo.sum(axis=1, min_count=1)
     patokan = pd.Timestamp(max(filt["tanggal"])) if filt["tanggal"] else sampai
-    harian = tanpa("tanggal").groupby("hari")[["masuk", "keluar"]].sum()
     g = _giro(df, filt, dari, sampai)
     valas = _dalam(df[df["mata_uang"] != SATUAN], dari, sampai)
-    deret_hari, deret_bulan = _deret(_harian(df, filt, ds, pd.Timestamp(ds.mulai), sampai), dari)
+    semua_hari = _harian(df, filt, ds, pd.Timestamp(ds.mulai), sampai)
+    deret_hari, deret_bulan = _deret(semua_hari, dari)
+    giro = _ringkas_giro(g, saldo, _peta_bank(df))
     return {
         "periode": {"mulai": tgl(dari), "akhir": tgl(sampai)},
-        "rentang": {"dari": tgl(dari), "sampai": tgl(sampai), "satuan": "hari", "bawaan": konfigurasi.KAS_HARI_BAWAAN},
+        "rentang": {"dari": tgl(dari), "sampai": tgl(sampai), "satuan": "hari", "bawaan": None},
+        "bulan": _bulan_tersedia(ds),
         "satuan": SATUAN,
         # per mata uang asing: sumber kurs yang dipakai di rentang ini dan kurs terakhirnya; rekening tanpa kurs tidak dihitung
         "valas": [{"mata_uang": u, "sumber": sorted(set(g["sumber_kurs"])), "kurs": _bulat(g.sort_values("tgl")["kurs"].iloc[-1]),
@@ -220,23 +251,29 @@ def bangun(df, ds, filt=None):
         # lebih dari KAS_HARI_GRAFIK hari ditampilkan per bulan, selain itu per hari
         "deret": {"hari": deret_hari, "bulan": deret_bulan, "periode": "bulan" if len(hari) > konfigurasi.KAS_HARI_GRAFIK else "hari"},
         "dokumen": _dokumen(tanpa("dokumen")),
-        # in/out per hari ikut di grafik running balance (seperti tabel kalkulasi di file cashflow)
-        "running": [{**t, "masuk": _bulat(harian["masuk"].get(t["hari"], 0)), "keluar": _bulat(harian["keluar"].get(t["hari"], 0))}
-                    if t.get("saldo") is not None else t for t in _ramalan(df, filt, ds, dari, sampai)],
+        "running": _per_bulan(semua_hari),
         "mitra": _mitra(tanpa("mitra")),
-        "giro": _ringkas_giro(g, saldo),
+        "giro": giro,
         "filter": [{"kunci": k, "nama": nama, "panel": panel} for k, nama, _, panel in FILTER],
         "pilihan": pilihan,
     }
 
 
 def detail(df, jenis, ds, filt=None, cari=None, urut=None, arah=None, halaman=1, ukuran=50):
-    kolom = {"giro": KOLOM_GIRO, "harian": KOLOM_HARIAN}.get(jenis, KOLOM_MUTASI)
-    periksa(jenis, JENIS_DETAIL, urut, kolom, arah)
     dari, sampai = _rentang(ds)
     filt, _ = _rapikan(df, filt or {})
     df, _ = _siap(df)
-    if jenis == "harian":
+    kolom = {"giro": KOLOM_GIRO, "harian": KOLOM_HARIAN}.get(jenis, KOLOM_MUTASI)
+    if jenis == "bank":
+        saldo = _saldo_harian(df, filt, pd.date_range(dari, sampai))
+        kolom, tabel, kepala = _saldo_bank(saldo, _ringkas_giro(_giro(df, filt, dari, sampai), saldo, _peta_bank(df)))
+    periksa(jenis, JENIS_DETAIL, urut, kolom, arah)
+    if jenis == "bank":
+        hasil = susun(tabel, kolom, ["hari"], cari, urut, arah, "hari", "asc", halaman, ukuran)
+        for k in hasil["kolom"]:
+            if k["kunci"] in kepala:
+                k["grup"], k["label"] = kepala[k["kunci"]]
+    elif jenis == "harian":
         t = _harian(df, filt, ds, dari, sampai)
         if filt["tanggal"]:
             t = t[t["hari"].isin(filt["tanggal"])]
