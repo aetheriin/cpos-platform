@@ -15,6 +15,19 @@ export const SEMATAN = (() => {
 // Penanda untuk CSS (index.css): di dalam bingkai halaman tidak menggulir sendiri, CPOS yang menggulir
 if (SEMATAN) document.documentElement.dataset.sematan = '1'
 
+// Ukuran dasar huruf mengikuti CPOS (13px sampai 16px menurut lebar layar), jadi teks, tombol, dan jarak sebanding dengan halaman CPOS
+function samakanRem() {
+  try {
+    document.documentElement.style.fontSize = getComputedStyle(window.parent.document.documentElement).fontSize
+  } catch {
+    // bingkai beda alamat saat pengembangan: ukuran bawaan
+  }
+}
+if (SEMATAN && window.parent !== window) {
+  samakanRem()
+  window.addEventListener('resize', samakanRem)
+}
+
 // Klik / ketik di dalam bingkai tidak terlihat oleh halaman CPOS; kabari supaya sesi CPOS tidak dianggap diam
 // (CPOS static/js/analytics/sematan.js). Paling sering satu pesan per menit.
 let terakhir = 0

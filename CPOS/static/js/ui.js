@@ -99,15 +99,19 @@ document.addEventListener('keydown', e => {
 // Server mengeluarkan user setelah SESI_IDLE_MENIT tanpa aktivitas. 2 menit sebelumnya muncul peringatan
 // dengan tombol "Tetap masuk"; bila tidak ditanggapi, halaman diarahkan ke login.
 const SesiIdle = {
-    PERINGATAN_DETIK: 120,
+    PERINGATAN_DETIK: 300,                     // batas idle pendek: seperempatnya saja
+    PERINGATAN_MAKS_DETIK: 600,                // umur sesi tidak bisa diperpanjang, jadi cukup diberi tahu lebih awal
     sudahDiperingatkan: false,
+    maksDiperingatkan: false,
 
     mulai() {
         const meta = document.querySelector('meta[name="sesi-idle"]');
         this.batas = meta ? Number(meta.content) : 0;
         if (!this.batas) return;
+        const sisaMaks = Number(document.querySelector('meta[name="sesi-sisa"]')?.content) || 0;
+        this.akhirMaks = sisaMaks ? Date.now() + sisaMaks * 1000 : 0;
         ['click', 'keydown'].forEach(ev => document.addEventListener(ev, () => this.aktivitasLokal(), { passive: true }));
-        setInterval(() => this.cek(), 15000);
+        setInterval(() => this.cek(), 5000);
     },
 
     // Klik / ketik tanpa request: perpanjang sesi di server paling sering 1x per 5 menit
@@ -115,14 +119,32 @@ const SesiIdle = {
         if (Date.now() - aktivitasTerakhir > 5 * 60 * 1000) Api.post('/api/sesi/perpanjang', {});
     },
 
+    sisaIdle() { return this.batas - (Date.now() - aktivitasTerakhir) / 1000; },
+
+    teksSisa(detik) {
+        const menit = Math.floor(detik / 60), sisa = Math.max(0, Math.ceil(detik % 60));
+        return menit ? `${menit} menit ${sisa} detik` : `${sisa} detik`;
+    },
+
+    pesanIdle() { return `Tidak ada aktivitas. Anda akan keluar otomatis dalam ${this.teksSisa(this.sisaIdle())}. Simpan isian yang belum tersimpan.`; },
+
     cek() {
-        const sisa = this.batas - (Date.now() - aktivitasTerakhir) / 1000;
+        const sisa = this.sisaIdle();
         if (sisa <= 0) { sesiBerakhir(); return; }
-        if (sisa <= this.PERINGATAN_DETIK && !this.sudahDiperingatkan) {
+        const sisaMaks = this.akhirMaks ? (this.akhirMaks - Date.now()) / 1000 : Infinity;
+        if (sisaMaks <= this.PERINGATAN_MAKS_DETIK && !this.maksDiperingatkan) {
+            this.maksDiperingatkan = true;
+            Notif.tampil(`Batas waktu login tersisa ${Math.max(1, Math.ceil(sisaMaks / 60))} menit. Simpan pekerjaan Anda, lalu login ulang.`, 'peringatan', 60000);
+        }
+        if (sisa <= Math.min(this.PERINGATAN_DETIK, this.batas / 4) && !this.sudahDiperingatkan) {
             this.sudahDiperingatkan = true;
-            Dialog.konfirmasi({ judul: 'Sesi hampir berakhir', teksYa: 'Tetap masuk', teksBatal: 'Keluar',
-                pesan: 'Tidak ada aktivitas. Anda akan keluar otomatis dalam 2 menit.' })
+            const hitung = setInterval(() => {
+                document.getElementById('dialogPesan').textContent = this.pesanIdle();
+                if (this.sisaIdle() <= 0) { clearInterval(hitung); sesiBerakhir(); }
+            }, 1000);
+            Dialog.konfirmasi({ judul: 'Sesi hampir berakhir', teksYa: 'Tetap masuk', teksBatal: 'Keluar', pesan: this.pesanIdle() })
                 .then(async tetap => {
+                    clearInterval(hitung);
                     this.sudahDiperingatkan = false;
                     if (tetap) { await Api.post('/api/sesi/perpanjang', {}); return; }
                     document.querySelector('form[action="/logout"]')?.submit();

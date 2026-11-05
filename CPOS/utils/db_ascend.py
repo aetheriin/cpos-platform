@@ -67,6 +67,34 @@ def daftar_do(ticket_type):
         cursor = koneksi.cursor()
         cursor.execute(prosedur)
         sumber = _baris_hasil(cursor)
+        id_do_list = sorted({
+            int(row[nama_id_do])
+            for row in sumber
+            if row.get(nama_id_do) is not None
+        })
+
+        tabel_do = (
+            "PALM_DeliveryOrders"
+            if ticket_type == "Produk"
+            else "PALM_ReceivingDeliveryOrders"
+        )
+
+        mill_by_do = {}
+        if id_do_list:
+            tanda_tanya_do = ", ".join("?" for _ in id_do_list)
+            cursor.execute(
+                f"""
+                SELECT {nama_id_do}, MillID
+                FROM dbo.{tabel_do}
+                WHERE {nama_id_do} IN ({tanda_tanya_do})
+                """,
+                *id_do_list,
+            )
+            mill_by_do = {
+                int(row[0]): int(row[1])
+                for row in cursor.fetchall()
+                if row[1] is not None
+            }
 
         id_associate = sorted({
             int(row[nama_associate])
@@ -111,6 +139,8 @@ def daftar_do(ticket_type):
                 "associate_name": nama_by_id.get(associate_id, ""),
                 "produk": str(produk).strip(),
                 "id_do": row.get(nama_id_do),
+                "mill_id": mill_by_do.get(int(row[nama_id_do]))
+                    if row.get(nama_id_do) is not None else None,
                 "sisa": float(sisa) if sisa is not None else None,
             })
         return hasil
@@ -170,11 +200,84 @@ def daftar_mill():
     try:
         cursor = koneksi.cursor()
         cursor.execute("""
-            SELECT DISTINCT MillID
-            FROM dbo.PALM_MillStation
+            SELECT MillID FROM dbo.PALM_DeliveryOrders
             WHERE MillID IS NOT NULL
+
+            UNION
+
+            SELECT MillID FROM dbo.PALM_ReceivingDeliveryOrders
+            WHERE MillID IS NOT NULL
+
             ORDER BY MillID
         """)
         return [{"mill_id": int(row[0])} for row in cursor.fetchall()]
+    finally:
+        koneksi.close()
+
+def daftar_shipper_kendaraan(ticket_type, id_do=None, associate_id=None):
+    """Shipper dan kendaraan yang terkait dengan DO atau Supplier terpilih."""
+    if ticket_type == "Produk":
+        sql = """
+            SELECT DISTINCT
+                s.SupplierID,
+                s.SupplierName,
+                ev.VehicleID,
+                ev.VehicleNo,
+                ev.DriverName
+            FROM dbo.PALM_DOTransport dot
+            INNER JOIN dbo.AP_Suppliers s
+                ON s.SupplierID = dot.ShipperID
+            INNER JOIN dbo.PALM_ExternalVehicles ev
+                ON ev.SupplierID = dot.ShipperID
+            WHERE (? IS NULL OR dot.DeliveryOrderID = ?)
+            ORDER BY s.SupplierName, ev.VehicleNo
+        """
+        parameter = int(id_do) if id_do else None
+        parameters = (parameter, parameter)
+
+    elif ticket_type == "TBSLuar":
+        sql = """
+            SELECT DISTINCT
+                s.SupplierID,
+                s.SupplierName,
+                ev.VehicleID,
+                ev.VehicleNo,
+                ev.DriverName
+            FROM dbo.AP_Suppliers s
+            INNER JOIN dbo.PALM_ExternalVehicles ev
+                ON ev.SupplierID = s.SupplierID
+            WHERE (? IS NULL OR s.SupplierID = ?)
+            ORDER BY s.SupplierName, ev.VehicleNo
+        """
+        parameter = int(associate_id) if associate_id else None
+        parameters = (parameter, parameter)
+
+    else:
+        raise ValueError("Pilih jenis tiket Produk atau TBS Luar.")
+
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute(sql, *parameters)
+
+        hasil = {}
+        for row in cursor.fetchall():
+            shipper_id = int(row[0])
+            shipper = hasil.setdefault(shipper_id, {
+                "shipper_id": shipper_id,
+                "shipper_name": str(row[1] or "").strip(),
+                "vehicles": [],
+            })
+
+            if row[2] is not None and row[3]:
+                no_kendaraan = str(row[3]).strip()
+                if not any(v["vehicle_no"] == no_kendaraan for v in shipper["vehicles"]):
+                    shipper["vehicles"].append({
+                        "vehicle_id": int(row[2]),
+                        "vehicle_no": no_kendaraan,
+                        "driver_name": str(row[4] or "").strip(),
+                    })
+
+        return list(hasil.values())
     finally:
         koneksi.close()

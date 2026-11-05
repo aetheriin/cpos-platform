@@ -112,9 +112,10 @@ def bersihkan(raw):
 
 
 def muat(mulai, akhir, kendali=None):
-    """SP selalu mengembalikan semua PO; rentang dipotong setelah kurs diperbaiki, supaya kurs terdekat bisa dari luar rentang."""
+    """SP selalu mengembalikan semua PO; rentang dipotong setelah kurs diperbaiki, supaya kurs terdekat bisa dari luar rentang.
+    Tahun sebelum `mulai` tetap disimpan untuk grafik antartahun; tampilan lain memakai rentang periode."""
     d = bersihkan(ambil_data(kendali))
     if kendali:
         kendali.periksa()
-    d = d[(d["tgl"] >= pd.Timestamp(mulai)) & (d["tgl"] <= pd.Timestamp(akhir))].reset_index(drop=True)
-    return d, {"baris_sp": len(d)}
+    d = d[d["tgl"] <= pd.Timestamp(akhir)].reset_index(drop=True)
+    return d, {"baris_sp": int((d["tgl"] >= pd.Timestamp(mulai)).sum())}

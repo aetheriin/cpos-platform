@@ -1,16 +1,18 @@
 {% extends "base.html" %}
-{% from "partials/layout/_macros.html" import section_header, judul_halaman, tombol_ekspor %}
+{% from "partials/layout/_macros.html" import section_header, judul_halaman %}
 {% block title %}{{ lap.judul }} · CPOS{% endblock %}
 {% block info_bar %}{% endblock %}{% block info_bar_script %}{% endblock %}
 {# Laporan Pembelian TBS: prosedur ERP (modules/rekapin/erp.py), susunan tabel sama dengan RekapIn (laporan_tbs.py) #}
 {% block tab_header %}
 {{ judul_halaman(lap.judul, 'Laporan pembelian TBS dari ERP per perusahaan.', 'fa-file-lines', 'hijau') }}
 {% endblock %}
+{% block extra_scripts %}{% if jenis == 'daily' %}<script defer src="{{ url_for('rekapin.static', filename='rekapin/tbs_daily.js') }}"></script>{% endif %}{% endblock %}
 {% block tab_content %}
 {% set periode_teks = tgl(awal) if lap.periode == 'daily' else tgl(awal) ~ ' — ' ~ tgl(akhir) %}
 <form method="get" class="filter-bar">
-  <div><label class="field-label" for="tbsCompany">Perusahaan</label>
+  {% if lap.periode != 'daily' %}<div><label class="field-label" for="tbsCompany">Perusahaan</label>
     <select id="tbsCompany" name="company" class="input-field w-64" required>{% for c in company %}<option value="{{ c.id_company }}"{% if c.id_company == pilih %} selected{% endif %}>{{ c.id_company }} · {{ c.nama }}</option>{% endfor %}</select></div>
+  {% endif %}
   {% if lap.periode == 'daily' %}
   <div><label class="field-label" for="tbsTanggal">Tanggal</label><input type="date" id="tbsTanggal" name="date" value="{{ awal }}" class="input-field w-48" required></div>
   {% else %}
@@ -19,7 +21,12 @@
   {% endif %}
   <div class="self-end"><button type="submit" class="btn-primary"><i class="fa-solid fa-filter"></i> Tampilkan</button></div>
   <div class="flex-1"></div>
-  {% if pilih and not galat %}<span class="self-end text-sm text-slate-500 pb-2"><b class="text-slate-900">{{ pilih }}</b> · {{ periode_teks }}</span>{% endif %}
+  {% if pilih and not galat and lap.periode != 'daily' %}<span class="self-end text-sm text-slate-500 pb-2"><b class="text-slate-900">{{ pilih }}</b> · {{ periode_teks }}</span>{% endif %}
+  {% if tabel %}<span class="self-end text-xs text-slate-500 pb-2">Data ERP diambil {{ diambil }}</span>
+  <div class="self-end flex items-center gap-1.5">
+    <button type="button" class="btn-secondary" data-on-click="eksporSemuaTabel" data-arg="xlsx|{{ lap.judul }}{% if lap.periode != 'daily' %} {{ pilih }}{% endif %}" title="Unduh Excel, termasuk Summary"><i class="fa-regular fa-file-excel text-emerald-600"></i> {{ 'Excel semua PT' if lap.periode == 'daily' else 'Excel' }}</button>
+    <button type="button" class="btn-secondary" data-on-click="eksporSemuaTabel" data-arg="pdf|{{ lap.judul }}{% if lap.periode != 'daily' %} {{ pilih }}{% endif %}" title="Cetak / simpan PDF, termasuk Summary"><i class="fa-regular fa-file-pdf text-red-600"></i> {{ 'PDF semua PT' if lap.periode == 'daily' else 'PDF' }}</button>
+  </div>{% endif %}
 </form>
 
 {% if galat %}
@@ -30,12 +37,19 @@
     <span class="text-xs text-slate-400">Kode perusahaan CPOS (Admin › Organisasi › Perusahaan) harus sama dengan CompName di Main.dbo.Company, mis. YBS, SUN, SJN.</span></p></div>
 {% endif %}
 
-<div class="grid grid-cols-1 {% if jenis == 'daily' and tabel|length > 1 %}xl:grid-cols-2{% endif %} gap-4">
+<div class="grid grid-cols-1 tbs-harian {% if jenis == 'daily' %}tbs-daily{% elif jenis == 'monthly' %}tbs-monthly{% endif %} {% if jenis == 'daily' and tabel|length > 1 %}xl:grid-cols-2{% endif %} gap-4">
 {% for tb in tabel %}
   {% set id_tb = 'tbs' ~ loop.index %}
-  {% set judul_tb = (pilih ~ ' · ' ~ periode_teks) if tb.title == 'Rincian Pembelian TBS' else tb.title %}
-  <div class="section-box tbs-kartu" data-company="{{ pilih|upper }}">
-    {% call section_header(id_tb, judul_tb) %}<div data-henti-klik>{{ tombol_ekspor('body-tabel-' ~ id_tb, lap.judul ~ ' ' ~ pilih) }}</div>{% endcall %}
+  {% set comp = tb.company or pilih %}
+  {% set judul_tb = (comp ~ ' · ' ~ periode_teks) if tb.title == 'Rincian Pembelian TBS' or tb.kosong else (comp ~ ' · ' ~ tb.title if tb.company else tb.title) %}
+  <div class="section-box tbs-kartu" data-company="{{ comp|upper }}">
+    {% if tb.company and tb.title == 'Rincian Pembelian TBS' %}
+    {% call section_header(id_tb, judul_tb) %}<div data-henti-klik class="flex items-center gap-1.5">
+      <button type="button" class="btn-secondary btn-sm" data-on-click="eksporSemuaTabel" data-arg="xlsx|{{ lap.judul }} {{ comp }}|{{ comp|upper }}" title="Unduh Excel {{ comp }}"><i class="fa-regular fa-file-excel text-emerald-600"></i> Excel</button>
+      <button type="button" class="btn-secondary btn-sm" data-on-click="eksporSemuaTabel" data-arg="pdf|{{ lap.judul }} {{ comp }}|{{ comp|upper }}" title="Cetak / simpan PDF {{ comp }}"><i class="fa-regular fa-file-pdf text-red-600"></i> PDF</button>
+    </div>{% endcall %}
+    {% else %}{{ section_header(id_tb, judul_tb) }}{% endif %}
+    {% if tb.kosong %}<p class="px-4 py-6 text-center text-sm text-slate-500">{{ tb.kosong }}</p>{% else %}
     <div id="body-{{ id_tb }}" class="section-body overflow-x-auto"><table class="tbs-tabel">
       <thead>
         {% if tb.group_headers %}<tr class="tbs-grup">{% for g in tb.group_headers %}<th colspan="{{ g.colspan }}">{{ g.label }}</th>{% endfor %}</tr>{% endif %}
@@ -65,7 +79,7 @@
         </tr>
       {% endfor %}
       </tbody>
-    </table></div>
+    </table></div>{% endif %}
   </div>
 {% endfor %}
 </div>

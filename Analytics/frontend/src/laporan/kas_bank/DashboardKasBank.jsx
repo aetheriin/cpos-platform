@@ -90,8 +90,8 @@ function EksporGiro({ dataId, filter, onDataHilang }) {
       {galat && <span role="alert" className="text-xs text-red-700">Export gagal: {galat}</span>}
       <button type="button" onClick={unduh} disabled={sibuk} aria-busy={sibuk}
         className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-40">
-        <IkonUnduh className="h-3.5 w-3.5" />
-        {sibuk ? 'Menyiapkan...' : 'Export Excel'}
+        <IkonUnduh className="h-3.5 w-3.5 text-emerald-600" />
+        {sibuk ? 'Menyiapkan...' : 'Excel'}
       </button>
     </span>
   )

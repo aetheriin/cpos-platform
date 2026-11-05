@@ -7,73 +7,97 @@
 
         <form id="formTiketAscend" class="p-5 space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="field-label" for="ascendTicketType">Jenis Tiket</label>
-                    <select id="ascendTicketType" name="ticket_type" required class="input-field">
-                        <option value="">-- Pilih --</option>
-                        <option value="Produk">Produk · Penjualan</option>
-                        <option value="TBSLuar">TBS Luar · Penerimaan</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="field-label" for="ascendNoDoChoice">Nomor DO / SP</label>
-                    <select id="ascendNoDoChoice" required class="input-field">
-                        <option value="">-- Pilih --</option>
-                    </select>
-
-                    <div id="ascendNoDoManualWrap" class="hidden mt-2">
-                        <input type="text" id="ascendNoDoManual" maxlength="50"
-                            class="input-field uppercase"
-                            placeholder="Ketik nomor DO atau SP">
+                <!-- Kolom kiri -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="field-label" for="ascendTicketType">Jenis Tiket</label>
+                        <select id="ascendTicketType" name="ticket_type" required class="input-field">
+                            <option value="">-- Pilih --</option>
+                            <option value="Produk">Produk · Penjualan</option>
+                            <option value="TBSLuar">TBS Luar · Penerimaan</option>
+                        </select>
                     </div>
 
-                    <input type="hidden" id="ascendNoDoValue" name="no_do">
-                    <p id="ascendInfoDO" class="field-hint">
-                        Pilih jenis tiket untuk mencari DO outstanding, atau pilih input manual.
-                    </p>
-                </div>
+                    <div>
+                        <label class="field-label" for="ascendAssociate">Associate</label>
+                        <select id="ascendAssociate" name="associate_id" required class="input-field">
+                            <option value="">-- Pilih --</option>
+                        </select>
+                    </div>
 
-                <div>
-                    <label class="field-label" for="ascendAssociate">Associate</label>
-                    <select id="ascendAssociate" name="associate_id" required class="input-field">
-                        <option value="">-- Pilih --</option>
-                    </select>
-                </div>
+                    <div>
+                        <label class="field-label" for="ascendShipper">Shipper / Pengirim</label>
+                        <select id="ascendShipper" name="shipper_id" required class="input-field">
+                            <option value="">-- Pilih --</option>
+                        </select>
+                    </div>
 
-                <div>
-                    <label class="field-label" for="ascendProduk">Produk</label>
-                    <select id="ascendProduk" name="produk" required class="input-field">
-                        <option value="">-- Pilih --</option>
-                    </select>
-                </div>
+                    <div>
+                        <label class="field-label" for="ascendVehicleNo">No. Kendaraan</label>
+                        <select id="ascendVehicleNo" name="vehicle_no" required class="input-field">
+                            <option value="">-- Pilih Shipper dahulu --</option>
+                        </select>
+                    </div>
 
-                <div>
-                    <label class="field-label" for="ascendVehicleNo">No. Kendaraan</label>
-                    <input id="ascendVehicleNo" name="vehicle_no" required maxlength="50"
-                           class="input-field uppercase" placeholder="Contoh: BM 9999 SAD">
-                </div>
+                    <div>
+                        <label class="field-label" for="ascendTanggal">Tanggal</label>
+                        <input id="ascendTanggal" name="tanggal" type="date" required class="input-field">
+                    </div>
 
-                <div class="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                    <label class="field-label">Supir Terakhir Truk</label>
-                    <div id="ascendSupirTerakhir" class="text-sm text-slate-500">
-                        Isi nomor kendaraan untuk melihat riwayat supir.
+                    <div>
+                        <label class="field-label" for="ascendMill">Mill</label>
+                        <select id="ascendMill" name="mill_id" required class="input-field">
+                            <option value="">-- Pilih --</option>
+                            {% for m in mill_list %}
+                            <option value="{{ m.mill_id }}">{{ m.mill_id }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
 
-                <div>
-                    <label class="field-label" for="ascendTanggal">Tanggal</label>
-                    <input id="ascendTanggal" name="tanggal" type="date" required class="input-field">
-                </div>
+                <!-- Kolom kanan -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="field-label" for="ascendNoDoChoice">Nomor DO / SP</label>
+                        <select id="ascendNoDoChoice" required class="input-field">
+                            <option value="">-- Pilih --</option>
+                        </select>
 
-                <div>
-                    <label class="field-label" for="ascendMill">Mill</label>
-                    <select id="ascendMill" name="mill_id" required class="input-field">
-                        <option value="">-- Pilih --</option>
-                        {% for m in mill_list %}
-                        <option value="{{ m.mill_id }}">{{ m.mill_id }}</option>
-                        {% endfor %}
-                    </select>
+                        <div id="ascendNoDoManualWrap" class="hidden mt-2">
+                            <input type="text" id="ascendNoDoManual" maxlength="50"
+                                class="input-field uppercase"
+                                placeholder="Ketik nomor DO atau SP">
+                        </div>
+
+                        <input type="hidden" id="ascendNoDoValue" name="no_do">
+                        <p id="ascendInfoDO" class="field-hint">
+                            Pilih jenis tiket untuk mencari DO outstanding, atau pilih input manual.
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="field-label" for="ascendProduk">Produk</label>
+                        <select id="ascendProduk" name="produk" required class="input-field">
+                            <option value="">-- Pilih --</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="field-label">Supir Terakhir Truk</label>
+
+                        <div id="ascendSupirKartu"
+                            class="border border-slate-200 rounded-lg p-4 flex items-center gap-4 bg-slate-50 min-h-24">
+                            <div id="ascendSupirFoto" class="info-photo-box">
+                                <i class="fa-solid fa-user text-slate-300 text-3xl"></i>
+                            </div>
+
+                            <div class="min-w-0">
+                                <div id="ascendSupirTerakhir" class="text-sm text-slate-500">
+                                    Isi nomor kendaraan untuk melihat riwayat supir.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

@@ -92,7 +92,7 @@ function TrenTotal({ minggu, rata, target, jumlahRiwayat }) {
               labelFormatter={(_, p) => (p?.[0] ? `${tglPendek(p[0].payload.awal)} sampai ${tglPendek(p[0].payload.akhir)}` : '')}
             />
             <ReferenceLine y={target / 1000} stroke="#94a3b8" strokeWidth={1.5} />
-            {rata != null && <ReferenceLine y={rata / 1000} stroke="#64748b" strokeDasharray="6 4" />}
+            {rata != null && <ReferenceLine y={rata / 1000} stroke="#64748b" strokeDasharray="4 4" />}
             <Area type="linear" dataKey="ton" stroke={BIRU} strokeWidth={2} fill={BIRU} fillOpacity={0.08} dot={{ r: 3.5, fill: BIRU, strokeWidth: 0 }} isAnimationActive={false} />
           </ComposedChart>
         </ResponsiveContainer>
@@ -125,7 +125,7 @@ function Sparkline({ g, minggu, batas, sorot, onSorot }) {
         >
           <rect x={x(n - 1) - langkah / 2} width={langkah / 2 + pad.x} y={pad.atas} height={tinggi - pad.atas - pad.bawah} className="fill-slate-100" />
           {pita && <rect x={pad.x} width={lebar - 2 * pad.x} y={y(pita[1])} height={Math.max(1, y(pita[0]) - y(pita[1]))} className="fill-slate-200/70" />}
-          {g.rata != null && <line x1={pad.x} x2={lebar - pad.x} y1={y(g.rata)} y2={y(g.rata)} stroke="#94a3b8" strokeDasharray="4 3" />}
+          {g.rata != null && <line x1={pad.x} x2={lebar - pad.x} y1={y(g.rata)} y2={y(g.rata)} stroke="#94a3b8" strokeDasharray="4 4" />}
           {sorot != null && <line x1={x(sorot)} x2={x(sorot)} y1={pad.atas} y2={tinggi - pad.bawah} stroke="#94a3b8" />}
           <polyline points={g.seri.map((v, i) => `${x(i)},${y(v)}`).join(' ')} fill="none" stroke={BIRU} strokeWidth="1.6" strokeLinejoin="round" />
           <circle cx={x(n - 1)} cy={y(g.seri[n - 1])} r="3.5" fill={warna} />

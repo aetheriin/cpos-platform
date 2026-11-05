@@ -6,6 +6,8 @@ from flask import abort, g, jsonify, redirect, request
 from flask_login import current_user
 
 from utils.cache import cache_ttl
+
+CACHE_HAK_DETIK = 8   # ditambah cache 2 detik di Analytics (inti/cpos.py), perubahan hak berlaku paling lama 10 detik
 from utils.db_utils import get_connection, _rows_to_dicts
 
 AKSI = ("tambah", "ubah", "hapus")
@@ -41,7 +43,7 @@ KOLOM_HAK = {"lihat": "Visible", "tambah": "CanCreate", "ubah": "CanEdit", "hapu
              "tolak": "CanReject", "selesai": "CanDone"}
 
 
-@cache_ttl(30)
+@cache_ttl(CACHE_HAK_DETIK)
 def peta_akses():
     """Hak tiap peran dari aturan Semua / Peran / Jabatan / Departemen (tanpa aturan per user):
     {id_level (LevelDetID): {kode_menu: {"lihat", "tambah", ...: bool}}}"""
@@ -52,7 +54,7 @@ def peta_akses():
     return peta
 
 
-@cache_ttl(30)
+@cache_ttl(CACHE_HAK_DETIK)
 def hak_menu_user(id_user):
     """Hak efektif dari dbo.sp_UserMenu (aturan sama dengan aplikasi lain), hanya menu yang terlihat:
     {kode_menu: {"lihat", "terlihat", "tambah", "ubah", "hapus", "setujui", "tolak", "selesai"}}"""
@@ -70,7 +72,7 @@ def hak_user(user):
     return hak_menu_user(id_user) if id_user is not None else {}
 
 
-@cache_ttl(30)
+@cache_ttl(CACHE_HAK_DETIK)
 def semua_menu():
     """Semua menu aktif (urut) dengan kode induknya: dasar navbar 3 level & pencarian kode halaman."""
     return _query("""SELECT m.MenuID AS id_menu, m.MenuCode AS kode, m.MenuName AS nama, m.Url AS url, m.Icon AS ikon,
@@ -87,7 +89,7 @@ def aksi_menu(m):
     return [a for a in AKSI_OPSI if a in ada]
 
 
-@cache_ttl(30)
+@cache_ttl(CACHE_HAK_DETIK)
 def anak_menu():
     """{kode_induk: [kode_anak, ...]} (Lv1 -> Lv2, Lv2 -> Lv3)."""
     peta = {}
@@ -205,7 +207,9 @@ def halaman(kode_menu):
                 from utils.keamanan import log_keamanan
                 log_keamanan("AKSES_DITOLAK", f"level {current_user.role} ke halaman {kode} ({request.path})")
                 awal = halaman_awal_user()
-                if awal and awal.split("?")[0] != request.path:
+                if not awal:
+                    return redirect("/tanpa-akses")
+                if awal.split("?")[0] != request.path:
                     return redirect(awal)
                 abort(403)
             g.kode_menu = kode          # cakupan data (utils/area.py) mengikuti menu ini
@@ -248,6 +252,28 @@ def izin(kode_menu, *aksi):
                 log_keamanan("AKSES_DITOLAK", f"level {current_user.role} ke {f.__name__} ({request.path})")
                 return jsonify({"error": "Level Anda tidak memiliki akses untuk tindakan ini"}), 403
             g.kode_menu = cocok         # cakupan data (utils/area.py) mengikuti menu ini
+            return f(*args, **kwargs)
+        return wrapped
+    return dekorator
+
+
+# Kelompok menu pemakai API baca bersama. Tampilan menu saja tidak cukup: API juga harus menolak pengguna tanpa hak.
+MENU_OPERASI = ("FORM", "FORM_SECURITY", "FORM_TIMBANGAN", "FORM_SORTASI", "FORM_LAB", "LIST", "POS_SECURITY", "KELEBIHAN_DO")
+MENU_ORANG = MENU_OPERASI + ("PERSONEL", "KUNJUNGAN", "VSL_SCAN", "MASTER", "MASTER_DRIVER", "BLACKLIST")
+MENU_KENDARAAN = MENU_OPERASI + ("MASTER", "MASTER_KENDARAAN", "BLACKLIST")
+MENU_MASTER = ("MASTER", "MASTER_MITRA", "MASTER_PRODUK", "MASTER_KENDARAAN", "MASTER_DRIVER")
+MENU_KONTRAK = MENU_OPERASI + ("KONTRAK_DO",)
+
+
+def lihat(*kode_menu):
+    """API baca: boleh bila pengguna dapat melihat salah satu menu. Cakupan data (g.kode_menu) tidak diubah."""
+    def dekorator(f):
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            if not any(boleh_lihat(k) for k in kode_menu):
+                from utils.keamanan import log_keamanan
+                log_keamanan("AKSES_DITOLAK", f"level {current_user.role} ke {f.__name__} ({request.path})")
+                return jsonify({"error": "Level Anda tidak memiliki akses untuk data ini"}), 403
             return f(*args, **kwargs)
         return wrapped
     return dekorator
@@ -480,7 +506,7 @@ def halaman_awal_pilihan():
                      ORDER BY COALESCE(g.SortOrder, p.SortOrder, m.SortOrder), COALESCE(p.SortOrder, m.SortOrder), m.SortOrder, m.MenuName""")
 
 
-@cache_ttl(30)
+@cache_ttl(CACHE_HAK_DETIK)
 def widget_user(id_user, kode_menu="DASHBOARD"):
     """Widget dashboard user, urut tampil (dbo.sp_UserDashboard): ['harga', 'arus']."""
     return [r["WidgetCode"] for r in _query("EXEC dbo.sp_UserDashboard @UserID = ?, @MenuCode = ?", id_user, kode_menu)]

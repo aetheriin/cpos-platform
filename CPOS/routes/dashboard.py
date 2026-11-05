@@ -8,7 +8,7 @@ from flask_login import login_required, current_user
 from utils import harga_sumber
 from utils.area import area_data, company_user
 from utils.area_filter import area_cocok
-from utils.db_dashboard import KOLOM, WIDGET, WIDGET_HARGA, riwayat_harga, simpan_harga, arus_hari_ini, ringkas_security
+from utils.db_dashboard import WIDGET, WIDGET_HARGA, riwayat_harga, simpan_harga, arus_hari_ini, ringkas_security
 from utils.db_jembatan import daftar_jembatan
 from utils.db_organisasi import daftar_area, daftar_company
 from utils.serial_reader import baca_status
@@ -104,29 +104,46 @@ def dashboard_harga():
 @harga_sumber.tangani_galat
 def dashboard_harga_simpan():
     try:
-        id_company = _company_dipilih(current_user.id, (request.form.get("company") or "").strip().upper())
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    if id_company is None:
-        return jsonify({"error": "Pilih perusahaan"}), 400
-    try:
         tanggal = date.fromisoformat(request.form.get("tanggal", ""))
         teks_rsi = (request.form.get("qty_rsi") or "").strip().replace(",", ".")
         qty_rsi = float(teks_rsi) if teks_rsi else None
         if qty_rsi is not None and not 0 <= qty_rsi <= 1_000_000_000:
             raise ValueError
-        nilai = []
-        for k in KOLOM:
+        nilai_umum = {}
+        for k in ("harga_cpo", "harga_kernel", "biaya_olah"):
             v = float(request.form.get(k, "").replace(",", "."))
             if not BATAS[k][0] <= v <= BATAS[k][1]:
                 raise ValueError
-            nilai.append(v)
+            nilai_umum[k] = v
     except ValueError:
-        return jsonify({"error": "Tanggal dan semua nilai wajib diisi angka yang wajar (OER 0 - 100 %)"}), 400
+        return jsonify({"error": "Tanggal, harga CPO, kernel, dan biaya olah wajib diisi angka yang wajar; Qty RSI harus valid jika diisi"}), 400
     if tanggal > date.today():
         return jsonify({"error": "Tanggal tidak boleh setelah hari ini"}), 400
-    simpan_harga(id_company, tanggal, nilai, qty_rsi, current_user.id)
-    return jsonify({"message": f"Harga {id_company} {tanggal:%d-%m-%Y} berhasil disimpan"})
+
+    perusahaan = {c["id_company"].upper() for c in _company_harga(current_user.id)}
+    oer_perusahaan = {"YBS": "oer_cpo_ybs", "SUN": "oer_cpo_sun", "SJN": "oer_cpo_sjn"}
+    target = []
+    try:
+        for id_company, kolom in oer_perusahaan.items():
+            teks_oer = (request.form.get(kolom) or "").strip().replace(",", ".")
+            if not teks_oer:
+                continue
+            if id_company not in perusahaan:
+                return jsonify({"error": f"Anda tidak memiliki cakupan perusahaan {id_company}"}), 403
+            oer = float(teks_oer)
+            if not BATAS["oer_cpo"][0] <= oer <= BATAS["oer_cpo"][1]:
+                raise ValueError
+            target.append((id_company, oer))
+    except ValueError:
+        return jsonify({"error": "OER CPO tiap perusahaan harus berisi angka antara 0 dan 100"}), 400
+    if not target:
+        return jsonify({"error": "Isi minimal satu OER CPO perusahaan"}), 400
+
+    for id_company, oer in target:
+        nilai = [nilai_umum["harga_cpo"], nilai_umum["harga_kernel"], oer, nilai_umum["biaya_olah"]]
+        simpan_harga(id_company, tanggal, nilai, qty_rsi, current_user.id)
+    perusahaan_disimpan = ", ".join(id_company for id_company, _ in target)
+    return jsonify({"message": f"Harga {tanggal:%d-%m-%Y} berhasil disimpan untuk {perusahaan_disimpan}"})
 
 
 def _angka(v):

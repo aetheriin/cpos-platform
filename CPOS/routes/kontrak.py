@@ -4,6 +4,7 @@ from datetime import date
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
 
+from utils.hak_akses import lihat, MENU_KONTRAK
 from utils import db_kontrak as db, kolom_wajib
 from utils.db_utils import get_semua_produk
 from utils.hak_akses import izin, boleh, halaman as lihat_halaman
@@ -48,6 +49,7 @@ def kontrak_halaman():
 
 @kontrak_bp.route("/api/kontrak/do")
 @login_required
+@lihat(*MENU_KONTRAK)
 def do_daftar():
     return jsonify([_json_do(d) for d in db.daftar_do(request.args.get("cari", ""))])
 
@@ -183,6 +185,7 @@ def do_aktif(id_do):
 
 @kontrak_bp.route("/api/do/<path:no_do>")
 @login_required
+@lihat(*MENU_KONTRAK)
 def do_cari(no_do):
     """Form Security: ketik No DO -> data transaksi terisi otomatis."""
     d = db.get_do(no_do.strip().upper())

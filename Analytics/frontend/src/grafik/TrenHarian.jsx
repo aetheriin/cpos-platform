@@ -28,7 +28,7 @@ function TrenHarian({ data, indikator, terpilih, onPilih }) {
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={baris} margin={{ top: 8, right: 4, bottom: 4, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+          <CartesianGrid yAxisId="n" strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
           <XAxis dataKey="label" tickLine={false} axisLine={{ stroke: '#cbd5e1' }} tick={{ fontSize: 10, fill: '#475569' }} minTickGap={6} />
           <YAxis yAxisId="n" width={44} allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#475569' }} tickFormatter={(v) => angka.format(v)} />
           <YAxis yAxisId="p" orientation="right" width={40} domain={[0, 1]} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#475569' }} tickFormatter={(v) => `${Math.round(v * 100)}%`} />

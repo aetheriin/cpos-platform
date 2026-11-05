@@ -71,11 +71,11 @@ export const SaldoBerjalan = memo(function SaldoBerjalan({ bulanan, satuan }) {
       <div className="min-h-64 w-full flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} stackOffset="sign" margin={{ top: 6, right: 0, bottom: 0, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-slate-200)" />
+            <CartesianGrid yAxisId="saldo" strokeDasharray="3 3" vertical={false} stroke="var(--color-slate-200)" />
             <XAxis dataKey="label" {...sumbu} />
             <YAxis yAxisId="saldo" width={lebarSumbu(data, 'saldo')} {...sumbu} tickFormatter={sumbuUang} domain={['auto', 'auto']} />
             <YAxis yAxisId="arus" orientation="right" width={lebarSumbu(data, 'debit', 'kreditNeg')} {...sumbu} tickFormatter={sumbuUang} />
-            <Tooltip cursor={{ stroke: '#94a3b8', strokeDasharray: '3 3' }} content={({ active, payload }) => {
+            <Tooltip cursor={{ stroke: '#94a3b8' }} content={({ active, payload }) => {
               const d = active && payload?.[0]?.payload
               if (!d) return null
               return <KotakInfo judul={d.label} baris={[['Debit', uangPenuh(d.debit, satuan)], ['Credit', uangPenuh(d.kredit, satuan)], ['Ending balance', uangPenuh(d.saldo, satuan)]]} />
@@ -106,7 +106,7 @@ export const KreditToDate = memo(function KreditToDate({ harian, bulanan, period
       <div className="min-h-56 w-full flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 6, right: 0, bottom: 0, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-slate-200)" />
+            <CartesianGrid yAxisId="periode" strokeDasharray="3 3" vertical={false} stroke="var(--color-slate-200)" />
             <XAxis dataKey="label" {...sumbu} tick={{ fontSize: 10, fill: '#64748b' }} minTickGap={12} />
             <YAxis yAxisId="periode" width={lebarSumbu(data, 'kredit')} {...sumbu} tickFormatter={sumbuUang} />
             <YAxis yAxisId="td" orientation="right" width={lebarSumbu(data, 'kredit_td')} {...sumbu} tickFormatter={sumbuUang} domain={['auto', 'auto']} />

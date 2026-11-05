@@ -510,8 +510,9 @@ Aksi:
 
 ![Harga CPO & Kernel](manual/rk_harga.jpg)
 
-- Harga dan data produksi harian per perusahaan (sama dengan **Isi Harga** di Dashboard): Harga CPO, Kernel, OER CPO, Biaya Olah, Harga TBS, Qty RSI.
-- Satu baris per perusahaan per tanggal. Tanggal yang sudah ada harganya akan diperbarui.
+- Harga dan data produksi harian per perusahaan: Harga CPO, Kernel, OER CPO, Biaya Olah, Harga TBS, Qty RSI.
+- Pilih perusahaan dan isi harga, lalu tekan **Simpan ke Daftar** untuk memasukkan data ke daftar sementara. Ulangi untuk perusahaan lain; data belum masuk ke daftar harga sampai **Simpan Semua** ditekan.
+- Satu baris per perusahaan per tanggal. Tanggal yang sudah ada harganya akan diperbarui saat daftar disimpan.
 - Nilai dalam rupiah kecuali dinyatakan lain.
 
 ### G.5 Kategori Request

@@ -167,9 +167,8 @@ sama dengan perilaku sebelumnya, dan isian yang salah (mis. angka berisi huruf) 
 | `MAKS_BARIS_EKSPOR` | `100000` | batas baris sekali Export Excel |
 | `AKTIVITAS_FOLDER` | `backend/log_aktivitas` | folder file log aktivitas (satu file per hari) |
 | `AKTIVITAS_SIMPAN_HARI` | `180` | file log aktivitas yang lebih tua dihapus otomatis |
-| `SP_PALM_WEIGHBRIDGE` | `dbo.PalmWeighbridge` | stored procedure laporan timbangan; parameternya (urut): perusahaan, tanggal awal, tanggal akhir |
+| `SP_PALM_WEIGHBRIDGE` | `dbo.PalmWeighbridge` | stored procedure laporan timbangan; parameternya (urut): perusahaan, tanggal awal; selalu sampai data terakhir |
 | `PALM_SUMBER` | sama dengan `LAPORAN_SUMBER` | jenis perusahaan (CompType di tabel company) yang dipanggil SP timbangan |
-| `PALM_FORMAT_TANGGAL` | `%Y%m%d` | bentuk tanggal yang dikirim ke SP timbangan (mis. `%Y-%m-%d`) |
 | `PALM_AMBANG_TARA_KG` | `150` | selisih tara (kg) di atas batas ini, naik atau turun, ditandai WARNING |
 | `PALM_AMBANG_DURASI_MENIT` | `180` | durasi timbang (menit) di atas batas ini ditandai WARNING |
 | `PALM_TOP_KENDARAAN` | `12` | jumlah kendaraan di grafik selisih tara |
@@ -309,8 +308,8 @@ Tidak ada nama yang disembunyikan; semua yang ada di SP tampil.
 
 ## Deteksi Kecurangan Timbangan
 
-Transaksi timbang sawit dari stored procedure `SP_PALM_WEIGHBRIDGE`, dipanggil SATU PER PERUSAHAAN (paralel) dengan parameter perusahaan, tanggal awal,
-dan tanggal akhir. Perusahaan yang dipanggil dibaca dari tabel company menurut jenis `PALM_SUMBER`. Kolom wajib di hasil SP: TicketNo, Ticket Date,
+Transaksi timbang sawit dari stored procedure `SP_PALM_WEIGHBRIDGE`, dipanggil SATU PER PERUSAHAAN (paralel) dengan parameter perusahaan dan tanggal awal.
+ Perusahaan yang dipanggil dibaca dari tabel company menurut jenis `PALM_SUMBER`. Kolom wajib di hasil SP: TicketNo, Ticket Date,
 DurationMinutes, VehicleNo, ProductName, Bruto, ActualTara, MaxHistoricalTara, TaraDeviation, Deduction, Netto, Operator, NamaSupir, SupplierCode,
 SupplierName (nama kolom tidak peduli huruf besar-kecil, spasi, dan garis bawah). Kolom RiskIndicator dari SP **tidak dipakai**: indikator dihitung program.
 MaxHistoricalTara adalah tara historis tertinggi kendaraan (dulu median, kolom AvgHistoricalTara; nama lama masih dibaca). Kolom opsional `Splitted`

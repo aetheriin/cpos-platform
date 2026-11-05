@@ -121,7 +121,7 @@ export function simpanBerkas(blob, nama) {
   document.body.appendChild(a)
   a.click()
   a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 10000)
+  setTimeout(() => URL.revokeObjectURL(url), 60000)
 }
 
 export async function unduhDetail(laporanId, dataId, filter, opsi) {

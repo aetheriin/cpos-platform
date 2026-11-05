@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from utils.hak_akses import lihat, MENU_OPERASI
 from utils.area import area_data, company_user
 from utils.db_admin import supplier_boleh
 from flask_login import login_required, current_user
@@ -16,7 +17,8 @@ from utils.upload_utils import simpan_upload, simpan_frames, hapus_file
 from utils.db_utils import (
     cari_transaksi_aktif, buat_transaksi_full, get_list_tiket_aktif, get_history_driver,
     get_driver_by_id, cari_driver_by_nik, cek_nik_ada, cari_wajah_mirip_driver,
-    insert_driver, update_driver_dengan_audit, get_kendaraan_by_plat, get_semua_supplier, get_semua_produk
+    insert_driver, update_driver_dengan_audit, get_kendaraan_by_plat, get_semua_supplier, get_semua_produk,
+    cari_riwayat_driver_by_plat
 )
 from utils.serializers import serialisasi_driver
 from utils.audit_utils import catat_security_audit
@@ -32,6 +34,7 @@ security_bp = Blueprint('security', __name__)
 
 @security_bp.route("/api/security/list-tiket-aktif")
 @login_required
+@lihat(*MENU_OPERASI)
 def list_tiket_aktif():
     return jsonify([{**t, "created_at": t["created_at"].strftime("%Y-%m-%d %H:%M"),
                      "alur_tahap": alur.tahap_alur(t.get("id_alur")) if t.get("id_alur") else []}
@@ -39,6 +42,7 @@ def list_tiket_aktif():
 
 @security_bp.route("/api/security/history-driver")
 @login_required
+@lihat(*MENU_OPERASI)
 def history_driver():
     return jsonify(get_history_driver())
 
@@ -52,8 +56,29 @@ def ascend_daftar_do():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
+@security_bp.route("/api/security/ascend/shipper-kendaraan")
+@login_required
+@izin("FORM_SECURITY", "tambah")
+def ascend_shipper_kendaraan():
+    ticket_type = (request.args.get("ticket_type") or "").strip()
+    teks_id_do = (request.args.get("id_do") or "").strip()
+    teks_associate = (request.args.get("associate_id") or "").strip()
+
+    try:
+        id_do = int(teks_id_do) if teks_id_do else None
+        associate_id = int(teks_associate) if teks_associate else None
+
+        return jsonify(db_ascend.daftar_shipper_kendaraan(
+            ticket_type,
+            id_do=id_do,
+            associate_id=associate_id,
+        ))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
 @security_bp.route("/api/security/supir-terakhir")
 @login_required
+@lihat(*MENU_OPERASI)
 def security_supir_terakhir():
     no_plat, error = normalisasi_plat(request.args.get("no_plat"))
     if error:
@@ -99,33 +124,45 @@ def ascend_buat_tiket():
     associate_id = int(teks_associate)
     mill_id = int(teks_mill)
 
-    # Pastikan Associate dan Produk memang berasal dari pilihan DO Ascend.
-    # Associate dan Produk harus masing-masing tersedia di daftar Ascend.
-    # Keduanya tidak harus berasal dari DO yang sama, agar DO bisa diisi manual.
     daftar_ascend = db_ascend.daftar_do(ticket_type)
 
-    associate_valid = any(
-        int(r["associate_id"]) == associate_id
-        for r in daftar_ascend
-    )
-    produk_valid = any(
-        r["produk"] == produk
-        for r in daftar_ascend
+    do_dipilih = next(
+        (r for r in daftar_ascend if r["no_do"].upper() == no_do),
+        None,
     )
 
-    if not associate_valid:
-        return jsonify({"error": "Pilih Associate dari daftar Ascend."}), 400
+    produk_valid = (
+        any(r["produk"] == produk for r in daftar_ascend)
+        or (ticket_type == "TBSLuar" and produk == "TBS")
+    )
+
     if not produk_valid:
-        return jsonify({"error": "Pilih Produk dari daftar Ascend."}), 400
+        return jsonify({"error": "Pilih Produk yang tersedia di Ascend."}), 400
 
-    # MillID di Ascend harus sama dengan ID Mill aktif di Admin > Organisasi.
-    mill_aktif = {
-        int(m["id_lokasi"])
-        for m in daftar_lokasi()
-        if m["is_active"]
-    }
-    if mill_id not in mill_aktif:
-        return jsonify({"error": "Pilih Mill aktif dari Admin > Organisasi."}), 400
+    if do_dipilih:
+        if (
+            int(do_dipilih["associate_id"]) != associate_id
+            or do_dipilih["produk"] != produk
+            or do_dipilih["mill_id"] is None
+            or int(do_dipilih["mill_id"]) != mill_id
+        ):
+            return jsonify({
+                "error": "Associate, Produk, dan Mill harus sesuai dengan DO yang dipilih."
+            }), 400
+    else:
+        associate_valid = any(
+            int(r["associate_id"]) == associate_id
+            for r in daftar_ascend
+        )
+        mill_valid = any(
+            int(m["mill_id"]) == mill_id
+            for m in db_ascend.daftar_mill()
+        )
+
+        if not associate_valid:
+            return jsonify({"error": "Pilih Associate dari daftar Ascend."}), 400
+        if not mill_valid:
+            return jsonify({"error": "Pilih Mill dari daftar Ascend."}), 400
 
     try:
         tiket = db_ascend.buat_tiket_kosong(

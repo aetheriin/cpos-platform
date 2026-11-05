@@ -77,6 +77,30 @@ def simpan_harga(id_company, tanggal, nilai, qty_rsi, user_id):
         conn.close()
 
 
+def simpan_harga_banyak(items, user_id):
+    """Simpan beberapa harga dalam satu transaksi. items berisi (CompID, tanggal, nilai, qty_rsi)."""
+    if harga_sumber.aktif():
+        return harga_sumber.simpan_banyak(items)
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        for id_company, tanggal, nilai, qty_rsi in items:
+            cursor.execute("""
+                MERGE DailyPrice AS t USING (SELECT ? AS CompID, ? AS PriceDate) AS s
+                    ON t.CompID = s.CompID AND t.PriceDate = s.PriceDate
+                WHEN MATCHED THEN UPDATE SET CPOPrice = ?, KernelPrice = ?, OERCPO = ?, ProcessingCost = ?, RSIQty = ?,
+                                             UpdateBy = ?, UpdateDate = GETDATE()
+                WHEN NOT MATCHED THEN INSERT (CompID, PriceDate, CPOPrice, KernelPrice, OERCPO, ProcessingCost, RSIQty, UpdateBy)
+                                      VALUES (s.CompID, s.PriceDate, ?, ?, ?, ?, ?, ?);""",
+                id_company, tanggal, *nilai, qty_rsi, user_id, *nilai, qty_rsi, user_id)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
 def arus_hari_ini(id_area=None):
     """Ringkasan penimbangan hari ini (id_area None = semua area): angka, distribusi per produk,
     jumlah truk masuk / selesai per jam, dan posisi truk yang masih di dalam per tahap."""

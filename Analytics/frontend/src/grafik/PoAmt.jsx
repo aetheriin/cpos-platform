@@ -2,8 +2,8 @@ import { Bar, BarChart, CartesianGrid, ComposedChart, Legend, Line, LineChart, R
 import { angka } from '../lib/data'
 
 // Warna teks mengikuti tema lewat currentColor
-const sumbu = { tickLine: false, axisLine: false, tick: { fontSize: 13, fill: 'currentColor' } }
-const legenda = { fontSize: 13 }
+const sumbu = { tickLine: false, axisLine: false, tick: { fontSize: 11, fill: 'currentColor' } }
+const legenda = { fontSize: 11 }
 const persen = new Intl.NumberFormat('id-ID', { style: 'percent', maximumFractionDigits: 1 })
 const persenBulat = new Intl.NumberFormat('id-ID', { style: 'percent', maximumFractionDigits: 0 })
 const satu = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 })
@@ -12,7 +12,9 @@ const WARNA_NILAI = '#ea580c'
 
 export const rupiahPendek = (v) => (v >= 1e9 ? `${satu.format(v / 1e9)} M` : v >= 1e6 ? `${satu.format(v / 1e6)} jt` : angka.format(Math.round(v)))
 
-// h-80: tinggi tetap di tata letak memanjang, mengisi petak di tata letak padat
+// '10JT - 50JT' menjadi '10-50 jt' supaya label tidak bertabrakan di petak sempit
+const labelPendek = (k) => k.replace('JT - ', '-').replace('JT', ' jt')
+
 function Kanvas({ children }) {
   return <div className="h-80 text-slate-700"><ResponsiveContainer width="100%" height="100%">{children}</ResponsiveContainer></div>
 }
@@ -23,12 +25,12 @@ export function PoNilaiPersen({ data, onPilih }) {
     <Kanvas>
       <ComposedChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 0 }} onClick={(e) => e?.activeLabel && onPilih?.(e.activeLabel, e)}>
         <CartesianGrid vertical={false} stroke="#94a3b8" strokeOpacity={0.25} />
-        <XAxis dataKey="nama" {...sumbu} interval={0} />
+        <XAxis dataKey="nama" {...sumbu} interval={0} tickFormatter={labelPendek} />
         <YAxis {...sumbu} width={48} tickFormatter={persenBulat.format} />
         <Tooltip formatter={(v, n) => [persen.format(v), n]} />
         <Legend wrapperStyle={legenda} />
         <Bar dataKey="pct_po" name="% PO" fill={WARNA_PO} maxBarSize={72} cursor="pointer" />
-        <Line dataKey="pct_nilai" name="% Nilai PO" stroke={WARNA_NILAI} strokeWidth={3} dot={{ r: 4 }} />
+        <Line dataKey="pct_nilai" name="% nilai PO" stroke={WARNA_NILAI} strokeWidth={3} dot={{ r: 4 }} />
       </ComposedChart>
     </Kanvas>
   )
@@ -39,8 +41,8 @@ export function PoNilai({ data, onPilih }) {
   return (
     <Kanvas>
       <ComposedChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }} onClick={(e) => e?.activeLabel && onPilih?.(e.activeLabel, e)}>
-        <CartesianGrid vertical={false} stroke="#94a3b8" strokeOpacity={0.25} />
-        <XAxis dataKey="nama" {...sumbu} interval={0} />
+        <CartesianGrid yAxisId="po" vertical={false} stroke="#94a3b8" strokeOpacity={0.25} />
+        <XAxis dataKey="nama" {...sumbu} interval={0} tickFormatter={labelPendek} />
         <YAxis yAxisId="po" {...sumbu} width={56} tickFormatter={angka.format} />
         <YAxis yAxisId="nilai" orientation="right" {...sumbu} width={64} tickFormatter={rupiahPendek} />
         <Tooltip formatter={(v, n) => [n === 'PO' ? angka.format(v) : `Rp ${angka.format(Math.round(v))}`, n]} />

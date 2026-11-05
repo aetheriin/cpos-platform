@@ -84,6 +84,13 @@ def jalankan(prosedur, *param):
         tanda.set()
 
 
+def waktu_ambil(prosedur, *param):
+    """Kapan hasil simpanan diambil dari ERP (detik epoch), atau None bila tidak disimpan."""
+    with _kunci:
+        ada = _hasil.get((prosedur, param))
+    return ada[0] if ada else None
+
+
 def mulai(jenis_boleh, kode_company):
     """Dipanggil saat login: laporan TBS yang boleh dibuka dijalankan di latar, bersamaan, dengan perusahaan & periode bawaan."""
     company = company_bawaan(kode_company)

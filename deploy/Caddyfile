@@ -3,12 +3,11 @@
 #   https://<IP server>/analytics/  -> frontend Analytics (hasil build: Analytics\frontend\dist)
 #   https://<IP server>/analytics/api/ -> backend Analytics (uvicorn, port 8001)
 # Karena satu alamat, cookie login CPOS ikut terbaca oleh Analytics (login tunggal).
-# 1. caddy.exe di folder ini. 2. Ganti 192.168.1.10 dengan IP server dan C:/CPOS-Platform dengan lokasi repo.
-# 3. CPOS\.env: BEHIND_PROXY=1, COOKIE_SECURE=1, HOST=127.0.0.1, ANALYTICS_URL=/analytics
-#    Analytics\backend\.env: CPOS_URL=http://127.0.0.1:5000
-# 4. caddy run --config Caddyfile
-192.168.1.10 {
+# Berkas ini templat. Isi @IP@, @AKAR@, dan @PORT@ diganti oleh pasang_https.ps1, yang juga mengatur .env dan menjalankan Caddy.
+# Analytics\backend\.env: CPOS_URL harus memakai port CPOS yang sama, mis. http://127.0.0.1:8080
+@IP@ {
     tls internal
+    request_header -X-Analytics-Ip
     encode gzip
 
     handle_path /analytics/api/* {
@@ -16,12 +15,12 @@
         reverse_proxy 127.0.0.1:8001
     }
     handle_path /analytics/* {
-        root * C:/CPOS-Platform/Analytics/frontend/dist
+        root * @AKAR@/Analytics/frontend/dist
         try_files {path} /index.html
         file_server
     }
     redir /analytics /analytics/
     handle {
-        reverse_proxy 127.0.0.1:5000
+        reverse_proxy 127.0.0.1:@PORT@
     }
 }

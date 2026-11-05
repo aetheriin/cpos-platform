@@ -5,6 +5,7 @@ persetujuan (Admin › Alur Persetujuan › Data orang · Tambah, per jenis): se
 from datetime import date
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
+from utils.hak_akses import lihat, MENU_ORANG
 from utils.face_utils import extract_embedding_tunggal, embedding_to_binary
 from utils.db_utils import cek_nik_ada, cari_wajah_mirip_driver
 from utils.db_personel import (get_daftar_personel, get_personel,
@@ -133,6 +134,7 @@ def _validasi(data, exclude_id=None):
 
 @personel_bp.route("/api/personel")
 @login_required
+@lihat(*MENU_ORANG)
 def personel_daftar():
     kategori = request.args.get("kategori", "").upper()
     return jsonify(get_daftar_personel(kategori if kategori in daftar_kategori(semua=True) else None,
@@ -149,6 +151,7 @@ def _rapikan(data):
 
 @personel_bp.route("/api/personel/<int:id_personel>")
 @login_required
+@lihat(*MENU_ORANG)
 def personel_detail(id_personel):
     p = get_personel(id_personel)
     return (jsonify(p), 200) if p else (jsonify({"error": "Personel tidak ditemukan"}), 404)
@@ -156,6 +159,7 @@ def personel_detail(id_personel):
 
 @personel_bp.route("/api/personel/cek-foto", methods=["POST"])
 @login_required
+@lihat(*MENU_ORANG)
 def personel_cek_foto():
     """Pengecekan foto sebelum disimpan (ditampilkan sebagai ✓ / ✕ di modal). Foto tidak disimpan."""
     exclude = request.form.get("id_personel", type=int)

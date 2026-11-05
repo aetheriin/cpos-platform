@@ -31,11 +31,11 @@ def _openpyxl():
     try:
         from openpyxl import Workbook
         from openpyxl.cell import WriteOnlyCell
-        from openpyxl.styles import Alignment, Font, PatternFill
+        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
         from openpyxl.utils import get_column_letter
     except ImportError as e:
         raise PustakaHilang(PESAN_PUSTAKA_HILANG) from e
-    return SimpleNamespace(Workbook=Workbook, WriteOnlyCell=WriteOnlyCell, Alignment=Alignment, Font=Font, PatternFill=PatternFill,
+    return SimpleNamespace(Workbook=Workbook, WriteOnlyCell=WriteOnlyCell, Alignment=Alignment, Border=Border, Font=Font, PatternFill=PatternFill, Side=Side,
                            get_column_letter=get_column_letter)
 
 
@@ -148,3 +148,67 @@ def buat_xlsx(judul, kolom, baris, info):
     wb.save(buf)
     return buf.getvalue()
 
+
+def buat_xlsx_giro(judul, baris, label_periode, info):
+    """Jasa giro seperti pivot Excel BANK GIRO: perusahaan sebagai judul kelompok, rekeningnya di bawah, lalu Grand Total."""
+    xl = _openpyxl()
+    biru = xl.PatternFill("solid", start_color="BDE3F2")
+    garis = xl.Side(style="thin", color="7FB7CE")
+    tebal = xl.Font(bold=True)
+    kanan = xl.Alignment(horizontal="right")
+    wb = xl.Workbook()
+    ws = wb.active
+    ws.title = nama_sheet(judul)
+    ws.sheet_view.showGridLines = False
+    for kol, lebar in zip("ABCD", (42, 20, 22, 11)):
+        ws.column_dimensions[kol].width = lebar
+    kepala = [["", "Column Labels", "", ""], ["", "GIRO", "AVG BALANCE", "% GIRO"], ["Row Labels", label_periode, label_periode, label_periode]]
+    for r, isi in enumerate(kepala, start=1):
+        for c, v in enumerate(isi, start=1):
+            sel = ws.cell(r, c, v or None)
+            sel.fill, sel.font = biru, tebal
+            if c > 1 and r > 1:
+                sel.alignment = kanan
+    ws.cell(3, 1).alignment = xl.Alignment(horizontal="center")
+    ws.freeze_panes = "B4"
+
+    def angka(r, b, huruf_tebal=False):
+        for c, kunci, fmt in ((2, "nilai", "#,##0.00"), (3, "rata_saldo", "#,##0.00"), (4, "persen", "0.00%")):
+            v = b.get(kunci)
+            sel = ws.cell(r, c, None if v is None else (v / 100 if kunci == "persen" else v))
+            sel.number_format = fmt
+            sel.font = xl.Font(bold=huruf_tebal)
+
+    grup, total = {}, None
+    for b in baris:
+        if b["perusahaan"] == "Grand total":
+            total = b
+        elif b["rekening"] != "Total":
+            grup.setdefault(b["perusahaan"], []).append(b)
+    r = 4
+    for nama in sorted(grup):
+        for c in range(1, 5):
+            ws.cell(r, c).border = xl.Border(bottom=garis)
+        ws.cell(r, 1, bersihkan_teks(nama)).font = tebal
+        r += 1
+        for b in sorted(grup[nama], key=lambda x: x["rekening"]):
+            ws.cell(r, 1, bersihkan_teks(b["rekening"])).alignment = xl.Alignment(indent=1)
+            angka(r, b)
+            r += 1
+    if total:
+        ws.cell(r, 1, "Grand Total")
+        angka(r, total, True)
+        for c in range(1, 5):
+            sel = ws.cell(r, c)
+            sel.fill, sel.font, sel.border = biru, tebal, xl.Border(top=garis)
+
+    wi = wb.create_sheet("Info")
+    wi.column_dimensions["A"].width = 26
+    wi.column_dimensions["B"].width = 80
+    for label, nilai in info:
+        if nilai is not None:
+            wi.append([bersihkan_teks(str(label)), bersihkan_teks(str(nilai))])
+            wi.cell(wi.max_row, 1).font = tebal
+    buf = BytesIO()
+    wb.save(buf)
+    return buf.getvalue()

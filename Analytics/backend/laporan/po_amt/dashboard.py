@@ -34,9 +34,9 @@ def _pilihan(df):
 
 
 def _siapkan(df, dari, sampai, filt):
-    pilihan = _pilihan(df)
-    filt = {k: kanonik((filt or {}).get(k), pilihan[k], judul) for k, judul, _ in FILTER}
     t = df[(df["tgl"] >= dari) & (df["tgl"] <= sampai)]
+    pilihan = _pilihan(t)
+    filt = {k: kanonik((filt or {}).get(k), pilihan[k], judul) for k, judul, _ in FILTER}
     return saring(t, filt, DIM), filt, pilihan
 
 
@@ -91,7 +91,7 @@ def bangun(df, dari, sampai, filt=None):
         "rentang": {"dari": tgl(dari), "sampai": tgl(sampai), "satuan": "hari", "bawaan": None},
         "kpi": {"po": len(t), "nilai": float(t["nilai_idr"].sum())},
         "kategori": _kategori(t),
-        "banding_tahun": _banding_tahun(t),
+        "banding_tahun": _banding_tahun(saring(df, {**filt, "tahun": []}, DIM)),   # semua tahun, walau periode hanya satu tahun
         "seri_bulan": _seri_bulan(t),
         "nama_kategori": NAMA_KATEGORI,
         "jumlah": {"po": len(t)},

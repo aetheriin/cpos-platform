@@ -13,6 +13,7 @@ LAPORAN = Laporan(
     detail=lambda ds, jenis, n, mg, f, cari, urut, arah, hal, uk: dashboard.detail(ds.df, jenis, *rentang_tampil(ds), f, cari, urut, arah, hal, uk),
     filter_didukung=tuple(dashboard.DIM),
     label_filter={k: judul for k, judul, _ in dashboard.FILTER},
-    mulai_bawaan="2022-01-01",   # Excel memakai seluruh data sejak PO pertama
+    mulai_bawaan="2022-01-01",
+    awal_tahun=True,             # dibuka dengan tahun berjalan; periode bisa diganti sampai PO pertama
     maks_hari=3660,
 )

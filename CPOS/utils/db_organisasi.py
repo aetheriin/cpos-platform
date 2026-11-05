@@ -140,7 +140,7 @@ def cakupan_user(id_user):
     return rows[0] if rows else None
 
 
-@cache_ttl(30)
+@cache_ttl(8)
 def area_menu_user(id_user, kode_menu):
     """id area dalam cakupan data aturan menu itu (dbo.fn_UserMenuScope), frozenset."""
     return frozenset(r["CompAreaID"] for r in _query("SELECT CompAreaID FROM dbo.fn_UserMenuScope(?, ?)", id_user, kode_menu))

@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from utils.hak_akses import lihat, MENU_OPERASI
 from utils.area import area_data
 from flask_login import login_required, current_user
 from utils.db_utils import (get_standar_mutu, update_standar_mutu, simpan_lab, get_history_umum, cari_transaksi_aktif,
@@ -44,6 +45,7 @@ def lab_standar_update():
 
 @lab_bp.route("/api/lab/standar/history")
 @login_required
+@lihat(*MENU_OPERASI)
 def lab_standar_history():
     return jsonify([{**r, "updated_at": r["updated_at"].strftime("%Y-%m-%d %H:%M")} for r in get_history_standar(2)])
 
@@ -76,5 +78,6 @@ def lab_simpan():
 
 @lab_bp.route("/api/history/lab")
 @login_required
+@lihat(*MENU_OPERASI)
 def history_lab():
     return jsonify(get_history_umum('lab_hasil', id_area=area_data(current_user.id)))

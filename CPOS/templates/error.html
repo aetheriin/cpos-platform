@@ -74,11 +74,18 @@
             {% if kode == 403 %}<p class="mt-1 text-sm hal-error-redup">Minta admin memberi hak di Admin › Hak Akses.</p>{% endif %}
 
             <div class="mt-8 flex flex-wrap justify-center gap-3">
-                <a href="{{ request.referrer or '/' }}" class="hal-error-tombol-2"><i class="fa-solid fa-arrow-left"></i> Kembali</a>
-                <a href="/" class="hal-error-tombol"><i class="fa-solid fa-house"></i> Kembali ke Beranda</a>
+                <button type="button" id="tombol-kembali" class="hal-error-tombol-2"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
+                <a href="/" class="hal-error-tombol"><i class="fa-solid fa-house"></i> Halaman utama</a>
+                {% if masuk %}
+                <form method="post" action="/logout">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="hal-error-tombol-2"><i class="fa-solid fa-right-from-bracket"></i> Keluar</button>
+                </form>
+                {% endif %}
             </div>
         </div>
     </main>
     <footer class="relative z-10 pb-5 text-center text-[11px] hal-error-redup">CPOS v{{ versi_aplikasi() }}</footer>
+    <script src="{{ url_for('static', filename='js/halaman_error.js') }}"></script>
 </body>
 </html>

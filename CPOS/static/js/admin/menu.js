@@ -61,7 +61,7 @@ function isiPilihanInduk(m) {
     const turunan = new Set();
     if (m) { const antre = [m.id_menu]; while (antre.length) { const i = antre.pop(); DATA_MENU.menu.filter(x => x.id_induk === i).forEach(x => { turunan.add(x.id_menu); antre.push(x.id_menu); }); } }
     const opsi = DATA_MENU.menu.filter(x => x.level < 3 && (!m || (x.id_menu !== m.id_menu && !turunan.has(x.id_menu))))
-        .map(x => `<option value="${x.id_menu}">${x.level === 2 ? '   › ' : ''}${escapeHtml(x.nama)} (${escapeHtml(x.kode)})</option>`);
+        .map(x => `<option value="${x.id_menu}">${x.level === 2 ? '\u00A0\u00A0\u00A0› ' : ''}${escapeHtml(x.nama)} (${escapeHtml(x.kode)})</option>`);
     document.getElementById('menuInduk').innerHTML = '<option value="">— Tanpa induk (grup Level 1) —</option>' + opsi.join('');
 }
 

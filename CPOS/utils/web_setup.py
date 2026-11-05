@@ -80,13 +80,13 @@ def pasang_error_handler(app):
         pesan = "Sesi form kedaluwarsa. Muat ulang halaman (F5) lalu coba lagi."
         if _minta_json():
             return jsonify({"error": pesan}), 400
-        return render_template("error.html", kode=400, pesan=pesan), 400
+        return render_template("error.html", kode=400, pesan=pesan, masuk=_masuk()), 400
     @app.errorhandler(HTTPException)
     def http_error(e):
         pesan = PESAN_ERROR.get(e.code, e.description)
         if _minta_json():
             return jsonify({"error": pesan}), e.code
-        return render_template("error.html", kode=e.code, pesan=pesan), e.code
+        return render_template("error.html", kode=e.code, pesan=pesan, masuk=_masuk()), e.code
 
     @app.errorhandler(Exception)
     def server_error(e):
@@ -97,7 +97,16 @@ def pasang_error_handler(app):
         pesan = f"Terjadi kesalahan sistem. Kode error: {kode}. Catat kode ini & No. Tiket, lalu hubungi IT site."
         if _minta_json():
             return jsonify({"error": pesan, "kode_error": kode}), 500
-        return render_template("error.html", kode=500, pesan=pesan), 500
+        return render_template("error.html", kode=500, pesan=pesan, masuk=_masuk()), 500
+
+
+def _masuk():
+    """Halaman error tetap tampil walau status login tidak bisa dibaca (mis. database mati)."""
+    try:
+        from flask_login import current_user
+        return bool(current_user.is_authenticated)
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def kode_error():

@@ -3,7 +3,8 @@ from urllib.parse import urlparse, parse_qs
 from datetime import datetime
 import qrcode
 import qrcode.image.svg
-from flask import Blueprint, request, jsonify, render_template, Response, abort, redirect
+from flask import Blueprint, request, jsonify, render_template, Response, abort, redirect, current_app
+from utils.hak_akses import lihat, MENU_OPERASI
 from utils.area_filter import area_cocok
 from utils.db_organisasi import daftar_area, daftar_lokasi
 from utils.area import area_data, company_user
@@ -55,20 +56,45 @@ def _tab_awal():
 def weighbridge():
     """List = daftar tiket aktif per tahap (tanpa info bar & tab). Form = info bar + tab Security..Lab."""
     if request.args.get("view") != "form":
-        return render_template("site/list.html", halaman="site", view="list", produk_list=get_semua_produk(),
-                               tahap_awal=_tab_awal(), boleh_periksa=boleh("LIST", "setujui"),
-                               boleh_koreksi=boleh("LIST", "ubah"))
-    return render_template("site/weighbridge.html", halaman="site", view="form",
-                           tab_awal=_tab_awal() or "security",
-                           supplier_list=[s for s in get_semua_supplier()
-                                          if s.is_customer and supplier_boleh(s.id_supplier, company_user(current_user.id))],
-                           produk_list=get_semua_produk(),
-                           mill_list=db_ascend.daftar_mill(),
-                           wajib_scan_wajah=pengaturan.nilai("WAJIB_SCAN_WAJAH", area_akun(current_user.id)),
-                           jembatan_list=_jembatan_aktif(), jembatan_dipilih=_jembatan_pc())
+        return render_template(
+            "site/list.html",
+            halaman="site",
+            view="list",
+            produk_list=get_semua_produk(),
+            tahap_awal=_tab_awal(),
+            boleh_periksa=boleh("LIST", "setujui"),
+            boleh_koreksi=boleh("LIST", "ubah"),
+        )
+
+    # Letakkan di sini: setelah blok LIST, sebelum return render_template form
+    try:
+        mill_list = db_ascend.daftar_mill()
+    except Exception:
+        current_app.logger.exception("Gagal memuat Mill dari AS_WB_YBS")
+        mill_list = []
+
+    return render_template(
+        "site/weighbridge.html",
+        halaman="site",
+        view="form",
+        tab_awal=_tab_awal() or "security",
+        supplier_list=[
+            s for s in get_semua_supplier()
+            if s.is_customer
+            and supplier_boleh(s.id_supplier, company_user(current_user.id))
+        ],
+        produk_list=get_semua_produk(),
+        mill_list=mill_list,
+        wajib_scan_wajah=pengaturan.nilai(
+            "WAJIB_SCAN_WAJAH", area_akun(current_user.id)
+        ),
+        jembatan_list=_jembatan_aktif(),
+        jembatan_dipilih=_jembatan_pc(),
+    )
 
 @main_bp.route("/api/list/history-produk")
 @login_required
+@lihat(*MENU_OPERASI)
 def history_produk():
     id_produk = request.args.get("id_produk", "")
     rows = get_history_produk(int(id_produk) if id_produk.isdigit() else None, id_area=area_data(current_user.id))
@@ -264,6 +290,7 @@ def qr_tiket(no_tiket):
 
 @main_bp.route("/cetak/tiket/<no_tiket>")
 @login_required
+@lihat(*MENU_OPERASI)
 def cetak_tiket(no_tiket):
     row = cari_transaksi_aktif(no_tiket=no_tiket)
     if not row:

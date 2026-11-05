@@ -40,7 +40,7 @@ function SebaranTara({ sebaran, indikator, ambang, terpilih, onPilih, risikoTerp
             <ReferenceLine y={ambang.tara_kg} stroke={warnaRisiko('tara')} strokeDasharray="4 4" />
             <ReferenceLine y={-ambang.tara_kg} stroke={warnaRisiko('tara')} strokeDasharray="4 4" />
             <ReferenceLine x={ambang.durasi_menit} stroke={warnaRisiko('durasi')} strokeDasharray="4 4" />
-            <Tooltip content={<PetunjukTitik />} cursor={{ strokeDasharray: '3 3' }} isAnimationActive={false} />
+            <Tooltip content={<PetunjukTitik />} cursor={{ stroke: '#94a3b8' }} isAnimationActive={false} />
             <Legend verticalAlign="top" height={30} wrapperStyle={{ fontSize: 11, cursor: 'pointer' }} onClick={(item, _, e) => item.value && onPilihRisiko(item.value, e)} formatter={(nama) => <span style={{ opacity: risikoTerpilih.length > 0 && !risikoTerpilih.includes(nama) ? 0.4 : 1 }}>{nama}</span>} />
             {indikator.map((i) => (
               <Scatter

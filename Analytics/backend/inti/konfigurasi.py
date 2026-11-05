@@ -97,10 +97,9 @@ CPOS_URL = os.getenv("CPOS_URL", "").strip()          # kosong = Analytics berdi
 CPOS_COOKIE = teks("CPOS_COOKIE", "wb_sesi")
 
 # ---------- Weighbridge ----------
-SP_PALM = nama_sp("SP_PALM_WEIGHBRIDGE", "dbo.palm_tickets")      # @PT, @StartDate; selalu sampai hari ini
+SP_PALM = nama_sp("SP_PALM_WEIGHBRIDGE", "dbo.PalmWeighbridge")   # @COMP, @DTFR; selalu sampai data terakhir
 SUMBER_PALM = teks("PALM_SUMBER", SUMBER_LAPORAN)
 PALM_MULAI = tanggal("PALM_MULAI", "2026-01-01")                  # tanggal tarikan bawaan
-FORMAT_TANGGAL_PALM = format_tanggal("PALM_FORMAT_TANGGAL", "%Y%m%d")
 PALM_AMBANG_TARA_KG = angka("PALM_AMBANG_TARA_KG", 150)           # naik atau turun
 PALM_AMBANG_DURASI_MENIT = angka("PALM_AMBANG_DURASI_MENIT", 180)
 PALM_TOP_KENDARAAN = angka("PALM_TOP_KENDARAAN", 12)

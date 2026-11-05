@@ -81,12 +81,6 @@ export const IkonKalender = dasar(
     <path d="M16 2v4M8 2v4M3 10h18" />
   </>,
 )
-export const IkonAtas = dasar(
-  <>
-    <path d="M12 19V5" />
-    <path d="m5 12 7-7 7 7" />
-  </>,
-)
 export const IkonPerisai = dasar(<path d="M12 3 4 6v6c0 4.5 3.2 8.2 8 9 4.8-.8 8-4.5 8-9V6l-8-3Z" />)
 export const IkonEdit = dasar(
   <>

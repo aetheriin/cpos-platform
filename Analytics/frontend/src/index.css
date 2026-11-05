@@ -1,21 +1,22 @@
 @import "tailwindcss";
 
 /* Tampilan disamakan dengan CPOS: font Plus Jakarta Sans & JetBrains Mono (public/fonts, sama dengan CPOS static/vendor/fonts)
-   dan warna utama biru CPOS (blue-600). Komponen Analytics memakai kelas sky-*, jadi skala sky diganti nilai blue. */
+   dan warna utama CPOS (--utama-*). Komponen Analytics memakai kelas sky-*, jadi skala sky diganti nilai utama. */
 @theme {
   --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  --color-sky-50: #eff6ff;
-  --color-sky-100: #dbeafe;
-  --color-sky-200: #bfdbfe;
-  --color-sky-300: #93c5fd;
-  --color-sky-400: #60a5fa;
-  --color-sky-500: #3b82f6;
-  --color-sky-600: #2563eb;
-  --color-sky-700: #1d4ed8;
-  --color-sky-800: #1e40af;
-  --color-sky-900: #1e3a8a;
-  --color-sky-950: #172554;
+  --color-sky-50: #ecf6fd;
+  --color-sky-100: #d4ecfb;
+  --color-sky-200: #a8d6f5;
+  --color-sky-300: #7dbeec;
+  --color-sky-400: #50aae1;
+  --color-sky-500: #2997d6;
+  --color-sky-600: #127cbf;
+  --color-sky-700: #0d66a0;
+  --color-sky-800: #0e5482;
+  --color-sky-900: #0d4369;
+  --color-sky-950: #0a2f4a;
+  --radius-md: 0.5rem; /* sudut tombol dan isian sama dengan CPOS (rounded-lg) */
 }
 
 /* Klik mouse pada grafik tidak memunculkan kotak fokus; navigasi keyboard tetap menampilkannya */
@@ -165,6 +166,24 @@ option, optgroup { background-color: #ffffff; color: #0f172a; }
 /* Legenda grafik memakai warna seri sebagai warna teks; yang muda (kuning, hijau muda) tidak terbaca di latar putih. Warna seri tetap ada di ikon */
 :root:not([data-tema="gelap"]) .recharts-legend-item-text { color: #475569 !important; }
 
-/* Garis bantu semua grafik: tetap terlihat di tema terang dan gelap */
-.recharts-cartesian-grid line { stroke: #cbd5e1 !important; stroke-opacity: 1 !important; }
+/* Garis bantu semua grafik selalu lurus. Putus-putus hanya untuk batas, rata-rata, dan forecast (pola 4 4). */
+.recharts-cartesian-grid line { stroke: #cbd5e1 !important; stroke-opacity: 1 !important; stroke-dasharray: none !important; }
 [data-tema="gelap"] .recharts-cartesian-grid line { stroke: #475569 !important; }
+
+/* Kursor tangan hanya untuk yang bisa diklik, sama dengan CPOS. Di layer base supaya kelas cursor-* tetap menang. */
+@layer base {
+  :where(button, a[href], summary, select, [role="button"], [role="tab"], [role="menuitem"], [role="option"],
+         input[type="checkbox"], input[type="radio"], input[type="file"], input[type="range"], input[type="color"], input[type="submit"], input[type="button"],
+         label:has(> input[type="checkbox"]), label:has(> input[type="radio"])) { cursor: pointer; }
+  :where(button, select, input):disabled, :where([aria-disabled="true"]) { cursor: not-allowed; }
+}
+
+/* Tombol dan isian bergaris: warna garis sama dengan CPOS */
+:is(button, input, select).border-slate-300 { border-color: var(--color-slate-200); }
+
+/* Di dalam CPOS dasar huruf 13px, jadi text-xs dijaga tetap terbaca (sekitar 11px) */
+html[data-sematan] { --text-xs: 0.85rem; }
+html[data-sematan] main h1 { font-size: 1.25rem; font-weight: 700; } /* sama dengan judul halaman CPOS */
+
+/* Ruang bawah supaya tombol ke atas tidak menutupi kaki tabel di akhir halaman */
+html[data-sematan] main { padding-bottom: 4.5rem; }

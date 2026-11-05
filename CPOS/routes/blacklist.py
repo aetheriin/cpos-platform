@@ -4,6 +4,7 @@ hak Setujui, tanpa penyetuju sama sekali langsung berlaku. Data blacklist tidak 
 from datetime import date
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
+from utils.hak_akses import lihat, MENU_ORANG
 from utils.db_blacklist import (TIPE_VALID, get_riwayat_blacklist, cari_target, tambah_blacklist, get_target_personel,
                                 get_surat_blacklist, lampirkan_surat, nama_target, get_blacklist, cabut_blacklist,
                                 info_kendaraan, info_supplier, mitra_aktif)
@@ -24,6 +25,7 @@ blacklist_bp = Blueprint('blacklist', __name__)
 
 @blacklist_bp.route("/api/blacklist")
 @login_required
+@lihat(*MENU_ORANG)
 def blacklist_riwayat():
     tipe = request.args.get("tipe", "").upper()
     status = request.args.get("status", "AKTIF").upper()
@@ -36,6 +38,7 @@ def blacklist_riwayat():
 
 @blacklist_bp.route("/api/blacklist/jalur")
 @login_required
+@lihat(*MENU_ORANG)
 def blacklist_jalur():
     """Pratinjau jalur persetujuan untuk kategori target (form Request)."""
     jenis = request.args.get("jenis", "BLACKLIST_TAMBAH")
@@ -48,6 +51,7 @@ def blacklist_jalur():
 
 @blacklist_bp.route("/api/blacklist/info/<tipe>/<int:id_target>")
 @login_required
+@lihat(*MENU_ORANG)
 def blacklist_info(tipe, id_target):
     """Surat & penetap blacklist (banner peringatan Form Security). Blacklist berlaku di semua area."""
     tipe = tipe.upper()
@@ -58,6 +62,7 @@ def blacklist_info(tipe, id_target):
 
 @blacklist_bp.route("/api/blacklist/cari-target")
 @login_required
+@lihat(*MENU_ORANG)
 def blacklist_cari_target():
     tipe = request.args.get("tipe", "PERSONEL").upper()
     kata = request.args.get("q", "").strip()

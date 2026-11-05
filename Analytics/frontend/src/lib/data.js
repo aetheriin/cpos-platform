@@ -114,6 +114,12 @@ export function periksaPeriode(mulai, akhir, maks) {
 }
 
 export const jamDari = (iso) => new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+// Hari ini cukup jamnya; data dari hari lain perlu tanggalnya supaya tidak dikira baru
+export const waktuDari = (iso) => {
+  const w = new Date(iso)
+  const hariIni = w.toDateString() === new Date().toDateString()
+  return hariIni ? `hari ini ${jamDari(iso)}` : `${w.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} ${jamDari(iso)}`
+}
 
 // Dua desimal untuk angka kecil seperti PO partial: 0,65% tidak boleh jadi 0,7%
 const duaDesimal = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })

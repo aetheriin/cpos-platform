@@ -3,8 +3,8 @@
 {% block title %}Harga CPO & Kernel · CPOS{% endblock %}
 {% block info_bar %}{% endblock %}{% block info_bar_script %}{% endblock %}
 {% block tab_header %}
-{% call judul_halaman('Harga CPO & Kernel', 'Harga dan data produksi harian per perusahaan (sama dengan Isi Harga di Dashboard).', 'fa-tags') %}
-    {% if hak.tambah or hak.ubah %}<button type="button" class="btn-primary" data-on-click="bukaHarga"><i class="fa-solid fa-plus"></i> Isi Harga</button>{% endif %}
+{% call judul_halaman('Harga CPO & Kernel', 'Harga dan data produksi harian per perusahaan.', 'fa-tags') %}
+    {% if hak.tambah or hak.ubah %}<button type="button" id="rkTombolIsiHarga" class="btn-primary" aria-haspopup="dialog" aria-controls="modalRkHarga"><i class="fa-solid fa-plus"></i> Isi Harga</button>{% endif %}
 {% endcall %}
 {% endblock %}
 {% block tab_content %}
@@ -33,22 +33,38 @@
 </div>
 {% endblock %}
 {% block modals %}
-<div id="modalRkHarga" class="modal-overlay"><div class="modal-box">
+<div id="modalRkHarga" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="rkHargaJudul"><div class="modal-box modal-box-lg">
   <div class="modal-header"><h3 id="rkHargaJudul" class="font-bold">Isi Harga</h3><button type="button" data-on-click="closeModal" data-arg="modalRkHarga" title="Tutup"><i class="fa-solid fa-xmark"></i></button></div>
-  <div class="p-6 grid grid-cols-2 gap-3">
-    <div class="col-span-2"><label class="field-label" for="rkHargaCompany">Perusahaan</label><select id="rkHargaCompany" class="input-field">
-      {% for c in company %}<option value="{{ c.id_company }}">{{ c.id_company }} · {{ c.nama }}</option>{% endfor %}</select></div>
-    <div class="col-span-2"><label class="field-label" for="rkHargaTanggal">Tanggal</label><input type="date" id="rkHargaTanggal" class="input-field"></div>
-    {% for label, kunci, ph in [('Harga CPO (Rp/kg)', 'harga_cpo', '14.250'), ('Harga Kernel (Rp/kg)', 'harga_kernel', '11.800'), ('OER CPO (%)', 'oer_cpo', '22,4'), ('Biaya Olah (Rp/kg TBS)', 'biaya_olah', '625')] %}
-    <div><label class="field-label" for="rkHarga_{{ kunci }}">{{ label }}</label><input type="number" step="any" min="0" id="rkHarga_{{ kunci }}" class="input-field" placeholder="{{ ph }}"></div>
-    {% endfor %}
-    <div class="col-span-2"><label class="field-label" for="rkHarga_qty_rsi">Qty RSI (ton) <span class="text-slate-400 font-normal">(opsional)</span></label><input type="number" step="any" min="0" id="rkHarga_qty_rsi" class="input-field" placeholder="86,5"></div>
-    <p class="col-span-2 field-hint">Tanggal yang sudah ada harganya akan diperbarui.</p>
+  <div class="p-6">
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="field-label" for="rkHargaCompany">Perusahaan</label><select id="rkHargaCompany" class="input-field" required>
+        <option value="">Pilih perusahaan</option>{% for c in company %}<option value="{{ c.id_company }}">{{ c.id_company }} · {{ c.nama }}</option>{% endfor %}</select></div>
+      <div><label class="field-label" for="rkHargaTanggal">Tanggal</label><input type="date" id="rkHargaTanggal" class="input-field" required></div>
+      {% for label, kunci, ph, batas in [('Harga CPO (Rp/kg)', 'harga_cpo', '14.250', '1000000'), ('Harga Kernel (Rp/kg)', 'harga_kernel', '11.800', '1000000'), ('OER CPO (%)', 'oer_cpo', '22,4', '100'), ('Biaya Olah (Rp/kg TBS)', 'biaya_olah', '625', '1000000')] %}
+      <div><label class="field-label" for="rkHarga_{{ kunci }}">{{ label }}</label><input type="number" step="any" min="0" max="{{ batas }}" id="rkHarga_{{ kunci }}" class="input-field" placeholder="{{ ph }}" required></div>
+      {% endfor %}
+      <div><label class="field-label" for="rkHarga_qty_rsi">Qty RSI (ton) <span class="text-slate-400 font-normal">(opsional)</span></label><input type="number" step="any" min="0" max="1000000000" id="rkHarga_qty_rsi" class="input-field" placeholder="86,5"></div>
+    </div>
+    <div class="mt-5">
+      <div class="flex items-center justify-between mb-2"><h4 class="font-semibold">Daftar sementara</h4><span id="rkJumlahSementara" class="text-xs text-slate-500">0 data</span></div>
+      <div class="overflow-x-auto border rounded-lg">
+        <table class="w-full text-left text-sm">
+          <thead class="table-header-row"><tr><th class="table-cell">Perusahaan</th><th class="table-cell">Tanggal</th><th class="table-cell text-right">Harga CPO</th><th class="table-cell text-right">Harga Kernel</th><th class="table-cell text-right">OER CPO</th><th class="table-cell text-right">Biaya Olah</th><th class="table-cell text-right">Qty RSI</th><th class="table-cell text-right">Aksi</th></tr></thead>
+          <tbody id="rkHargaSementara" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+      <p class="field-hint mt-2">Tambah setiap perusahaan ke daftar sementara. Data baru disimpan ke daftar harga setelah tombol Simpan Semua ditekan.</p>
+    </div>
   </div>
-  <div class="px-6 pb-6 flex justify-end gap-2"><button type="button" class="btn-secondary" data-on-click="closeModal" data-arg="modalRkHarga">Batal</button>
-    <button type="button" class="btn-primary" data-on-click="simpanHarga" data-arg="$el"><i class="fa-solid fa-floppy-disk"></i> Simpan Harga</button></div>
+  <div class="px-6 pb-6 flex justify-between gap-2">
+    <button type="button" class="btn-secondary" data-on-click="closeModal" data-arg="modalRkHarga">Tutup</button>
+    <div class="flex gap-2">
+      <button type="button" class="btn-secondary" data-on-click="tambahHargaSementara"><i class="fa-solid fa-plus"></i> Simpan ke Daftar</button>
+      <button type="button" id="rkSimpanSemuaHarga" class="btn-primary" data-on-click="simpanHarga" data-arg="$el" disabled><i class="fa-solid fa-floppy-disk"></i> Simpan Semua</button>
+    </div>
+  </div>
 </div></div>
 {% endblock %}
 {% block extra_scripts %}
-<script defer src="{{ url_for('rekapin.static', filename='rekapin/harga.js') }}"></script>
+<script defer src="{{ url_for('rekapin.static', filename='rekapin/harga.js', v=2) }}"></script>
 {% endblock %}

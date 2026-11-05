@@ -111,6 +111,27 @@ def simpan(id_company, tanggal, nilai, qty_rsi):
         conn.close()
 
 
+def simpan_banyak(items):
+    """Simpan beberapa baris harga dalam satu transaksi."""
+    conn = _koneksi()
+    try:
+        cursor = conn.cursor()
+        for id_company, tanggal, nilai, qty_rsi in items:
+            cursor.execute(f"""UPDATE {_tabel()} SET harga_cpo = ?, harga_kernel = ?, oer_cpo = ?, biaya_olah = ?, qty_rsi = ?
+                               WHERE {_kode()} = ? AND CAST(tanggal AS DATE) = ?""",
+                           *nilai, qty_rsi, id_company, tanggal)
+            if cursor.rowcount == 0:
+                cursor.execute(f"""INSERT INTO {_tabel()} (company, tanggal, harga_cpo, harga_kernel, oer_cpo, biaya_olah, qty_rsi)
+                                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                               id_company, tanggal, *nilai, qty_rsi)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
 def hapus(id_company, tanggal):
     conn = _koneksi()
     try:

@@ -16,14 +16,17 @@ const JENIS = [
   { kunci: 'perusahaan', nama: 'Perusahaan' },
   { kunci: 'tahun', nama: 'Tahun' },
   { kunci: 'bulan', nama: 'Bulan' },
-  { kunci: 'mata_uang', nama: 'Mata Uang' },
+  { kunci: 'mata_uang', nama: 'Mata uang' },
   { kunci: 'kategori', nama: 'Kategori' },
 ]
 const TAB = [
-  { kunci: 'po', nama: 'Semua PO', ket: (h) => `PO tidak void yang dibuat ${tglLengkap(h.periode.mulai)} sampai ${tglLengkap(h.periode.akhir)}, nilai terbesar di atas.` },
+  { kunci: 'po', nama: 'Semua PO', ket: (h) => `PO yang dibuat ${tglLengkap(h.periode.mulai)} sampai ${tglLengkap(h.periode.akhir)}.` },
 ]
 const miliar = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 })
-const rp = (v) => `Rp ${miliar.format(v / 1e9)} M`
+const dua = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const rp = (v) => `Rp${miliar.format(v / 1e9)} miliar`
+// Pendek supaya ukuran angkanya sama dengan kartu lain; nilai lengkap di catatan kartu
+const rpSingkat = (v) => (v >= 1e12 ? `Rp${dua.format(v / 1e12)} T` : `Rp${miliar.format(v / 1e9)} M`)
 const UKURAN = [['po', 'Jumlah PO'], ['nilai', 'Nilai']]
 
 function PilihUkuran({ nilai, onUbah }) {
@@ -62,25 +65,25 @@ export default function DashboardPoAmt({ dataId, onDataHilang }) {
         {data && (
           <div className={memuat ? 'space-y-4 opacity-60 transition-opacity' : 'space-y-4 transition-opacity'}>
             <GridKartu kolom={3}>
-              <Kartu judul="Total Nilai PO" nilai={rp(kpi.nilai)} />
+              <Kartu judul="Total nilai PO" nilai={rpSingkat(kpi.nilai)} catatan={kpi.nilai >= 1e12 ? rp(kpi.nilai) : undefined} />
               <Kartu judul="Jumlah PO" nilai={angka.format(kpi.po)} />
-              <Kartu judul="PO di Bawah 1 Juta" nilai={angka.format(kecil.po)}
+              <Kartu judul="PO di bawah Rp1 juta" nilai={angka.format(kecil.po)}
                 catatan={`${formatPersen(kecil.pct_po)} dari total PO, ${formatPersen(kecil.pct_nilai)} dari total nilai`} />
             </GridKartu>
 
             <KisiGrafik>
               <Petak padat="lg:col-span-6">
-                <KartuGrafik judul="Persentase Jumlah dan Nilai PO per Kategori" perbesar>
+                <KartuGrafik judul="Persentase jumlah dan nilai PO per kategori" perbesar>
                   <PoNilaiPersen data={data.kategori} onPilih={pilihKategori} />
                 </KartuGrafik>
               </Petak>
               <Petak padat="lg:col-span-6">
-                <KartuGrafik judul="Jumlah dan Nilai PO per Kategori" perbesar>
+                <KartuGrafik judul="Jumlah dan nilai PO per kategori" perbesar>
                   <PoNilai data={data.kategori} onPilih={pilihKategori} />
                 </KartuGrafik>
               </Petak>
               <Petak padat="lg:col-span-6">
-                <KartuGrafik judul={`${ukuranSeri === 'nilai' ? 'Nilai' : 'Jumlah'} PO per Bulan`} perbesar
+                <KartuGrafik judul={`${ukuranSeri === 'nilai' ? 'Nilai' : 'Jumlah'} PO per bulan`} perbesar
                   aksi={<>
                     <Select otomatis kecil aria-label="Kategori" value={kategoriSeri} onChange={(e) => setKategoriSeri(e.target.value)}>
                       {data.nama_kategori.map((k, i) => <option key={k} value={i}>{k}</option>)}
@@ -93,7 +96,7 @@ export default function DashboardPoAmt({ dataId, onDataHilang }) {
                 </KartuGrafik>
               </Petak>
               <Petak padat="lg:col-span-6">
-                <KartuGrafik judul={`${ukuran === 'nilai' ? 'Nilai' : 'Jumlah'} PO Antar Tahun`} perbesar aksi={<PilihUkuran nilai={ukuran} onUbah={setUkuran} />}>
+                <KartuGrafik judul={`${ukuran === 'nilai' ? 'Nilai' : 'Jumlah'} PO antartahun`} perbesar aksi={<PilihUkuran nilai={ukuran} onUbah={setUkuran} />}>
                   <BandingTahun data={data.banding_tahun} ukuran={ukuran} format={formatUkuran} />
                 </KartuGrafik>
               </Petak>

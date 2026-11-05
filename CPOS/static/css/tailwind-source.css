@@ -477,3 +477,69 @@ html.dark option, html.dark optgroup { background-color: #121a2b; color: #e2e8f0
 /* Teks abu paling muda terlalu pucat: di mode terang digelapkan, di mode gelap diterangkan. :where supaya kelas hover dan aktif tetap menang */
 :where(html:not(.dark)) :is(.text-slate-300, .text-slate-400, .sidebar-sub-jumlah, .kpi-tanggal) { color: #64748b; }
 html.dark :is(.text-slate-300, .sidebar-sub-jumlah) { color: #94a3b8; }
+
+/* Pembelian TBS Daily, Weekly, Monthly: tabel ringkas tanpa scroll tegak; tabel lebar tetap bisa digeser mendatar */
+.tbs-harian .section-box .section-body:has(> table) { max-height: none; overflow-x: auto; overflow-y: hidden; }
+.tbs-harian .tbs-tabel tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--kepala) 55%, transparent); }
+.tbs-harian .tbs-tabel tbody tr:hover td { background: var(--kepala); }
+.tbs-harian .tbs-tabel .tbs-ringkas td { background: var(--kepala); color: var(--kepala-teks); }
+.tbs-harian .tbs-tabel th, .tbs-harian .tbs-tabel td { border-color: color-mix(in srgb, var(--kepala-teks) 35%, transparent); }
+.tbs-harian .section-header { padding-top: 0.375rem; padding-bottom: 0.375rem; }
+.tbs-harian .tbs-tabel { font-size: 11px; line-height: 1.25; }
+.section-box.tbs-kartu .tbs-tabel > thead > tr > th { position: static; height: auto; padding: 3px 6px; font-size: 10px; letter-spacing: 0; }
+.tbs-harian .tbs-tabel th { position: static; height: auto; padding: 3px 6px; font-size: 10px; letter-spacing: 0; white-space: normal; }
+.tbs-harian .tbs-tabel td { padding: 2px 6px; }
+.tbs-daily { display: flex; flex-wrap: wrap; align-items: flex-start; }
+.tbs-daily .tbs-kartu { width: 520px; max-width: 100%; }
+
+/* Pembelian TBS Monthly: rincian dan Summary berdampingan, lebar mengikuti isi */
+.tbs-monthly { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 1rem; --tbs-grup: #f7e6cf; --tbs-kolom: #dcefdc; --tbs-a: #f3faf3; --tbs-b: #fff8ee; --tbs-ringkas: #ffeed6; --tbs-garis: #eadfce; --tbs-teks: #5b4632; }
+html.dark .tbs-monthly { --tbs-grup: #3a2f20; --tbs-kolom: #1f3527; --tbs-a: #17261d; --tbs-b: #2a2318; --tbs-ringkas: #3a2f20; --tbs-garis: #3f3a30; --tbs-teks: #e8d9c3; }
+.tbs-monthly .tbs-kartu { width: fit-content; max-width: 100%; border-top: 1px solid var(--tbs-garis); border-radius: 1rem; overflow: hidden; }
+.tbs-monthly .tbs-kartu .section-header { background: var(--tbs-b); padding-top: 0.875rem; padding-bottom: 0.875rem; }
+.tbs-monthly .tbs-kartu .section-header-text::after { display: none; }
+.tbs-monthly .tbs-tabel { font-size: 11px; width: auto; }
+.tbs-monthly .section-box.tbs-kartu .tbs-tabel > thead > tr > th { background: var(--tbs-kolom); color: var(--tbs-teks); padding: 10px 12px; font-size: 11px; white-space: nowrap; }
+.tbs-monthly .section-box.tbs-kartu .tbs-tabel > thead > tr.tbs-grup > th { background: var(--tbs-grup); }
+.tbs-monthly .tbs-tabel td { padding: 10px 12px; }
+.tbs-monthly .tbs-tabel th, .tbs-monthly .tbs-tabel td { border-color: var(--tbs-garis); }
+.tbs-monthly .tbs-tabel tbody tr:nth-child(odd) td { background: var(--tbs-a); }
+.tbs-monthly .tbs-tabel tbody tr:nth-child(even) td { background: var(--tbs-b); }
+.tbs-monthly .tbs-tabel tbody tr:hover td { background: var(--tbs-grup); }
+.tbs-monthly .tbs-tabel .tbs-ringkas td, .tbs-monthly .tbs-tabel tbody tr.tbs-ringkas:nth-child(n) td { background: var(--tbs-ringkas); color: var(--tbs-teks); }
+/* Warna Pembelian TBS per perusahaan: SUN kuning, SJN oren */
+.tbs-kartu[data-company="SUN"] { --aksen: #CA9A04; --kepala: #FEF3C7; --kepala-teks: #713F12; }
+.tbs-kartu[data-company="SJN"] { --aksen: #EA580C; --kepala: #FFEDD5; --kepala-teks: #7C2D12; }
+html.dark .tbs-kartu[data-company="SUN"] { --aksen: #FACC15; --kepala: #3a3110; --kepala-teks: #FDE68A; }
+html.dark .tbs-kartu[data-company="SJN"] { --aksen: #FB923C; --kepala: #3b2110; --kepala-teks: #FED7AA; }
+.tbs-monthly .tbs-kartu[data-company="SUN"] { --tbs-grup: #fde68a; --tbs-kolom: #fef3c7; --tbs-a: #fffbeb; --tbs-b: #fefce8; --tbs-ringkas: #fde68a; --tbs-garis: #f0e2a8; --tbs-teks: #713f12; }
+.tbs-monthly .tbs-kartu[data-company="SJN"] { --tbs-grup: #fed7aa; --tbs-kolom: #ffedd5; --tbs-a: #fff7ed; --tbs-b: #fffaf5; --tbs-ringkas: #fed7aa; --tbs-garis: #f3d9c0; --tbs-teks: #7c2d12; }
+html.dark .tbs-monthly .tbs-kartu[data-company="SUN"] { --tbs-grup: #4a3f12; --tbs-kolom: #3a3110; --tbs-a: #2a2410; --tbs-b: #231e0e; --tbs-ringkas: #4a3f12; --tbs-garis: #4f4620; --tbs-teks: #fde68a; }
+html.dark .tbs-monthly .tbs-kartu[data-company="SJN"] { --tbs-grup: #4d2b14; --tbs-kolom: #3b2110; --tbs-a: #2c1a0e; --tbs-b: #24160c; --tbs-ringkas: #4d2b14; --tbs-garis: #54331d; --tbs-teks: #fed7aa; }
+/* Daily: kolom sama lebar, kartu sejajar di atas */
+.tbs-daily { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 520px)); gap: 0.75rem; align-items: start; justify-content: start; }
+.tbs-daily .tbs-kartu { width: 100%; border-radius: 0.75rem; overflow: hidden; }
+.tbs-daily .tbs-tabel { width: 100%; }
+.tbs-daily .section-header { gap: 0.5rem; padding-left: 0.75rem; padding-right: 0.5rem; }
+.tbs-daily .section-header .btn-sm { padding: 0.125rem 0.5rem; white-space: nowrap; }
+
+/* Daily: grid dua kolom selebar halaman; satu kolom di layar sempit */
+.tbs-daily { grid-template-columns: repeat(2, minmax(0, 1fr)); justify-content: stretch; align-items: stretch; }
+.tbs-daily .tbs-kartu { height: 100%; }
+@media (max-width: 900px) { .tbs-daily { grid-template-columns: minmax(0, 1fr); } }
+
+/* Tombol ke atas: warna utama supaya terlihat di atas halaman putih. Sama dengan KembaliKeAtas.jsx di Analytics */
+#tombolKeAtas { background-color: #127cbf; border-color: #127cbf; color: #fff; }
+#tombolKeAtas:hover { background-color: #0d66a0; border-color: #0d66a0; }
+/* Agak transparan supaya isi di bawahnya tetap terbaca */
+#tombolKeAtas { opacity: 0.7; }
+#tombolKeAtas:hover, #tombolKeAtas:focus-visible { opacity: 1; }
+
+/* Kursor tangan hanya untuk yang bisa diklik. :where tanpa bobot, jadi kelas kursor khusus tetap menang. Isian teks tetap kursor teks. */
+:where(button, a[href], summary, select, [role="button"], [role="tab"], [role="menuitem"], [role="option"],
+       input[type="checkbox"], input[type="radio"], input[type="file"], input[type="range"], input[type="color"], input[type="submit"], input[type="button"],
+       label:has(> input[type="checkbox"]), label:has(> input[type="radio"])) { cursor: pointer; }
+:where(button, select, input):disabled, :where([aria-disabled="true"]) { cursor: not-allowed; }
+
+/* Ruang bawah supaya tombol ke atas tidak menutupi kaki tabel di akhir halaman */
+.konten:not(:has(.analytics-bingkai)) { padding-bottom: 4.5rem; }

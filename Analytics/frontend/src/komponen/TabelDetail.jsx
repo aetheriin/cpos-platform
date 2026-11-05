@@ -56,19 +56,6 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
           </Select>
         </label>
 
-        {onEkspor && (
-          <button
-            type="button"
-            onClick={onEkspor}
-            disabled={!hasil || hasil.total === 0 || mengekspor}
-            aria-busy={mengekspor}
-            title={hasil ? `Unduh ${angka.format(jumlahEkspor)} baris yang cocok dengan filter, pencarian, dan urutan saat ini (bukan hanya halaman ini)` : undefined}
-            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-          >
-            <IkonUnduh className="h-4 w-4" />
-            {mengekspor ? 'Menyiapkan...' : 'Export Excel'}
-          </button>
-        )}
       </div>
 
       {dipotong && (
@@ -89,11 +76,26 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
           <TabelBaris kolom={hasil.kolom} baris={hasil.baris} urut={hasil.urut} arah={hasil.arah} onUrut={hasil.bisa_urut === false ? undefined : onUrut} onPilihBaris={onPilihBaris} terpilih={barisTerpilih} />
 
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
-            <span>
-              {hasil.total === 0
-                ? 'Tidak ada baris.'
-                : `Menampilkan ${angka.format(dari)}–${angka.format(sampai)} dari ${angka.format(hasil.total)} baris`}
-              {hasil.cari && hasil.total !== hasil.total_semua ? ` (hasil pencarian, dari ${angka.format(hasil.total_semua)} baris)` : ''}
+            <span className="inline-flex flex-wrap items-center gap-3">
+              <span>
+                {hasil.total === 0
+                  ? 'Tidak ada baris.'
+                  : `Menampilkan ${angka.format(dari)}–${angka.format(sampai)} dari ${angka.format(hasil.total)} baris`}
+                {hasil.cari && hasil.total !== hasil.total_semua ? ` (hasil pencarian, dari ${angka.format(hasil.total_semua)} baris)` : ''}
+              </span>
+              {onEkspor && (
+                <button
+                  type="button"
+                  onClick={onEkspor}
+                  disabled={!hasil || hasil.total === 0 || mengekspor}
+                  aria-busy={mengekspor}
+                  title={hasil ? `Unduh ${angka.format(jumlahEkspor)} baris yang cocok dengan filter, pencarian, dan urutan saat ini (bukan hanya halaman ini)` : undefined}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                >
+                  <IkonUnduh className="h-4 w-4 text-emerald-600" />
+                  {mengekspor ? 'Menyiapkan...' : 'Excel'}
+                </button>
+              )}
             </span>
             <span className="inline-flex items-center gap-2">
               <button

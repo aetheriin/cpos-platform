@@ -24,3 +24,11 @@ Sesudah terpasang
 - Memperbarui aplikasi: ekstrak zip versi baru ke folder yang sama (timpa), lalu jalankan pasang.bat lagi.
 - Menghentikan sementara: Task Scheduler > CPOS Platform > End.
 - Mencopot: klik kanan deploy\copot.bat > Run as administrator.
+
+
+HTTPS (supaya unduhan Excel tidak diblokir browser)
+1. Letakkan caddy.exe di folder deploy.
+2. Sebagai Administrator: powershell -ExecutionPolicy Bypass -File pasang_https.ps1 -IpServer <IP server> -Akar <folder aplikasi> -Port 8080
+3. Restart CPOS dan Analytics.
+4. Pasang root.crt yang ditampilkan skrip ke Trusted Root di tiap PC pengguna. Firefox: aktifkan security.enterprise_roots.enabled.
+5. Pengguna membuka https://<IP server>/ . Alamat http port lama tidak lagi terbuka dari jaringan.

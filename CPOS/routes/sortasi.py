@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from utils.hak_akses import lihat, MENU_OPERASI
 from utils.area import area_data
 from flask_login import login_required, current_user
 from utils.db_utils import simpan_sortasi, get_history_umum, cari_transaksi_aktif
@@ -41,5 +42,6 @@ def sortasi_simpan():
 
 @sortasi_bp.route("/api/history/sortasi")
 @login_required
+@lihat(*MENU_OPERASI)
 def history_sortasi():
     return jsonify(get_history_umum('sortasi', id_area=area_data(current_user.id)))

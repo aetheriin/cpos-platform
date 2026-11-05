@@ -27,7 +27,7 @@ export default function TabelBaris({ kolom, baris, urut, arah, onUrut, onPilihBa
   const awalGrup = (i) => bergrup && i > 0 && kolom[i].grup !== kolom[i - 1].grup ? 'border-l border-slate-300 ' : ''
   return (
     <div className="max-h-[30rem] overflow-auto rounded-lg border border-slate-200">
-      <table className="w-full border-collapse text-xs">
+      <table className="w-full border-collapse text-sm">
         <thead className="sticky top-0 z-10 bg-slate-50">
           {bergrup && (
             <tr>

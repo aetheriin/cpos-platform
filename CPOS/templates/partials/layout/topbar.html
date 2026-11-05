@@ -32,9 +32,6 @@
             <i class="fa-regular fa-moon tema-ikon-gelap"></i><i class="fa-regular fa-sun tema-ikon-terang"></i>
         </button>
         {% if not current_user.is_admin %}
-        {% if boleh('FORM_SECURITY', 'tambah') %}
-        <a href="{{ url_for('main.weighbridge', view='form', tab='security') }}" class="btn-primary btn-sm whitespace-nowrap"><i class="fa-solid fa-scale-balanced"></i> Tiket Baru</a>
-        {% endif %}
         {# Notifikasi (mis. DO melebihi kuota) untuk level yang punya hak menu terkait; diisi notifikasi.js #}
         <div class="relative" data-henti-klik>
             <button type="button" id="btnNotif" data-on-click="bukaNotifikasi" class="sidebar-ikon-btn relative" title="Notifikasi">

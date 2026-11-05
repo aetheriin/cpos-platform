@@ -108,7 +108,9 @@ def pasang_cookie(app):
     def info_sesi():
         from utils import hak_akses, alur, kolom_wajib
         from utils.versi import versi_aplikasi
-        return {"sesi_idle_detik": pengaturan.nilai("SESI_IDLE_MENIT") * 60, "status_tiket": alur.daftar_status,
+        mulai = session.get("_mulai")
+        sisa = max(0, mulai + pengaturan.nilai("SESI_MAKS_JAM") * 3600 - int(time.time())) if mulai else 0
+        return {"sesi_idle_detik": pengaturan.nilai("SESI_IDLE_MENIT") * 60, "sesi_sisa_detik": sisa, "status_tiket": alur.daftar_status,
                 "kolom_wajib": kolom_wajib.per_form_html,
                 "boleh": hak_akses.boleh, "boleh_lihat": hak_akses.boleh_lihat, "tab_lihat": hak_akses.tab_lihat,
                 "menu_sidebar": hak_akses.menu_sidebar, "navbar": hak_akses.navbar, "remah_menu": hak_akses.remah_menu,
@@ -119,7 +121,7 @@ def mulai_sesi(user, sesi_versi=0):
     """Dipanggil tepat setelah login_user(): tanda waktu, versi sesi (paksa keluar), daftar sesi aktif."""
     sekarang = int(time.time())
     session.update(_aktif=sekarang, _mulai=sekarang, _versi=sesi_versi, _sid=sesi_aktif.sid_baru())
-    sesi_aktif.catat(session["_sid"], user, request.remote_addr, request.user_agent.string)
+    sesi_aktif.catat(session["_sid"], user, sesi_aktif.ip_klien(request), request.user_agent.string)
     return session["_sid"]
 
 
@@ -149,9 +151,7 @@ def pasang_sesi_idle(app):
         aktif = request.path not in PATH_POLLING
         if aktif:
             session["_aktif"] = sekarang
-        if "_sid" not in session:              # sesi dari sebelum fitur ini ada
-            session["_sid"] = sesi_aktif.sid_baru()
-        sesi_aktif.catat(session["_sid"], current_user, request.remote_addr, request.user_agent.string,
+        sesi_aktif.catat(session["_sid"], current_user, sesi_aktif.ip_klien(request), request.user_agent.string,
                          login=session.get("_mulai"), aktif=aktif)
         return None
 

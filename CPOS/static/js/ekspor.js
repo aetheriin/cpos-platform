@@ -48,13 +48,29 @@ function eksporTabel(idTbody, format, judul) {
     else unduhBlob(buatXlsx(judul, data), namaFile(judul, 'xlsx'));
 }
 
+// Semua tabel laporan TBS dalam satu berkas: rincian, baris kosong, lalu judul dan isi tabel berikutnya (Summary)
+// company diisi: hanya tabel perusahaan itu
+function eksporSemuaTabel(format, judul, company) {
+    const tubuh = [...document.querySelectorAll('tbody[id^="body-tabel-tbs"]')]
+        .filter(b => !company || b.closest('.tbs-kartu')?.dataset.company === company);
+    const bagian = tubuh.map(b => dataTabel(b.id));
+    if (!bagian.length) return;
+    const nama = tubuh.map(b => b.closest('.tbs-kartu')?.dataset.company || '');
+    const banyakPt = new Set(nama).size > 1;       // Daily: tiap bagian diberi nama perusahaannya
+    const data = { kepala: bagian[0].kepala, baris: banyakPt ? [[nama[0]], ...bagian[0].baris] : [...bagian[0].baris] };
+    bagian.slice(1).forEach((b, i) => data.baris.push([], ...(banyakPt ? [[nama[i + 1]]] : []), b.kepala, ...b.baris));
+    judul = t(judul);
+    if (format === 'pdf') cetakTabelPdf(judul, data);
+    else unduhBlob(buatXlsx(judul, data), namaFile(judul, 'xlsx'));
+}
+
 function unduhBlob(blob, nama) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = nama;
     document.body.appendChild(a);
     a.click();
-    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 60000);   // Firefox butuh alamat ini lebih lama
 }
 
 // ---------- PDF (lewat cetak browser) ----------
@@ -94,7 +110,7 @@ function buatXlsx(judul, { kepala, baris }) {
     const sel = (v, r, c, gaya) => {
         const ref = `${kolomExcel(c)}${r}`;
         const n = gaya === 1 ? null : keAngka(v);
-        return n != null ? `<c r="${ref}" s="2"><v>${n}</v></c>`
+        return n != null ? `<c r="${ref}" s="${Number.isInteger(n) ? 2 : 3}"><v>${n}</v></c>`
             : `<c r="${ref}" t="inlineStr"${gaya ? ` s="${gaya}"` : ''}><is><t xml:space="preserve">${xmlAman(v)}</t></is></c>`;
     };
     const lebar = kepala.map((k, i) => Math.min(60, Math.max(k.length, ...baris.map(r => (r[i] || '').length)) + 2));
@@ -107,16 +123,16 @@ function buatXlsx(judul, { kepala, baris }) {
 ${baris.map((r, i) => `<row r="${i + 2}">${r.map((v, c) => sel(v, i + 2, c, 0)).join('')}</row>`).join('\n')}
 </sheetData>
 <autoFilter ref="A1:${kolomExcel(kepala.length - 1)}${baris.length + 1}"/>
+<ignoredErrors><ignoredError sqref="A1:${kolomExcel(kepala.length - 1)}${baris.length + 1}" numberStoredAsText="1"/></ignoredErrors>
 </worksheet>`;
     const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.##"/></numFmts>
 <fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
 <fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="FFE2E8F0"/></patternFill></fill></fills>
-<borders count="1"><border/></borders>
-<cellStyleXfs count="1"><xf/></cellStyleXfs>
-<cellXfs count="3"><xf/><xf fontId="1" fillId="2" applyFont="1" applyFill="1"/><xf numFmtId="164" applyNumberFormat="1"/></cellXfs>
+<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
     const namaSheet = xmlAman(judul.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31));

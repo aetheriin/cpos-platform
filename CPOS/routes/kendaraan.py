@@ -1,6 +1,7 @@
 from datetime import date
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
+from utils.hak_akses import lihat, MENU_KENDARAAN
 from utils.plat_utils import normalisasi_plat
 from utils.db_utils import (
     get_or_create_kendaraan, get_kendaraan_by_plat, get_driver_by_id,
@@ -41,6 +42,7 @@ def _tanggal(teks, wajib=False):
 
 @kendaraan_bp.route("/api/kendaraan")
 @login_required
+@lihat(*MENU_KENDARAAN)
 def kendaraan_detail():
     no_plat, error = normalisasi_plat(request.args.get("no_plat"))
     if error:

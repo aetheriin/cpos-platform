@@ -1,7 +1,7 @@
 import logging
 import os
 import threading
-from flask import Flask, jsonify, request, redirect, session
+from flask import Flask, g, jsonify, request, redirect, session
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
@@ -62,13 +62,22 @@ def load_user(user_id):
     if (row.sesi_versi or 0) != session.get("_versi", 0):
         log_keamanan("SESI_DICABUT", f"username={row.username}")
         return None
+    # Cookie lama (sudah logout) atau cookie yang disalin ke perangkat lain ditolak walau tanda tangannya sah
+    hasil = sesi_aktif.periksa(session.get("_sid"), row.id_user, sesi_aktif.ip_klien(request), request.user_agent.string)
+    if hasil:
+        log_keamanan("SESI_ASING" if hasil == "ASING" else "SESI_BERAKHIR", f"username={row.username}")
+        g.sesi_asing = hasil == "ASING"
+        return None
     return User.dari_row(row)
 
 @login_manager.unauthorized_handler
 def belum_login():
     # Sesi dicabut (perangkat lain / paksa keluar / reset password): alasannya ditampilkan di halaman login
     sid = session.get("_sid")
-    if sid:
+    if g.get("sesi_asing"):             # sesi pemilik aslinya tidak ikut diakhiri
+        session.clear()
+        session["_keluar"] = "PERANGKAT_BEDA"
+    elif sid:
         kode = sesi_aktif.alasan_berakhir(sid) or "DICABUT"
         sesi_aktif.hapus(sid, kode)
         session.clear()

@@ -3,6 +3,7 @@ import csv
 import io
 import json
 from flask import Blueprint, request, jsonify, Response
+from utils.hak_akses import izin
 from flask_login import login_required
 from utils.audit_utils import get_security_audit
 from utils.db_personel import get_riwayat_perubahan_personel
@@ -31,18 +32,21 @@ def _perubahan_personel(hari, batas=300):
 
 @audit_bp.route("/api/audit/security")
 @login_required
+@izin('FORM_SECURITY')
 def audit_security():
     return jsonify(get_security_audit(_hari()))
 
 
 @audit_bp.route("/api/audit/personel")
 @login_required
+@izin('FORM_SECURITY')
 def audit_personel():
     return jsonify(_perubahan_personel(_hari()))
 
 
 @audit_bp.route("/api/audit/export")
 @login_required
+@izin('FORM_SECURITY')
 def audit_export():
     """CSV aktivitas security + perubahan personel pada rentang yang dipilih (dibuka di Excel)."""
     hari = _hari()
@@ -59,5 +63,5 @@ def audit_export():
     for r in _perubahan_personel(hari, BATAS_EXPORT):
         ubah = ", ".join(f"{p['kolom']}: {p['lama'] or '-'} -> {p['baru'] or '-'}" for p in r["perubahan"])
         tulis.writerow([r["waktu"], r["id_personel"], r["aksi"], ubah, r["oleh"]])
-    return Response("﻿" + buf.getvalue(), mimetype="text/csv",
+    return Response("\ufeff" + buf.getvalue(), mimetype="text/csv",
                     headers={"Content-Disposition": f"attachment; filename=audit_log_{hari}_hari.csv"})

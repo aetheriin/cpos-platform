@@ -405,6 +405,7 @@ def _ringkas(p):
     r = p.ringkas()
     ds = gudang.ambil(p.data_id) if p.data_id else None
     r["catatan"] = ds.catatan if ds else {}
+    r["dimuat_pada"] = ds.dimuat_pada.isoformat(timespec="seconds") if ds else None
     return r
 
 
@@ -1031,7 +1032,11 @@ def ekspor_detail(
         ("Diekspor oleh", f"{user['nama']} ({user['username']})"),
         ("Diekspor pada", datetime.now().strftime("%d/%m/%Y %H:%M")),
     ]
-    isi = ekspor.buat_xlsx(hasil.get("judul") or jenis, hasil["kolom"], baris, info)
+    if lap.id == "cash_flow" and jenis == "rekap_giro":
+        awal, akhir = periode["mulai"][:7].replace("-", ""), periode["akhir"][:7].replace("-", "")
+        isi = ekspor.buat_xlsx_giro(hasil.get("judul") or jenis, baris, awal if awal == akhir else f"{awal}-{akhir}", info)
+    else:
+        isi = ekspor.buat_xlsx(hasil.get("judul") or jenis, hasil["kolom"], baris, info)
     nama = ekspor.nama_berkas(lap.id, jenis, ds.mulai, ds.akhir)
     log.info("Ekspor Excel %s/%s: %d baris oleh %s", lap.id, jenis, len(baris), user["username"])
     ket = [f"Tab {hasil.get('judul') or jenis}", f"{len(baris):,} baris".replace(",", "."),

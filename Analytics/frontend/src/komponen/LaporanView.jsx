@@ -1,6 +1,6 @@
 import { memo, useEffect, useState } from 'react'
 import { batalkanPekerjaan, mulaiMuat, statusPekerjaan } from '../api'
-import { jamDari, rentangTgl, tglLengkap } from '../lib/data'
+import { rentangTgl, tglLengkap, waktuDari } from '../lib/data'
 import { LaporanAktif } from '../lib/tampilan'
 import { IkonKalender, IkonSegarkan } from './Ikon'
 import { PopupPeriode } from './PanelPeriode'
@@ -44,7 +44,7 @@ export function BarAtas({ dataset, onGanti, onSegarkan, segar = null, onBatalSeg
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
         <span className="text-slate-600">
           Data tersedia {rentangTgl(dataset.mulai, dataset.akhir)}
-          {dataset.dimuat ? ` · dimuat jam ${jamDari(dataset.dimuat)}` : ' · memakai data yang sudah dimuat'}
+          {dataset.dimuat ? ` · diambil ${waktuDari(dataset.dimuat)}` : ' · memakai data yang sudah dimuat'}
         </span>
         <span className="inline-flex flex-wrap items-center gap-2">
           {segar && (
@@ -123,7 +123,7 @@ function LaporanView({ laporan, Dashboard, onStatus }) {
       dataId: p.data_id,
       mulai: p.mulai,
       akhir: p.akhir,
-      dimuat: baru ? new Date().toISOString() : null,
+      dimuat: p.dimuat_pada ?? (baru ? new Date().toISOString() : null),
       peringatan: p.catatan?.peringatan ?? [],
     })
     setFase('siap')

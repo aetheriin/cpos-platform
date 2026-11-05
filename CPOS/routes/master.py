@@ -5,6 +5,7 @@ from datetime import date
 from flask import Blueprint, render_template, request, jsonify, Response
 from flask_login import login_required, current_user
 
+from utils.hak_akses import lihat, MENU_KENDARAAN, MENU_MASTER
 from utils import db_master as db, db_admin, alur, log_aktivitas, kolom_wajib, db_referensi as ref, db_kurs
 from utils.plat_utils import normalisasi_plat
 from utils.galat_isian import GalatIsian, isi_galat
@@ -31,6 +32,7 @@ def master_halaman():
 
 @master_bp.route("/api/master/kendaraan")
 @login_required
+@lihat(*MENU_KENDARAAN)
 def kendaraan_daftar():
     return jsonify(db.daftar_kendaraan((request.args.get("cari") or "").strip().upper()[:20]))
 
@@ -116,6 +118,7 @@ def _catat(aksi, target, detail=None):
 
 @master_bp.route("/api/master/mitra")
 @login_required
+@lihat(*MENU_MASTER)
 def mitra_daftar():
     return jsonify([{**s, "created_at": s["created_at"].strftime("%Y-%m-%d") if s["created_at"] else None}
                     for s in db_admin.daftar_supplier()])
@@ -173,6 +176,7 @@ def mitra_aktif(id_supplier):
 
 @master_bp.route("/api/master/produk")
 @login_required
+@lihat(*MENU_MASTER)
 def produk_daftar():
     return jsonify(db_admin.daftar_produk())
 

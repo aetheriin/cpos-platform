@@ -1,6 +1,7 @@
 import logging
 from datetime import date, datetime
 from flask import Blueprint, request, jsonify
+from utils.hak_akses import lihat, MENU_OPERASI
 from utils.area import area_data
 from flask_login import login_required, current_user
 from utils.serial_reader import baca_status, reset_deteksi_stabil, wajib_kembali_nol
@@ -28,6 +29,7 @@ def timbang_status():
 
 @timbangan_bp.route("/api/timbang/reset-baseline", methods=["POST"])
 @login_required
+@izin('FORM_TIMBANGAN', 'tambah')
 def timbang_reset():
     j = jembatan_dipilih(request)
     if j:
@@ -63,6 +65,7 @@ HARI_HISTORY_MAKS = 30
 
 @timbangan_bp.route("/api/history-timbangan-supplier")
 @login_required
+@lihat(*MENU_OPERASI)
 def history_supplier():
     id_supplier = request.args.get("id_supplier")
     tanggal = None

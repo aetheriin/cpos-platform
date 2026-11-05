@@ -3,6 +3,7 @@ ubah = KTU / HO (tetapkan / kembalikan). Diatur di Admin › Hak Akses."""
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
 
+from utils.hak_akses import lihat, MENU_OPERASI
 from utils import db_kelebihan_do as db, notifikasi, pengaturan
 from utils.hak_akses import izin, boleh, halaman as lihat_halaman
 from utils.area import area_data
@@ -21,6 +22,7 @@ def halaman():
 
 @kelebihan_do_bp.route("/api/kelebihan-do")
 @login_required
+@lihat(*MENU_OPERASI)
 def daftar():
     status = (request.args.get("status") or "").upper()
     return jsonify(db.daftar(status if status in db.STATUS else None, id_area=area_data(current_user.id)))

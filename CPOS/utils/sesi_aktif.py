@@ -44,10 +44,34 @@ def catat(sid, user, ip, agen, login=None, aktif=True):
         _terakhir_tulis[sid] = sekarang
     waktu_login = datetime.fromtimestamp(login) if login else datetime.now()
     _jalankan("""MERGE UserSession AS t USING (SELECT ? AS sid) AS s ON t.SessionID = s.sid
-                 WHEN MATCHED THEN UPDATE SET LastActive = GETDATE(), IPAddress = ?, UserAgent = ?
+                 WHEN MATCHED THEN UPDATE SET LastActive = GETDATE()
                  WHEN NOT MATCHED THEN INSERT (SessionID, UserID, IPAddress, UserAgent, LoginDate, LastActive)
                                        VALUES (?, ?, ?, ?, ?, GETDATE());""",
-              sid, ip, (agen or "")[:200], sid, user.id, ip, (agen or "")[:200], waktu_login)
+              sid, sid, user.id, ip, (agen or "")[:200], waktu_login)
+
+
+def ip_klien(req):
+    """IP pemakai. Backend Analytics di server yang sama memanggil dari 127.0.0.1 dan membawa IP browser di X-Analytics-Ip.
+    Bukan X-Forwarded-For, karena waitress membuang header itu."""
+    ip = req.remote_addr
+    if ip in ("127.0.0.1", "::1"):
+        terusan = (req.headers.get("X-Analytics-Ip") or "").split(",")[0].strip()
+        return terusan or ip
+    return ip
+
+
+def periksa(sid, user_id, ip, agen):
+    """Cookie sesi disimpan di browser, jadi yang menentukan sesi masih berlaku adalah tabel UserSession.
+    None = sah. 'BERAKHIR' = sudah logout atau dicabut. 'ASING' = cookie dipakai di perangkat yang bukan tempat login."""
+    if not sid:
+        return "BERAKHIR"
+    rows = _jalankan("SELECT UserID AS id_user, IPAddress AS ip, UserAgent AS agen, EndDate AS akhir FROM UserSession WHERE SessionID = ?",
+                     sid, ambil=True)
+    if not rows or rows[0]["akhir"] is not None or rows[0]["id_user"] != user_id:
+        return "BERAKHIR"
+    if rows[0]["ip"] != ip or (rows[0]["agen"] or "") != (agen or "")[:200]:
+        return "ASING"
+    return None
 
 
 def hapus(sid, alasan="LOGOUT"):

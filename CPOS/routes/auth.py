@@ -2,6 +2,7 @@ from flask import Blueprint, request, render_template, redirect, session, jsonif
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from utils.auth import User
+from utils.hak_akses import halaman_awal_user
 from utils.db_utils import (password_pernah_dipakai, pesan_riwayat_password, get_user_by_username, catat_login_terakhir, get_password_hash, ganti_password_sendiri,
                             naikkan_sesi_versi)
 from utils.keamanan import log_keamanan, mulai_sesi, password_wajib_diganti
@@ -11,20 +12,25 @@ from utils.login_guard import sisa_kunci, catat_gagal, catat_berhasil
 auth_bp = Blueprint('auth', __name__)
 
 PESAN_KELUAR = {
-    "IDLE": "Sesi Anda berakhir karena tidak ada aktivitas. Silakan login ulang.",
-    "UMUR_MAKS": "Sesi Anda sudah terlalu lama. Silakan login ulang.",
+    "IDLE": "Anda keluar otomatis karena {idle} menit tidak ada aktivitas. Silakan login ulang.",
+    "UMUR_MAKS": "Anda keluar otomatis karena sudah {maks} jam sejak login. Silakan login ulang.",
     "PERANGKAT_LAIN": "Akun Anda login di perangkat lain, jadi sesi di perangkat ini diakhiri.",
     "PAKSA_KELUAR": "Sesi Anda diakhiri oleh admin.",
     "RESET_PASSWORD": "Password Anda direset admin. Silakan login dengan password baru.",
     "ROLE_DIUBAH": "Role Anda diubah admin. Silakan login ulang.",
     "NONAKTIF": "Akun Anda dinonaktifkan admin.",
     "GANTI_PASSWORD": "Password akun Anda diganti dari perangkat lain. Silakan login ulang.",
+    "PERANGKAT_BEDA": "Sesi ini dibuat di perangkat lain, atau alamat jaringan dan browser PC ini berubah sejak login. Silakan login ulang.",
+    "DICABUT": "Sesi Anda sudah tidak berlaku, biasanya karena akun Anda diubah admin. Silakan login ulang.",
+    "LOGOUT": "Sesi ini sudah diakhiri lewat tombol Keluar. Silakan login ulang.",
 }
 
 
 def _halaman_awal(user):
     """Halaman pertama setelah login, diatur per level (Admin › Hak Akses)."""
-    return user.halaman_awal or ("/admin" if user.is_admin else "/weighbridge")
+    if user.is_admin:
+        return user.halaman_awal or "/admin"
+    return halaman_awal_user(user) or "/tanpa-akses"
 
 
 def _pramuat_laporan(user):
@@ -54,11 +60,13 @@ def login():
 
     kode = session.pop("_keluar", None) or request.args.get("keluar") or ("IDLE" if request.args.get("habis") else None)
     info = PESAN_KELUAR.get(kode, "Sesi Anda berakhir. Silakan login ulang." if kode else None)
+    if info:
+        info = info.format(idle=pengaturan.nilai("SESI_IDLE_MENIT"), maks=pengaturan.nilai("SESI_MAKS_JAM"))
     if request.method == "GET":
         return render_template("auth/login.html", error=None, info=info)
 
     username = request.form.get("username", "").strip().upper()   # username selalu huruf besar
-    ip = request.remote_addr
+    ip = sesi_aktif.ip_klien(request)
     tunggu = sisa_kunci(username, ip)
     if tunggu:
         log_keamanan("LOGIN_TERKUNCI", f"username={username}")
@@ -90,6 +98,16 @@ def login():
     log_keamanan("LOGIN", f"username={row.username} level={row.role}")
     _pramuat_laporan(user)
     return redirect(_halaman_awal(user))
+
+
+@auth_bp.route("/tanpa-akses")
+@login_required
+def tanpa_akses():
+    """Akun sah tapi belum punya menu: tetap login, dengan tombol periksa ulang dan keluar."""
+    tujuan = _halaman_awal(current_user)
+    if tujuan != "/tanpa-akses":
+        return redirect(tujuan)
+    return render_template("auth/tanpa_akses.html")
 
 
 @auth_bp.route("/logout", methods=["POST"])

@@ -12,6 +12,7 @@ const UKURAN = [
 const WIDGET = new Set((document.getElementById('dataDashboard')?.dataset.widget || '').split(',').filter(Boolean));
 let hariDashboard = 30;
 let dataHarga = [];
+const OER_PERUSAHAAN = { YBS: 'oer_cpo_ybs', SUN: 'oer_cpo_sun', SJN: 'oer_cpo_sjn' };
 
 const pollingArus = new Poller(muatArus, 30000);
 const pollingSecurity = new Poller(muatSecurity, 30000);
@@ -157,11 +158,30 @@ function tampilkanTabelHarga() {
     </tr>`).join('') || barisKosong(bolehUbah ? 9 : 8, 'Belum ada data harga');
 }
 
-function bukaIsiHarga(tanggal) {
+async function bukaIsiHarga(tanggal) {
     const form = document.getElementById('formHarga');
     form.reset();
     const r = dataHarga.find(x => x.tanggal === tanggal);
-    isiForm(form, { ...(r || { tanggal: new Date().toISOString().slice(0, 10) }), company: companyHarga() });
+    const isi = { ...(r || { tanggal: new Date().toISOString().slice(0, 10) }) };
+    if (r) {
+        const oerFields = Object.entries(OER_PERUSAHAAN)
+            .filter(([, key]) => document.getElementById(`hrg_${key}`));
+        const riwayatPerusahaan = await Promise.all(oerFields.map(async ([company]) => {
+            const hasil = await ambilJson(`/api/dashboard/harga?hari=${Math.max(hariDashboard, 90)}&company=${encodeURIComponent(company)}`);
+            return { company, hasil };
+        }));
+        const gagal = riwayatPerusahaan.find(item => item.hasil.error || !Array.isArray(item.hasil));
+        if (gagal) {
+            tampilkanHasil(gagal.hasil.error ? gagal.hasil : { error: 'Data harga tidak dapat dimuat ulang.' });
+            return;
+        }
+        riwayatPerusahaan.forEach(({ company, hasil }) => {
+            const key = OER_PERUSAHAAN[company];
+            const baris = hasil.find(item => item.tanggal === r.tanggal);
+            if (baris) isi[key] = baris.oer_cpo;
+        });
+    }
+    isiForm(form, isi);
     openModal('modalHarga');
 }
 

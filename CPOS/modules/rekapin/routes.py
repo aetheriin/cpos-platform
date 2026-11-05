@@ -1,7 +1,10 @@
 """Halaman & API RekapIn. Hak: menu RK_* di Admin › Hak Akses (Lihat untuk halaman; Tambah / Ubah / Hapus /
 Setujui / Tolak / Selesai untuk aksi). Cakupan perusahaan & area mengikuti user CPOS yang login."""
-from datetime import date, timedelta
+from concurrent.futures import ThreadPoolExecutor
+import time
+from datetime import date, datetime, timedelta
 from calendar import monthrange
+import json
 
 import pyodbc
 from flask import render_template, request, jsonify, current_app
@@ -14,7 +17,7 @@ from utils import persetujuan
 from routes.dashboard import BATAS
 from utils.area import company_user
 from utils.db_organisasi import daftar_area, daftar_company
-from utils.db_dashboard import KOLOM, simpan_harga
+from utils.db_dashboard import simpan_harga_banyak
 from utils.hak_akses import izin, boleh, halaman as lihat_halaman, remah_menu
 
 def _company_rekap(user_id):
@@ -321,38 +324,62 @@ def _company_boleh(kode):
     return kode
 
 
-@rekapin_bp.route("/api/harga/simpan", methods=["POST"])
+@rekapin_bp.route("/api/harga/simpan-batch", methods=["POST"])
 @login_required
 @izin("RK_HARGA", "tambah", "ubah")
 @harga_sumber.tangani_galat
 def api_harga_simpan():
-    f = request.form
     try:
-        id_company = _company_boleh((f.get("company") or "").strip().upper())
-        tanggal = date.fromisoformat(f.get("tanggal", ""))
-    except ValueError:
-        return jsonify({"error": "Pilih perusahaan dan tanggal"}), 400
+        rows = json.loads(request.form.get("items") or "")
+    except (TypeError, ValueError):
+        return jsonify({"error": "Daftar harga sementara tidak valid"}), 400
+    if not isinstance(rows, list) or not rows:
+        return jsonify({"error": "Daftar harga sementara masih kosong"}), 400
+
+    companies = {c["id_company"].upper() for c in _company_rekap(current_user.id)}
+    items = []
+    pasangan = set()
     try:
-        teks_rsi = (f.get("qty_rsi") or "").strip().replace(",", ".")
-        qty_rsi = float(teks_rsi) if teks_rsi else None
-        if qty_rsi is not None and not 0 <= qty_rsi <= 1_000_000_000:
-            raise ValueError
-        nilai = []
-        for k in KOLOM:
-            v = float((f.get(k) or "").replace(",", "."))
-            if not BATAS[k][0] <= v <= BATAS[k][1]:
-                raise ValueError
-            nilai.append(v)
-    except ValueError:
-        return jsonify({"error": "Semua nilai wajib diisi angka yang wajar (OER 0 - 100 %)"}), 400
-    if tanggal > date.today():
-        return jsonify({"error": "Tanggal tidak boleh setelah hari ini"}), 400
-    ada = db.harga_ada(id_company, tanggal)
-    if not boleh("RK_HARGA", "ubah" if ada else "tambah"):
-        return jsonify({"error": f"Harga {id_company} {tanggal:%d-%m-%Y} sudah ada; Anda tidak punya hak mengubahnya" if ada
-                        else "Anda tidak punya hak menambah harga"}), 403
-    simpan_harga(id_company, tanggal, nilai, qty_rsi, current_user.id)
-    return jsonify({"message": f"Harga {id_company} {tanggal:%d-%m-%Y} berhasil disimpan"})
+        for row in rows:
+            if not isinstance(row, dict):
+                raise ValueError("Format data harga tidak valid")
+            id_company = str(row.get("company") or "").strip().upper()
+            if id_company not in companies:
+                raise ValueError("Perusahaan tidak valid")
+            tanggal = date.fromisoformat(str(row.get("tanggal") or ""))
+            if tanggal > date.today():
+                raise ValueError("Tanggal tidak boleh setelah hari ini")
+            key = (id_company, tanggal)
+            if key in pasangan:
+                raise ValueError(f"Perusahaan {id_company} dan tanggal {tanggal:%d-%m-%Y} tercatat lebih dari sekali")
+            pasangan.add(key)
+
+            nilai = []
+            for k in ("harga_cpo", "harga_kernel", "oer_cpo", "biaya_olah"):
+                value = row.get(k)
+                if isinstance(value, bool) or value is None or str(value).strip() == "":
+                    raise ValueError("Semua nilai harga wajib diisi")
+                number = float(str(value).replace(",", "."))
+                if not BATAS[k][0] <= number <= BATAS[k][1]:
+                    raise ValueError(f"Nilai {k} tidak valid")
+                nilai.append(number)
+
+            raw_qty = row.get("qty_rsi")
+            qty_rsi = None if raw_qty is None or str(raw_qty).strip() == "" else float(str(raw_qty).replace(",", "."))
+            if qty_rsi is not None and not 0 <= qty_rsi <= 1_000_000_000:
+                raise ValueError("Qty RSI tidak valid")
+            items.append((id_company, tanggal, nilai, qty_rsi))
+    except (TypeError, ValueError) as e:
+        return jsonify({"error": str(e) or "Tanggal atau nilai harga tidak valid"}), 400
+
+    for id_company, tanggal, _, _ in items:
+        ada = db.harga_ada(id_company, tanggal)
+        if not boleh("RK_HARGA", "ubah" if ada else "tambah"):
+            return jsonify({"error": f"Harga {id_company} {tanggal:%d-%m-%Y} sudah ada; Anda tidak punya hak mengubahnya" if ada
+                            else f"Anda tidak punya hak menambah harga untuk {id_company}"}), 403
+
+    simpan_harga_banyak(items, current_user.id)
+    return jsonify({"message": f"{len(items)} harga berhasil disimpan ke daftar harga"})
 
 
 @rekapin_bp.route("/api/harga/hapus", methods=["POST"])
@@ -416,6 +443,33 @@ def api_kategori_aktif(id_kategori):
 
 
 # ===== Laporan Pembelian TBS (prosedur ERP, modules/rekapin/erp.py) =====
+def _tbs_diambil(lap, daftar_param):
+    """Jam data ERP diambil. Hasil disimpan beberapa menit, jadi yang ditampilkan waktu tertua, bukan waktu halaman dibuka."""
+    waktu = [pramuat_tbs.waktu_ambil(lap["prosedur"], *p) for p in daftar_param]
+    tertua = min((w for w in waktu if w), default=time.time())
+    return datetime.fromtimestamp(tertua).strftime("%H:%M")
+
+
+def _tbs_semua_perusahaan(jenis, lap, kode, tanggal):
+    """Laporan Daily semua perusahaan, dijalankan bersamaan. Perusahaan yang gagal atau kosong tetap tampil dengan pesannya."""
+    def satu(comp):
+        try:
+            isi = laporan_tbs.susun_tabel(jenis, pramuat_tbs.jalankan(lap["prosedur"], *pramuat_tbs.param(jenis, comp, tanggal, tanggal)))
+        except pyodbc.Error:
+            current_app.logger.exception("Laporan TBS %s %s gagal", jenis, comp)
+            return [{"company": comp, "kosong": "Laporan gagal dimuat dari ERP."}]
+        return [{**t, "company": comp} for t in isi] or [{"company": comp, "kosong": "Tidak ada data pada tanggal ini."}]
+
+    aplikasi = current_app._get_current_object()
+
+    def dalam_konteks(comp):
+        with aplikasi.app_context():
+            return satu(comp)
+
+    with ThreadPoolExecutor(max_workers=len(kode)) as pool:
+        return [t for bagian in pool.map(dalam_konteks, kode) for t in bagian]
+
+
 @rekapin_bp.route("/tbs/<any(daily, weekly, monthly):jenis>")
 @login_required
 @lihat_halaman(lambda r: laporan_tbs.LAPORAN[r.view_args["jenis"]]["menu"])
@@ -437,6 +491,14 @@ def laporan(jenis):
         t_awal, t_akhir = date.fromisoformat(awal), date.fromisoformat(akhir)
     except ValueError:
         galat = "Tanggal laporan tidak valid."
+    if not galat and lap["periode"] == "daily":
+        if kode:
+            tabel = _tbs_semua_perusahaan(jenis, lap, kode, awal)
+        else:
+            galat = "Belum ada perusahaan yang dapat dipilih untuk laporan ini."
+        return _halaman("tbs", lap["menu"], jenis=jenis, lap=lap, company=company, pilih=pilih, awal=awal, akhir=akhir,
+                        tabel=tabel, galat=galat, nilai=laporan_tbs.tbs_report_value, tgl=laporan_tbs.web_date_format,
+                        diambil=_tbs_diambil(lap, [pramuat_tbs.param(jenis, c, awal, awal) for c in kode]))
     if not galat and pilih not in kode:
         galat = "Perusahaan tidak valid." if pilih else "Belum ada perusahaan yang dapat dipilih untuk laporan ini."
     elif not galat and t_awal > t_akhir:
@@ -448,4 +510,5 @@ def laporan(jenis):
             current_app.logger.exception("Laporan TBS %s gagal", jenis)
             galat = "Laporan gagal dimuat. Periksa koneksi database ERP (REKAPIN_ERP_CONNECTION_STRING) dan prosedur " + lap["prosedur"] + "."
     return _halaman("tbs", lap["menu"], jenis=jenis, lap=lap, company=company, pilih=pilih, awal=awal, akhir=akhir,
-                    tabel=tabel, galat=galat, nilai=laporan_tbs.tbs_report_value, tgl=laporan_tbs.web_date_format)
+                    tabel=tabel, galat=galat, nilai=laporan_tbs.tbs_report_value, tgl=laporan_tbs.web_date_format,
+                    diambil=_tbs_diambil(lap, [pramuat_tbs.param(jenis, pilih, awal, akhir)] if not galat else []))
