@@ -73,10 +73,10 @@ PILIHAN = {
     # Form tambah hanya menawarkan INTERNET (ada API) dan MANUAL (js/master/kurs.js); sisanya label asal kurs dari impor Excel
     "sumber_kurs": """SELECT id, label FROM (VALUES ('INTERNET', 'Internet'), ('MANUAL', 'Manual'), ('JISDOR', 'JISDOR Bank Indonesia'),
                       ('PAJAK', 'Kurs pajak (KMK)'), ('BANK', 'Kurs bank'), ('LAINNYA', 'Lainnya')) v (id, label)""",
-    "area": "SELECT CompAreaID AS id, CompID + ' · ' + AreaName AS label FROM CompanyArea WHERE Active = 1 ORDER BY CompID, AreaName",
+    "area": "SELECT CompAreaID AS id, CompID + ' · ' + AreaName AS label FROM CompanyArea WHERE Status = 1 ORDER BY CompID, AreaName",
     "bank": "SELECT BankAccountID AS id, BankName + ISNULL(' · ' + BankRegion, '') AS label FROM Bank WHERE Active = 1 ORDER BY BankName",
     "produk": "SELECT ProductID AS id, ProductName AS label FROM Product WHERE Active = 1 ORDER BY ProductName",
-    "perusahaan": "SELECT CompID AS id, CompID + ' · ' + CompName AS label FROM Company WHERE Active = 1 ORDER BY CompID",
+    "perusahaan": "SELECT CompID AS id, CompID + ' · ' + CompName AS label FROM Company WHERE Status = 1 ORDER BY CompID",
     "grup_supplier": "SELECT SupplierGroupID AS id, NameGroup AS label FROM SupplierGroup WHERE Active = 1 ORDER BY NameGroup",
     "rekening": """SELECT d.BankAccountDetailsID AS id, b.BankName + ' · ' + d.BankAccountCode + ISNULL(' · ' + d.BankName, '') AS label
                    FROM BankDetails d JOIN Bank b ON b.BankAccountID = d.BankAccountID WHERE d.Active = 1 ORDER BY b.BankName""",

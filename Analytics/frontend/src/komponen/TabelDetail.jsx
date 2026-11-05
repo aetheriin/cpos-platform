@@ -86,7 +86,7 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
 
       {hasil && (
         <div className={memuat ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
-          <TabelBaris kolom={hasil.kolom} baris={hasil.baris} urut={hasil.urut} arah={hasil.arah} onUrut={onUrut} onPilihBaris={onPilihBaris} terpilih={barisTerpilih} />
+          <TabelBaris kolom={hasil.kolom} baris={hasil.baris} urut={hasil.urut} arah={hasil.arah} onUrut={hasil.bisa_urut === false ? undefined : onUrut} onPilihBaris={onPilihBaris} terpilih={barisTerpilih} />
 
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
             <span>

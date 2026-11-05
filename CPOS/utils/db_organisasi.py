@@ -57,10 +57,10 @@ def _ganti_kode(cursor, tabel, kolom, lama, baru, kolom_unik=None):
 def daftar_company():
     """Perusahaan + nama area-areanya (label 'OFFICE, REFINERY')."""
     rows = _query("""SELECT c.CompID AS id_company, c.CompID AS kode, c.CompName AS nama, c.CompAddress AS alamat,
-                            c.Active AS is_active,
-                            (SELECT COUNT(*) FROM CompanyArea a WHERE a.CompID = c.CompID AND a.Active = 1) AS jumlah_area
-                     FROM Company c ORDER BY c.Active DESC, c.CompName""")
-    area = _query("SELECT CompID, AreaName FROM CompanyArea WHERE Active = 1 ORDER BY AreaCode, AreaName")
+                            c.Status AS is_active,
+                            (SELECT COUNT(*) FROM CompanyArea a WHERE a.CompID = c.CompID AND a.Status = 1) AS jumlah_area
+                     FROM Company c ORDER BY c.Status DESC, c.CompName""")
+    area = _query("SELECT CompID, AreaName FROM CompanyArea WHERE Status = 1 ORDER BY AreaCode, AreaName")
     for r in rows:
         r["label_area"] = ", ".join(x["AreaName"] for x in area if x["CompID"] == r["id_company"])
     return rows
@@ -89,16 +89,16 @@ def simpan_company(id_company, kode, nama, alamat):
 
 
 def set_aktif_company(id_company, aktif):
-    _ubah("UPDATE Company SET Active = ? WHERE CompID = ?", 1 if aktif else 0, id_company)
+    _ubah("UPDATE Company SET Status = ? WHERE CompID = ?", 1 if aktif else 0, id_company)
     _hapus_cache_area()
 
 
 # ===== MILL (tipe area untuk semua PT: 300 HO, 600 PKS, ...; IsHeadOffice = kantor pusat) =====
 def daftar_lokasi():
     return _query("""SELECT m.MillID AS id_lokasi, m.MillCode AS kode, m.MillName AS nama, m.Description AS keterangan,
-                            m.IsHeadOffice AS is_pusat, m.Active AS is_active,
-                            (SELECT COUNT(*) FROM CompanyArea a WHERE a.MillID = m.MillID AND a.Active = 1) AS jumlah_area
-                     FROM Mill m ORDER BY m.Active DESC, m.MillCode""")
+                            m.IsHeadOffice AS is_pusat, m.Status AS is_active,
+                            (SELECT COUNT(*) FROM CompanyArea a WHERE a.MillID = m.MillID AND a.Status = 1) AS jumlah_area
+                     FROM Mill m ORDER BY m.Status DESC, m.MillCode""")
 
 
 def simpan_lokasi(id_lokasi, kode, nama, keterangan, is_pusat):
@@ -124,7 +124,7 @@ def simpan_lokasi(id_lokasi, kode, nama, keterangan, is_pusat):
 
 
 def set_aktif_lokasi(id_lokasi, aktif):
-    _ubah("UPDATE Mill SET Active = ? WHERE MillID = ?", 1 if aktif else 0, id_lokasi)
+    _ubah("UPDATE Mill SET Status = ? WHERE MillID = ?", 1 if aktif else 0, id_lokasi)
 
 
 @cache_ttl(60)
@@ -165,13 +165,13 @@ def company_area():
 def daftar_area():
     """Area milik perusahaan (dipakai akun, jembatan, pos, tiket). label = "YBS · REFINERY"."""
     return _query("""SELECT a.CompAreaID AS id_comp_area, a.AreaCode AS kode, a.AreaName AS nama, a.AreaDesc AS keterangan,
-                            a.Active AS is_active, a.CompID AS id_company, c.CompName AS company, c.CompID AS kode_company,
+                            a.Status AS is_active, a.CompID AS id_company, c.CompName AS company, c.CompID AS kode_company,
                             a.MillID AS id_lokasi, m.MillName AS mill, ISNULL(m.IsHeadOffice, 0) AS is_pusat,
                             a.CompID + ' · ' + a.AreaName AS label,
                             (SELECT COUNT(*) FROM Users u WHERE u.CompAreaID = a.CompAreaID AND u.Active = 1) AS jumlah_user
                      FROM CompanyArea a JOIN Company c ON c.CompID = a.CompID
                      LEFT JOIN Mill m ON m.MillID = a.MillID
-                     ORDER BY a.Active DESC, c.CompName, a.AreaCode, a.AreaName""")
+                     ORDER BY a.Status DESC, c.CompName, a.AreaCode, a.AreaName""")
 
 
 def simpan_area(id_area, id_company, id_lokasi, nama, keterangan):
@@ -230,7 +230,7 @@ def _salin_dari_area_pertama():
 
 
 def set_aktif_area(id_area, aktif):
-    _ubah("UPDATE CompanyArea SET Active = ? WHERE CompAreaID = ?", 1 if aktif else 0, id_area)
+    _ubah("UPDATE CompanyArea SET Status = ? WHERE CompAreaID = ?", 1 if aktif else 0, id_area)
     _hapus_cache_area()
 
 

@@ -52,10 +52,12 @@ export default function TabelBaris({ kolom, baris, urut, arah, onUrut, onPilihBa
                     (i === 0 ? 'sticky left-0 z-20 bg-slate-50 ' : '')
                   }
                 >
-                  <button type="button" className="inline-flex items-center gap-1 hover:text-slate-900" onClick={() => onUrut(k.kunci)}>
-                    {k.label ?? k.judul}
-                    <span className="text-slate-400">{aktif ? (arah === 'asc' ? '▲' : '▼') : ''}</span>
-                  </button>
+                  {onUrut ? (
+                    <button type="button" className="inline-flex items-center gap-1 hover:text-slate-900" onClick={() => onUrut(k.kunci)}>
+                      {k.label ?? k.judul}
+                      <span className="text-slate-400">{aktif ? (arah === 'asc' ? '▲' : '▼') : ''}</span>
+                    </button>
+                  ) : (k.label ?? k.judul)}
                 </th>
               )
             })}
@@ -80,7 +82,7 @@ export default function TabelBaris({ kolom, baris, urut, arah, onUrut, onPilihBa
                 const dasar =
                   'whitespace-nowrap px-2 py-1.5 tabular-nums ' +
                   (k.tipe === 'angka' ? 'text-right ' : '') +
-                  (kosong ? 'text-slate-300 ' : '') +
+                  (kosong ? 'text-slate-400 ' : '') +
                   awalGrup(i) +
                   (i === 0 ? `sticky left-0 z-[5] ${latar} font-medium ` : '')
                 if (k.kunci === 'status' && !kosong) {

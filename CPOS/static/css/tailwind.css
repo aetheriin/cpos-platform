@@ -8,3 +8,9 @@ input::-ms-reveal,input::-ms-clear{display:none}
 .kotak-sandi > input { flex: 1 1 auto; min-width: 0; height: 2.25rem; padding: 0; border: 0; outline: 0; box-shadow: none; background: transparent; color: inherit; font: inherit; }
 .kotak-sandi > button { flex: none; width: 2rem; height: 2rem; border: 0; border-radius: .375rem; background: transparent; color: rgb(var(--slate-400, 148 163 184)); cursor: pointer; }
 .kotak-sandi > button:hover { color: rgb(var(--slate-700, 51 65 85)); background: rgb(var(--slate-100, 241 245 249)); }
+
+html.dark option, html.dark optgroup { background-color: #121a2b; color: #e2e8f0; }
+
+/* Teks abu paling muda terlalu pucat: di mode terang digelapkan, di mode gelap diterangkan. :where supaya kelas hover dan aktif tetap menang */
+:where(html:not(.dark)) :is(.text-slate-300, .text-slate-400, .sidebar-sub-jumlah, .kpi-tanggal) { color: #64748b; }
+html.dark :is(.text-slate-300, .sidebar-sub-jumlah) { color: #94a3b8; }

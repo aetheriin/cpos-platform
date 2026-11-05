@@ -11,9 +11,12 @@
                NIK baru -> personel baru kategori Karyawan. Kategori, email, SIM, wajah diatur di menu Personel. #}
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="field-label" for="userNik">NIK</label>
-                    <input type="text" id="userNik" name="nik" maxlength="20" class="input-field"
-                           data-on-change="cekNikUser" data-arg="$value" placeholder="NIK (angka dan strip)">
+                    <label class="field-label" for="userNik">
+                        NIK <span class="text-red-600">* Required</span>
+                    </label>
+                    <input type="text" id="userNik" name="nik" maxlength="16" class="input-field"
+                        data-on-change="cekNikUser" data-arg="$value"
+                        placeholder="Huruf, angka, atau strip">
                 </div>
                 <div>
                     <label class="field-label" for="userNama">Nama Lengkap</label>

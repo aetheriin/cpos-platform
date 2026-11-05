@@ -13,7 +13,7 @@ CREATE TABLE dbo.Company (
     CompID       VARCHAR(5)       NOT NULL PRIMARY KEY,           -- kode perusahaan, mis. YBS, SUN
     CompName     NVARCHAR(100) NOT NULL,
     CompAddress  NVARCHAR(255) NULL,
-    Active       BIT NOT NULL CONSTRAINT DF_Company_Active DEFAULT (1),
+    Status       BIT NOT NULL CONSTRAINT DF_Company_Active DEFAULT (1),
     Description  NVARCHAR(255) NULL,
     CreateDate   DATETIME NOT NULL CONSTRAINT DF_Company_Create DEFAULT (GETDATE())
 );
@@ -23,7 +23,7 @@ CREATE TABLE dbo.Mill (
     MillCode     VARCHAR(10)   NOT NULL CONSTRAINT UX_Mill_Code UNIQUE,
     MillName     NVARCHAR(50)  NOT NULL,
     IsHeadOffice BIT NOT NULL CONSTRAINT DF_Mill_HO DEFAULT (0),
-    Active       BIT NOT NULL CONSTRAINT DF_Mill_Active DEFAULT (1),
+    Status       BIT NOT NULL CONSTRAINT DF_Mill_Active DEFAULT (1),
     Description  NVARCHAR(255) NULL,
     CreateDate   DATETIME NOT NULL CONSTRAINT DF_Mill_Create DEFAULT (GETDATE())
 );
@@ -36,7 +36,7 @@ CREATE TABLE dbo.CompanyArea (
     AreaName     NVARCHAR(100) NOT NULL,
     AreaDesc     NVARCHAR(255) NULL,
     AreaAddress  NVARCHAR(255) NULL,
-    Active       BIT NOT NULL CONSTRAINT DF_CompArea_Active DEFAULT (1),
+    Status       BIT NOT NULL CONSTRAINT DF_CompArea_Active DEFAULT (1),
     CreateDate   DATETIME NOT NULL CONSTRAINT DF_CompArea_Create DEFAULT (GETDATE())
 );
 CREATE UNIQUE INDEX UX_CompArea_CompName ON dbo.CompanyArea (CompID, AreaName);
@@ -2220,7 +2220,7 @@ WHERE u.UserID = @UserID AND u.Active = 1;
 GO
 CREATE OR ALTER FUNCTION dbo.fn_UserScope (@UserID BIGINT)
 RETURNS TABLE AS RETURN
-SELECT a.CompAreaID, a.AreaCode, a.AreaName, a.CompID, c.CompName, a.Active,
+SELECT a.CompAreaID, a.AreaCode, a.AreaName, a.CompID, c.CompName, a.Status AS Active,
        CAST(CASE WHEN a.CompAreaID = i.OwnAreaID THEN 1 ELSE 0 END AS BIT) AS IsOwnArea
 FROM dbo.fn_UserScopeInfo(@UserID) i
 JOIN dbo.CompanyArea a ON i.AllAreas = 1 OR a.CompAreaID = i.OwnAreaID
@@ -2234,7 +2234,7 @@ WITH aturan AS (
     JOIN dbo.Menu m ON m.MenuID = r.MenuID
     WHERE m.MenuCode = @MenuCode AND r.ActionID = 1 AND r.IsDeny = 0
 )
-SELECT a.CompAreaID, a.AreaCode, a.AreaName, a.CompID, c.CompName, a.Active,
+SELECT a.CompAreaID, a.AreaCode, a.AreaName, a.CompID, c.CompName, a.Status AS Active,
        CAST(CASE WHEN a.CompAreaID = i.OwnAreaID THEN 1 ELSE 0 END AS BIT) AS IsOwnArea
 FROM dbo.fn_UserScopeInfo(@UserID) i
 JOIN dbo.CompanyArea a ON EXISTS (

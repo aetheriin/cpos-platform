@@ -9,7 +9,12 @@ const sumbu = { tickLine: false, axisLine: false, tick: { fontSize: 11, fill: '#
 const WARNA_SALDO = '#16a34a'
 const WARNA_TD = '#db2777'
 const labelBulan = (b) => `${NAMA_BULAN[Number(b.slice(5, 7)) - 1]} ${b.slice(2, 4)}`
-const LEBAR_SUMBU = 104   // cukup untuk angka lengkap sampai ratusan miliar
+// Lebar sumbu mengikuti angka terbesar di data, dengan cadangan karena tick bisa dibulatkan ke atas, supaya angka lengkap tidak terpotong
+const lebarSumbu = (data, ...kunci) => {
+  const nilai = data.flatMap((d) => kunci.map((k) => d[k] ?? 0))
+  const minus = nilai.some((v) => v < 0) ? 1 : 0
+  return Math.max(56, (sumbuUang(Math.max(...nilai.map(Math.abs), 1) * 1.5).length + minus) * 7 + 12)
+}
 
 // Pilihan Harian / Bulanan untuk grafik deret waktu (hanya ditampilkan kalau rentangnya lebih dari sebulan)
 export function PilihPeriode({ nilai, onUbah }) {
@@ -68,8 +73,8 @@ export const SaldoBerjalan = memo(function SaldoBerjalan({ bulanan, satuan }) {
           <ComposedChart data={data} stackOffset="sign" margin={{ top: 6, right: 0, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-slate-200)" />
             <XAxis dataKey="label" {...sumbu} />
-            <YAxis yAxisId="saldo" width={LEBAR_SUMBU} {...sumbu} tickFormatter={sumbuUang} domain={['auto', 'auto']} />
-            <YAxis yAxisId="arus" orientation="right" width={LEBAR_SUMBU} {...sumbu} tickFormatter={sumbuUang} />
+            <YAxis yAxisId="saldo" width={lebarSumbu(data, 'saldo')} {...sumbu} tickFormatter={sumbuUang} domain={['auto', 'auto']} />
+            <YAxis yAxisId="arus" orientation="right" width={lebarSumbu(data, 'debit', 'kreditNeg')} {...sumbu} tickFormatter={sumbuUang} />
             <Tooltip cursor={{ stroke: '#94a3b8', strokeDasharray: '3 3' }} content={({ active, payload }) => {
               const d = active && payload?.[0]?.payload
               if (!d) return null
@@ -103,8 +108,8 @@ export const KreditToDate = memo(function KreditToDate({ harian, bulanan, period
           <ComposedChart data={data} margin={{ top: 6, right: 0, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-slate-200)" />
             <XAxis dataKey="label" {...sumbu} tick={{ fontSize: 10, fill: '#64748b' }} minTickGap={12} />
-            <YAxis yAxisId="periode" width={LEBAR_SUMBU} {...sumbu} tickFormatter={sumbuUang} />
-            <YAxis yAxisId="td" orientation="right" width={LEBAR_SUMBU} {...sumbu} tickFormatter={sumbuUang} domain={['auto', 'auto']} />
+            <YAxis yAxisId="periode" width={lebarSumbu(data, 'kredit')} {...sumbu} tickFormatter={sumbuUang} />
+            <YAxis yAxisId="td" orientation="right" width={lebarSumbu(data, 'kredit_td')} {...sumbu} tickFormatter={sumbuUang} domain={['auto', 'auto']} />
             <Tooltip cursor={{ fill: 'rgba(100,116,139,0.08)' }} content={({ active, payload }) => {
               const d = active && payload?.[0]?.payload
               if (!d) return null

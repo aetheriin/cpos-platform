@@ -45,7 +45,7 @@ function PetaOperatorJam({ data, operatorTerpilih, jamTerpilih, onPilihSel, onPi
                       className="h-7 w-full rounded tabular-nums"
                       style={{
                         background: `rgba(234, 88, 12, ${0.08 + porsi * 0.82})`,
-                        color: porsi > 0.5 ? '#ffffff' : 'var(--color-slate-700)',
+                        color: porsi > 0.8 ? '#ffffff' : 'var(--color-slate-700)',
                         opacity: ada && !dipilih(o, j) ? 0.3 : 1,
                       }}
                     >

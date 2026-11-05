@@ -258,6 +258,25 @@ def ambil_giro(cur, comp, server, db, mulai, selesai, akun_giro, id_kode):
     return d.assign(COMPID=comp, BANKACCOUNTCODE=d["BANKACCOUNTID"].map(id_kode), PERIODE=d["VOUCHERDATE"].dt.strftime("%Y%m"))
 
 
+KURS_VOUCHER = """
+SELECT CAST(h.VoucherDate AS DATE) AS Tanggal, c.Currency, h.ExchangeRate, COUNT(*) AS Jumlah
+  FROM FI_ARAP h
+  JOIN FI_BankAccounts b ON b.BankAccountID = h.BankAccountID
+  JOIN CO_Currency c ON c.CurrencyID = b.CurrencyID
+ WHERE h.VOID = 0 AND c.Currency <> 'IDR' AND h.ExchangeRate > 1 AND h.VoucherDate >= @Mulai AND h.VoucherDate < @Selesai
+   AND NOT EXISTS (SELECT 1 FROM CO_ExchangeRate e WHERE e.SourceCurrencyID = b.CurrencyID AND e.Rate = h.ExchangeRate)
+ GROUP BY CAST(h.VoucherDate AS DATE), c.Currency, h.ExchangeRate
+"""
+
+
+def ambil_kurs_voucher(cur, server, db, mulai, selesai):
+    """[(tanggal, kode mata uang, kurs, jumlah voucher)] dari voucher rekening valas. Kurs yang sama dengan master CO_ExchangeRate dibuang:
+    itu kurs bawaan lama yang tidak diganti saat voucher dibuat."""
+    cur.execute(f"EXEC [{server}].[{db}].dbo.sp_executesql ?, N'@Mulai DATETIME, @Selesai DATETIME', ?, ?",
+                KURS_VOUCHER, pd.Timestamp(mulai).to_pydatetime(), pd.Timestamp(selesai).to_pydatetime())
+    return [tuple(r) for r in cur.fetchall()]
+
+
 def _hasil(cur):
     """Semua result set berurutan sebagai DataFrame."""
     hasil = []

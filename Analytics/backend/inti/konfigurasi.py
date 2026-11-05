@@ -86,6 +86,7 @@ TABEL_IZIN =teks("DB_APP_TABEL_IZIN", "PERMISSIONS")      # boleh di database la
 SUMBER_LAPORAN = teks("LAPORAN_SUMBER", "cloud")     # parameter sumber SP, sekaligus CompType perusahaan yang dipanggil
 SP_PR_PO = nama_sp("SP_PR_PO", "R_PR_OUT_YBS_2")
 SP_PO_PI = nama_sp("SP_PO_PI", "R_PO_OUT_YBS")
+SP_PO_AMT = nama_sp("SP_PO_AMT", "dbo.SP_R_PO_AMT")
 TABEL_KATEGORI = nama_tabel("TABEL_KATEGORI", "dbo.MappingCategory")
 SP_STATUS = teks("SP_STATUS", "4")                   # 4 = semua status
 
@@ -117,6 +118,7 @@ TABEL_KAS_BANK = nama_sp("TABEL_KAS_BANK", "Main.dbo.Bank")
 TABEL_KAS_PERUSAHAAN = nama_sp("TABEL_KAS_PERUSAHAAN", "Main.dbo.Company")
 TABEL_KAS_GIRO = nama_sp("TABEL_KAS_GIRO", "Main.dbo.GiroAccount")
 TABEL_KAS_KURS = nama_sp("TABEL_KAS_KURS", "Main.dbo.exc_rate")   # kurs ke rupiah per perusahaan, CURRENCYID, dan tahun
+KAS_KURS_ERP_HARI = angka("KAS_KURS_ERP_HARI", 30)   # kurs voucher ERP terakhir masih dipakai sampai sekian hari
 # kurs yang diinput user di CPOS (Data Master › Kurs Mata Uang): riwayat per tanggal berlaku, dipakai lebih dulu dari TABEL_KAS_KURS
 TABEL_KAS_KURS_INPUT = nama_sp("TABEL_KAS_KURS_INPUT", "CPOS.dbo.ExchangeRate")
 TABEL_KAS_MATA_UANG = nama_sp("TABEL_KAS_MATA_UANG", "CPOS.dbo.Currency")

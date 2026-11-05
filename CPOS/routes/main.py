@@ -5,7 +5,7 @@ import qrcode
 import qrcode.image.svg
 from flask import Blueprint, request, jsonify, render_template, Response, abort, redirect
 from utils.area_filter import area_cocok
-from utils.db_organisasi import daftar_area
+from utils.db_organisasi import daftar_area, daftar_lokasi
 from utils.area import area_data, company_user
 from utils.db_admin import supplier_boleh
 from flask_login import login_required, current_user
@@ -25,6 +25,7 @@ from utils import log_aktivitas, koreksi_tiket, alur
 from utils.db_master import daftar_driver_aktif
 from utils.db_jembatan import daftar_jembatan, jembatan_dipilih
 from utils.db_aktivitas import area_akun
+from utils import db_ascend
 
 main_bp = Blueprint('main', __name__)
 
@@ -62,6 +63,7 @@ def weighbridge():
                            supplier_list=[s for s in get_semua_supplier()
                                           if s.is_customer and supplier_boleh(s.id_supplier, company_user(current_user.id))],
                            produk_list=get_semua_produk(),
+                           mill_list=db_ascend.daftar_mill(),
                            wajib_scan_wajah=pengaturan.nilai("WAJIB_SCAN_WAJAH", area_akun(current_user.id)),
                            jembatan_list=_jembatan_aktif(), jembatan_dipilih=_jembatan_pc())
 

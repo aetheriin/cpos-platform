@@ -845,7 +845,7 @@ def _periode_bawaan(l):
 def daftar_laporan(user=Depends(pengguna_saat_ini)):
     hasil = [
         {"id": l.id, "nama": l.nama, "grup": getattr(l, "grup", "Analytical Dashboard"), "deskripsi": l.deskripsi, "mulai_bawaan": _periode_bawaan(l)[0],
-         "akhir_bawaan": _periode_bawaan(l)[1], "maks_hari": MAKS_HARI}
+         "akhir_bawaan": _periode_bawaan(l)[1], "maks_hari": l.maks_hari or MAKS_HARI}
         for l in LAPORAN.values()
         if l.id in user["laporan"]
     ]
@@ -885,8 +885,8 @@ def muat_laporan(laporan_id: str, perm: PermintaanMuat, request: Request = None,
     _izinkan(user, lap.id)
     if perm.mulai > perm.akhir:
         raise HTTPException(422, "Tanggal mulai tidak boleh setelah tanggal akhir")
-    if (perm.akhir - perm.mulai).days > MAKS_HARI:
-        raise HTTPException(422, f"Rentang tanggal terlalu panjang (maksimal {MAKS_HARI} hari)")
+    if (perm.akhir - perm.mulai).days > (lap.maks_hari or MAKS_HARI):
+        raise HTTPException(422, f"Rentang tanggal terlalu panjang (maksimal {lap.maks_hari or MAKS_HARI} hari)")
     p = gudang.mulai_muat(lap.id, perm.mulai.isoformat(), perm.akhir.isoformat(), lap.pemuat, _pemilik(user), segarkan=perm.segarkan)
     cara = "muat ulang dari SQL Server" if perm.segarkan else "memakai data yang sudah dimuat" if p.status == "selesai" else "dari SQL Server"
     _catat("muat", user, request, lap.id, f"{_tanggal(perm.mulai)} s/d {_tanggal(perm.akhir)}, {cara}")

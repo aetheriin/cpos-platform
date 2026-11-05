@@ -164,7 +164,7 @@ def _personel_form(user_lama=None):
     Akun lama yang belum punya NIK boleh disimpan tanpa NIK."""
     nama, nik = _teks("nama"), (request.form.get("nik") or "").strip()
     if nik and not nik_akun_valid(nik):
-        raise GalatIsian("NIK hanya boleh angka dan strip (-), 5-20 karakter.", "nik")
+        raise GalatIsian("NIK hanya boleh berisi huruf, angka, atau strip (-), maksimal 16 karakter.", "nik")
     if not nik and (user_lama is None or user_lama["nik"]):
         raise GalatIsian("NIK wajib diisi.", "nik")
     id_personel = user_lama["id_personel"] if user_lama else None

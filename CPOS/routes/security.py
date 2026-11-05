@@ -9,6 +9,8 @@ from utils import pengaturan
 from utils.db_kontrak import get_do
 from utils.db_blacklist import supplier_diblacklist
 from utils import verifikasi_state as verif
+from utils import db_ascend
+from utils.db_organisasi import daftar_lokasi
 from utils.keamanan import id_pos
 from utils.upload_utils import simpan_upload, simpan_frames, hapus_file
 from utils.db_utils import (
@@ -39,6 +41,105 @@ def list_tiket_aktif():
 @login_required
 def history_driver():
     return jsonify(get_history_driver())
+
+@security_bp.route("/api/security/ascend/do")
+@login_required
+@izin("FORM_SECURITY", "tambah")
+def ascend_daftar_do():
+    ticket_type = (request.args.get("ticket_type") or "").strip()
+    try:
+        return jsonify(db_ascend.daftar_do(ticket_type))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+@security_bp.route("/api/security/supir-terakhir")
+@login_required
+def security_supir_terakhir():
+    no_plat, error = normalisasi_plat(request.args.get("no_plat"))
+    if error:
+        return jsonify({"error": error}), 400
+
+    row = cari_riwayat_driver_by_plat(no_plat)
+    return jsonify({
+        "driver": serialisasi_driver(row) if row else None
+    })
+
+@security_bp.route("/api/security/ascend/buat-tiket", methods=["POST"])
+@login_required
+@izin("FORM_SECURITY", "tambah")
+def ascend_buat_tiket():
+    f = request.form
+
+    ticket_type = (f.get("ticket_type") or "").strip()
+    produk = (f.get("produk") or "").strip()
+    teks_associate = (f.get("associate_id") or "").strip()
+    vehicle_no = (f.get("vehicle_no") or "").strip().upper()
+    tanggal_teks = (f.get("tanggal") or "").strip()
+    no_do = (f.get("no_do") or "").strip().upper()
+    teks_mill = (f.get("mill_id") or "").strip()
+
+    if ticket_type not in ("Produk", "TBSLuar"):
+        return jsonify({"error": "Pilih jenis tiket."}), 400
+    if not all((produk, teks_associate, vehicle_no, tanggal_teks, no_do, teks_mill)):
+        return jsonify({"error": "Semua field wajib diisi."}), 400
+    if len(vehicle_no) > 50:
+        return jsonify({"error": "Nomor kendaraan maksimal 50 karakter."}), 400
+    if len(no_do) > 50:
+        return jsonify({"error": "Nomor DO maksimal 50 karakter."}), 400
+    if not teks_associate.isdigit() or not teks_mill.isdigit():
+        return jsonify({"error": "Pilih Associate dan Mill dari daftar."}), 400
+
+    from datetime import datetime
+
+    try:
+        tanggal = datetime.strptime(tanggal_teks, "%Y-%m-%d").date()
+    except ValueError:
+        return jsonify({"error": "Tanggal tidak valid."}), 400
+
+    associate_id = int(teks_associate)
+    mill_id = int(teks_mill)
+
+    # Pastikan Associate dan Produk memang berasal dari pilihan DO Ascend.
+    # Associate dan Produk harus masing-masing tersedia di daftar Ascend.
+    # Keduanya tidak harus berasal dari DO yang sama, agar DO bisa diisi manual.
+    daftar_ascend = db_ascend.daftar_do(ticket_type)
+
+    associate_valid = any(
+        int(r["associate_id"]) == associate_id
+        for r in daftar_ascend
+    )
+    produk_valid = any(
+        r["produk"] == produk
+        for r in daftar_ascend
+    )
+
+    if not associate_valid:
+        return jsonify({"error": "Pilih Associate dari daftar Ascend."}), 400
+    if not produk_valid:
+        return jsonify({"error": "Pilih Produk dari daftar Ascend."}), 400
+
+    # MillID di Ascend harus sama dengan ID Mill aktif di Admin > Organisasi.
+    mill_aktif = {
+        int(m["id_lokasi"])
+        for m in daftar_lokasi()
+        if m["is_active"]
+    }
+    if mill_id not in mill_aktif:
+        return jsonify({"error": "Pilih Mill aktif dari Admin > Organisasi."}), 400
+
+    try:
+        tiket = db_ascend.buat_tiket_kosong(
+            ticket_type, produk, associate_id, vehicle_no,
+            tanggal, no_do, mill_id,
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    return jsonify({
+        "message": "Tiket kosong berhasil dibuat di Ascend.",
+        "no_tiket": tiket["ticket_no"],
+        "ticket_id": tiket["ticket_id"],
+    })
 
 JENIS_TRANSAKSI = ("PEMBELIAN", "PENJUALAN", "PENIMBANGAN_SAJA")
 

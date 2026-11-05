@@ -16,12 +16,10 @@ const FILTER_AWAL = {}   // tabel dikonversi ke rupiah; tampilan=asli memakai ma
 const KOSONG = []
 const TAB = [
   { kunci: 'bank', nama: 'Rekap saldo bank', ket: (h) => `${tglLengkap(h.periode.mulai)} – ${tglLengkap(h.periode.akhir)}. Saldo akhir tiap hari per perusahaan dan rekening.` },
-  { kunci: 'harian', nama: 'Rekap harian', ket: (h) => `${tglLengkap(h.periode.mulai)} – ${tglLengkap(h.periode.akhir)}. Debit/credit to date dihitung sejak awal data.` },
-  { kunci: 'mutasi', nama: 'Mutasi', ket: (h) => `${tglLengkap(h.periode.mulai)} – ${tglLengkap(h.periode.akhir)}. Saldo per transaksi, urut tanggal.` },
-  { kunci: 'giro', nama: 'Jasa giro', ket: (h) => `${tglLengkap(h.periode.mulai)} – ${tglLengkap(h.periode.akhir)}.` },
+  { kunci: 'mutasi', nama: 'Mutasi', ket: (h) => `${tglLengkap(h.periode.mulai)} – ${tglLengkap(h.periode.akhir)}. Urut perusahaan, rekening, dan tanggal.` },
 ]
 const persenGiro = (x) => (x == null ? '–' : `${(x * 100).toLocaleString('id-ID', { maximumFractionDigits: 3 })}%`)
-const SUMBER_KURS = { CPOS: 'kurs input CPOS', EXC_RATE: 'EXC_RATE', internet: 'kurs ECB' }
+const SUMBER_KURS = { ERP: 'kurs voucher ERP', CPOS: 'kurs input CPOS', EXC_RATE: 'EXC_RATE', internet: 'kurs ECB' }
 const kursRingkas = (v) => v.map((x) => `${x.mata_uang} ${angka.format(x.kurs)} (${x.sumber.filter(Boolean).map((s) => SUMBER_KURS[s] ?? s).join(', ')}; ${x.rekening.length} rekening)`).join('; ')
 
 // Lawan transaksi terbesar: pengalih Keluar / Masuk, satu daftar batang. Klik nama untuk memfilter seluruh laporan.

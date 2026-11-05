@@ -25,6 +25,7 @@ class Laporan:
     grup: str = "Analytical Dashboard"   # judul grup di menu samping
     hari_bawaan: int | None = None   # kalau diisi, periode bawaan = sekian hari terakhir sampai hari ini, menggantikan mulai_bawaan
     awal_tahun: bool = False         # periode bawaan = 1 Januari tahun ini sampai hari ini, menggantikan mulai_bawaan
+    maks_hari: int | None = None     # batas rentang khusus laporan ini, menggantikan MAKS_HARI
     label_filter: dict = field(default_factory=dict)   # judul filter di Export Excel, kalau beda dari api._LABEL_FILTER
 
 

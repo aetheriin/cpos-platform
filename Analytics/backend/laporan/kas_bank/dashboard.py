@@ -112,12 +112,13 @@ def _saldo_awal(df, filt, dari):
     return d[d["awal"] | (d["tgl"] < dari)].groupby("akun", sort=False)["saldo"].last().round(2)
 
 
-def _baris_awal(df, filt, dari):
-    """Baris Beginning Balance tab Mutasi, satu per rekening bersaldo. Hanya kalau mutasi tidak disaring selain per rekening, karena saldo milik rekening."""
+def _baris_awal(df, filt, dari, sampai):
+    """Baris Beginning Balance tab Mutasi, satu per rekening bersaldo yang punya mutasi di rentang; saldo rekening tanpa mutasi ada di Rekap saldo bank.
+    Hanya kalau mutasi tidak disaring selain per rekening, karena saldo milik rekening."""
     if any(filt[k] for k in ("dokumen", "mitra", "pembuat", "tanggal")):
         return pd.DataFrame()
     b = _saldo_awal(df, filt, dari)
-    b = b[b != 0]
+    b = b[(b != 0) & b.index.isin(saring(_dalam(df, dari, sampai), filt, DIM)["akun"])]
     uang = _uang(df)
     return pd.DataFrame({"comp": [a.split(" · ")[0] for a in b.index], "tgl": dari, "no": AWAL, "jenis_dok": AWAL, "akun": b.index, "saldo": b.values, "mata_uang": uang.reindex(b.index).values})
 
@@ -312,7 +313,7 @@ def bangun(df, ds, filt=None):
             "tanggal_saldo": tgl(patokan),
             "masuk": _bulat(d["masuk"].sum()), "jumlah_masuk": int((d["masuk"] > 0).sum()),
             "keluar": _bulat(d["keluar"].sum()), "jumlah_keluar": int((d["keluar"] > 0).sum()),
-            "mutasi": int(len(d)), "baris_mutasi": int(len(d) + len(_baris_awal(df, filt, dari))), "hari": int(len(filt["tanggal"]) or len(hari)),
+            "mutasi": int(len(d)), "baris_mutasi": int(len(d) + len(_baris_awal(df, filt, dari, sampai))), "hari": int(len(filt["tanggal"]) or len(hari)),
             "awal_data": tgl(pd.Timestamp(ds.mulai)),
             "jumlah_giro": int(len(g[g["hari"].isin(filt["tanggal"])] if filt["tanggal"] and not g.empty else g)),   # sama dengan tab Jasa giro
             # bagian masuk/keluar yang hanya pindah antar rekening sendiri, supaya total tidak dibaca sebagai uang baru
@@ -375,8 +376,10 @@ def detail(df, jenis, ds, filt=None, cari=None, urut=None, arah=None, halaman=1,
         df = _asli(df) if asli else df
         t = saring(_dalam(df, dari, sampai), filt, DIM).reset_index(drop=True)
         t["nilai_asli"] = t["nilai_asli"].abs()   # arah sudah ditunjukkan kolom Debit / Credit; di ledger uang keluar bertanda minus
-        # Urut tanggal naik seperti rekening koran: Beginning Balance di atas, lalu urutan yang sama dengan perhitungan saldo
-        t = pd.concat([_baris_awal(df, filt, dari), t], ignore_index=True)
+        # Urutan tetap: perusahaan, rekening, tanggal. Tiap rekening dimulai Beginning Balance, lalu urutan yang sama dengan perhitungan saldo
+        t = pd.concat([_baris_awal(df, filt, dari, sampai), t], ignore_index=True)
         t[KOLOM_CARI] = t[KOLOM_CARI].fillna("")
-        hasil = susun(t, KOLOM_MUTASI, KOLOM_CARI, cari, urut, arah, "tgl", "asc", halaman, ukuran)
+        t = t.sort_values(["comp", "akun", "tgl"], kind="stable")
+        hasil = susun(t.assign(_no=range(len(t))), KOLOM_MUTASI, KOLOM_CARI, cari, None, None, "_no", "asc", halaman, ukuran)
+        hasil["bisa_urut"] = False
     return {"jenis": jenis, "judul": JENIS_DETAIL[jenis], "periode": {"mulai": tgl(dari), "akhir": tgl(sampai)}, **hasil}

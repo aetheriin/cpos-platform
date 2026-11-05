@@ -150,7 +150,7 @@ async function cekNikUser(nik) {
     const info = document.getElementById('infoNikUser');
     const form = document.getElementById('formUser');
     info.classList.add('hidden');
-    if (form.elements.id_user.value || nik.length !== 16) return;
+    if (form.elements.id_user.value || nik.length < 5 || nik.length > 16) return;
     const p = await ambilJson(`/api/admin/users/nik/${nik}`);
     if (!p || !p.id_personel) return;
     info.classList.remove('hidden');

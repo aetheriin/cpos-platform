@@ -655,3 +655,209 @@ function cetakQR() {
     if (!qrTiketAktif) { Notif.peringatan('Silakan masukkan plat, lalu tekan Tab'); return; }
     bukaHalamanCetak(qrTiketAktif);
 }
+
+// ===== FORM TIKET KOSONG ASCEND =====
+let daftarDOAscend = [];
+
+function tanggalLokalHariIni() {
+    const sekarang = new Date();
+    const tahun = sekarang.getFullYear();
+    const bulan = String(sekarang.getMonth() + 1).padStart(2, '0');
+    const hari = String(sekarang.getDate()).padStart(2, '0');
+    return `${tahun}-${bulan}-${hari}`;
+}
+
+function isiPilihanAscend(select, daftar, nilai, label) {
+    const pilihanAwal = select.querySelector('option[value=""]');
+    select.replaceChildren(pilihanAwal || new Option('-- Pilih --', ''));
+
+    daftar.forEach(item => {
+        select.add(new Option(label(item), String(nilai(item))));
+    });
+
+    select.value = '';
+}
+
+async function muatDOAscend() {
+    const jenis = document.getElementById('ascendTicketType').value;
+    const info = document.getElementById('ascendInfoDO');
+    const pilihanDO = document.getElementById('ascendNoDoChoice');
+    const manualWrap = document.getElementById('ascendNoDoManualWrap');
+    const manualInput = document.getElementById('ascendNoDoManual');
+    const noDO = document.getElementById('ascendNoDoValue');
+    const associate = document.getElementById('ascendAssociate');
+    const produk = document.getElementById('ascendProduk');
+
+    daftarDOAscend = [];
+    pilihanDO.replaceChildren(new Option('-- Pilih --', ''));
+    manualWrap.classList.add('hidden');
+    manualInput.required = false;
+    manualInput.value = '';
+    noDO.value = '';
+
+    isiPilihanAscend(associate, [], x => x.id, x => x.nama);
+    isiPilihanAscend(produk, [], x => x.id, x => x.nama);
+
+    if (!jenis) {
+        info.textContent = 'Pilih jenis tiket untuk mencari DO outstanding.';
+        return;
+    }
+
+    info.textContent = 'Memuat DO outstanding dari Ascend...';
+    const data = await ambilJson(
+        `/api/security/ascend/do?ticket_type=${encodeURIComponent(jenis)}`
+    );
+
+    if (data.error) {
+        info.textContent = data.error;
+        return;
+    }
+
+    daftarDOAscend = data;
+
+    data.forEach(d => {
+        const labelAssociate = d.associate_name
+            ? `${d.associate_name} · ID ${d.associate_id}`
+            : `ID ${d.associate_id}`;
+        pilihanDO.add(new Option(
+            `${d.no_do} · ${labelAssociate} · ${d.produk}`,
+            d.no_do
+        ));
+    });
+
+    pilihanDO.add(new Option('Ketik nomor DO / SP manual...', '__manual__'));
+
+    const daftarAssociate = [...new Map(
+        data.map(d => [String(d.associate_id), {
+            id: d.associate_id,
+            nama: d.associate_name
+                ? `${d.associate_name} · ID ${d.associate_id}`
+                : `ID ${d.associate_id}`,
+        }])
+    ).values()];
+
+    const daftarProduk = [...new Set(data.map(d => d.produk))]
+        .map(nama => ({ id: nama, nama }));
+
+    isiPilihanAscend(
+        associate, daftarAssociate, x => x.id, x => x.nama
+    );
+    isiPilihanAscend(
+        produk, daftarProduk, x => x.id, x => x.nama
+    );
+
+    info.textContent = data.length
+        ? `${data.length} DO outstanding tersedia. Cari dengan mengetik pada daftar, atau pilih input manual.`
+        : 'Tidak ada DO outstanding. Kamu masih bisa mengetik nomor secara manual.';
+}
+
+function pilihInfoDOAscend() {
+    const pilihan = document.getElementById('ascendNoDoChoice');
+    const manualWrap = document.getElementById('ascendNoDoManualWrap');
+    const manualInput = document.getElementById('ascendNoDoManual');
+    const noDO = document.getElementById('ascendNoDoValue');
+    const info = document.getElementById('ascendInfoDO');
+
+    if (pilihan.value === '__manual__') {
+        manualWrap.classList.remove('hidden');
+        manualInput.required = true;
+        manualInput.focus();
+        noDO.value = manualInput.value.trim().toUpperCase();
+        info.textContent = 'Ketik Nomor DO / SP. Associate dan Produk tetap harus dipilih dari Ascend.';
+        return;
+    }
+
+    manualWrap.classList.add('hidden');
+    manualInput.required = false;
+
+    const d = daftarDOAscend.find(x => x.no_do === pilihan.value);
+    if (!d) {
+        noDO.value = '';
+        return;
+    }
+
+    noDO.value = d.no_do;
+    document.getElementById('ascendAssociate').value = String(d.associate_id);
+    document.getElementById('ascendProduk').value = d.produk;
+
+    const labelAssociate = d.associate_name
+        ? `${d.associate_name} · ID ${d.associate_id}`
+        : `ID ${d.associate_id}`;
+
+    info.textContent = `DO ditemukan · ${labelAssociate} · ${d.produk}`;
+}
+
+const formTiketAscend = document.getElementById('formTiketAscend');
+if (formTiketAscend) {
+    document.getElementById('ascendTanggal').value = tanggalLokalHariIni();
+
+    document.getElementById('ascendTicketType')
+        .addEventListener('change', muatDOAscend);
+
+    document.getElementById('ascendNoDoChoice')
+        .addEventListener('change', pilihInfoDOAscend);
+
+    document.getElementById('ascendNoDoManual')
+        .addEventListener('input', e => {
+            document.getElementById('ascendNoDoValue').value =
+                e.target.value.trim().toUpperCase();
+        });
+
+    formTiketAscend.addEventListener('submit', async e => {
+        e.preventDefault();
+
+        const tombol = document.getElementById('btnBuatTiketAscend');
+        const hasil = document.getElementById('hasilTiketAscend');
+        tombol.disabled = true;
+        hasil.textContent = 'Membuat tiket di Ascend...';
+
+        const data = await kirimForm(
+            '/api/security/ascend/buat-tiket',
+            new FormData(formTiketAscend)
+        );
+
+        tombol.disabled = false;
+
+        if (data.error) {
+            hasil.className = 'text-sm font-semibold text-red-600';
+            hasil.textContent = data.error;
+            return;
+        }
+
+        hasil.className = 'text-sm font-semibold text-emerald-700';
+        hasil.textContent = `Tiket berhasil dibuat: ${data.no_tiket}`;
+    });
+}
+
+async function muatSupirTerakhirAscend() {
+    const plat = document.getElementById('ascendVehicleNo').value.trim();
+    const hasil = document.getElementById('ascendSupirTerakhir');
+
+    if (!plat) {
+        hasil.textContent = 'Isi nomor kendaraan untuk melihat riwayat supir.';
+        return;
+    }
+
+    hasil.textContent = 'Mencari riwayat supir...';
+    const data = await ambilJson(
+        `/api/security/supir-terakhir?no_plat=${encodeURIComponent(plat)}`
+    );
+
+    if (data.error) {
+        hasil.textContent = data.error;
+        return;
+    }
+
+    if (!data.driver) {
+        hasil.textContent = 'Belum ada riwayat supir untuk kendaraan ini.';
+        return;
+    }
+
+    const d = data.driver;
+    hasil.innerHTML =
+        `<b>${escapeHtml(d.nama)}</b>` +
+        `<span class="text-slate-500"> · NIK ${escapeHtml(d.nik || '-')} · SIM ${escapeHtml(d.no_sim || '-')}</span>`;
+}
+
+document.getElementById('ascendVehicleNo')
+    .addEventListener('blur', muatSupirTerakhirAscend);

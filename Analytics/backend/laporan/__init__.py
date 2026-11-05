@@ -11,9 +11,10 @@ from .penilaian_pv import LAPORAN as _penilaian_pv
 from .penilaian_pvr import LAPORAN as _penilaian_pvr
 from .pi_gt import LAPORAN as _pi_gt
 from .pi_pvr import LAPORAN as _pi_pvr
+from .po_amt import LAPORAN as _po_amt
 from .po_pi import LAPORAN as _po_pi
 from .pr_po import LAPORAN as _pr_po
 from .tbs import LAPORAN as _tbs
 from .tbs_mingguan import LAPORAN as _tbs_mingguan
 
-SEMUA = {l.id: l for l in (_pr_po, _po_pi, _pi_gt, _penilaian_pvr, _penilaian_pv, _palm, _tbs_mingguan, _tbs, _pi_pvr, _kas_bank)}
+SEMUA = {l.id: l for l in (_pr_po, _po_pi, _po_amt, _pi_gt, _penilaian_pvr, _penilaian_pv, _palm, _tbs_mingguan, _tbs, _pi_pvr, _kas_bank)}

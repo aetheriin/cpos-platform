@@ -116,6 +116,19 @@ html[data-sematan] main { padding: 1rem var(--tepi, 1rem) 1.5rem; }
 [data-tema="gelap"] .hover\:bg-red-50:hover { background-color: #3a1218; }
 [data-tema="gelap"] .hover\:bg-red-100:hover { background-color: #4c1d24; }
 
+/* Latar lembut -100 dan teks tua yang belum terbaca di latar gelap (mis. lencana status, baris terpilih) */
+[data-tema="gelap"] .bg-sky-100 { background-color: #0c3a55; }
+[data-tema="gelap"] .bg-red-100 { background-color: #4c1d24; }
+[data-tema="gelap"] .bg-emerald-100 { background-color: #0d3b2c; }
+[data-tema="gelap"] .bg-amber-100 { background-color: #453109; }
+[data-tema="gelap"] .border-sky-200, [data-tema="gelap"] .border-sky-300 { border-color: #075985; }
+[data-tema="gelap"] .text-sky-900 { color: #bae6fd; }
+[data-tema="gelap"] .text-red-600 { color: #f87171; }
+[data-tema="gelap"] .text-amber-600 { color: #fbbf24; }
+[data-tema="gelap"] .text-emerald-600 { color: #34d399; }
+[data-tema="gelap"] .text-slate-400 { color: #94a3b8; }
+[data-tema="gelap"] .ring-offset-1, [data-tema="gelap"] .ring-offset-2 { --tw-ring-offset-color: #121a2b; }
+
 /* Grafik Recharts: warna teks dan garis ditulis sebagai atribut SVG, jadi ditimpa lewat CSS */
 [data-tema="gelap"] .recharts-wrapper text { fill: #b4c0cf; }
 [data-tema="gelap"] .recharts-cartesian-grid line { stroke: #253046; }
@@ -141,3 +154,17 @@ html[data-sematan] main { padding: 1rem var(--tepi, 1rem) 1.5rem; }
 
 /* Edge menampilkan tombol mata bawaannya sendiri di samping tombol mata aplikasi */
 input::-ms-reveal, input::-ms-clear { display: none; }
+
+/* Daftar pilihan <select> digambar browser: warnanya ditetapkan supaya tidak mewarisi teks terang di atas daftar putih */
+option, optgroup { background-color: #ffffff; color: #0f172a; }
+[data-tema="gelap"] option, [data-tema="gelap"] optgroup { background-color: #121a2b; color: #e2e8f0; }
+
+/* Teks abu paling muda terlalu pucat di latar putih */
+:root:not([data-tema="gelap"]) .text-slate-400 { color: #64748b; }
+
+/* Legenda grafik memakai warna seri sebagai warna teks; yang muda (kuning, hijau muda) tidak terbaca di latar putih. Warna seri tetap ada di ikon */
+:root:not([data-tema="gelap"]) .recharts-legend-item-text { color: #475569 !important; }
+
+/* Garis bantu semua grafik: tetap terlihat di tema terang dan gelap */
+.recharts-cartesian-grid line { stroke: #cbd5e1 !important; stroke-opacity: 1 !important; }
+[data-tema="gelap"] .recharts-cartesian-grid line { stroke: #475569 !important; }

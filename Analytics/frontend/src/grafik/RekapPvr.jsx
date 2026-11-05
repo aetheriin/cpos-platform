@@ -33,7 +33,7 @@ function RekapPvr({ data, voucher = 'PVR', terpilih, onPilih }) {
                 const kuat = v / maks
                 return (
                   <td key={data.pembuat[j]} className="rounded px-2 py-1.5 text-right tabular-nums"
-                    style={{ background: v ? `rgba(3, 105, 161, ${0.08 + kuat * 0.8})` : '#f8fafc', color: kuat > 0.5 ? '#fff' : '#0f172a' }}>
+                    style={{ background: v ? `rgba(3, 105, 161, ${0.08 + kuat * 0.8})` : 'var(--color-slate-50)', color: kuat > 0.8 ? '#fff' : 'var(--color-slate-900)' }}>
                     {v ? skor.format(v) : '–'}
                   </td>
                 )
