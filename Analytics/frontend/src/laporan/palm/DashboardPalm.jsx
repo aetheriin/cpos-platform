@@ -14,6 +14,7 @@ import { GridKartu, Kartu, KartuGrafik, KisiGrafik, Petak } from '../../komponen
 import KepalaLaporan from '../../komponen/KepalaLaporan'
 import PanelFilter from '../../komponen/PanelFilter'
 import TabelDetail from '../../komponen/TabelDetail'
+import { MemuatLaporan } from '../../komponen/Keadaan'
 
 const angka2 = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -102,7 +103,7 @@ export default function DashboardPalm({ dataId, onDataHilang }) {
         {data && <PengalihJenis jenis={data.pilihan.transaksi ?? KOSONG} jumlah={data.jumlah_jenis ?? {}} terpilih={filter.transaksi ?? KOSONG} onUbah={(v) => ubah({ transaksi: v, ...SEMBUNYI_PER_JENIS[v.length === 1 ? v[0] : ''] })} />}
 
         {galat && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Grafik tidak bisa dimuat: {galat.message}</div>}
-        {!data && !galat && <p className="text-sm text-slate-500">Memuat grafik timbangan...</p>}
+        {!data && !galat && <MemuatLaporan teks="Memuat grafik timbangan..." />}
 
         {data && (
           <div className={memuat ? 'space-y-4 opacity-60 transition-opacity' : 'space-y-4 transition-opacity'}>

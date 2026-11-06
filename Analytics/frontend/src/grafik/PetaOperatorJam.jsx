@@ -1,10 +1,11 @@
 import { memo } from 'react'
 import { angka, persen } from '../lib/data'
+import { Kosong } from '../komponen/Keadaan'
 
 // Operator x jam masuk. Isi sel: jumlah transaksi WARNING; warna makin pekat makin tinggi persentase berisikonya. Sel kosong: tidak ada transaksi.
 // Klik sel memfilter operator dan jam itu; klik nama operator atau jam memfilter itu saja.
 function PetaOperatorJam({ data, operatorTerpilih, jamTerpilih, onPilihSel, onPilihOperator, onPilihJam }) {
-  if (data.operator.length === 0) return <div className="py-10 text-center text-sm text-slate-500">Tidak ada transaksi dengan jam masuk untuk filter ini</div>
+  if (data.operator.length === 0) return <Kosong teks="Tidak ada transaksi dengan jam masuk untuk filter ini" />
   const sel = new Map(data.sel.map((s) => [`${s.operator}|${s.jam}`, s]))
   const ada = operatorTerpilih.length > 0 || jamTerpilih.length > 0
   const dipilih = (o, j) => (!operatorTerpilih.length || operatorTerpilih.includes(o)) && (!jamTerpilih.length || jamTerpilih.includes(j))

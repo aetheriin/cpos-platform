@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', muatJadwal);
 async function muatJadwal() {
     const data = await ambilJson(`/api/admin/jadwal?area=${encodeURIComponent(document.getElementById('jadwalArea').value)}`);
     const tbody = document.getElementById('tabelJadwal');
-    if (data.error) { tbody.innerHTML = barisKosong(6, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(6, data.error); return; }
     tbody.innerHTML = data.map(j => `
         <tr class="hover:bg-slate-50" id="jadwal-${j.hari}">
             <td class="table-cell font-medium">${escapeHtml(j.nama_hari)}</td>

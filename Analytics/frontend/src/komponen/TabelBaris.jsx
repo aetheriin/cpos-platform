@@ -1,4 +1,5 @@
 import { formatSel } from '../lib/data'
+import { Kosong } from './Keadaan'
 
 const WARNA_STATUS = {
   Open: 'bg-amber-100 text-amber-800',
@@ -110,8 +111,8 @@ export default function TabelBaris({ kolom, baris, urut, arah, onUrut, onPilihBa
           })}
           {baris.length === 0 && (
             <tr>
-              <td colSpan={kolom.length} className="px-2 py-8 text-center text-slate-500">
-                Tidak ada baris yang cocok dengan filter ini.
+              <td colSpan={kolom.length}>
+                <Kosong teks="Tidak ada baris yang cocok dengan filter ini." />
               </td>
             </tr>
           )}

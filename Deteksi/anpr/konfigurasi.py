@@ -4,11 +4,11 @@ import os
 from dataclasses import dataclass, replace
 from pathlib import Path
 from urllib.parse import quote
-
+from anpr.pengaturan_db import kamera_dari_db
 from dotenv import load_dotenv
 
 FOLDER_PROYEK = Path(__file__).resolve().parent.parent
-
+FILE_ENV_CPOS = FOLDER_PROYEK.parent / "CPOS" / ".env"
 
 def _teks(nama, bawaan=""):
     return (os.getenv(nama) or bawaan).strip()
@@ -61,7 +61,7 @@ def sembunyikan_sandi(url):
 
 
 def muat_konfigurasi():
-    load_dotenv(FOLDER_PROYEK / ".env")
+    load_dotenv(FILE_ENV_CPOS)
     folder_hasil = Path(_teks("FOLDER_HASIL", "hasil"))
     if not folder_hasil.is_absolute():
         folder_hasil = FOLDER_PROYEK / folder_hasil
@@ -88,46 +88,23 @@ def muat_konfigurasi():
 
 
 def muat_semua_kamera():
-    """Memuat konfigurasi dari .env dan menggabungkannya dengan daftar_kamera.json dari Web UI."""
-    konf1 = muat_konfigurasi()
+    """Ambil daftar kamera aktif hanya dari Admin > Perangkat."""
+    dasar = muat_konfigurasi()
+
+    
+
     hasil = []
-
-    # 1. Kamera Pertama dari .env
-    if konf1.kamera_ip or konf1.rtsp_url:
-        hasil.append(konf1)
-
-    # 2. Kamera Kedua dari .env (Jika ada)
-    ip2, url2 = _teks("KAMERA2_IP"), _teks("KAMERA2_RTSP_URL")
-    if ip2 or url2:
-        port2 = _angka("KAMERA2_PORT", 554)
-        user2 = _teks("KAMERA2_USER", "admin")
-        pass2 = os.getenv("KAMERA2_PASS") or ""
-        stream2 = _angka("KAMERA2_STREAM", 1)
-        if not url2:
-            akun = f"{quote(user2, safe='')}:{quote(pass2, safe='')}@" if user2 else ""
-            url2 = f"rtsp://{akun}{ip2}:{port2}/Streaming/Channels/10{stream2}"
-        hasil.append(replace(konf1, nama_kamera=_teks("KAMERA2_NAMA", "BELAKANG").upper(),
-                             kamera_ip=ip2, kamera_port=port2, kamera_user=user2, kamera_pass=pass2,
-                             kamera_stream=stream2, rtsp_url=url2))
-
-    # 3. Kamera Tambahan dari Web UI (daftar_kamera.json)
-    file_kamera = FOLDER_PROYEK / "daftar_kamera.json"
-    if os.path.exists(file_kamera):
-        with open(file_kamera, "r", encoding="utf-8") as f:
-            try:
-                kamera_json = json.load(f)
-                for k in kamera_json:
-                    if not any(x.nama_kamera == k["nama_kamera"].upper() for x in hasil):
-                        hasil.append(replace(konf1, nama_kamera=k["nama_kamera"].upper(), rtsp_url=k["rtsp_url"]))
-            except json.JSONDecodeError:
-                pass
-
-    # 4. Kamera dari database CPOS (Admin › Perangkat › Kamera Deteksi Plat)
-    from anpr.pengaturan_db import kamera_dari_db
     for nama, url in kamera_dari_db():
-        if not any(x.nama_kamera == nama.upper() for x in hasil):
-            hasil.append(replace(konf1, nama_kamera=nama.upper(), rtsp_url=url))
+        if not url:
+            continue
 
-    if not hasil:
-        return [konf1]
+        hasil.append(replace(
+            dasar,
+            nama_kamera=nama.upper(),
+            kamera_ip="",
+            kamera_user="",
+            kamera_pass="",
+            rtsp_url=url,
+        ))
+
     return hasil

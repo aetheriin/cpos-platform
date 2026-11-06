@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', muatUser);
 async function muatUser() {
     const data = await ambilJson('/api/admin/users');
     const tbody = document.getElementById('tabelUser');
-    if (data.error) { tbody.innerHTML = barisKosong(9, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(9, data.error); return; }
     daftarUser = data;
     tampilkanUser();
 }

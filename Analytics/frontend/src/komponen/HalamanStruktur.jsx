@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { daftarStruktur, tambahDivisi, tambahRole } from '../api'
 import Modal from './Modal'
 import Select from './Select'
+import { Memuat } from './Keadaan'
 
 const kolomInput =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-400 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500'
@@ -132,7 +133,7 @@ export default function HalamanStruktur() {
           {pesan}
         </div>
       )}
-      {data === null && !galat && <p className="text-sm text-slate-500">Memuat...</p>}
+      {data === null && !galat && <Memuat />}
 
       {data &&
         [...data.divisi.map((d) => ({ ...d, role: data.role.filter((r) => r.divisi_id === d.id) })), ...(tanpaDivisi.length ? [{ id: 'lain', nama: 'Tanpa divisi', role: tanpaDivisi, aktif: true }] : [])].map((d) => (

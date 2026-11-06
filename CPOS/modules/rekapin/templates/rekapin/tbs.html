@@ -49,7 +49,7 @@
       <button type="button" class="btn-secondary btn-sm" data-on-click="eksporSemuaTabel" data-arg="pdf|{{ lap.judul }} {{ comp }}|{{ comp|upper }}" title="Cetak / simpan PDF {{ comp }}"><i class="fa-regular fa-file-pdf text-red-600"></i> PDF</button>
     </div>{% endcall %}
     {% else %}{{ section_header(id_tb, judul_tb) }}{% endif %}
-    {% if tb.kosong %}<p class="px-4 py-6 text-center text-sm text-slate-500">{{ tb.kosong }}</p>{% else %}
+    {% if tb.kosong %}<div class="px-4 py-10 text-center"><i class="fa-regular fa-folder-open text-2xl text-slate-300"></i><p class="text-sm text-slate-500 mt-2">{{ tb.kosong }}</p></div>{% else %}
     <div id="body-{{ id_tb }}" class="section-body overflow-x-auto"><table class="tbs-tabel">
       <thead>
         {% if tb.group_headers %}<tr class="tbs-grup">{% for g in tb.group_headers %}<th colspan="{{ g.colspan }}">{{ g.label }}</th>{% endfor %}</tr>{% endif %}

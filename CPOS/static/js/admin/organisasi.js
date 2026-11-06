@@ -30,7 +30,7 @@ async function muatOrganisasi() {
     Object.keys(ORG).forEach(jenis => {
         const tbody = document.getElementById(`tabelOrg-${jenis}`);
         const n = Number(tbody.dataset.kolom);
-        if (data.error) { tbody.innerHTML = barisKosong(n, data.error); return; }
+        if (data.error) { tbody.innerHTML = barisGagal(n, data.error); return; }
         dataOrg[jenis] = data[jenis];
         const cfg = ORG[jenis];
         tbody.innerHTML = data[jenis].map(r => `

@@ -1,10 +1,11 @@
 import { memo } from 'react'
 import { hargaKg, kgRingkas } from './tbs'
+import { Kosong } from '../komponen/Keadaan'
 
 // Peringkat netto (tipe, business group, supplier) sebagai daftar batang HTML: nama panjang membungkus dan batang selalu terlihat di kartu sempit.
 // Klik baris untuk memfilter; nilai yang tidak dipilih diredupkan.
 function BatangPeringkat({ data, terpilih, onPilih, warna = '#0369a1', keterangan }) {
-  if (data.length === 0) return <div className="py-10 text-center text-sm text-slate-500">Tidak ada pembelian untuk filter ini</div>
+  if (data.length === 0) return <Kosong teks="Tidak ada pembelian untuk filter ini" />
   const maks = Math.max(...data.map((d) => d.netto), 1)
   return (
     <div>

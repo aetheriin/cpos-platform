@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', muatPerangkat);
 async function muatPerangkat() {
     const data = await ambilJson('/api/admin/perangkat');
     const tbody = document.getElementById('tabelPos');
-    if (data.error) { tbody.innerHTML = barisKosong(7, data.error); return false; }
+    if (data.error) { tbody.innerHTML = barisGagal(7, data.error); return false; }
     daftarPos = data.perangkat;
 
     const t = data.timbangan;
@@ -223,7 +223,7 @@ function ubahAktifJembatan(id) {
 async function muatKameraPlat() {
     const tbody = document.getElementById('tabelKameraPlat');
     const data = await ambilJson('/api/admin/deteksi-plat/kamera');
-    if (data.error) { tbody.innerHTML = barisKosong(7, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(7, data.error); return; }
     dataKameraPlat = data;
     tbody.innerHTML = data.kamera.map(k => `
         <tr class="hover:bg-slate-50">

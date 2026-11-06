@@ -294,8 +294,7 @@ def api_request_setujui_terpilih():
 @lihat_halaman("RK_HARGA")
 def halaman_harga():
     return _halaman("harga", "RK_HARGA", company=_company_rekap(current_user.id),
-                    hak={a: boleh("RK_HARGA", a) for a in ("tambah", "ubah", "hapus")},
-                    sumber_harga=harga_sumber.nama_sumber())
+                    hak={a: boleh("RK_HARGA", a) for a in ("tambah", "ubah", "hapus")})
 
 
 @rekapin_bp.route("/api/harga")

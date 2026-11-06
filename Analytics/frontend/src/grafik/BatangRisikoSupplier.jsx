@@ -4,6 +4,7 @@ import { useLebar } from '../lib/lebar'
 import TickKlik from './TickKlik'
 import { warnaRisiko } from './risiko'
 import { angka } from '../lib/data'
+import { Kosong } from '../komponen/Keadaan'
 
 function Petunjuk({ active, payload, indikator }) {
   const d = active && payload?.[0]?.payload
@@ -30,7 +31,7 @@ function Petunjuk({ active, payload, indikator }) {
 function BatangRisikoSupplier({ risiko_supplier: rs, indikator, terpilih, risikoTerpilih, onPilih, onPilihRisiko, onPilihSupplier, label = 'supplier' }) {
   const [mode, setMode] = useState('jumlah')
   const [ref, lebar] = useLebar()
-  if (rs.data.length === 0) return <div className="py-10 text-center text-sm text-slate-500">Tidak ada transaksi untuk filter ini</div>
+  if (rs.data.length === 0) return <Kosong teks="Tidak ada transaksi untuk filter ini" />
   const persenMode = mode === 'persen'
   const data = persenMode ? rs.data_persen : rs.data
   const lebarLabel = Math.round(Math.min(230, Math.max(96, (lebar || 600) * 0.38)))

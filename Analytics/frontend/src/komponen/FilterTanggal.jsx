@@ -29,10 +29,11 @@ export default function FilterTanggal({ dari, sampai, efektif, dataset, satuan, 
       .sort((a, b) => a - b)
       .filter((n) => awalPintasan(n) > min)
       .map((n) => ({ nilai: n, label: `${n} ${pilihan}`, judul: `${n} ${satuan} terakhir${n === bawaan ? ' (bawaan)' : ''}` })),
+    ...(bawaan === 'tahun' ? [{ nilai: 'tahun', label: 'Tahun ini', judul: 'Tahun berjalan (bawaan)' }] : []),
     { nilai: 'semua', label: 'Semua', judul: 'Seluruh periode yang dimuat' },
   ]
   const bebas = Boolean(dari && sampai)
-  const cocok = (n) => (n === 'semua' ? dari === min : dari === awalPintasan(n)) && sampai === ujung
+  const cocok = (n) => n !== 'tahun' && (n === 'semua' ? dari === min : dari === awalPintasan(n)) && sampai === ujung
   const terpilih = !bebas ? (opsi.some((o) => o.nilai === bawaan) ? bawaan : 'semua') : opsi.find((o) => cocok(o.nilai))?.nilai
   const pilih = (n) =>
     onUbah(n === bawaan ? { dari: null, sampai: null } : n === 'semua' ? { dari: min, sampai: ujung } : { dari: awalPintasan(n), sampai: ujung })

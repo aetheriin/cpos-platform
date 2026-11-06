@@ -9,8 +9,8 @@ document.addEventListener('DOMContentLoaded', muatAlurTiket);
 async function muatAlurTiket() {
     const data = await ambilJson('/api/admin/alur-tiket');
     if (data.error) {
-        document.getElementById('tabelAlurTiket').innerHTML = barisKosong(5, data.error);
-        document.getElementById('tabelAturanAlur').innerHTML = barisKosong(5, data.error);
+        document.getElementById('tabelAlurTiket').innerHTML = barisGagal(5, data.error);
+        document.getElementById('tabelAturanAlur').innerHTML = barisGagal(5, data.error);
         return;
     }
     dataAlurTiket = data;

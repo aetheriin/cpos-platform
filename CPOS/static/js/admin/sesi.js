@@ -19,8 +19,8 @@ async function muatSesi(opsi = {}) {
     const tSesi = document.getElementById('tabelSesi');
     const tKunci = document.getElementById('tabelTerkunci');
     if (data.error) {
-        tSesi.innerHTML = barisKosong(6, data.error);
-        tKunci.innerHTML = barisKosong(5, data.error);
+        tSesi.innerHTML = barisGagal(6, data.error);
+        tKunci.innerHTML = barisGagal(5, data.error);
         return false;
     }
     const inisial = n => (n || '?').split(/\s+/).map(x => x[0]).join('').slice(0, 2).toUpperCase();

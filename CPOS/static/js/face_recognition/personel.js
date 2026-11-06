@@ -43,7 +43,7 @@ async function muatPersonel() {
 
     const data = await ambilJson(`/api/personel?${params}`);
     const tbody = document.getElementById('tabelPersonel');
-    if (data.error) { tbody.innerHTML = barisKosong(6, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(6, data.error); return; }
     daftarPersonel = data;
     tbody.innerHTML = data.map(p => `
         <tr class="hover:bg-slate-50">

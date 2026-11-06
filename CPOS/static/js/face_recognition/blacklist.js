@@ -62,7 +62,7 @@ async function muatBlacklist() {
         kategori: document.getElementById('kategoriBlacklist').value, cari: document.getElementById('cariBlacklist').value.trim() });
     const data = await ambilJson(`/api/blacklist?${params}`);
     const tbody = document.getElementById('kartuBlacklist');
-    if (data.error) { tbody.innerHTML = barisKosong(KOLOM_BLACKLIST, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(KOLOM_BLACKLIST, data.error); return; }
     dataBlacklist = data;
     const bolehTambah = tbody.dataset.bolehTambah === '1';
     const bolehHapus = tbody.dataset.bolehHapus === '1';

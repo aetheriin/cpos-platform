@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function muatMitra() {
     const data = await ambilJson('/api/master/mitra');
     const tbody = document.getElementById('tabelMitra');
-    if (data.error) { tbody.innerHTML = barisKosong(7, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(7, data.error); return; }
     daftarMitra = data;
     const kodePt = JSON.parse(tbody.dataset.company || '[]'), idPt = JSON.parse(tbody.dataset.companyId || '[]');
     const labelPt = ids => ids.length ? ids.map(id => kodePt[idPt.indexOf(id)]).filter(Boolean).join(', ') : 'Semua';
@@ -66,7 +66,7 @@ function ubahAktifMitra(id) {
 async function muatProduk() {
     const data = await ambilJson('/api/master/produk');
     const tbody = document.getElementById('tabelProduk');
-    if (data.error) { tbody.innerHTML = barisKosong(6, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(6, data.error); return; }
     daftarProduk = data;
     tbody.innerHTML = data.map(p => `
         <tr class="hover:bg-slate-50${p.is_active ? '' : ' text-slate-400'}">

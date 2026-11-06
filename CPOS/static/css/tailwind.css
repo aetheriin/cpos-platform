@@ -80,3 +80,22 @@ html.dark .tbs-monthly .tbs-kartu[data-company="SJN"] { --tbs-grup: #4d2b14; --t
 
 /* Ruang bawah supaya tombol ke atas tidak menutupi kaki tabel di akhir halaman */
 .konten:not(:has(.analytics-bingkai)) { padding-bottom: 4.5rem; }
+
+/* TBS Daily: ruang atas dihemat dan huruf diatur tbs_daily.js (--tbs-huruf), supaya empat tabel muat satu layar dan tetap terbaca */
+body:has(.tbs-daily) .halaman-judul { display: none; }
+body:has(.tbs-daily) .tab-body { margin-top: 0.5rem; margin-bottom: 0; }
+.tab-body:has(.tbs-daily) .filter-bar { padding: 0.25rem 0.75rem; margin-bottom: 0.5rem; }
+.tab-body:has(.tbs-daily) .filter-bar > div:has(> label) { display: flex; align-items: center; gap: 0.5rem; }
+.tab-body:has(.tbs-daily) .filter-bar .field-label { margin: 0; }
+.tab-body:has(.tbs-daily) .filter-bar .input-field { width: auto; padding-top: 0.125rem; padding-bottom: 0.125rem; }
+.tab-body:has(.tbs-daily) .filter-bar :is(.btn-primary, .btn-secondary) { padding: 0.25rem 0.75rem; }
+.tab-body:has(.tbs-daily) .filter-bar .self-end { align-self: center; padding-bottom: 0; }
+.tbs-daily { --tbs-huruf: 11px; gap: 0.5rem; }
+.tbs-kolom { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+.tbs-daily .tbs-kartu { margin-bottom: 0; }
+.tbs-daily .tbs-kolom .tbs-kartu { height: auto; }
+.tbs-daily .section-header { padding-top: 0.125rem; padding-bottom: 0.125rem; }
+.tbs-daily .tbs-tabel { font-size: var(--tbs-huruf); line-height: 1.2; }
+.tbs-daily.tbs-harian .tbs-tabel th, .tbs-daily .section-box.tbs-kartu .tbs-tabel > thead > tr > th { font-size: 0.85em; padding: 0.15em 0.45em; }
+.tbs-daily.tbs-harian .tbs-tabel td { padding: 0.08em 0.45em; }
+.tbs-daily .tbs-tabel td:first-child { white-space: nowrap; }

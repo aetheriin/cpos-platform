@@ -36,7 +36,7 @@ async function muatRequest() {
     const tbody = document.getElementById('tabelRkRequest');
     const hak = hakRequest();
     const res = await ambilJson(`/rekapin/api/request?status=${encodeURIComponent(statusRequest)}`);
-    if (res.error) { tbody.innerHTML = barisKosong(9, res.error); return; }
+    if (res.error) { tbody.innerHTML = barisGagal(9, res.error); return; }
     Object.entries(res.ringkas).forEach(([st, n]) => {
         const el = document.getElementById(`rkJumlah${st}`);
         if (el) el.textContent = n;

@@ -196,7 +196,7 @@ function paramPlat() {
 async function muatPlat() {
     const tbody = document.getElementById('tabelPlat');
     const d = await ambilJson('/api/deteksi-plat?' + paramPlat());
-    if (d.error) { tbody.innerHTML = barisKosong(9, d.error); return; }
+    if (d.error) { tbody.innerHTML = barisGagal(9, d.error); return; }
 
     const pilih = document.getElementById('fKamera'), dipilih = pilih.value;
     pilih.innerHTML = '<option value="">Semua kamera</option>' + d.kamera.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');

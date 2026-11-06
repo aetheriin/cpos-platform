@@ -8,6 +8,7 @@ import { GridKartu, Kartu, KartuGrafik } from '../../komponen/Kartu'
 import KepalaLaporan from '../../komponen/KepalaLaporan'
 import PanelFilter from '../../komponen/PanelFilter'
 import TabelDetail from '../../komponen/TabelDetail'
+import { MemuatLaporan } from '../../komponen/Keadaan'
 
 // Atensi dihitung di backend (laporan/tbs_mingguan/ukuran.py): minggu lengkap terakhir dibanding rata-rata ± batas SD minggu lengkap sebelumnya.
 // Tampilan awal hanya YBS; perusahaan lain lewat panel filter.
@@ -297,7 +298,7 @@ export default function DashboardTbsMingguan({ dataId, onDataHilang }) {
         <KepalaLaporan judul="Pembelian TBS Mingguan" data={data} aktif={aktif} onLepas={lepas} onReset={reset} panelTerbuka={panel} onTogglePanel={togglePanel} />
 
         {galat && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Laporan tidak bisa dimuat: {galat.message}</div>}
-        {!data && !galat && <p className="text-sm text-slate-500">Memuat pembelian TBS mingguan...</p>}
+        {!data && !galat && <MemuatLaporan teks="Memuat pembelian TBS mingguan..." />}
 
         {data && (
           <div className={memuat ? 'space-y-4 opacity-60 transition-opacity' : 'space-y-4 transition-opacity'}>

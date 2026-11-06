@@ -11,7 +11,7 @@ const KELAS_IKON_MENU = { 1: 'pohon-ikon pohon-ikon-1', 2: 'pohon-ikon pohon-iko
 async function muatMenuKelola() {
     const data = await ambilJson('/api/admin/menu');
     const tbody = document.getElementById('tabelMenuKelola');
-    if (data.error) { tbody.innerHTML = barisKosong(6, data.error); return false; }
+    if (data.error) { tbody.innerHTML = barisGagal(6, data.error); return false; }
     DATA_MENU = data;
     tampilMenuKelola();
 }

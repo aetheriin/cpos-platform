@@ -1,5 +1,6 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { angka, itemDonat, potong } from '../lib/data'
+import { Kosong } from '../komponen/Keadaan'
 
 const persen = (x) => `${(x * 100).toFixed(0)}%`
 
@@ -7,7 +8,7 @@ export default function DonatKategori({ daftar, terpilih = [], onPilih, satuan }
   const { item, total } = itemDonat(daftar, 5, terpilih)
 
   if (total === 0) {
-    return <div className="py-10 text-center text-sm text-slate-500">Tidak ada data untuk filter ini</div>
+    return <Kosong teks="Tidak ada data untuk filter ini" />
   }
 
   const redup = (d) => terpilih.length > 0 && !d.lainnya && !terpilih.includes(d.kategori)

@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function muatTiketAktif() {
     const data = await ambilJson('/api/security/list-tiket-aktif', { polling: tiketSudahDimuat });
     const tbody = document.getElementById('tabelTicketAktif');
-    if (data.error) { if (!tiketSudahDimuat) tbody.innerHTML = barisKosong(7, data.error); return; }
+    if (data.error) { if (!tiketSudahDimuat) tbody.innerHTML = barisGagal(7, data.error); return; }
     // Muatan pertama: semua tiket dianggap sudah dikenal (tidak disorot walau tab tahap diganti)
     if (!tiketSudahDimuat) Halaman.kenali(tbody, data.map(jejakTiket));
     tiketSudahDimuat = true;
@@ -115,7 +115,7 @@ async function muatHistoryProduk() {
     const idProduk = document.getElementById('filterProdukHistory').value;
     const data = await ambilJson(`/api/list/history-produk?id_produk=${encodeURIComponent(idProduk)}`);
     const tbody = document.getElementById('tabelHistoryProduk');
-    if (data.error) { tbody.innerHTML = barisKosong(10, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(10, data.error); return; }
     const bolehPeriksa = tbody.dataset.bolehPeriksa === '1';
     const bolehKoreksi = tbody.dataset.bolehKoreksi === '1';
     tbody.innerHTML = data.map(r => `

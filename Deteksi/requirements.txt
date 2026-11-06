@@ -5,3 +5,4 @@ pyodbc
 pandas
 openpyxl
 python-dotenv
+fast-alpr[onnx]

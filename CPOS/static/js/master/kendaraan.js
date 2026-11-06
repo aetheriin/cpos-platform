@@ -17,7 +17,7 @@ async function muatKendaraan() {
     const q = document.getElementById('cariKendaraan').value.trim();
     const data = await ambilJson(`/api/master/kendaraan?cari=${encodeURIComponent(q)}`);
     const tbody = document.getElementById('tabelKendaraan');
-    if (data.error) { tbody.innerHTML = barisKosong(8, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(8, data.error); return; }
     daftarKendaraan = data;
     tampilkanKendaraan();
 }
@@ -84,7 +84,7 @@ let daftarJenisKendaraan = [];
 async function muatJenisKendaraan() {
     const data = await ambilJson('/api/master/jenis-kendaraan');
     const tbody = document.getElementById('tabelJenisKendaraan');
-    if (data.error) { tbody.innerHTML = barisKosong(8, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(8, data.error); return; }
     daftarJenisKendaraan = data;
     const kg = v => v == null ? '<span class="text-slate-400">-</span>' : Number(v).toLocaleString('id-ID');
     tbody.innerHTML = data.map(j => `

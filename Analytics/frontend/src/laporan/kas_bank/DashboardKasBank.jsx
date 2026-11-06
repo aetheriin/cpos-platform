@@ -3,7 +3,8 @@ import { unduhDetail } from '../../api'
 import { angka, rentangTgl, tambahDariEvent, tglLengkap, ubahPilihan } from '../../lib/data'
 import { chipDaftar, useDashboard } from '../../lib/filter'
 import FilterMulti from '../../komponen/FilterMulti'
-import { IkonPanahKanan, IkonUnduh } from '../../komponen/Ikon'
+import { IkonPanahKanan } from '../../komponen/Ikon'
+import TombolExcel from '../../komponen/TombolExcel'
 import PilihRentang from '../../komponen/PilihRentang'
 import { GridKartu, Kartu, KartuGrafik, KisiGrafik, Petak } from '../../komponen/Kartu'
 import KepalaLaporan from '../../komponen/KepalaLaporan'
@@ -11,6 +12,7 @@ import PanelFilter from '../../komponen/PanelFilter'
 import TabelDetail from '../../komponen/TabelDetail'
 import { uangPenuh, WARNA_KELUAR, WARNA_MASUK } from '../../grafik/kas'
 import { JenisDokumen, KreditToDate, PilihPeriode, SaldoBerjalan } from '../../grafik/KasTren'
+import { Kosong, MemuatLaporan } from '../../komponen/Keadaan'
 
 const FILTER_AWAL = {}   // tabel dikonversi ke rupiah; tampilan=asli memakai mata uang rekening
 const KOSONG = []
@@ -40,7 +42,7 @@ function LawanTransaksi({ mitra, satuan, terpilih, onPilih }) {
         ))}
       </div>
       {data.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-500">Tidak ada data</p>
+        <Kosong teks="Tidak ada data untuk filter ini" />
       ) : (
         <ul className="space-y-1.5">
           {data.map((d) => {
@@ -88,18 +90,14 @@ function EksporGiro({ dataId, filter, onDataHilang }) {
   return (
     <span className="inline-flex items-center gap-2">
       {galat && <span role="alert" className="text-xs text-red-700">Export gagal: {galat}</span>}
-      <button type="button" onClick={unduh} disabled={sibuk} aria-busy={sibuk}
-        className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-40">
-        <IkonUnduh className="h-3.5 w-3.5 text-emerald-600" />
-        {sibuk ? 'Menyiapkan...' : 'Excel'}
-      </button>
+      <TombolExcel kecil onClick={unduh} disabled={sibuk} sibuk={sibuk} />
     </span>
   )
 }
 
 // Rekap jasa giro per perusahaan. Klik rekening untuk memfilternya.
 function JasaGiro({ giro, asli, satuan, terpilih, onPilih }) {
-  if (giro.perusahaan.length === 0) return <p className="py-8 text-center text-sm text-slate-500">Tidak ada data</p>
+  if (giro.perusahaan.length === 0) return <Kosong teks="Tidak ada data untuk filter ini" />
   const angkaSel = 'py-1.5 pl-4 text-right tabular-nums whitespace-nowrap'
   const campur = (v) => (v == null ? '–' : angka.format(v))   // total mata uang asli: USD dan IDR tercampur, jadi tanpa simbol
   return (
@@ -217,7 +215,7 @@ export default function DashboardKasBank({ dataId, onDataHilang }) {
         <KepalaLaporan judul="Cash Flow" data={data} aktif={aktif} onLepas={lepas} onReset={reset} panelTerbuka={panel} onTogglePanel={togglePanel} />
 
         {galat && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Laporan tidak bisa dimuat: {galat.message}</div>}
-        {!data && !galat && <p className="text-sm text-slate-500">Memuat mutasi bank...</p>}
+        {!data && !galat && <MemuatLaporan teks="Memuat mutasi bank..." />}
 
         {data && (
           <div className="flex flex-wrap items-center gap-3">

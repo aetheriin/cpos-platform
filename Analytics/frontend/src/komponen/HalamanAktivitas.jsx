@@ -6,6 +6,7 @@ import PengaturanIdle from './PengaturanIdle'
 import SesiAktif from './SesiAktif'
 import Select from './Select'
 import { angka } from '../lib/data'
+import { Kosong, Memuat } from './Keadaan'
 
 const isoLokal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const hariLalu = (n) => isoLokal(new Date(Date.now() - n * 86400000))
@@ -90,7 +91,7 @@ export default function HalamanAktivitas() {
           Log tidak bisa dimuat: {galat.message}
         </div>
       )}
-      {!data && !galat && <p className="text-sm text-slate-500">Memuat log aktivitas...</p>}
+      {!data && !galat && <Memuat teks="Memuat log aktivitas..." />}
 
       {data && (
         <div className={'grid items-start gap-4 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] ' + (memuat ? 'opacity-60' : '')}>
@@ -98,7 +99,7 @@ export default function HalamanAktivitas() {
             <h2 className="font-medium">Per pengguna</h2>
             <p className="mb-3 text-xs text-slate-500">Klik nama untuk melihat aktivitasnya saja.</p>
             {data.per_pengguna.length === 0 ? (
-              <p className="py-6 text-center text-sm text-slate-500">Tidak ada pengguna aktif pada periode ini.</p>
+              <Kosong teks="Tidak ada pengguna aktif pada periode ini." />
             ) : (
               <div className="max-h-[28rem] overflow-y-auto">
               <table className="w-full text-left text-sm">

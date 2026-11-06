@@ -5,6 +5,7 @@ import FilterTanggal from '../../komponen/FilterTanggal'
 import { GridKartu, Kartu } from '../../komponen/Kartu'
 import PanelFilter, { TombolFilter } from '../../komponen/PanelFilter'
 import TabelDetail from '../../komponen/TabelDetail'
+import { MemuatLaporan } from '../../komponen/Keadaan'
 
 const FILTER_AWAL = { dari: null, sampai: null, perusahaan: [], status: [] }
 const JENIS = [{ kunci: 'perusahaan', nama: 'Perusahaan' }, { kunci: 'status', nama: 'Status' }]
@@ -54,7 +55,7 @@ export default function LaporanPiPvr({ dataId, onDataHilang }) {
         )}
 
         {galat && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{galat.message}</div>}
-        {!data && !galat && <p className="text-sm text-slate-500">Memuat...</p>}
+        {!data && !galat && <MemuatLaporan />}
 
         {data && (
           <div className={memuat ? 'space-y-4 opacity-60 transition-opacity' : 'space-y-4 transition-opacity'}>

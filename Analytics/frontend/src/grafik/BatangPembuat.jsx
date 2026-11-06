@@ -1,10 +1,11 @@
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { WARNA } from './warna'
 import { angka } from '../lib/data'
+import { Kosong } from '../komponen/Keadaan'
 
 export default function BatangPembuat({ data, terpilih = [], onPilih }) {
   if (data.length === 0 || data.every((d) => d.jumlah === 0)) {
-    return <div className="py-10 text-center text-sm text-slate-500">Tidak ada outstanding untuk filter ini</div>
+    return <Kosong teks="Tidak ada outstanding untuk filter ini" />
   }
   const opasitas = (nama) => (terpilih.length > 0 && !terpilih.includes(nama) ? 0.3 : 1)
   return (

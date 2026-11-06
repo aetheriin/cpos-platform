@@ -6,6 +6,7 @@ import Modal from './Modal'
 import PilihCompany from './PilihCompany'
 import PopupEditPengguna from './PopupEditPengguna'
 import Select from './Select'
+import { Memuat } from './Keadaan'
 
 const FORM_AWAL = { username: '', sandi: '', nama: '', role: '', divisi: '', company: [] }
 
@@ -207,7 +208,7 @@ export default function HalamanPengguna({ pengguna, onSendiriBerubah }) {
             </div>
           )}
         </div>
-        {daftar === null && !galat && <p className="text-sm text-slate-500">Memuat...</p>}
+        {daftar === null && !galat && <Memuat />}
         {daftar && (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[44rem] text-left text-sm">

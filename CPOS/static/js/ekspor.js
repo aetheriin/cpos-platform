@@ -52,7 +52,8 @@ function eksporTabel(idTbody, format, judul) {
 // company diisi: hanya tabel perusahaan itu
 function eksporSemuaTabel(format, judul, company) {
     const tubuh = [...document.querySelectorAll('tbody[id^="body-tabel-tbs"]')]
-        .filter(b => !company || b.closest('.tbs-kartu')?.dataset.company === company);
+        .filter(b => !company || b.closest('.tbs-kartu')?.dataset.company === company)
+        .sort((a, b) => parseInt(a.id.replace(/\D/g, ''), 10) - parseInt(b.id.replace(/\D/g, ''), 10));   // urutan laporan, bukan urutan kolom di layar
     const bagian = tubuh.map(b => dataTabel(b.id));
     if (!bagian.length) return;
     const nama = tubuh.map(b => b.closest('.tbs-kartu')?.dataset.company || '');

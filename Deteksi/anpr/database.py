@@ -9,7 +9,9 @@ from dotenv import load_dotenv
 from anpr import gerbang
 
 FOLDER_PROYEK = Path(__file__).resolve().parent.parent
-load_dotenv(FOLDER_PROYEK / ".env")
+FILE_ENV_CPOS = FOLDER_PROYEK.parent / "CPOS" / ".env"
+
+load_dotenv(FILE_ENV_CPOS)
 
 try:
     import pyodbc
@@ -21,13 +23,36 @@ TIDAK_DIKETAHUI = "Tidak Diketahui"
 
 def get_koneksi(timeout=10):
     if pyodbc is None:
-        raise RuntimeError("Library pyodbc belum terinstall. Jalankan: pip install pyodbc")
-    conn_str = (
-        f"DRIVER={{{os.getenv('SQL_DRIVER', 'ODBC Driver 17 for SQL Server')}}};"
-        f"SERVER={os.getenv('SQL_SERVER', 'localhost')};DATABASE={os.getenv('SQL_DB', 'cpos')};"
-        f"UID={os.getenv('SQL_USER', '')};PWD={os.getenv('SQL_PASS', '')};TrustServerCertificate=yes"
-    )
-    return pyodbc.connect(conn_str, timeout=timeout)
+        raise RuntimeError("Library pyodbc belum terinstall.")
+
+    driver = os.getenv("DB_DRIVER", "{ODBC Driver 18 for SQL Server}").strip()
+    if not (driver.startswith("{") and driver.endswith("}")):
+        driver = "{" + driver + "}"
+
+    server = os.getenv("DB_SERVER")
+    database = os.getenv("DB_NAME", "CPOS")
+    user = os.getenv("DB_USER", "").strip()
+    password = os.getenv("DB_PASSWORD", "")
+    trust = os.getenv("DB_TRUST_CERT", "yes")
+
+    if not server:
+        raise RuntimeError("DB_SERVER belum diisi pada .env CPOS.")
+
+    bagian = [
+        f"DRIVER={driver}",
+        f"SERVER={server}",
+        f"DATABASE={database}",
+        f"TrustServerCertificate={trust}",
+        "APP=CPOS-Deteksi",
+    ]
+
+    if user:
+        password = password.replace("}", "}}")
+        bagian.extend([f"UID={user}", f"PWD={{{password}}}"])
+    else:
+        bagian.append("Trusted_Connection=yes")
+
+    return pyodbc.connect(";".join(bagian), timeout=timeout)
 
 
 def simpan_riwayat(waktu, kamera, jenis, plat, conf_ocr, foto_rel, plat_rel):
@@ -51,7 +76,7 @@ def simpan_riwayat(waktu, kamera, jenis, plat, conf_ocr, foto_rel, plat_rel):
                 id_deteksi = cur.fetchone()[0]
                 try:
                     gerbang.pasangkan(cur, id_deteksi, waktu_dt, kamera, plat, conf, id_vehicle)
-                except Exception as e:  # noqa: BLE001 - bacaan tetap tersimpan walau penggabungan gagal
+                except Exception as e:  
                     print(f"[GERBANG] gagal menggabungkan bacaan: {e}")
                 pemilik = TIDAK_DIKETAHUI
                 if id_vehicle is not None:
@@ -63,7 +88,7 @@ def simpan_riwayat(waktu, kamera, jenis, plat, conf_ocr, foto_rel, plat_rel):
                 return pemilik
             finally:
                 conn.close()
-        except Exception as e:  # noqa: BLE001 - jangan sampai deteksi berhenti karena database
+        except Exception as e: 
             print(f"[SQL] gagal simpan (percobaan {percobaan}/3): {e}")
             time.sleep(2)
     return TIDAK_DIKETAHUI

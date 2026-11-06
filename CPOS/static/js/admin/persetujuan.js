@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function muatAlurSetuju() {
     const data = await ambilJson('/api/admin/alur-persetujuan');
     const tbody = document.getElementById('tabelAlurSetuju');
-    if (data.error) { tbody.innerHTML = barisKosong(5, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(5, data.error); return; }
     dataAlurSetuju = data;
     tbody.innerHTML = data.map(a => `<tr class="hover:bg-slate-50 align-top">
         <td class="table-cell font-semibold text-slate-800 whitespace-nowrap">${escapeHtml(a.nama_jenis)}</td>

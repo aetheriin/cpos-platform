@@ -49,7 +49,7 @@ async function submitSortasi(btn) {
 async function muatHistorySortasi() {
     const data = await ambilJson('/api/history/sortasi');
     const tbody = document.getElementById('tabelHistorySortasi');
-    if (data.error) { tbody.innerHTML = barisKosong(4, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(4, data.error); return; }
     tbody.innerHTML = data.map(r => `
         <tr><td class="table-cell">${escapeHtml(r.no_plat)}</td><td class="table-cell">${escapeHtml(r.nama_produk)}</td>
         <td class="table-cell">${escapeHtml(r.nama_supplier)}</td><td class="table-cell">${escapeHtml(r.status_val)}</td></tr>

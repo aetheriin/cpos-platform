@@ -39,7 +39,7 @@ async function muatPengajuan() {
     const wadah = document.getElementById('daftarPengajuan');
     const tabel = typeof tampilkanPengajuanTabel === 'function';
     if (data.error) {
-        wadah.innerHTML = tabel ? barisKosong(KOLOM_REQUEST, data.error) : `<p class="text-sm text-red-600">${escapeHtml(data.error)}</p>`;
+        wadah.innerHTML = tabel ? barisGagal(KOLOM_REQUEST, data.error) : `<p class="text-sm text-red-600">${escapeHtml(data.error)}</p>`;
         return;
     }
     dataPengajuan = data;

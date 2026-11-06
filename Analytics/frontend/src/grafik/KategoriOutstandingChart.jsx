@@ -2,13 +2,14 @@ import { Bar, BarChart, CartesianGrid, Cell, LabelList, Legend, ResponsiveContai
 import { angka, potong, teratas } from '../lib/data'
 import { useTataLetak } from '../lib/tampilan'
 import { WARNA } from './warna'
+import { Kosong } from '../komponen/Keadaan'
 
 export default function KategoriOutstandingChart({ daftar, terpilih = [], onPilih }) {
   const padat = useTataLetak()[0] === 'padat'
   const data = teratas(daftar, 10, terpilih, 'kategori')
 
   if (data.length === 0) {
-    return <div className="py-10 text-center text-sm text-slate-500">Tidak ada outstanding untuk filter ini</div>
+    return <Kosong teks="Tidak ada outstanding untuk filter ini" />
   }
 
   const opasitas = (kategori) => (terpilih.length > 0 && !terpilih.includes(kategori) ? 0.3 : 1)

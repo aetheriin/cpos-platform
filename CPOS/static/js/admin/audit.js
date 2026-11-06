@@ -19,7 +19,7 @@ function warnaAksiAdmin(aksi) {
 async function muatAuditAdmin() {
     const data = await ambilJson(`/api/admin/audit?hari=${hariAuditAdmin}`);
     const tbody = document.getElementById('tabelAuditAdmin');
-    if (data.error) { tbody.innerHTML = barisKosong(6, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(6, data.error); return; }
     tbody.innerHTML = data.map(r => `
         <tr class="hover:bg-slate-50" data-cari="${escapeHtml(`${r.aksi} ${r.target || ''} ${r.oleh} ${r.detail || ''}`.toLowerCase())}">
             <td class="table-cell whitespace-nowrap">${escapeHtml(r.created_at)}</td>
@@ -52,7 +52,7 @@ async function muatAuditData() {
     const sel = document.getElementById('filterTabelData');
     const data = await ambilJson(`/api/admin/audit/data?hari=${hariAuditAdmin}&tabel=${encodeURIComponent(sel.value)}`);
     const tbody = document.getElementById('tabelAuditData');
-    if (data.error) { tbody.innerHTML = barisKosong(5, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(5, data.error); return; }
     if (sel.options.length === 1) Object.entries(data.tabel).forEach(([k, v]) => sel.add(new Option(v, k)));
     tbody.innerHTML = data.data.map(r => {
         const [label, warna] = LABEL_AKSI_DATA[r.aksi] || [labelKode(r.aksi), WARNA_BADGE.abu];

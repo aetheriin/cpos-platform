@@ -1,12 +1,13 @@
 import { memo } from 'react'
 import { redup, warnaRisiko } from './risiko'
 import { angka } from '../lib/data'
+import { Kosong } from '../komponen/Keadaan'
 
 // Daftar batang HTML (bukan sumbu Recharts berlebar tetap) supaya label panjang membungkus dan batang tetap terlihat di kartu yang sempit.
 // Tinggi mengikuti kartu (h-full) agar sejajar dengan grafik di sebelahnya. Klik baris untuk memfilter indikator.
 function BatangRisiko({ data, terpilih, onPilih }) {
   if (data.length === 0 || data.every((d) => d.jumlah === 0)) {
-    return <div className="py-10 text-center text-sm text-slate-500">Tidak ada transaksi untuk filter ini</div>
+    return <Kosong teks="Tidak ada transaksi untuk filter ini" />
   }
   const maks = Math.max(...data.map((d) => d.jumlah))
   return (

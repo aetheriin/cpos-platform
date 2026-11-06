@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { angka, lintasTahun, tgl, tglLengkap } from '../lib/data'
 import { sumbuUang, uangPenuh, WARNA_KELUAR, WARNA_MASUK } from './kas'
+import { Kosong } from '../komponen/Keadaan'
 
 const NAMA_BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
 const sumbu = { tickLine: false, axisLine: false, tick: { fontSize: 11, fill: '#64748b' } }
@@ -58,7 +59,7 @@ function KotakInfo({ judul, baris }) {
   )
 }
 
-const kosong = <div className="py-10 text-center text-sm text-slate-500">Tidak ada data</div>
+const kosong = <Kosong teks="Tidak ada data untuk filter ini" />
 const redup = (terpilih, nilai) => (terpilih.length && !terpilih.includes(nilai) ? 0.3 : 1)
 
 // Ending balance (garis, sumbu kiri) dengan debit dan credit (batang, sumbu kanan) per bulan.

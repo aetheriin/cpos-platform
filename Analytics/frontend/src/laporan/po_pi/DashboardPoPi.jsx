@@ -13,6 +13,7 @@ import FilterTanggal from '../../komponen/FilterTanggal'
 import TabelDetail from '../../komponen/TabelDetail'
 import { GARIS_PO_PI } from '../../grafik/warna'
 import WeeklyChart from '../../grafik/WeeklyChart'
+import { MemuatLaporan } from '../../komponen/Keadaan'
 
 const FILTER_AWAL = { dari: null, sampai: null, minggu: null, perusahaan: [], kategori: [], pembuat: [], umur: [] }
 const JENIS = [
@@ -58,7 +59,7 @@ export default function DashboardPoPi({ dataId, onDataHilang }) {
       <KepalaLaporan judul="PO &amp; PI Outstanding" data={data} aktif={aktif} onLepas={lepas} onReset={reset} panelTerbuka={panel} onTogglePanel={togglePanel} />
 
       {galat && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{galat.message}</div>}
-      {!data && !galat && <p className="text-sm text-slate-500">Memuat...</p>}
+      {!data && !galat && <MemuatLaporan />}
 
       {data && (
         <div className={memuat ? 'space-y-4 opacity-60 transition-opacity' : 'space-y-4 transition-opacity'}>

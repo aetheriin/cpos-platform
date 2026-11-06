@@ -3,6 +3,7 @@ import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer,
 import TickKlik from './TickKlik'
 import { WARNA_TARA_BERAT, WARNA_TARA_RINGAN, redup } from './risiko'
 import { angka } from '../lib/data'
+import { Kosong } from '../komponen/Keadaan'
 
 const angka2 = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 })
 
@@ -22,7 +23,7 @@ function Petunjuk({ active, payload }) {
 }
 
 function BatangKendaraan({ data, terpilih, onPilih }) {
-  if (data.length === 0) return <div className="py-10 text-center text-sm text-slate-500">Tidak ada transaksi untuk filter ini</div>
+  if (data.length === 0) return <Kosong teks="Tidak ada transaksi untuk filter ini" />
   return (
     <div>
       <div className="h-64 w-full">

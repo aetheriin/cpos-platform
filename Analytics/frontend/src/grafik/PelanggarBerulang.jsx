@@ -1,6 +1,7 @@
 import { memo, useState } from 'react'
 import { WARNA_RISIKO } from './risiko'
 import { angka, persen } from '../lib/data'
+import { Kosong } from '../komponen/Keadaan'
 
 const TAB = [
   { kunci: 'kendaraan', nama: 'Kendaraan' },
@@ -31,7 +32,7 @@ function PelanggarBerulang({ data, terpilih, onPilih }) {
         ))}
       </div>
       {daftar.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-500">Tidak ada transaksi WARNING untuk filter ini.</p>
+        <Kosong teks="Tidak ada transaksi WARNING untuk filter ini." />
       ) : (
         <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-slate-200 text-xs text-slate-500">

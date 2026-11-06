@@ -47,7 +47,7 @@ async function muatHarga() {
                                     company: document.getElementById('rkFilterCompany').value });
     const rows = await ambilJson(`/rekapin/api/harga?${q}`);
     if (rows.error) {
-        tbody.innerHTML = barisKosong(9, rows.error);
+        tbody.innerHTML = barisGagal(9, rows.error);
         document.getElementById('rkJumlahHarga').textContent = '-';
         return rows;
     }

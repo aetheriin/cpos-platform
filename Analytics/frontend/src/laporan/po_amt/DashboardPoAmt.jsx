@@ -9,6 +9,7 @@ import PanelFilter from '../../komponen/PanelFilter'
 import Select from '../../komponen/Select'
 import TabelDetail from '../../komponen/TabelDetail'
 import { formatPersen, PoNilai, PoNilaiPersen, rupiahPendek, BandingTahun, SeriBulan } from '../../grafik/PoAmt'
+import { MemuatLaporan } from '../../komponen/Keadaan'
 
 const FILTER_AWAL = { dari: null, sampai: null, minggu: null, perusahaan: [], tahun: [], bulan: [], mata_uang: [], kategori: [] }
 const RENTANG_KOSONG = { dari: null, sampai: null, minggu: null }
@@ -60,7 +61,7 @@ export default function DashboardPoAmt({ dataId, onDataHilang }) {
       <div className="min-w-0 flex-1 space-y-4">
         <KepalaLaporan judul="PO Spend Analysis" data={data} aktif={aktif} onLepas={lepas} onReset={reset} panelTerbuka={panel} onTogglePanel={togglePanel} />
         {galat && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{galat.message}</div>}
-        {!data && !galat && <p className="text-sm text-slate-500">Memuat...</p>}
+        {!data && !galat && <MemuatLaporan />}
 
         {data && (
           <div className={memuat ? 'space-y-4 opacity-60 transition-opacity' : 'space-y-4 transition-opacity'}>

@@ -151,6 +151,13 @@ function barisKosong(kolom, teks, aksi = null) {
         <p class="text-sm text-slate-500 mt-2">${escapeHtml(teks)}</p>${tombol}</td></tr>`;
 }
 
+// Baris tabel saat data gagal dimuat: dibedakan dari tabel yang memang kosong
+function barisGagal(kolom, teks) {
+    return `<tr><td colspan="${kolom}" class="table-cell text-center py-10">
+        <i class="fa-solid fa-triangle-exclamation text-2xl text-red-400"></i>
+        <p class="text-sm text-red-700 mt-2">${escapeHtml(teks)}</p></td></tr>`;
+}
+
 // Tombol aksi untuk tabel kosong, hanya bila tombol tambahnya memang tampil di halaman (sesuai hak akses)
 function aksiKosong(fungsi, label) {
     return document.querySelector(`button[data-on-click="${fungsi}"]`) ? { fungsi, label } : null;

@@ -19,7 +19,7 @@ from anpr.database import ambil_laporan_excel, simpan_riwayat
 from anpr.foto import simpan_foto
 from anpr.kamera import KameraRTSP
 from anpr.kendaraan import DetektorKendaraan
-from anpr.konfigurasi import FOLDER_PROYEK, muat_semua_kamera
+from anpr.konfigurasi import FOLDER_PROYEK, muat_konfigurasi, muat_semua_kamera
 from anpr import gerbang
 from anpr.pengaturan_db import baca_pengaturan, info_kamera
 from baca_plat import SumberFile, gambar_bacaan
@@ -449,12 +449,15 @@ def main():
     p.add_argument("--video", help="uji dari file video / foto alih-alih kamera (hanya kamera pertama)")
     args = p.parse_args()
 
-    daftar_konf = muat_semua_kamera()
     if args.video:
-        daftar_konf = daftar_konf[:1]
-    elif not daftar_konf[0].kamera_ip and not daftar_konf[0].rtsp_url:
-        sys.exit("KAMERA_IP / RTSP_URL belum diisi di file .env / daftar_kamera.json")
-    
+        daftar_konf = [muat_konfigurasi()]
+    else:
+        daftar_konf = muat_semua_kamera()
+        if not daftar_konf:
+            sys.exit(
+                "Belum ada kamera aktif di Admin > Perangkat > Kamera Deteksi Plat."
+            )
+
     daftar_nama = [k.nama_kamera for k in daftar_konf]
     if len(set(daftar_nama)) != len(daftar_nama):
         sys.exit("Nama kamera tidak boleh ada yang sama")

@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { tglLengkap } from '../lib/data'
+import { Kosong } from '../komponen/Keadaan'
 
 const angka = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 })
 const satu = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
@@ -38,7 +39,7 @@ function Garis({ harga, warna }) {
 // Satu baris per tipe: nama, garis harga harian, harga terakhir, dan perubahan sejak hari pertama jendela. Klik baris untuk memfilter tipe.
 // Harga naik ditandai merah karena biaya pembelian bertambah.
 function HargaTipe({ data, mulai, akhir, terpilih, onPilih }) {
-  if (data.data.length === 0) return <div className="py-10 text-center text-sm text-slate-500">Tidak ada pembelian untuk filter ini</div>
+  if (data.data.length === 0) return <Kosong teks="Tidak ada pembelian untuk filter ini" />
   return (
     <div>
       <div className="mb-1 grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)_auto] gap-x-3 text-xs text-slate-500 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)_auto]">

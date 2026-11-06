@@ -94,7 +94,7 @@ async function simpanStandarMutu(btn) {
 async function muatHistoryStandar() {
     const data = await ambilJson('/api/lab/standar/history');
     const tbody = document.getElementById('tabelHistoryStandar');
-    if (data.error) { tbody.innerHTML = barisKosong(6, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(6, data.error); return; }
     tbody.innerHTML = data.map(r => `<tr class="hover:bg-slate-50">
         <td class="table-cell whitespace-nowrap text-xs">${escapeHtml(r.updated_at)}</td><td class="table-cell">${escapeHtml(r.nama_produk)}</td>
         <td class="table-cell text-right">${escapeHtml(r.maks_ffa)}%</td><td class="table-cell text-right">${escapeHtml(r.maks_air)}%</td>
@@ -118,7 +118,7 @@ function cetakCOA() {
 async function muatHistoryLab() {
     const data = await ambilJson('/api/history/lab');
     const tbody = document.getElementById('tabelHistoryLab');
-    if (data.error) { tbody.innerHTML = barisKosong(4, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(4, data.error); return; }
     tbody.innerHTML = data.map(r => `
         <tr><td class="table-cell">${escapeHtml(r.no_plat)}</td><td class="table-cell">${escapeHtml(r.nama_produk)}</td>
         <td class="table-cell">${escapeHtml(r.nama_supplier)}</td><td class="table-cell">${escapeHtml(r.status_val || '-')}</td></tr>

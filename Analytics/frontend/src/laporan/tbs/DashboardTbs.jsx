@@ -12,6 +12,7 @@ import { GridKartu, Kartu, KartuGrafik, KisiGrafik, Petak } from '../../komponen
 import KepalaLaporan from '../../komponen/KepalaLaporan'
 import PanelFilter from '../../komponen/PanelFilter'
 import TabelDetail from '../../komponen/TabelDetail'
+import { MemuatLaporan } from '../../komponen/Keadaan'
 
 const FILTER_AWAL = {}
 const KOSONG = []
@@ -43,7 +44,7 @@ export default function DashboardTbs({ dataId, onDataHilang }) {
         <KepalaLaporan judul="Forecast Penerimaan TBS" data={data} aktif={aktif} onLepas={lepas} onReset={reset} panelTerbuka={panel} onTogglePanel={togglePanel} />
 
         {galat && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Grafik tidak bisa dimuat: {galat.message}</div>}
-        {!data && !galat && <p className="text-sm text-slate-500">Memuat penerimaan TBS...</p>}
+        {!data && !galat && <MemuatLaporan teks="Memuat penerimaan TBS..." />}
 
         {data && (
           <div className={memuat ? 'space-y-4 opacity-60 transition-opacity' : 'space-y-4 transition-opacity'}>

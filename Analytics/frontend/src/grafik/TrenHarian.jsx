@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { Bar, CartesianGrid, Cell, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { angka, lintasTahun, persen, tgl, tglLengkap } from '../lib/data'
 import { redup, warnaRisiko } from './risiko'
+import { Kosong } from '../komponen/Keadaan'
 
 function Petunjuk({ active, payload }) {
   const d = active && payload?.[0]?.payload
@@ -20,7 +21,7 @@ function Petunjuk({ active, payload }) {
 
 // Batang: transaksi WARNING per hari menurut indikatornya. Garis: persentase berisiko hari itu (sumbu kanan). Klik batang untuk memfilter hari itu.
 function TrenHarian({ data, indikator, terpilih, onPilih }) {
-  if (data.every((d) => d.total === 0)) return <div className="py-10 text-center text-sm text-slate-500">Tidak ada transaksi pada periode ini</div>
+  if (data.every((d) => d.total === 0)) return <Kosong teks="Tidak ada transaksi pada periode ini" />
   const label = lintasTahun(data) ? tglLengkap : tgl
   const baris = data.map((d) => ({ ...d, label: label(d.hari), porsi: d.total ? d.berisiko / d.total : 0 }))
   const warning = indikator.filter((i) => i.kunci !== 'normal')

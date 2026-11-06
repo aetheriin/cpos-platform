@@ -152,7 +152,7 @@ async function muatHistorySupplier(idSupplier) {
                 (tanggal ? `&tanggal=${tanggal}` : '');
     const data = await ambilJson(url);
     const tbody = document.getElementById('tabelHistoryTimbangan');
-    if (data.error) { tbody.innerHTML = barisKosong(6, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(6, data.error); return; }
     if (!data.length) {
         tbody.innerHTML = barisKosong(6, tanggal ? `Belum ada riwayat pada ${tanggal}` : 'Belum ada riwayat 7 hari terakhir');
         return;

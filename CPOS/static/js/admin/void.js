@@ -19,7 +19,7 @@ async function muatTiketVoid() {
     const q = document.getElementById('cariTiketVoid').value.trim();
     const data = await ambilJson(`/api/admin/tiket?hari=${hariVoid}&cari=${encodeURIComponent(q)}`);
     const tbody = document.getElementById('tabelTiketVoid');
-    if (data.error) { tbody.innerHTML = barisKosong(8, data.error); return false; }
+    if (data.error) { tbody.innerHTML = barisGagal(8, data.error); return false; }
     tbody.innerHTML = data.map(t => `
         <tr class="hover:bg-slate-50${t.status_alur === 'VOID' ? ' text-slate-400' : ''}">
             <td class="table-cell whitespace-nowrap">${escapeHtml(t.created_at)}</td>

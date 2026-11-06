@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { CartesianGrid, Legend, ReferenceArea, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from 'recharts'
 import { WARNA_TARA_RINGAN, warnaRisiko } from './risiko'
 import { angka } from '../lib/data'
+import { Kosong } from '../komponen/Keadaan'
 
 function PetunjukTitik({ active, payload }) {
   const t = active && payload?.[0]?.payload
@@ -18,7 +19,7 @@ function PetunjukTitik({ active, payload }) {
 
 // Durasi timbang lawan selisih tara per transaksi. Garis putus-putus = ambang WARNING; area merah = timbang lama dan tara lebih ringan.
 function SebaranTara({ sebaran, indikator, ambang, terpilih, onPilih, risikoTerpilih, onPilihRisiko }) {
-  if (sebaran.titik.length === 0) return <div className="py-10 text-center text-sm text-slate-500">Tidak ada transaksi untuk filter ini</div>
+  if (sebaran.titik.length === 0) return <Kosong teks="Tidak ada transaksi untuk filter ini" />
   const ada = terpilih.length > 0
   let xMaks = ambang.durasi_menit * 1.2
   let yMin = -ambang.tara_kg * 1.2

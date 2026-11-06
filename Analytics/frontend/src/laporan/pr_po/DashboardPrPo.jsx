@@ -11,6 +11,7 @@ import TabelDetail from '../../komponen/TabelDetail'
 import WeeklyChart from '../../grafik/WeeklyChart'
 import { angka, bandingKpi, labelLengkap, persen, persenKecil, tambahDariEvent, tglLengkap, ubahPilihan, warna } from '../../lib/data'
 import { chipDaftar, chipRentang, useDashboard } from '../../lib/filter'
+import { MemuatLaporan } from '../../komponen/Keadaan'
 
 const FILTER_AWAL = { dari: null, sampai: null, minggu: null, perusahaan: [], kategori: [], buyer: [], umur: [] }
 const TAB = [
@@ -61,7 +62,7 @@ export default function DashboardPrPo({ dataId, onDataHilang }) {
           </div>
         )}
 
-        {!data && !galat && <p className="text-sm text-slate-500">Memuat...</p>}
+        {!data && !galat && <MemuatLaporan />}
 
         {data && (
           <div className={memuat ? 'space-y-4 opacity-60 transition-opacity' : 'space-y-4 transition-opacity'}>

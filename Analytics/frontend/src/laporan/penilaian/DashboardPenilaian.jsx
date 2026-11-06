@@ -10,6 +10,7 @@ import RekapPvr from '../../grafik/RekapPvr'
 import TabelDetail from '../../komponen/TabelDetail'
 import TrenPenilaian from '../../grafik/TrenPenilaian'
 import { labelBulan } from '../../grafik/pigt'
+import { MemuatLaporan } from '../../komponen/Keadaan'
 
 const skor = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 })
 
@@ -45,7 +46,7 @@ export default function buatDashboardPenilaian({ laporanId, judul, voucher, tabe
           <KepalaLaporan judul={judul} data={data} aktif={aktif} onLepas={lepas} onReset={reset} panelTerbuka={panel} onTogglePanel={togglePanel} />
 
           {galat && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{galat.message}</div>}
-          {!data && !galat && <p className="text-sm text-slate-500">Memuat...</p>}
+          {!data && !galat && <MemuatLaporan />}
 
           {data && (
             <div className={memuat ? 'space-y-4 opacity-60 transition-opacity' : 'space-y-4 transition-opacity'}>

@@ -3,6 +3,7 @@ import { cabutSesi, daftarSesi } from '../api'
 import { useAmbil } from '../lib/ambil'
 import Avatar from './Avatar'
 import { IkonSegarkan } from './Ikon'
+import { Memuat } from './Keadaan'
 
 const jam = (iso) => (iso ? new Date(iso).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '–')
 
@@ -56,7 +57,7 @@ export default function SesiAktif({ batasIdle = 0 }) {
       </div>
       {pesan && <p role="status" className="mb-2 text-sm text-emerald-700">{pesan}</p>}
       {(galat || galatAksi) && <p role="alert" className="mb-2 text-sm text-red-700">{galatAksi || `Daftar sesi tidak bisa dimuat: ${galat.message}`}</p>}
-      {!data && !galat && <p className="text-sm text-slate-500">Memuat sesi...</p>}
+      {!data && !galat && <Memuat teks="Memuat sesi..." />}
       {data && data.length === 0 && <p className="py-4 text-center text-sm text-slate-500">Tidak ada yang sedang masuk.</p>}
       {data && data.length > 0 && (
         <div className="overflow-x-auto">

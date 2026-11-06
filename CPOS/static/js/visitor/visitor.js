@@ -231,7 +231,7 @@ async function muatLogs() {
     } else if (modeLog === 'absensi') url = `/api/visitor/absensi?tanggal=${document.getElementById('logTanggal').value}`;
     else url = `/api/visitor/absensi/bulanan?bulan=${document.getElementById('logBulan').value}`;
     const data = await ambilJson(url);
-    if (data.error) { tbody.innerHTML = barisKosong(n, data.error); return; }
+    if (data.error) { tbody.innerHTML = barisGagal(n, data.error); return; }
     if (modeLog === 'aktivitas') {
         tbody.innerHTML = data.map(r => `<tr class="hover:bg-slate-50">
             <td class="table-cell font-mono whitespace-nowrap">${escapeHtml(r.jam)}</td>

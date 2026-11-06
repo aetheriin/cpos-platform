@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { ambilDetail, unduhDetail } from '../api'
 import { useAmbil } from '../lib/ambil'
 import { angka, rentangBaris } from '../lib/data'
-import { IkonUnduh } from './Ikon'
+import TombolExcel from './TombolExcel'
 import Select from './Select'
 import TabelBaris from './TabelBaris'
+import { Memuat } from './Keadaan'
 
 export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumlah, hasil, galat, memuat, cariInput, onCari, ukuran, onUkuran, onHalaman, onUrut, onEkspor, mengekspor = false, galatEkspor = '', onPilihBaris, barisTerpilih }) {
   const acuan = hasil ? tab.find((t) => t.kunci === jenis)?.ket(hasil) ?? '' : ''
@@ -56,6 +57,15 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
           </Select>
         </label>
 
+        {onEkspor && (
+          <TombolExcel
+            onClick={onEkspor}
+            disabled={!hasil || hasil.total === 0 || mengekspor}
+            sibuk={mengekspor}
+            title={hasil ? `Unduh ${angka.format(jumlahEkspor)} baris yang cocok dengan filter, pencarian, dan urutan saat ini (bukan hanya halaman ini)` : undefined}
+          />
+        )}
+
       </div>
 
       {dipotong && (
@@ -69,33 +79,18 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
         </div>
       )}
       {galat && <div className="mb-2 rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-700">{galat.message}</div>}
-      {!hasil && !galat && <p className="py-6 text-center text-sm text-slate-500">Memuat tabel...</p>}
+      {!hasil && !galat && <Memuat teks="Memuat tabel..." />}
 
       {hasil && (
         <div className={memuat ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
           <TabelBaris kolom={hasil.kolom} baris={hasil.baris} urut={hasil.urut} arah={hasil.arah} onUrut={hasil.bisa_urut === false ? undefined : onUrut} onPilihBaris={onPilihBaris} terpilih={barisTerpilih} />
 
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
-            <span className="inline-flex flex-wrap items-center gap-3">
-              <span>
-                {hasil.total === 0
-                  ? 'Tidak ada baris.'
-                  : `Menampilkan ${angka.format(dari)}–${angka.format(sampai)} dari ${angka.format(hasil.total)} baris`}
-                {hasil.cari && hasil.total !== hasil.total_semua ? ` (hasil pencarian, dari ${angka.format(hasil.total_semua)} baris)` : ''}
-              </span>
-              {onEkspor && (
-                <button
-                  type="button"
-                  onClick={onEkspor}
-                  disabled={!hasil || hasil.total === 0 || mengekspor}
-                  aria-busy={mengekspor}
-                  title={hasil ? `Unduh ${angka.format(jumlahEkspor)} baris yang cocok dengan filter, pencarian, dan urutan saat ini (bukan hanya halaman ini)` : undefined}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-                >
-                  <IkonUnduh className="h-4 w-4 text-emerald-600" />
-                  {mengekspor ? 'Menyiapkan...' : 'Excel'}
-                </button>
-              )}
+            <span>
+              {hasil.total === 0
+                ? 'Tidak ada baris.'
+                : `Menampilkan ${angka.format(dari)}–${angka.format(sampai)} dari ${angka.format(hasil.total)} baris`}
+              {hasil.cari && hasil.total !== hasil.total_semua ? ` (hasil pencarian, dari ${angka.format(hasil.total_semua)} baris)` : ''}
             </span>
             <span className="inline-flex items-center gap-2">
               <button

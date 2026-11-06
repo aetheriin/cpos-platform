@@ -3,6 +3,7 @@ import { aturIzin, daftarIzin } from '../api'
 import { IkonInfo, IkonKunci, IkonLaporan, IkonPerisai } from './Ikon'
 import Saklar from './Saklar'
 import Select from './Select'
+import { Memuat } from './Keadaan'
 
 const teksHak = (boleh) => (boleh ? 'Akses' : '–')
 
@@ -74,7 +75,7 @@ export default function HalamanIzin() {
           {pesan}
         </div>
       )}
-      {data === null && !galat && <p className="text-sm text-slate-500">Memuat...</p>}
+      {data === null && !galat && <Memuat />}
 
       {data && (
         <>

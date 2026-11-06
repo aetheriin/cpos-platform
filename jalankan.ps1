@@ -88,11 +88,14 @@ try {
     $portCpos = 5000
     $baris = Select-String (Join-Path $akar 'CPOS\.env') -Pattern '^\s*PORT\s*=\s*(\d+)' -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($baris) { $portCpos = [int]$baris.Matches[0].Groups[1].Value }
-    # Deteksi\.env: PORT_WEB (bawaan 8000), HOST_WEB (bawaan semua alamat; 127.0.0.1 = hanya dari PC ini)
-    $baris = Select-String (Join-Path $akar 'Deteksi\.env') -Pattern '^\s*PORT_WEB\s*=\s*(\d+)' -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($baris) { $PortDeteksi = [int]$baris.Matches[0].Groups[1].Value }
-    $baris = Select-String (Join-Path $akar 'Deteksi\.env') -Pattern '^\s*HOST_WEB\s*=\s*(\S+)' -ErrorAction SilentlyContinue | Select-Object -First 1
-    $hostDeteksi = if ($baris) { $baris.Matches[0].Groups[1].Value } else { '0.0.0.0' }
+    # Detektor memakai port dari CPOS\.env; hanya diakses oleh CPOS pada PC yang sama.
+    $hostDeteksi = '127.0.0.1'
+    $baris = Select-String (Join-Path $akar 'CPOS\.env') `
+        -Pattern '^\s*DETEKTOR_PORT\s*=\s*(\d+)' `
+        -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($baris) {
+        $PortDeteksi = [int]$baris.Matches[0].Groups[1].Value
+    }
 
     # Library modul CPOS (mis. modules\item_request\requirements.txt) ikut dipasang ke Python CPOS; modul baru otomatis ikut
     $reqCpos = @(Join-Path $akar 'CPOS\requirements.txt') + @(Get-ChildItem (Join-Path $akar 'CPOS\modules') -Recurse -Filter 'requirements.txt' |
@@ -117,12 +120,7 @@ try {
         -WorkingDirectory (Join-Path $akar 'Analytics\backend') -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput (Join-Path $log 'analytics.log') -RedirectStandardError (Join-Path $log 'analytics-galat.log')
     if (-not (Tunggu-Port $PortAnalytics 'Analytics' 60)) { throw "Backend Analytics gagal menyala. Lihat $log\analytics-galat.log" }
-    if ($adaDeteksi) {
-        $envDeteksi = Join-Path $akar 'Deteksi\.env'
-        if (-not (Test-Path $envDeteksi)) {
-            Copy-Item (Join-Path $akar 'Deteksi\.env.example') $envDeteksi
-            Write-Warning 'Deteksi\.env baru dibuat dari contoh. Isi SQL, kamera & folder foto, lalu jalankan lagi.'
-        }
+    if ($adaDeteksi) {        
         Write-Host 'Menyalakan backend Deteksi Plat...'
         $env:PYTHONUNBUFFERED = '1'
         $deteksi = Start-Process $pyDeteksi -ArgumentList 'server_web.py', '--port', $PortDeteksi, '--host', $hostDeteksi -WorkingDirectory (Join-Path $akar 'Deteksi') -WindowStyle Hidden -PassThru `

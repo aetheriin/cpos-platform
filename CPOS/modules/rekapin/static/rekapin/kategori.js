@@ -7,7 +7,7 @@ async function muatKategori() {
     const tbody = document.getElementById('tabelRkKategori');
     const hak = JSON.parse(tbody.dataset.hak || '{}');
     const rows = await ambilJson('/rekapin/api/kategori');
-    if (rows.error) { tbody.innerHTML = barisKosong(6, rows.error); return; }
+    if (rows.error) { tbody.innerHTML = barisGagal(6, rows.error); return; }
     dataKategori = rows;
     document.getElementById('rkJumlahKategori').textContent = `${rows.filter(k => k.is_active).length} aktif dari ${rows.length}`;
     tbody.innerHTML = rows.map((k, i) => `<tr class="hover:bg-slate-50${k.is_active ? '' : ' opacity-60'}">
