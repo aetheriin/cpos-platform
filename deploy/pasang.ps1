@@ -120,6 +120,15 @@ try {
             }
         }
     }
+    # Paket perubahan: file yang sudah tidak dipakai tercantum di HAPUS.txt
+    $daftarHapus = Join-Path $akar 'HAPUS.txt'
+    if (Test-Path $daftarHapus) {
+        Get-Content $daftarHapus | Where-Object { $_ -and $_ -notmatch '\.\.' -and -not [IO.Path]::IsPathRooted($_) } | ForEach-Object {
+            $p = Join-Path $akar $_
+            if (Test-Path -LiteralPath $p -PathType Leaf) { Remove-Item -LiteralPath $p -Force; Write-Host "Dihapus: $_" }
+        }
+        Remove-Item $daftarHapus -Force
+    }
     Start-Sleep 2
     Cek-Port-Bebas $portApp
     $aksi = New-ScheduledTaskAction -Execute 'powershell.exe' -WorkingDirectory $akar `

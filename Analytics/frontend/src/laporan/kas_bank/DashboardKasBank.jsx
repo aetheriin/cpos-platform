@@ -212,7 +212,7 @@ export default function DashboardKasBank({ dataId, onDataHilang }) {
   return (
     <div className="flex items-start gap-4">
       <div className="min-w-0 flex-1 space-y-4">
-        <KepalaLaporan judul="Cash Flow" data={data} aktif={aktif} onLepas={lepas} onReset={reset} panelTerbuka={panel} onTogglePanel={togglePanel} />
+        <KepalaLaporan judul="Bank Statement" data={data} aktif={aktif} onLepas={lepas} onReset={reset} panelTerbuka={panel} onTogglePanel={togglePanel} />
 
         {galat && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Laporan tidak bisa dimuat: {galat.message}</div>}
         {!data && !galat && <MemuatLaporan teks="Memuat mutasi bank..." />}

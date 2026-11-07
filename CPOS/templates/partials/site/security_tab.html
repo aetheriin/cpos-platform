@@ -33,10 +33,26 @@
                     </div>
 
                     <div>
-                        <label class="field-label" for="ascendVehicleNo">No. Kendaraan</label>
-                        <select id="ascendVehicleNo" name="vehicle_no" required class="input-field">
-                            <option value="">-- Pilih Shipper dahulu --</option>
-                        </select>
+                        <div class="mb-2 flex items-center justify-between gap-3">
+                            <label class="field-label mb-0" for="ascendVehicleNo">No. Kendaraan</label>
+
+                            <label class="flex items-center gap-2 text-xs text-slate-600">
+                                <input id="ascendVehicleManualToggle" type="checkbox" class="rounded">
+                                Input manual
+                            </label>
+                        </div>
+
+                        <div id="ascendVehicleSelectWrap">
+                            <select id="ascendVehicleNo" name="vehicle_no" required class="input-field">
+                                <option value="">-- Pilih Shipper dahulu --</option>
+                            </select>
+                        </div>
+
+                        <div id="ascendVehicleManualWrap" class="hidden">
+                            <input id="ascendVehicleManual" name="vehicle_no" type="text"
+                                maxlength="50" class="input-field uppercase"
+                                placeholder="Contoh: BM 9999 SAD" disabled>
+                        </div>
                     </div>
 
                     <div>
@@ -58,10 +74,22 @@
                 <!-- Kolom kanan -->
                 <div class="space-y-4">
                     <div>
-                        <label class="field-label" for="ascendNoDoChoice">Nomor DO / SP</label>
-                        <select id="ascendNoDoChoice" required class="input-field">
-                            <option value="">-- Pilih --</option>
-                        </select>
+                        <div class="mb-2 flex items-center justify-between gap-3">
+                            <label class="field-label mb-0" for="ascendNoDoChoice">
+                                Nomor DO / SP
+                            </label>
+
+                            <label class="flex items-center gap-2 text-xs text-slate-600">
+                                <input id="ascendNoDoManualToggle" type="checkbox" class="rounded">
+                                Input manual
+                            </label>
+                        </div>
+
+                        <div id="ascendNoDoSelectWrap">
+                            <select id="ascendNoDoChoice" required class="input-field">
+                                <option value="">-- Pilih --</option>
+                            </select>
+                        </div>
 
                         <div id="ascendNoDoManualWrap" class="hidden mt-2">
                             <input type="text" id="ascendNoDoManual" maxlength="50"
@@ -71,7 +99,7 @@
 
                         <input type="hidden" id="ascendNoDoValue" name="no_do">
                         <p id="ascendInfoDO" class="field-hint">
-                            Pilih jenis tiket untuk mencari DO outstanding, atau pilih input manual.
+                            Pilih jenis tiket untuk mencari DO outstanding, atau centang input manual.
                         </p>
                     </div>
 

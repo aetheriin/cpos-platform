@@ -449,15 +449,24 @@ def _tbs_diambil(lap, daftar_param):
     return datetime.fromtimestamp(tertua).strftime("%H:%M")
 
 
+def _ada_tonase(tabel):
+    """SP tetap mengirim baris bernilai 0 untuk perusahaan tanpa pembelian, jadi yang menentukan adalah tonasenya."""
+    nilai = [r["TONASE"] for t in tabel for r in t.get("rows", []) if "TONASE" in r]
+    return not nilai or any(v for v in nilai)
+
+
 def _tbs_semua_perusahaan(jenis, lap, kode, tanggal):
-    """Laporan Daily semua perusahaan, dijalankan bersamaan. Perusahaan yang gagal atau kosong tetap tampil dengan pesannya."""
+    """Laporan Daily semua perusahaan, dijalankan bersamaan. Perusahaan tanpa pembelian atau tanpa data ERP tidak ditampilkan;
+    yang gagal karena sebab lain tetap tampil dengan pesannya."""
     def satu(comp):
         try:
             isi = laporan_tbs.susun_tabel(jenis, pramuat_tbs.jalankan(lap["prosedur"], *pramuat_tbs.param(jenis, comp, tanggal, tanggal)))
-        except pyodbc.Error:
+        except pyodbc.Error as e:
+            if "Company tidak ditemukan" in str(e):   # perusahaan CPOS yang bukan company ERP, mis. RCM, YbsT
+                return []
             current_app.logger.exception("Laporan TBS %s %s gagal", jenis, comp)
             return [{"company": comp, "kosong": "Laporan gagal dimuat dari ERP."}]
-        return [{**t, "company": comp} for t in isi] or [{"company": comp, "kosong": "Tidak ada data pada tanggal ini."}]
+        return [{**t, "company": comp} for t in isi] if _ada_tonase(isi) else []
 
     aplikasi = current_app._get_current_object()
 

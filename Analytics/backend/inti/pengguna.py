@@ -342,24 +342,21 @@ class PenyimpanPengguna:
         return [c["nama"] for c in self.daftar_company() if c["aktif"]]
 
     def company_menurut_jenis(self, jenis):
-        """Company aktif dengan CompType = jenis, urut CompID. Ini perusahaan yang dipanggil SP laporan."""
-        kunci = str(jenis or "").strip().casefold()
-        hasil = []
-        for r in sorted(self._baca(f"SELECT [CompID], [CompName], [CompType], [Status] FROM {self._tc}"), key=_urut_compid):
-            nama = _teks(r[1]).strip()
-            if nama and _teks(r[2]).strip().casefold() == kunci and _aktif(r[3]) and nama not in hasil:
-                hasil.append(nama)
-        return hasil
+        """Kode (CompID) company aktif dengan CompType = jenis, urut CompID. Ini perusahaan yang dipanggil SP laporan.
+        CompName berisi nama panjang, jadi kode perusahaan selalu CompID."""
+        return [lokasi[0] for lokasi in self.lokasi_menurut_jenis(jenis)]
 
     def lokasi_menurut_jenis(self, jenis):
-        """[(nama, server tertaut, database)] company aktif dengan CompType = jenis, urut CompID, dari kolom CompAddr dan CompDataBase."""
+        """[(kode, server tertaut, database)] company aktif dengan CompType = jenis, urut CompID, dari kolom CompAddr dan CompDataBase."""
         kunci = str(jenis or "").strip().casefold()
         baris = self._baca(f"SELECT [CompID], [CompName], [CompType], [Status], [CompAddr], [CompDataBase] FROM {self._tc}")
         hasil = []
         for r in sorted(baris, key=_urut_compid):
-            nama = _teks(r[1]).strip()
-            if nama and _teks(r[2]).strip().casefold() == kunci and _aktif(r[3]) and nama not in [h[0] for h in hasil]:
-                hasil.append((nama, _teks(r[4]).strip(), _teks(r[5]).strip()))
+            kode = _teks(r[0]).strip()
+            server, database = _teks(r[4]).strip(), _teks(r[5]).strip()
+            # Tanpa server atau database (mis. HO) berarti bukan perusahaan ERP: tidak ada data untuk dipanggil
+            if kode and server and database and _teks(r[2]).strip().casefold() == kunci and _aktif(r[3]) and kode not in [h[0] for h in hasil]:
+                hasil.append((kode, server, database))
         return hasil
 
     def periksa_izin(self):

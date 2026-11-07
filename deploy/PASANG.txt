@@ -22,6 +22,7 @@ Sesudah terpasang
   dan dinyalakan ulang otomatis bila berhenti.
 - Log: C:\ProgramData\CPOS-Platform\cpos-platform\log
 - Memperbarui aplikasi: ekstrak zip versi baru ke folder yang sama (timpa), lalu jalankan pasang.bat lagi.
+  Zip bernama CPOS-Platform-perubahan-... hanya berisi file yang berubah. Pasang berurutan, jangan ada yang terlewat.
 - Menghentikan sementara: Task Scheduler > CPOS Platform > End.
 - Mencopot: klik kanan deploy\copot.bat > Run as administrator.
 

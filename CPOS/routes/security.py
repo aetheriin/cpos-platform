@@ -89,6 +89,51 @@ def security_supir_terakhir():
         "driver": serialisasi_driver(row) if row else None
     })
 
+PRODUK_MANUAL_ASCEND = {
+    "Produk": {
+        "Cangkang", "CPKO", "CPO", "JanjangKosong", "Kernel", "PAO",
+        "PFAD", "PKE", "POME", "R.POME", "RBD Palm Stearin",
+        "Spent Bleaching Earth (SBE)", "TBS",
+    },
+    "TBSLuar": {
+        "CPO", "Kernel", "Nut", "PAO", "PFAD", "POME", "R.POME",
+        "Technical Oil/HAPOR/POME OIL", "TBS", "UCO",
+    },
+}
+
+def mill_manual_ascend(ticket_type, produk):
+    produk_key = " ".join((produk or "").strip().lower().split())
+
+    refinery = {
+        "Produk": {
+            "cpo",
+            "janjangkosong",
+            "pfad",
+            "r.pome",
+            "rbd palm stearin",
+            "spent bleaching earth (sbe)",
+        },
+        "TBSLuar": {
+            "pfad",
+            "r.pome",
+            "tbs",
+            "uco",
+        },
+    }
+
+    if produk_key == "kernel":
+        return 1035
+
+    refinery_key = {
+        jenis: {nama.lower() for nama in daftar}
+        for jenis, daftar in refinery.items()
+    }
+
+    if produk_key in refinery_key.get(ticket_type, set()):
+        return 1034
+
+    return 250
+
 @security_bp.route("/api/security/ascend/buat-tiket", methods=["POST"])
 @login_required
 @izin("FORM_SECURITY", "tambah")
@@ -131,9 +176,14 @@ def ascend_buat_tiket():
         None,
     )
 
+    produk_manual_valid = produk.casefold() in {
+        nama.casefold()
+        for nama in PRODUK_MANUAL_ASCEND.get(ticket_type, set())
+    }
+
     produk_valid = (
-        any(r["produk"] == produk for r in daftar_ascend)
-        or (ticket_type == "TBSLuar" and produk == "TBS")
+        any(r["produk"].casefold() == produk.casefold() for r in daftar_ascend)
+        or produk_manual_valid
     )
 
     if not produk_valid:
@@ -158,6 +208,15 @@ def ascend_buat_tiket():
             int(m["mill_id"]) == mill_id
             for m in db_ascend.daftar_mill()
         )
+
+        mill_seharusnya = mill_manual_ascend(ticket_type, produk)
+        if mill_id != mill_seharusnya:
+            return jsonify({
+                "error": (
+                    f"Mill untuk input manual harus {mill_seharusnya} "
+                    "sesuai matriks Jenis Tiket dan Produk."
+                )
+            }), 400
 
         if not associate_valid:
             return jsonify({"error": "Pilih Associate dari daftar Ascend."}), 400

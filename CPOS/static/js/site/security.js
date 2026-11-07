@@ -669,6 +669,44 @@ function cetakQR() {
 let daftarDOAscend = [];
 let daftarShipperAscend = [];
 
+const MILL_MANUAL_ASCEND = {
+    produk: {
+        cpo: 1034,
+        janjangkosong: 1034,
+        pfad: 1034,
+        'r.pome': 1034,
+        'rbd palm stearin': 1034,
+        'spent bleaching earth (sbe)': 1034,
+    },
+    tbsluar: {
+        pfad: 1034,
+        'r.pome': 1034,
+        tbs: 1034,
+        uco: 1034,
+    },
+};
+
+function terapkanMillManualAscend() {
+    const jenis = document.getElementById('ascendTicketType').value.toLowerCase();
+    const produk = document.getElementById('ascendProduk').value.trim().toLowerCase();
+    const mill = document.getElementById('ascendMill');
+
+    if (!jenis || !produk) {
+        mill.disabled = false;
+        return;
+    }
+
+    let millId = 250; // PKS sebagai tujuan bawaan
+    if (produk === 'kernel') {
+        millId = 1035;
+    } else if (MILL_MANUAL_ASCEND[jenis]?.[produk]) {
+        millId = MILL_MANUAL_ASCEND[jenis][produk];
+    }
+
+    mill.value = String(millId);
+    mill.disabled = true;
+}
+
 async function muatShipperKendaraan(doData = null) {
     const jenis = document.getElementById('ascendTicketType').value;
     const shipper = document.getElementById('ascendShipper');
@@ -743,7 +781,7 @@ function isiPilihanAscend(select, daftar, nilai, label) {
 
     select.value = '';
 }
-
+ 
 async function muatDOAscend() {
     const jenis = document.getElementById('ascendTicketType').value;
     const info = document.getElementById('ascendInfoDO');
@@ -756,7 +794,9 @@ async function muatDOAscend() {
 
     daftarDOAscend = [];
     pilihanDO.replaceChildren(new Option('-- Pilih --', ''));
-    pilihanDO.add(new Option('Ketik nomor DO / SP manual...', '__manual__'));
+    document.getElementById('ascendNoDoManualToggle').checked = false;
+    document.getElementById('ascendNoDoSelectWrap').classList.remove('hidden');
+    pilihanDO.required = true;
     manualWrap.classList.add('hidden');
     manualInput.required = false;
     manualInput.value = '';
@@ -764,6 +804,9 @@ async function muatDOAscend() {
 
     isiPilihanAscend(associate, [], x => x.id, x => x.nama);
     isiPilihanAscend(produk, [], x => x.id, x => x.nama);
+
+    document.getElementById('ascendMill').value = '';
+    document.getElementById('ascendMill').disabled = false; 
 
     if (!jenis) {
         info.textContent = 'Pilih jenis tiket untuk mencari DO outstanding.';
@@ -829,7 +872,7 @@ function pilihInfoDOAscend() {
     const noDO = document.getElementById('ascendNoDoValue');
     const info = document.getElementById('ascendInfoDO');
 
-    if (pilihan.value === '__manual__') {
+    if (document.getElementById('ascendNoDoManualToggle').checked) {
         manualWrap.classList.remove('hidden');
         manualInput.required = true;
         manualInput.focus();
@@ -838,6 +881,7 @@ function pilihInfoDOAscend() {
         document.getElementById('ascendAssociate').disabled = false;
         document.getElementById('ascendProduk').disabled = false;
         document.getElementById('ascendMill').disabled = false;
+        terapkanMillManualAscend();
         muatShipperKendaraan();
         return;
     }
@@ -851,6 +895,7 @@ function pilihInfoDOAscend() {
         document.getElementById('ascendAssociate').disabled = false;
         document.getElementById('ascendProduk').disabled = false;
         document.getElementById('ascendMill').disabled = false;
+        terapkanMillManualAscend();
         return;
     }
 
@@ -877,7 +922,7 @@ function filterDOUntukAssociate() {
     const pilihanDO = document.getElementById('ascendNoDoChoice');
 
     Array.from(pilihanDO.options).forEach(option => {
-        if (!option.value || option.value === '__manual__') {
+        if (!option.value) {
             option.hidden = false;
             return;
         }
@@ -927,6 +972,31 @@ if (formTiketAscend) {
 
     document.getElementById('ascendVehicleNo')
         .addEventListener('change', muatSupirTerakhirAscend);
+    
+    document.getElementById('ascendVehicleManualToggle')
+        .addEventListener('change', e => {
+            const manual = e.target.checked;
+            const pilihan = document.getElementById('ascendVehicleNo');
+            const input = document.getElementById('ascendVehicleManual');
+
+            document.getElementById('ascendVehicleSelectWrap')
+                .classList.toggle('hidden', manual);
+            document.getElementById('ascendVehicleManualWrap')
+                .classList.toggle('hidden', !manual);
+
+            pilihan.disabled = manual;
+            pilihan.required = !manual;
+            input.disabled = !manual;
+            input.required = manual;
+
+            muatSupirTerakhirAscend();
+        });
+
+    document.getElementById('ascendVehicleManual')
+        .addEventListener('blur', e => {
+            e.target.value = e.target.value.trim().toUpperCase();
+            muatSupirTerakhirAscend();
+        });
 
     document.getElementById('ascendTicketType')
         .addEventListener('change', muatDOAscend);
@@ -934,13 +1004,37 @@ if (formTiketAscend) {
     document.getElementById('ascendNoDoChoice')
         .addEventListener('change', pilihInfoDOAscend);
     
-    document.getElementById('ascendAssociate')
-    .addEventListener('change', filterDOUntukAssociate);
+    document.getElementById('ascendNoDoManualToggle')
+        .addEventListener('change', e => {
+            const manual = e.target.checked;
+            const pilihan = document.getElementById('ascendNoDoChoice');
+            const manualWrap = document.getElementById('ascendNoDoManualWrap');
+
+            document.getElementById('ascendNoDoSelectWrap')
+                .classList.toggle('hidden', manual);
+
+            pilihan.value = '';
+            pilihan.required = !manual;
+            document.getElementById('ascendNoDoManual').required = manual;
+            pilihan.dispatchEvent(new Event('change'));
+        });
+
+    document.getElementById('ascendProduk')
+        .addEventListener('change', terapkanMillManualAscend);
 
     document.getElementById('ascendNoDoManual')
         .addEventListener('input', e => {
             document.getElementById('ascendNoDoValue').value =
                 e.target.value.trim().toUpperCase();
+        });
+
+    document.getElementById('ascendAssociate')
+        .addEventListener('change', () => {
+            filterDOUntukAssociate();
+
+            if (document.getElementById('ascendNoDoManualToggle').checked) {
+                muatShipperKendaraan();
+            }
         });
 
     formTiketAscend.addEventListener('submit', async e => {
@@ -975,7 +1069,12 @@ if (formTiketAscend) {
 }
 
 async function muatSupirTerakhirAscend() {
-    const plat = document.getElementById('ascendVehicleNo').value.trim();
+    const manual = document.getElementById('ascendVehicleManualToggle').checked;
+    const plat = (
+        manual
+            ? document.getElementById('ascendVehicleManual').value
+            : document.getElementById('ascendVehicleNo').value
+    ).trim().toUpperCase();
     const hasil = document.getElementById('ascendSupirTerakhir');
 
     if (!plat) {

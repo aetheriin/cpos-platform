@@ -258,7 +258,7 @@ function dataFormPlat(form) {
 
 document.getElementById('formKameraPlat').addEventListener('submit', async e => {
     e.preventDefault();
-    const data = await denganTombol(e.submitter, () => kirimForm('/api/admin/deteksi-plat/kamera', dataFormKameraPlat(e.target)));
+    const data = await denganTombol(e.submitter, () => kirimForm('/api/admin/deteksi-plat/kamera', dataFormPlat(e.target)));
     if (!tampilkanHasil(data)) return;
     closeModal('modalKameraPlat');
     muatKameraPlat();

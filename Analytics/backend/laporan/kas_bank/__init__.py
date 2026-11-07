@@ -6,7 +6,7 @@ from .sumber import muat
 
 LAPORAN = Laporan(
     id="cash_flow",
-    nama="Cash Flow",
+    nama="Bank Statement",
     deskripsi="Running balance, debit, credit, credit to date, dan jasa giro per rekening bank.",
     pemuat=muat,
     awal_tahun=True,   # dimuat dari 1 Januari supaya kredit to date lengkap; tampilan bawaannya bulan berjalan

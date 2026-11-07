@@ -55,14 +55,39 @@ def _ganti_kode(cursor, tabel, kolom, lama, baru, kolom_unik=None):
 
 # ===== COMPANY (CompID = kode perusahaan, mis. YBS) =====
 def daftar_company():
-    """Perusahaan + nama area-areanya (label 'OFFICE, REFINERY')."""
-    rows = _query("""SELECT c.CompID AS id_company, c.CompID AS kode, c.CompName AS nama, c.CompAddress AS alamat,
-                            c.Status AS is_active,
-                            (SELECT COUNT(*) FROM CompanyArea a WHERE a.CompID = c.CompID AND a.Status = 1) AS jumlah_area
-                     FROM Company c ORDER BY c.Status DESC, c.CompName""")
-    area = _query("SELECT CompID, AreaName FROM CompanyArea WHERE Status = 1 ORDER BY AreaCode, AreaName")
+    """Perusahaan dan area aktifnya."""
+    rows = _query("""
+        SELECT
+            c.CompID AS id_company,
+            c.CompID AS kode,
+            c.CompName AS nama,
+            c.CompAddress AS alamat,
+            c.CompType as Type,
+            c.Status AS is_active,
+            (
+                SELECT COUNT(*)
+                FROM dbo.CompanyArea AS a
+                WHERE a.CompID = c.CompID
+                  AND a.Status = 1
+            ) AS jumlah_area
+        FROM dbo.Company AS c
+        where c.CompType = 'cloud'
+        ORDER BY c.Status DESC, c.CompName
+    """)
+
+    area = _query("""
+        SELECT CompID, AreaName
+        FROM dbo.CompanyArea
+        WHERE Status = 1
+        ORDER BY AreaCode, AreaName
+    """)
+
     for r in rows:
-        r["label_area"] = ", ".join(x["AreaName"] for x in area if x["CompID"] == r["id_company"])
+        r["label_area"] = ", ".join(
+            x["AreaName"] for x in area
+            if x["CompID"] == r["id_company"]
+        )
+
     return rows
 
 

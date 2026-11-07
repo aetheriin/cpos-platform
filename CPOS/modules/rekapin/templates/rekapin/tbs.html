@@ -31,6 +31,8 @@
 
 {% if galat %}
 <div class="note-info flex items-center gap-2 mb-4 bg-red-50 text-red-700 border-red-200"><i class="fa-solid fa-triangle-exclamation"></i><span>{{ galat }}</span></div>
+{% elif not tabel and lap.periode == 'daily' %}
+<div class="section-box"><p class="px-4 py-10 text-center text-sm text-slate-500">Tidak ada data pada tanggal ini.</p></div>
 {% elif not tabel %}
 <div class="section-box"><p class="px-4 py-10 text-center text-sm text-slate-500">Ascend tidak mengembalikan data untuk kode perusahaan
     <b class="font-mono">{{ pilih }}</b> pada tanggal tersebut ({{ lap.prosedur }}).<br>

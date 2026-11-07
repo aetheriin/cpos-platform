@@ -169,11 +169,25 @@ def buat_tiket_kosong(ticket_type, produk, associate_id, vehicle_no,
             mill_id,
         )
 
-        hasil = _baris_hasil(cursor)
-        if not hasil:
-            raise RuntimeError("Prosedur Ascend tidak mengembalikan TicketID.")
+        ticket_id = None
 
-        ticket_id = int(hasil[0]["TicketID"])
+        while True:
+            if cursor.description:
+                nama_kolom = [kolom[0] for kolom in cursor.description]
+
+                if "TicketID" in nama_kolom:
+                    baris = cursor.fetchone()
+                    if baris is not None:
+                        ticket_id = int(baris[nama_kolom.index("TicketID")])
+                    break
+
+            if not cursor.nextset():
+                break
+
+        if ticket_id is None:
+            raise RuntimeError(
+                "Prosedur Ascend tidak mengembalikan nilai RETURN sebagai TicketID."
+            )
         if ticket_id <= 0:
             raise ValueError(f"Ascend mengembalikan TicketID {ticket_id}.")
 

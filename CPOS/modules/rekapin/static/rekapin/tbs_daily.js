@@ -27,7 +27,7 @@
     }
 
     const pakaiHuruf = px => isi.style.setProperty('--tbs-huruf', `${px}px`);
-    const muat = () => isi.getBoundingClientRect().bottom <= window.innerHeight - JARAK_BAWAH
+    const muat = () => isi.getBoundingClientRect().bottom <= window.innerHeight - JARAK_BAWAH && isi.scrollWidth <= isi.clientWidth
         && [...isi.querySelectorAll('.section-body')].every(b => b.scrollWidth <= b.clientWidth);
 
     function sesuaikan() {

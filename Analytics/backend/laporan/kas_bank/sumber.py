@@ -64,9 +64,9 @@ def _rekening(buka):
     conn = buka()
     try:
         cur = conn.cursor()
-        cur.execute(f"SELECT RTRIM(C.CompName), RTRIM(C.CompAddr), RTRIM(C.CompDataBase), B.BANKACCOUNTCODE, B.BANKACCOUNTID "
-                    f"FROM {konfigurasi.TABEL_KAS_PERUSAHAAN} C JOIN {konfigurasi.TABEL_KAS_BANK} B ON B.COMPID = C.CompName AND B.ACTIVE = 1 "
-                    "WHERE C.CompType = 'CLOUD' AND C.Status = 1 ORDER BY C.CompName")
+        cur.execute(f"SELECT RTRIM(C.CompID), RTRIM(C.CompAddr), RTRIM(C.CompDataBase), B.BANKACCOUNTCODE, B.BANKACCOUNTID "
+                    f"FROM {konfigurasi.TABEL_KAS_PERUSAHAAN} C JOIN {konfigurasi.TABEL_KAS_BANK} B ON B.COMPID = C.CompID AND B.ACTIVE = 1 "
+                    "WHERE C.CompType = 'CLOUD' AND C.Status = 1 ORDER BY C.CompID")
         baris = cur.fetchall()
         cur.execute(f"SELECT COMPID, RTRIM(ACCOUNTCODE) FROM {konfigurasi.TABEL_KAS_GIRO} WHERE ACTIVE = 1")
         giro = {}
