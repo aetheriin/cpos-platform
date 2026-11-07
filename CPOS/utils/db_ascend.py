@@ -147,7 +147,38 @@ def daftar_do(ticket_type):
     finally:
         koneksi.close()
 
+def daftar_associate(ticket_type):
+    """Daftar lengkap Associate beserta kode dan nama."""
+    if ticket_type == "Produk":
+        sql = """
+            SELECT CustomerID, CustomerCode, CustomerName
+            FROM dbo.AR_Customers
+            ORDER BY CustomerName
+        """
+    elif ticket_type == "TBSLuar":
+        sql = """
+            SELECT SupplierID, SupplierCode, SupplierName
+            FROM dbo.AP_Suppliers
+            ORDER BY SupplierName
+        """
+    else:
+        raise ValueError("Pilih jenis tiket Produk atau TBS Luar.")
 
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute(sql)
+        return [
+            {
+                "associate_id": int(row[0]),
+                "associate_code": str(row[1] or "").strip(),
+                "associate_name": str(row[2] or "").strip(),
+            }
+            for row in cursor.fetchall()
+        ]
+    finally:
+        koneksi.close()
+        
 def buat_tiket_kosong(ticket_type, produk, associate_id, vehicle_no,
                       date_time_in, sp_do, mill_id):
     koneksi = _koneksi()
@@ -257,14 +288,12 @@ def daftar_shipper_kendaraan(ticket_type, id_do=None, associate_id=None):
                 ev.VehicleID,
                 ev.VehicleNo,
                 ev.DriverName
-            FROM dbo.AP_Suppliers s
-            INNER JOIN dbo.PALM_ExternalVehicles ev
+            FROM dbo.AP_Suppliers AS s
+            LEFT JOIN dbo.PALM_ExternalVehicles AS ev
                 ON ev.SupplierID = s.SupplierID
-            WHERE (? IS NULL OR s.SupplierID = ?)
             ORDER BY s.SupplierName, ev.VehicleNo
         """
-        parameter = int(associate_id) if associate_id else None
-        parameters = (parameter, parameter)
+        parameters = ()
 
     else:
         raise ValueError("Pilih jenis tiket Produk atau TBS Luar.")

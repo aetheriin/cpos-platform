@@ -722,12 +722,6 @@ async function muatShipperKendaraan(doData = null) {
     if (doData && doData.id_do) {
         params.set('id_do', doData.id_do);
     }
-    if (jenis === 'TBSLuar') {
-        const associateId = doData
-            ? doData.associate_id
-            : document.getElementById('ascendAssociate').value;
-        if (associateId) params.set('associate_id', associateId);
-    }
 
     const data = await ambilJson(
         `/api/security/ascend/shipper-kendaraan?${params.toString()}`
@@ -784,6 +778,7 @@ function isiPilihanAscend(select, daftar, nilai, label) {
  
 async function muatDOAscend() {
     const jenis = document.getElementById('ascendTicketType').value;
+    document.getElementById('ascendShipper').required = jenis === 'Produk';
     const info = document.getElementById('ascendInfoDO');
     const pilihanDO = document.getElementById('ascendNoDoChoice');
     const manualWrap = document.getElementById('ascendNoDoManualWrap');
@@ -813,6 +808,7 @@ async function muatDOAscend() {
         return;
     }
 
+
     info.textContent = 'Memuat DO outstanding dari Ascend...';
     const data = await ambilJson(
         `/api/security/ascend/do?ticket_type=${encodeURIComponent(jenis)}`
@@ -825,26 +821,36 @@ async function muatDOAscend() {
 
     daftarDOAscend = data;
 
+    const dataAssociate = await ambilJson(
+        `/api/security/ascend/associate?ticket_type=${encodeURIComponent(jenis)}`
+    );
+
+    if (dataAssociate.error) {
+        info.textContent = dataAssociate.error;
+        return;
+    }
+
+    const daftarAssociate = dataAssociate.map(a => ({
+        id: a.associate_id,
+        nama: `[${a.associate_code || "-"}] ${a.associate_name}`,
+    }));
+
+    const labelAssociateById = new Map(
+        dataAssociate.map(a => [
+            String(a.associate_id),
+            `[${a.associate_code || "-"}] ${a.associate_name}`,
+        ])
+    );
+
     data.forEach(d => {
-        const labelAssociate = d.associate_name
-            ? `${d.associate_name} · ID ${d.associate_id}`
-            : `ID ${d.associate_id}`;
+        const labelAssociate =
+            labelAssociateById.get(String(d.associate_id)) || d.associate_name || "";
+
         pilihanDO.add(new Option(
             `${d.no_do} · ${labelAssociate} · ${d.produk}`,
             d.no_do
         ));
     });
-
-    const daftarAssociate = [...new Map(
-        data.map(d => [String(d.associate_id), {
-            id: d.associate_id,
-            nama: d.associate_name
-                ? `${d.associate_name} · ID ${d.associate_id}`
-                : `ID ${d.associate_id}`,
-        }])
-    ).values()];
-
-    const namaProduk = new Set(data.map(d => d.produk));
 
     if (jenis === 'TBSLuar') {
         namaProduk.add('TBS');
@@ -1029,13 +1035,7 @@ if (formTiketAscend) {
         });
 
     document.getElementById('ascendAssociate')
-        .addEventListener('change', () => {
-            filterDOUntukAssociate();
-
-            if (document.getElementById('ascendNoDoManualToggle').checked) {
-                muatShipperKendaraan();
-            }
-        });
+        .addEventListener('change', filterDOUntukAssociate);
 
     formTiketAscend.addEventListener('submit', async e => {
         e.preventDefault();

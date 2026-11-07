@@ -82,7 +82,7 @@ try {
     }
     if ($Port -and -not $TanpaEnv) {
         $f = Join-Path $isi 'CPOS\.env'
-        [IO.File]::WriteAllText($f, ([IO.File]::ReadAllText($f) -replace '(?m)^PORT=\d+', "PORT=$Port" -replace '(?m)^URL_DETEKTOR=.*$', "URL_DETEKTOR=http://127.0.0.1:$PortDeteksi"))
+        [IO.File]::WriteAllText($f, ([IO.File]::ReadAllText($f) -replace '(?m)^PORT=\d+', "PORT=$Port" -replace '(?m)^URL_DETEKTOR=.*$', "URL_DETEKTOR=http://127.0.0.1:$PortDeteksi" -replace '(?m)^DETEKTOR_PORT=.*$', "DETEKTOR_PORT=$PortDeteksi"))
         $f = Join-Path $isi 'Deteksi\.env'
         if (Test-Path $f) { [IO.File]::AppendAllText($f, "`r`nPORT_WEB=$PortDeteksi`r`nHOST_WEB=127.0.0.1`r`n") }
         $f = Join-Path $isi 'Analytics\backend\.env'

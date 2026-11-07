@@ -56,6 +56,16 @@ def ascend_daftar_do():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
+@security_bp.route("/api/security/ascend/associate")
+@login_required
+@izin("FORM_SECURITY", "tambah")
+def ascend_daftar_associate():
+    ticket_type = (request.args.get("ticket_type") or "").strip()
+    try:
+        return jsonify(db_ascend.daftar_associate(ticket_type))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
 @security_bp.route("/api/security/ascend/shipper-kendaraan")
 @login_required
 @izin("FORM_SECURITY", "tambah")
@@ -202,7 +212,7 @@ def ascend_buat_tiket():
     else:
         associate_valid = any(
             int(r["associate_id"]) == associate_id
-            for r in daftar_ascend
+            for a in db_ascend.daftar_associate(ticket_type)
         )
         mill_valid = any(
             int(m["mill_id"]) == mill_id
