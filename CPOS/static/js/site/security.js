@@ -852,6 +852,8 @@ async function muatDOAscend() {
         ));
     });
 
+    const namaProduk = new Set(data.map(d => d.produk));
+
     if (jenis === 'TBSLuar') {
         namaProduk.add('TBS');
     }

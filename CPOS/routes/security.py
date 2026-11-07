@@ -211,7 +211,7 @@ def ascend_buat_tiket():
             }), 400
     else:
         associate_valid = any(
-            int(r["associate_id"]) == associate_id
+            int(a["associate_id"]) == associate_id
             for a in db_ascend.daftar_associate(ticket_type)
         )
         mill_valid = any(

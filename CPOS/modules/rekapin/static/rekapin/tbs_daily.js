@@ -5,7 +5,7 @@
     const isi = document.querySelector('.tbs-daily');
     const area = document.querySelector('.main-area');
     if (!isi || !area) return;
-    const HURUF_MIN = 9, HURUF_MAKS = 15, LANGKAH = 0.25, JARAK_BAWAH = 10;
+    const HURUF_MIN = 9, HURUF_MAKS = 20, LANGKAH = 0.25, JARAK_BAWAH = 10;
 
     function bagiKolom() {
         const kartu = [...isi.querySelectorAll('.tbs-kartu')];
@@ -42,8 +42,35 @@
         if (!muat()) area.style.overflowY = 'auto';
     }
 
+    // Lebar tiap kolom = yang terlebar di semua perusahaan, disimpan dalam em supaya ikut ukuran huruf
+    function samakanKolom() {
+        const tabel = [...isi.querySelectorAll('.tbs-tabel')];
+        tabel.forEach(t => {
+            t.querySelector('colgroup')?.remove();
+            t.style.tableLayout = t.style.width = '';
+        });
+        if (tabel.length < 2 || window.innerWidth <= 900) return;
+        const judul = t => [...t.tHead.rows[t.tHead.rows.length - 1].cells];
+        if (new Set(tabel.map(t => judul(t).length)).size > 1) return;
+        const huruf = parseFloat(getComputedStyle(tabel[0]).fontSize);
+        const lebar = judul(tabel[0]).map((_, i) => Math.max(...tabel.map(t => judul(t)[i].getBoundingClientRect().width)) / huruf * 1.01);
+        const total = lebar.reduce((a, b) => a + b, 0);
+        tabel.forEach(t => {
+            const kolom = document.createElement('colgroup');
+            lebar.forEach(l => {
+                const c = document.createElement('col');
+                c.style.width = `${l}em`;
+                kolom.append(c);
+            });
+            t.prepend(kolom);
+            t.style.tableLayout = 'fixed';
+            t.style.width = `${total}em`;
+        });
+    }
+
     bagiKolom();
+    samakanKolom();
     sesuaikan();
     window.addEventListener('resize', sesuaikan);
-    document.fonts?.ready.then(sesuaikan);
+    document.fonts?.ready.then(() => { samakanKolom(); sesuaikan(); });
 })();
