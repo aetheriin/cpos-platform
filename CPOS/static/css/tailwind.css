@@ -118,12 +118,24 @@ body:has(.tbs-daily) .tab-body { margin-top: 0.5rem; margin-bottom: 0; }
 @media (min-width: 901px) {
   .tbs-daily.tbs-harian .tbs-tabel th, .tbs-daily .section-box.tbs-kartu .tbs-tabel > thead > tr > th { white-space: nowrap; }
 }
-/* TBS Daily: blok tabel di tengah, jarak baris dan kepala kartu mengikuti ukuran huruf */
+/* TBS Daily: blok tabel rata kiri, jarak baris dan kepala kartu mengikuti ukuran huruf */
 @media (min-width: 901px) {
-  .tbs-daily { justify-content: safe center; column-gap: 0.75rem; }
+  .tbs-daily { justify-content: start; column-gap: 0.75rem; }
   .tbs-daily.tbs-harian .tbs-tabel th, .tbs-daily .section-box.tbs-kartu .tbs-tabel > thead > tr > th { padding: 0.3em 0.45em; }
   .tbs-daily.tbs-harian .tbs-tabel td { padding: 0.14em 0.45em; }
   .tbs-daily .section-header { padding-top: 0.2em; padding-bottom: 0.2em; font-size: var(--tbs-huruf); }
   .tbs-daily .section-header-text { font-size: 1.05em; }
   .tbs-daily .section-header .btn-sm { font-size: 0.85em; padding: 0.1em 0.6em; }
+}
+/* TBS Daily: judul dan isi tabel sama ukuran huruf dan jaraknya; judul selalu satu baris */
+@media (min-width: 901px) {
+  .tbs-daily.tbs-harian .tbs-tabel th, .tbs-daily .section-box.tbs-kartu .tbs-tabel > thead > tr > th { font-size: 1em; padding: 0.14em 0.3em; white-space: nowrap; line-height: 1.2; }
+  .tbs-daily.tbs-harian .tbs-tabel td { padding: 0.14em 0.3em; }
+}
+/* TBS Daily: kartu berjajar dengan urutan tetap, tiap kartu selebar tabelnya sendiri, semua sejajar di atas */
+@media (min-width: 901px) {
+  .tbs-daily { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: flex-start; gap: 0.5rem; }
+  .tbs-daily.tbs-sebaris { flex-wrap: nowrap; }
+  .tbs-daily > .tbs-kartu { flex: none; width: max-content; max-width: 100%; height: auto; }
+  .tbs-daily .tbs-tabel { width: 100%; min-width: 0; }
 }

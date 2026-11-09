@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-// Tema tampilan: 'terang' atau 'gelap'. Pilihan disimpan di browser; tanpa pilihan, mengikuti pengaturan sistem.
+// Tema tampilan: 'terang' atau 'gelap'. Pilihan disimpan di browser (kunci sama dengan CPOS); tanpa pilihan, terang seperti CPOS.
 // index.html sudah menerapkannya sebelum React dimuat, jadi halaman tidak sempat berkedip putih.
 const KUNCI = 'tema'
 

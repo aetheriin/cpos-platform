@@ -8,9 +8,8 @@
     <title>Dashboard Analytics</title>
     <script>
       try {
-        var t = localStorage.getItem('tema')
-        if (t !== 'gelap' && t !== 'terang') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'gelap' : 'terang'
-        document.documentElement.dataset.tema = t
+        // Bawaan sama dengan CPOS (terang), bukan tema browser, supaya isi laporan tidak berbeda dari sidebar CPOS
+        document.documentElement.dataset.tema = localStorage.getItem('tema') === 'gelap' ? 'gelap' : 'terang'
       } catch (e) {
         document.documentElement.dataset.tema = 'terang'
       }

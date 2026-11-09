@@ -84,9 +84,9 @@ def daftar_do(ticket_type):
             tanda_tanya_do = ", ".join("?" for _ in id_do_list)
             cursor.execute(
                 f"""
-                SELECT {nama_id_do}, MillID
+                SELECT productname, MillID
                 FROM dbo.{tabel_do}
-                WHERE {nama_id_do} IN ({tanda_tanya_do})
+                groupby productname, millid
                 """,
                 *id_do_list,
             )

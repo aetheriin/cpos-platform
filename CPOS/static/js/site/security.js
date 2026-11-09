@@ -681,7 +681,6 @@ const MILL_MANUAL_ASCEND = {
     tbsluar: {
         pfad: 1034,
         'r.pome': 1034,
-        tbs: 1034,
         uco: 1034,
     },
 };
@@ -799,6 +798,14 @@ async function muatDOAscend() {
 
     isiPilihanAscend(associate, [], x => x.id, x => x.nama);
     isiPilihanAscend(produk, [], x => x.id, x => x.nama);
+    if (jenis === 'TBSLuar') {
+        isiPilihanAscend(
+            produk,
+            [{ id: 'TBS', nama: 'TBS' }],
+            x => x.id,
+            x => x.nama
+        );
+    }
 
     document.getElementById('ascendMill').value = '';
     document.getElementById('ascendMill').disabled = false; 
@@ -911,7 +918,7 @@ function pilihInfoDOAscend() {
     document.getElementById('ascendAssociate').value = String(d.associate_id);
     document.getElementById('ascendProduk').value = d.produk;
     muatShipperKendaraan(d);
-    document.getElementById('ascendMill').value =
+    document.getElementById('ascendMill').value =   
         d.mill_id == null ? '' : String(d.mill_id);
 
     document.getElementById('ascendAssociate').disabled = true;

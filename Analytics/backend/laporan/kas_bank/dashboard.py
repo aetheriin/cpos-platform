@@ -95,7 +95,8 @@ def _lengkapi_asli(giro, g, df, filt, hari):
     uang = _uang(df)
     for b in giro["perusahaan"]:
         for r in b["rekening"]:
-            r.update(mata_uang=uang.get(r["akun"], SATUAN), nilai_asli=_bulat(nilai.get(r["akun"], 0)), rata_asli=_bulat(rata.get(r["akun"])))
+            a = rata.get(r["akun"])
+            r.update(mata_uang=uang.get(r["akun"], SATUAN), nilai_asli=_bulat(nilai.get(r["akun"], 0)), rata_asli=None if a is not None and a < 0 else _bulat(a))
     bulan = len(hari.to_period("M").unique()) or 1
     persen = lambda n, r: _bulat(n / r * 12 / bulan, 8) if r and r > 0 else None
     for b in giro["perusahaan"]:
@@ -146,8 +147,8 @@ def _giro(df, filt, dari, sampai):
 
 def _ringkas_giro(g, saldo):
     """Rekap per perusahaan lalu per rekening: giro, AVG balance (rata-rata saldo akhir harian di rentang), dan % giro
-    per tahun (giro ÷ AVG balance × 12, dibagi jumlah bulan rentang). Seperti pivot Excel, hanya rekening yang menerima giro di rentang ini yang masuk
-    rekap. "akun" = rekening bersaldo atau bergiro untuk tab Rekap saldo bank; rekening tanpa keduanya (mis. sudah tidak dipakai) tidak tampil di sana.
+    per tahun (giro ÷ AVG balance × 12, dibagi jumlah bulan rentang). Rekening bersaldo masuk rekap walau giro-nya nol, jadi AVG balance total memuat rekening
+    tanpa giro; rekening tanpa giro dan tanpa saldo disembunyikan. "akun" = rekening bersaldo atau bergiro untuk tab Rekap saldo bank; rekening tanpa keduanya (mis. sudah tidak dipakai) tidak tampil di sana.
     Semua dalam rupiah, termasuk rekening valas."""
     rata = saldo.mean() if not saldo.empty else pd.Series(dtype=float)
     nilai = g.groupby("akun")["nilai"].sum() if not g.empty else pd.Series(dtype=float)
@@ -159,14 +160,16 @@ def _ringkas_giro(g, saldo):
         r = None if r is None or pd.isna(r) else float(r)
         if n or r:
             akun_tampil.append((akun, r or 0))
-        if n and (r is None or r >= 0):   # AVG balance minus tidak ditampilkan di rekap
-            baris.setdefault(akun.split(" · ")[0], []).append({"akun": akun, "nilai": _bulat(n), "rata_saldo": _bulat(r), "imbal": persen(n, r)})
+        isi = baris.setdefault(akun.split(" · ")[0], [])   # perusahaan tetap tampil walau semua rekeningnya tersembunyi
+        if n or _bulat(r):   # rekening tanpa giro dan tanpa saldo di rentang ini (sudah tidak terpakai) tidak ditampilkan
+            r = None if r is not None and r < 0 else r   # AVG balance minus tidak ditampilkan di rekap
+            isi.append({"akun": akun, "nilai": _bulat(n), "rata_saldo": _bulat(r), "imbal": persen(n, r)})
     grup = []
     for nama, isi in baris.items():
         n, r = sum(x["nilai"] for x in isi), sum(x["rata_saldo"] or 0 for x in isi)
         grup.append({"nama": nama, "nilai": _bulat(n), "rata_saldo": _bulat(r), "imbal": persen(n, r),
                      "rekening": sorted(isi, key=lambda x: -(x["rata_saldo"] or 0))})
-    grup.sort(key=lambda b: -b["rata_saldo"])
+    grup.sort(key=lambda b: (-b["rata_saldo"], b["nama"]))
     n, r = sum(b["nilai"] for b in grup), sum(b["rata_saldo"] for b in grup)
     return {"perusahaan": grup, "akun": [a for a, _ in sorted(akun_tampil, key=lambda x: -x[1])], "total": _bulat(n), "rata_saldo": _bulat(r), "imbal": persen(n, r)}
 
