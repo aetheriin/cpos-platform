@@ -7,18 +7,10 @@ from flask_login import current_user
 
 from utils.cache import cache_ttl
 
-CACHE_HAK_DETIK = 8   # ditambah cache 2 detik di Analytics (inti/cpos.py), perubahan hak berlaku paling lama 10 detik
+CACHE_HAK_DETIK = 8
 from utils.db_utils import get_connection, _rows_to_dicts
 
 AKSI = ("tambah", "ubah", "hapus")
-# "setujui" = boleh menyetujui / menolak pengajuan di menu itu (mis. tambah & hapus blacklist); di Daftar Tiket =
-# memverifikasi (menandai sudah diperiksa) tiket selesai & menyetujui koreksi tiket (Ubah = mengajukan koreksi).
-# "tolak" / "selesai" = menolak / menandai selesai sebuah request (dipakai RekapIn: Request Operator).
-# Tidak termasuk "aksi apa pun" pada boleh(kode_menu). Aksi yang berlaku di tiap menu ada di tabel MenuAction.
-
-
-# ActionType.ActionID untuk tiap aksi (seed schema.sql: 0 Delete, 1 View, 2 Create, 3 Edit, 4 Void, 5 Approve,
-# 6 Reject, 7 Done). AKSI_SEMUA = urutan kolom di matriks Hak Akses; AKSI_OPSI = selain Lihat.
 ID_AKSI = {"lihat": 1, "tambah": 2, "ubah": 3, "hapus": 0, "setujui": 5, "tolak": 6, "selesai": 7}
 NAMA_AKSI = {v: k for k, v in ID_AKSI.items()}
 AKSI_SEMUA = ("lihat", "tambah", "ubah", "hapus", "setujui", "tolak", "selesai")
@@ -30,6 +22,12 @@ def _query(sql, *params):
     try:
         cursor = conn.cursor()
         cursor.execute(sql, *params)
+
+        # Lewati result set tanpa kolom sampai menemukan hasil berupa baris.
+        while cursor.description is None:
+            if not cursor.nextset():
+                return []
+
         return _rows_to_dicts(cursor)
     finally:
         conn.close()
