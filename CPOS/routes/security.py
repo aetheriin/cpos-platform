@@ -219,15 +219,6 @@ def ascend_buat_tiket():
             for m in db_ascend.daftar_mill()
         )
 
-        mill_seharusnya = mill_manual_ascend(ticket_type, produk)
-        if mill_id != mill_seharusnya:
-            return jsonify({
-                "error": (
-                    f"Mill untuk input manual harus {mill_seharusnya} "
-                    "sesuai matriks Jenis Tiket dan Produk."
-                )
-            }), 400
-
         if not associate_valid:
             return jsonify({"error": "Pilih Associate dari daftar Ascend."}), 400
         if not mill_valid:

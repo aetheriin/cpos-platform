@@ -79,8 +79,25 @@ function bukaHarga(i) {
     tanggal.value = r ? r.tanggal : new Date().toLocaleDateString('sv-SE');
     tanggal.max = new Date().toLocaleDateString('sv-SE');
     tanggal.disabled = !!r;
-    KOLOM_HARGA.forEach(k => { document.getElementById(`rkHarga_${k}`).value = r && r[k] != null ? r[k] : ''; });
+    const hargaDipertahankan = ['harga_cpo', 'harga_kernel', 'biaya_olah'];
+    KOLOM_HARGA.forEach(k => {
+        if (r || !hargaSementara.length || !hargaDipertahankan.includes(k)) {
+            document.getElementById(`rkHarga_${k}`).value = r && r[k] != null ? r[k] : '';
+        }
+    });
     tampilkanHargaSementara();
+}
+
+function resetFormHarga() {
+    const company = document.getElementById('rkHargaCompany');
+    company.value = '';
+    company.disabled = false;
+    const tanggal = document.getElementById('rkHargaTanggal');
+    tanggal.value = new Date().toLocaleDateString('sv-SE');
+    tanggal.max = tanggal.value;
+    tanggal.disabled = false;
+    KOLOM_HARGA.forEach(k => { document.getElementById(`rkHarga_${k}`).value = ''; });
+    document.getElementById('rkHargaJudul').textContent = 'Isi Harga';
 }
 
 function nilaiFormHarga() {
@@ -171,6 +188,7 @@ async function simpanHarga(btn) {
     if (!tampilkanHasil(data)) return;
     hargaSementara = [];
     tampilkanHargaSementara();
+    resetFormHarga();
     closeModal('modalRkHarga');
     tampilkanHarga();
 }

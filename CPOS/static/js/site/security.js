@@ -837,15 +837,18 @@ async function muatDOAscend() {
         return;
     }
 
+    const formatAssociate = a =>
+        `${a.associate_code || "-"}: ${a.associate_name}`;
+
     const daftarAssociate = dataAssociate.map(a => ({
         id: a.associate_id,
-        nama: `[${a.associate_code || "-"}] ${a.associate_name}`,
+        nama: formatAssociate(a),
     }));
 
     const labelAssociateById = new Map(
         dataAssociate.map(a => [
             String(a.associate_id),
-            `[${a.associate_code || "-"}] ${a.associate_name}`,
+            formatAssociate(a),
         ])
     );
 
@@ -1072,9 +1075,33 @@ if (formTiketAscend) {
             return;
         }
 
+        const noTiketBerhasil = data.no_tiket;
+        formTiketAscend.reset();
+
+        document.getElementById('ascendNoDoSelectWrap').classList.remove('hidden');
+        document.getElementById('ascendNoDoManualWrap').classList.add('hidden');
+        document.getElementById('ascendNoDoValue').value = '';
+        document.getElementById('ascendNoDoChoice').required = true;
+        document.getElementById('ascendNoDoManual').required = false;
+
+        document.getElementById('ascendVehicleSelectWrap').classList.remove('hidden');
+        document.getElementById('ascendVehicleManualWrap').classList.add('hidden');
+        document.getElementById('ascendVehicleNo').disabled = false;
+        document.getElementById('ascendVehicleNo').required = true;
+        document.getElementById('ascendVehicleManual').disabled = true;
+        document.getElementById('ascendVehicleManual').required = false;
+
+        document.getElementById('ascendAssociate').disabled = false;
+        document.getElementById('ascendProduk').disabled = false;
+        document.getElementById('ascendMill').disabled = false;
+        document.getElementById('ascendTanggal').value = tanggalLokalHariIni();
+
+        await muatDOAscend();
+        await muatShipperKendaraan();
+
         hasil.className = 'text-sm font-semibold text-emerald-700';
-        hasil.textContent = `Tiket berhasil dibuat: ${data.no_tiket}`;
-    });
+        hasil.textContent = `Tiket berhasil dibuat: ${noTiketBerhasil}`;
+            });
 }
 
 async function muatSupirTerakhirAscend() {

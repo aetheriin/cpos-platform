@@ -4,6 +4,7 @@ $lokal = Join-Path $env:LOCALAPPDATA 'cpos-platform'
 $log = Join-Path $lokal 'log'
 $PortAnalytics = 8001
 $PortDeteksi = 8000
+$JalankanDeteksi = $false
 New-Item -ItemType Directory -Force $log | Out-Null
 $Host.UI.RawUI.WindowTitle = 'CPOS + Analytics'
 
@@ -102,7 +103,7 @@ try {
         Sort-Object FullName | ForEach-Object FullName)
     $pyCpos = Siapkan-Venv 'CPOS' (Join-Path $lokal 'venv-cpos') $reqCpos @(, @('--no-deps', 'face-recognition==1.3.0'))
     $pyAnalytics = Siapkan-Venv 'Analytics' (Join-Path $lokal 'venv-analytics') @(Join-Path $akar 'Analytics\backend\requirements.txt') @()
-    $adaDeteksi = Test-Path (Join-Path $akar 'Deteksi\server_web.py')
+    $adaDeteksi = $JalankanDeteksi -and (Test-Path (Join-Path $akar 'Deteksi\server_web.py'))
     if ($adaDeteksi) {
         $pyDeteksi = Siapkan-Venv 'Deteksi Plat' (Join-Path $env:LOCALAPPDATA 'deteksi-plat\venv') @(Join-Path $akar 'Deteksi\requirements.txt') @()
     }

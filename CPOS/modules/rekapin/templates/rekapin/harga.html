@@ -44,6 +44,7 @@
       <div><label class="field-label" for="rkHarga_{{ kunci }}">{{ label }}</label><input type="number" step="any" min="0" max="{{ batas }}" id="rkHarga_{{ kunci }}" class="input-field" placeholder="{{ ph }}" required></div>
       {% endfor %}
       <div><label class="field-label" for="rkHarga_qty_rsi">Qty RSI (ton) <span class="text-slate-400 font-normal">(opsional)</span></label><input type="number" step="any" min="0" max="1000000000" id="rkHarga_qty_rsi" class="input-field" placeholder="86,5"></div>
+      <div class="self-end"><button type="button" class="btn-secondary w-full" data-on-click="resetFormHarga"><i class="fa-solid fa-rotate-left"></i> Reset Form</button></div>
     </div>
     <div class="mt-5">
       <div class="flex items-center justify-between mb-2"><h4 class="font-semibold">Daftar sementara</h4><span id="rkJumlahSementara" class="text-xs text-slate-500">0 data</span></div>
@@ -66,5 +67,5 @@
 </div></div>
 {% endblock %}
 {% block extra_scripts %}
-<script defer src="{{ url_for('rekapin.static', filename='rekapin/harga.js', v=2) }}"></script>
+<script defer src="{{ url_for('rekapin.static', filename='rekapin/harga.js', v=3) }}"></script>
 {% endblock %}
