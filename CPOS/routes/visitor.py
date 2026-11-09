@@ -81,7 +81,7 @@ def _foto_dari_form():
 @login_required
 @izin("VSL_SCAN", "tambah")
 def scan():
-    area = _area()
+    area = _area() 
     wajib = pengaturan.nilai("TANTANGAN_ABSENSI", area)
     tantangan = request.form.get("tantangan", "KEDIP") if wajib else TANPA_TANTANGAN
     if wajib and tantangan not in TANTANGAN_VALID:
@@ -126,25 +126,39 @@ def scan():
                                       "sumber": "VISITOR", "tindakan": "DITOLAK", "jarak": jarak})
         return jsonify({"status": "DITOLAK", **_info(p, jarak), "foto_scan": foto})
 
-    akhir = db.terakhir(id_personel)
-    di_dalam = bool(akhir and akhir["jenis"] == "MASUK")
-    if p["kategori"] != "KARYAWAN":                    # driver / tamu: lanjut ke form kunjungan (masuk) atau keluar
-        return jsonify({"status": "KUNJUNGAN", **_info(p, jarak), "di_dalam": di_dalam, "foto_scan": foto,
-                        "masuk_sejak": akhir["waktu"].strftime("%H:%M") if di_dalam else None})
+    visit_group = (
+        "EMPLOYEE"
+        if p["kategori"] == "KARYAWAN"
+        else "VISITOR"
+    )
 
-    terakhir_scan, sudah_masuk = db.sudah_masuk_hari_ini(id_personel, sekarang.date())
-    if is_duplikat(terakhir_scan, sekarang):
-        return jsonify({"status": "DUPLIKAT", **_info(p, jarak),
-                        "error": f"{nama} sudah tercatat pukul {terakhir_scan:%H:%M}."}), 409
-    jenis = tentukan_jenis(sudah_masuk)
-    jadwal = get_jadwal_hari(hari_iso(sekarang), area)
-    status_waktu, selisih = hitung_status_waktu(jenis, sekarang, jadwal)
-    db.catat(id_personel, jenis, db.BERHASIL, area, current_user.id, nama_wajah=p["nama_personel"], embedding=emb, foto_path=foto,
-             status_waktu=status_waktu, selisih=selisih, jarak=jarak, perangkat=perangkat, ip=ip, waktu=sekarang)
-    return jsonify({"status": "ABSENSI", **_info(p, jarak), "jenis": jenis, "status_waktu": status_waktu, "selisih_menit": selisih,
-                    "waktu": sekarang.strftime("%H:%M"), "foto_scan": foto,
-                    "jadwal": None if not jadwal or jadwal["is_libur"] else
-                    {"jam_masuk": _jam(jadwal["jam_masuk"]), "jam_pulang": _jam(jadwal["jam_pulang"])}})
+    kunjungan = db.kunjungan_aktif(id_personel)
+    face_id = None
+
+    if not kunjungan:
+        face_id = db.simpan_bukti_wajah(
+            p["nama_personel"],
+            emb,
+            foto,
+        )
+    return jsonify({
+        "status": "KUNJUNGAN",
+        **_info(p, jarak),
+        "visit_group": visit_group,
+        "di_dalam": bool(kunjungan),
+        "face_id": face_id,
+        "masuk_sejak": (
+            kunjungan["waktu"].strftime("%H:%M")
+            if kunjungan and kunjungan.get("waktu")
+            else None
+        ),
+        "activity_id": (
+            kunjungan["id_aktivitas"]
+            if kunjungan
+            else None
+        ),
+        "foto_scan": foto,
+    })
 
 
 def _jam(t):
@@ -195,6 +209,96 @@ def masuk():
              id_dituju=id_dituju, no_plat=no_plat, perangkat=f.get("perangkat"), ip=request.remote_addr)
     return jsonify({"message": f"{p['nama_personel']} dicatat masuk"})
 
+@visitor_bp.route(
+    "/api/visitor/kunjungan/<int:activity_id>/lengkapi",
+    methods=["POST"],
+)
+@login_required
+@izin("VSL_SCAN", "tambah")
+def lengkapi_kunjungan(activity_id):
+    f = request.form
+
+    try:
+        p = _orang_form()
+
+        if p["is_blacklisted"]:
+            raise ValueError("Orang ini masuk daftar blacklist.")
+
+        teks_face_id = (f.get("face_id") or "").strip()
+        if not teks_face_id.isdigit():
+            raise ValueError("Scan wajah terlebih dahulu.")
+
+        face_id = int(teks_face_id)
+        if not db.bukti_wajah_milik(face_id, p["nama_personel"]):
+            raise ValueError("Bukti scan wajah tidak cocok dengan data orang.")
+
+        keperluan = (f.get("keperluan") or "").strip()[:120]
+        if not keperluan:
+            raise ValueError("Isi tujuan kunjungan.")
+
+        teks_host = (f.get("id_dituju") or "").strip()
+        if not teks_host.isdigit():
+            raise ValueError("Pilih host atau orang yang dituju.")
+
+        id_host = int(teks_host)
+        host_valid = {
+            int(x["id_personel"])
+            for x in db.daftar_dituju()
+        }
+        if id_host not in host_valid:
+            raise ValueError("Host yang dipilih tidak tersedia.")
+
+        no_plat = None
+        teks_plat = (f.get("no_plat") or "").strip()
+        if teks_plat:
+            no_plat, error = normalisasi_plat(teks_plat)
+            if error:
+                raise ValueError(error)
+
+        jumlah = (f.get("jumlah_penumpang") or "0").strip()
+        if not jumlah.isdigit() or int(jumlah) > 50:
+            raise ValueError("Jumlah penumpang harus berupa angka 0 sampai 50.")
+
+        data_kunjungan = {
+            "asal_perusahaan": (f.get("asal_perusahaan") or "").strip()[:150],
+            "jenis_kendaraan": (f.get("jenis_kendaraan") or "").strip()[:50],
+            "jumlah_penumpang": int(jumlah),
+            "penumpang": [
+                nama.strip()[:100]
+                for nama in f.getlist("penumpang")
+                if nama.strip()
+            ][:50],
+        }
+
+        visit_group = (
+            "EMPLOYEE"
+            if p["kategori"] == "KARYAWAN"
+            else "VISITOR"
+        )
+
+        db.lengkapi_kunjungan(
+            activity_id,
+            p["id_personel"],
+            face_id,
+            visit_group,
+            data_kunjungan,
+            id_dituju=id_host,
+            tujuan=keperluan,
+            no_plat=no_plat,
+            id_area=_area(),
+            user_id=current_user.id,
+            perangkat=f.get("perangkat", "Web"),
+            ip=request.remote_addr,
+        )
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    return jsonify({
+        "message": "Data kunjungan berhasil disimpan.",
+        "activity_id": activity_id,
+        "visit_group": visit_group,
+    })
 
 @visitor_bp.route("/api/visitor/keluar", methods=["POST"])
 @login_required

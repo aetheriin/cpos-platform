@@ -1,7 +1,7 @@
 // ===== ADMIN > PERANGKAT / KIOSK =====
 let daftarPos = [];
 let modeUbahPos = false;
-let dataKameraPlat = { kamera: [], facing: {} };
+let dataKameraPlat = { kamera: [], facing: {}, view_position: {} };
 
 document.addEventListener('DOMContentLoaded', muatKameraPlat);
 document.addEventListener('DOMContentLoaded', muatPerangkat);
@@ -231,6 +231,9 @@ async function muatKameraPlat() {
             <td class="table-cell">${escapeHtml(k.area)}</td>
             <td class="table-cell font-mono">${escapeHtml(k.gate || '-')}</td>
             <td class="table-cell">${escapeHtml(data.facing[k.facing] || k.facing)}</td>
+            <td class="table-cell">
+                ${escapeHtml(data.view_position[k.view_position] || k.view_position || '-')}
+            </td>
             <td class="table-cell font-mono text-xs">${escapeHtml(k.rtsp_tersamar)}</td>
             <td class="table-cell text-center">${k.is_active ? badge('Aktif', WARNA_BADGE.hijau) : badge('Nonaktif', WARNA_BADGE.abu)}</td>
             <td class="table-cell text-right"><button type="button" class="link-aksi text-blue-600" data-on-click="bukaKameraPlat" data-arg="${k.id_kamera}">Ubah</button></td>
@@ -242,7 +245,7 @@ function bukaKameraPlat(id) {
     const k = dataKameraPlat.kamera.find(x => x.id_kamera === Number(id));
     form.reset();
     if (k) isiForm(form, { id_kamera: k.id_kamera, nama: k.nama, id_comp_area: k.id_comp_area, gate: k.gate || '', facing: k.facing,
-                           catatan: k.catatan || '', urutan: k.urutan });
+                           view_position: k.view_position || '', catatan: k.catatan || '', urutan: k.urutan });
     else form.elements.id_kamera.value = '';
     form.elements.rtsp.placeholder = k ? k.rtsp_tersamar : 'rtsp://cpos_view:PASSWORD@192.168.10.31:554/Streaming/Channels/101';
     form.elements.is_active.checked = k ? !!k.is_active : true;

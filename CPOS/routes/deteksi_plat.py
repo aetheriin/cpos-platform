@@ -196,18 +196,26 @@ def video_live(nama):
 @admin_required
 def admin_kamera():
     if request.method == "GET":
-        return jsonify({"kamera": dbk.daftar(), "facing": dbk.FACING})
+        return jsonify({
+            "kamera": dbk.daftar(),
+            "facing": dbk.FACING,
+            "view_position": dbk.VIEW_POSITION,
+        })
 
     def aksi():
         f = request.form
         d = {"nama": _teks("nama", 30).upper(), "id_comp_area": _angka("id_comp_area"),
-             "gate": (_teks("gate", 30, False) or "").upper() or None, "facing": f.get("facing") or "MASUK",
+             "gate": (_teks("gate", 30, False) or "").upper() or None,
+             "facing": f.get("facing") or "MASUK",
+             "view_position": (f.get("view_position") or "").strip().upper() or None,
              "rtsp": _teks("rtsp", 500, False), "catatan": _teks("catatan", 100, False),
              "urutan": _angka("urutan", False) or 0, "is_active": f.get("is_active", "1") == "1"}
         if not POLA_NAMA.match(d["nama"]):
             raise GalatIsian("Nama kamera: huruf besar, angka, - atau _ (mis. GERBANG1-DEPAN)", "nama")
         if d["facing"] not in dbk.FACING:
             raise ValueError("Pilih arah hadap dari daftar")
+        if d["view_position"] and d["view_position"] not in dbk.VIEW_POSITION:
+            raise ValueError("Pilih posisi kamera dari daftar.")
         if d["rtsp"] and not re.match(r"^rtsp://\S+$", d["rtsp"]):
             raise GalatIsian("Alamat RTSP contoh: rtsp://user:password@192.168.10.31:554/Streaming/Channels/101", "rtsp")
         dbk.simpan(_angka("id_kamera", False), d)

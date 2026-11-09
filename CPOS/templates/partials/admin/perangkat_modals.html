@@ -166,6 +166,17 @@
                     <option value="MASUK">Menghadap kendaraan masuk</option>
                     <option value="KELUAR">Menghadap kendaraan keluar</option>
                 </select></div>
+            <div>
+                <label class="field-label" for="kpViewPosition">Posisi kamera</label>
+                <select id="kpViewPosition" name="view_position" class="input-field">
+                    <option value="">-- Belum ditentukan --</option>
+                    <option value="DEPAN">Depan</option>
+                    <option value="BELAKANG">Belakang</option>
+                    <option value="KANAN">Samping kanan</option>
+                    <option value="KIRI">Samping kiri</option>
+                    <option value="ATAS">Atas</option>
+                </select>
+            </div>
             <div class="col-span-2"><label class="field-label" for="kpRtsp">Alamat RTSP</label>
                 <input type="text" id="kpRtsp" name="rtsp" maxlength="500" class="input-field font-mono" placeholder="rtsp://cpos_view:PASSWORD@192.168.10.31:554/Streaming/Channels/101">
                 <p class="field-hint">Saat ubah: kosongkan bila alamat tidak diganti. Pakai akun kamera view-only.</p></div>

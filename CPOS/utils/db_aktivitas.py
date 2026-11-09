@@ -4,8 +4,9 @@
 - driver & tamu: kunjungan MASUK (keperluan, orang yang dituju, plat) lalu KELUAR;
 - scan yang tidak dikenali / ditolak blacklist juga dicatat. Foto wajah saat scan disimpan di FaceRecog (bukti).
 "Masih di dalam" = aktivitas berhasil terakhir orang itu (24 jam terakhir) adalah MASUK."""
-from datetime import date, datetime, timedelta
+import json
 
+from datetime import date, datetime, timedelta
 from utils import jenis_orang
 from utils.area_filter import sql_area
 from utils.cache import cache_ttl
@@ -55,6 +56,268 @@ def catat(id_user, jenis, status, id_area, user_id, *, nama_wajah=None, embeddin
     finally:
         conn.close()
 
+def simpan_bukti_wajah(nama_wajah, embedding, foto_path):
+    """Simpan bukti scan wajah tanpa membuat baris FaceActivity baru."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO FaceRecog (FaceName, FaceDet, PhotoPath)
+            OUTPUT INSERTED.FaceID
+            VALUES (?, ?, ?)
+            """,
+            nama_wajah,
+            embedding,
+            foto_path,
+        )
+        face_id = int(cursor.fetchone()[0])
+        conn.commit()
+        return face_id
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def bukti_wajah_milik(face_id, nama_wajah):
+    """Pastikan bukti scan yang dikirim memang tersimpan untuk nama orang tersebut."""
+    baris = _query(
+        """
+        SELECT FaceID
+        FROM FaceRecog
+        WHERE FaceID = ? AND FaceName = ?
+        """,
+        face_id,
+        nama_wajah,
+    )
+    return bool(baris)
+
+def _id_status_kunjungan():
+    kode = (
+        "KUNJUNGAN_MENUNGGU",
+        "KUNJUNGAN_DALAM",
+        "KUNJUNGAN_SELESAI",
+    )
+    baris = _query(
+        "SELECT StatusCode, StatusID FROM Status "
+        "WHERE StatusCode IN (?, ?, ?)",
+        *kode,
+    )
+    hasil = {r["StatusCode"]: r["StatusID"] for r in baris}
+
+    if len(hasil) != len(kode):
+        raise RuntimeError("Status kunjungan belum lengkap di tabel Status.")
+
+    return hasil
+
+
+def buat_kunjungan_menunggu(
+    no_plat,
+    id_area,
+    *,
+    entry_id=None,
+    waktu=None,
+    perangkat="Kamera",
+    ip=None,
+):
+    """Buat satu catatan awal kunjungan. entry_id boleh kosong untuk input manual."""
+    status_id = _id_status_kunjungan()["KUNJUNGAN_MENUNGGU"]
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+
+        # Mencegah kejadian kamera yang sama membuat catatan ganda.
+        if entry_id is not None:
+            cursor.execute(
+                """
+                SELECT TOP 1 ActivityID
+                FROM FaceActivity WITH (UPDLOCK, HOLDLOCK)
+                WHERE EntryKejadianID = ?
+                """,
+                entry_id,
+            )
+            lama = cursor.fetchone()
+            if lama:
+                conn.commit()
+                return int(lama[0])
+
+        cursor.execute(
+            """
+            INSERT INTO FaceActivity (
+                ActivityType, StatusID, LogDate, LogDay,
+                NoVehicle, CompAreaID, Device, IPAddress,
+                VisitData, EntryKejadianID
+            )
+            OUTPUT INSERTED.ActivityID
+            VALUES (
+                'MASUK', ?, COALESCE(?, GETDATE()),
+                CONVERT(date, COALESCE(?, GETDATE())),
+                ?, ?, ?, ?, N'{}', ?
+            )
+            """,
+            status_id,
+            waktu,
+            waktu,
+            no_plat,
+            id_area,
+            (perangkat or "Kamera")[:50],
+            ip,
+            entry_id,
+        )
+
+        activity_id = int(cursor.fetchone()[0])
+        conn.commit()
+        return activity_id
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def lengkapi_kunjungan(
+    activity_id,
+    id_personel,
+    id_face,
+    visit_group,
+    data_kunjungan,
+    *,
+    id_dituju=None,
+    tujuan=None,
+    no_plat=None,
+    id_area=None,
+    user_id=None,
+    perangkat="Web",
+    ip=None,
+):
+    """Lengkapi catatan menunggu dan ubah statusnya menjadi masih di dalam."""
+    if visit_group not in ("VISITOR", "EMPLOYEE"):
+        raise ValueError("Jenis log kunjungan tidak valid.")
+
+    data_json = json.dumps(data_kunjungan or {}, ensure_ascii=False)
+    status = _id_status_kunjungan()
+    status_menunggu = status["KUNJUNGAN_MENUNGGU"]
+    status_dalam = status["KUNJUNGAN_DALAM"]
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE FaceActivity
+            SET UserID = ?,
+                FaceID = ?,
+                VisitGroup = ?,
+                VisitData = ?,
+                VisitToID = ?,
+                Description = ?,
+                NoVehicle = COALESCE(NULLIF(?, ''), NoVehicle),
+                CompAreaID = COALESCE(?, CompAreaID),
+                StatusID = ?,
+                Device = ?,
+                IPAddress = ?,
+                CreateBy = COALESCE(?, CreateBy)
+            OUTPUT INSERTED.ActivityID
+            WHERE ActivityID = ?
+              AND StatusID = ?
+              AND DateTimeOut IS NULL
+              AND CompAreaID = ?
+            """,
+            id_personel,
+            id_face,
+            visit_group,
+            data_json,
+            id_dituju,
+            tujuan,
+            no_plat,
+            id_area,
+            status_dalam,
+            (perangkat or "Web")[:50],
+            ip,
+            user_id,
+            activity_id,
+            status_menunggu,
+            id_area,
+        )
+
+        baris = cursor.fetchone()
+        if not baris:
+            raise ValueError(
+                "Catatan kunjungan tidak ditemukan, sudah dilengkapi, atau sudah selesai."
+            )
+
+        conn.commit()
+        return int(baris[0])
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def tutup_kunjungan(activity_id, *, exit_id=None, waktu_keluar=None):
+    """Tutup catatan kunjungan yang sama saat kendaraan/orang keluar."""
+    status = _id_status_kunjungan()
+    status_dalam = status["KUNJUNGAN_DALAM"]
+    status_selesai = status["KUNJUNGAN_SELESAI"]
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE FaceActivity
+            SET DateTimeOut = COALESCE(?, GETDATE()),
+                ExitKejadianID = ?,
+                StatusID = ?
+            OUTPUT INSERTED.ActivityID
+            WHERE ActivityID = ?
+              AND StatusID = ?
+              AND DateTimeOut IS NULL
+            """,
+            waktu_keluar,
+            exit_id,
+            status_selesai,
+            activity_id,
+            status_dalam,
+        )
+
+        baris = cursor.fetchone()
+        if not baris:
+            raise ValueError("Kunjungan tidak ditemukan atau sudah selesai.")
+
+        conn.commit()
+        return int(baris[0])
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+def kunjungan_aktif(id_personel):
+    """Kunjungan yang statusnya masih di dalam untuk orang tersebut."""
+    status_id = _id_status_kunjungan()["KUNJUNGAN_DALAM"]
+
+    baris = _query(
+        """
+        SELECT TOP 1
+            ActivityID AS id_aktivitas,
+            LogDate AS waktu,
+            NoVehicle AS no_plat,
+            CompAreaID AS id_area
+        FROM FaceActivity
+        WHERE UserID = ?
+          AND StatusID = ?
+          AND DateTimeOut IS NULL
+        ORDER BY LogDate DESC, ActivityID DESC
+        """,
+        id_personel,
+        status_id,
+    )
+    return baris[0] if baris else None
 
 def terakhir(id_user):
     """Aktivitas berhasil terakhir orang ini dalam 24 jam: {jenis, waktu} atau None."""
