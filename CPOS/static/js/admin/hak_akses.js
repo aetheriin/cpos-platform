@@ -8,9 +8,33 @@ let DATA = { menu: [], widget: [], jabatan: [], departemen: [], peran: [], halam
 let menuAktif = null;
 let aturan = [];
 let berubah = false;
-let salinan = null;              // aturan yang di-Copy (dari menu lain)
-let barisPilihUser = null;       // indeks baris yang sedang memilih user
-let barisWidget = null;          // indeks baris yang sedang diatur widget-nya
+let salinan = null;              
+let barisPilihUser = null;       
+let barisWidget = null;   
+let jumlahAsli = 0;              
+
+const bentukAturan = a => JSON.stringify({ jenis: a.jenis, id_target: a.id_target, tolak: a.tolak,
+                                           aksi: AKSI.filter(k => a.aksi[k]), widget: a.widget, cakupan: a.cakupan });
+const statusAturan = a => !a._asli ? 'baru' : (a._asli !== bentukAturan(a) ? 'diubah' : '');
+const GAYA_STATUS = {
+    baru: 'background:rgba(16,185,129,.14);box-shadow:inset 4px 0 0 #10b981',
+    diubah: 'background:rgba(245,158,11,.14);box-shadow:inset 4px 0 0 #f59e0b',
+};
+
+function penandaAturan(a) {
+    const s = statusAturan(a);
+    if (!s) return '';
+    return `<span title="${s === 'baru' ? 'Aturan baru, belum disimpan' : 'Diubah, belum disimpan'}"
+        style="display:inline-block;width:9px;height:9px;border-radius:9999px;background:${s === 'baru' ? '#10b981' : '#f59e0b'};margin-right:6px;vertical-align:middle"></span>`;
+}
+
+function perbaruiRingkasan() {
+    const baru = aturan.filter(a => statusAturan(a) === 'baru').length;
+    const diubah = aturan.filter(a => statusAturan(a) === 'diubah').length;
+    const dihapus = Math.max(0, jumlahAsli - aturan.filter(a => a._asli).length);
+    const bagian = [baru && `${baru} baru`, diubah && `${diubah} diubah`, dihapus && `${dihapus} dihapus`].filter(Boolean);
+    document.getElementById('tandaBerubah').textContent = bagian.length ? `Belum disimpan · ${bagian.join(' · ')}` : 'Belum disimpan';
+}// indeks baris yang sedang diatur widget-nya
 
 document.addEventListener('DOMContentLoaded', async () => {
     await muatAkses();
@@ -97,6 +121,8 @@ async function pilihMenuAkses(id) {
     const data = await ambilJson(`/api/admin/akses/menu/${id}`);
     if (data.error) { Notif.gagal(data.error); return; }
     aturan = data;
+    aturan.forEach(a => { a._asli = bentukAturan(a); });
+    jumlahAsli = aturan.length;
     tandai(false);
     const remah = [];
     for (let x = menuKode(menuAktif.induk); x; x = x.induk ? menuKode(x.induk) : null) remah.unshift(x.nama);
@@ -162,11 +188,12 @@ function tampilKepala() {
 function tampilAturan() {
     const berlaku = aksiBerlaku();
     tampilKepala();
+    perbaruiRingkasan();
     document.querySelectorAll('.kolom-widget').forEach(el => el.classList.toggle('hidden', !adaWidget()));
     const namaWidget = Object.fromEntries(DATA.widget.map(w => [w.kode, w.nama]));
     document.getElementById('tabelAturan').innerHTML = aturan.map((a, i) => `
-        <tr class="${a.tolak ? 'bg-red-50/60' : 'hover:bg-slate-50'}">
-            <td class="table-cell !px-2"><select class="input-field py-1 text-xs font-semibold w-24 ${a.tolak ? 'text-red-700' : 'text-emerald-700'}" data-i="${i}" data-f="tolak">
+        <tr class="${a.tolak ? 'bg-red-50/60' : 'hover:bg-slate-50'}" style="${GAYA_STATUS[statusAturan(a)] || ''}">
+            <td class="table-cell !px-2 whitespace-nowrap">${penandaAturan(a)}<select class="input-field py-1 text-xs font-semibold w-24 ${a.tolak ? 'text-red-700' : 'text-emerald-700'}" data-i="${i}" data-f="tolak">
                 ${opsi([['0', 'Izinkan'], ['1', 'Larang']], a.tolak ? '1' : '0')}</select></td>
             <td class="table-cell !px-2"><select class="input-field py-1 text-xs w-28" data-i="${i}" data-f="jenis">${opsi(JENIS, a.jenis)}</select></td>
             <td class="table-cell !px-2">${sasaran(a, i)}</td>
@@ -262,7 +289,7 @@ function tempelAturan() {
     let n = 0;
     salinan.aturan.forEach(s => {
         if (ada.has(kunci(s))) return;        // sasaran yang sama sudah ada: tidak digandakan
-        aturan.push({ ...s, aksi: Object.fromEntries(Object.entries(s.aksi).filter(([k]) => berlaku.includes(k))),
+        aturan.push({ ...s, _asli: undefined, aksi: Object.fromEntries(Object.entries(s.aksi).filter(([k]) => berlaku.includes(k))),
                       widget: adaWidget() ? s.widget : [] });
         n++;
     });
@@ -364,26 +391,135 @@ function cariUserCek() { cariUser(document.getElementById('cariUserCek').value, 
 
 const LABEL_JENIS = Object.fromEntries(JENIS);
 
+// ===== Cek Akses User: alasan, Beri hak khusus, Cabut =====
+let cekUser = null, cekMenu = [], hakKhusus = null;
+
+const punyaAturan = (m, larang) => m.sumber.some(s => s.aksi === 'lihat' && !!s.tolak === larang);
+
+function rantaiCek(kode) {                         // dari menu paling atas sampai menu ini
+    const rantai = [];
+    for (let m = cekMenu.find(x => x.kode === kode); m; m = m.induk ? cekMenu.find(x => x.kode === m.induk) : null) rantai.unshift(m);
+    return rantai;
+}
+
+function alasanCek(m) {
+    const rantai = rantaiCek(m.kode);
+    const larang = rantai.find(x => punyaAturan(x, true));
+    if (larang) return `Dilarang oleh aturan Larang${larang.kode === m.kode ? '' : ` di ${larang.nama}`}`;
+    const kurang = rantai.find(x => !punyaAturan(x, false));
+    if (kurang) return kurang.kode === m.kode ? 'Belum ada aturan Izinkan untuk user ini' : `Menu induk ${kurang.nama} belum diizinkan`;
+    return 'Terhalang aturan lain';
+}
+
+function aksiCek(m) {
+    if (m.hak) {
+        const khusus = m.sumber.some(s => !s.tolak && s.jenis === 'USER');
+        return khusus ? `<button type="button" class="link-aksi text-red-600" data-on-click="cabutHakKhusus" data-arg="${escapeHtml(m.kode)}">Cabut hak khusus</button>` : '';
+    }
+    const larang = rantaiCek(m.kode).find(x => punyaAturan(x, true));
+    return larang
+        ? `<button type="button" class="link-aksi text-slate-600" data-on-click="bukaAturanDariCek" data-arg="${larang.id_menu}" title="Larang tidak bisa ditimpa hak khusus: ubah aturan Larang-nya">Buka aturan</button>`
+        : `<button type="button" class="link-aksi text-blue-600" data-on-click="bukaHakKhusus" data-arg="${escapeHtml(m.kode)}">Beri hak khusus</button>`;
+}
+
 async function bukaCek(id) {
     const data = await ambilJson(`/api/admin/akses/cek/${id}`);
     if (data.error) { Notif.gagal(data.error); return; }
+    cekUser = data.user;
+    cekMenu = data.menu;
     const namaWidget = Object.fromEntries(DATA.widget.map(w => [w.kode, w.nama]));
     document.getElementById('judulCek').textContent = `${data.user.nama} · ${data.user.username}`;
     document.getElementById('infoCek').textContent = `Peran: ${data.user.nama_level} · Isi dashboard: ${data.widget.map(w => namaWidget[w] || w).join(', ') || '-'}`;
-    document.getElementById('tabelCek').innerHTML = data.menu.map(m => {
+    document.getElementById('tabelCek').innerHTML = cekMenu.map(m => {
         const kelompok = {};
         m.sumber.forEach(s => {
             const k = `${s.tolak}|${s.jenis}|${s.nama}`;
             (kelompok[k] = kelompok[k] || { ...s, aksi: [] }).aksi.push(LABEL_AKSI[s.aksi] || s.aksi);
         });
-        const asal = Object.values(kelompok).map(s => `<span class="badge-status mr-1 mb-1 ${s.tolak ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-700'}">
-            ${s.tolak ? 'Larang' : 'Izinkan'} ${escapeHtml(s.aksi.join(', '))} · ${escapeHtml(LABEL_JENIS[s.jenis])}${s.jenis === 'ALL' ? '' : ` ${escapeHtml(s.nama || '')}`}</span>`).join('');
+        const asal = Object.values(kelompok).map(s => {
+            const warna = s.tolak ? 'bg-red-100 text-red-800' : (s.jenis === 'USER' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-700');
+            return `<span class="badge-status mr-1 mb-1 ${warna}">${s.tolak ? 'Larang' : 'Izinkan'} ${escapeHtml(s.aksi.join(', '))} · ${escapeHtml(LABEL_JENIS[s.jenis])}${s.jenis === 'ALL' ? '' : ` ${escapeHtml(s.nama || '')}`}</span>`;
+        }).join('');
         const hak = m.hak ? AKSI.filter(k => m.hak[k]).map(k => LABEL_AKSI[k]).join(', ') : '';
+        const alasan = m.hak ? '' : alasanCek(m);
         return `<tr class="${m.hak ? '' : 'text-slate-400'}">
             <td class="table-cell" style="padding-left:${0.75 + (m.level - 1) * 1.1}rem"><span class="${m.level === 1 ? 'font-semibold' : ''}">${escapeHtml(m.nama)}</span></td>
             <td class="table-cell">${m.hak ? `<span class="text-emerald-700">${escapeHtml(hak)}</span>` : 'Tidak terlihat'}</td>
-            <td class="table-cell">${asal || '<span class="text-slate-300">-</span>'}</td></tr>`;
+            <td class="table-cell">${asal}${alasan ? `<span class="text-xs text-amber-700 block">${escapeHtml(alasan)}</span>` : (asal ? '' : '<span class="text-slate-300">-</span>')}</td>
+            <td class="table-cell text-right whitespace-nowrap">${aksiCek(m)}</td></tr>`;
     }).join('');
+}
+
+function bukaAturanDariCek(idMenu) {
+    pilihTabAkses('aturan');
+    pilihMenuAkses(Number(idMenu));
+}
+
+function bukaHakKhusus(kode) {
+    const m = cekMenu.find(x => x.kode === kode);
+    if (!m || !cekUser) return;
+    hakKhusus = kode;
+    const ikut = rantaiCek(kode).filter(x => x.kode !== kode && !punyaAturan(x, false)).map(x => x.nama);
+    document.getElementById('hkUser').textContent = `${cekUser.nama} (${cekUser.username})`;
+    document.getElementById('hkMenu').textContent = m.nama;
+    document.getElementById('hkRantai').textContent = ikut.length ? `Menu induk yang ikut dibukakan (Lihat): ${ikut.join(', ')}` : '';
+    document.getElementById('hkAksi').innerHTML = ['lihat', ...m.aksi].map(k => `
+        <label class="flex items-center gap-2"><input type="checkbox" class="w-4 h-4" value="${k}"${k === 'lihat' ? ' checked disabled' : ''}> ${LABEL_AKSI[k]}</label>`).join('');
+    openModal('modalHakKhusus');
+}
+
+// Tambah / lengkapi aturan level User (Izinkan) untuk user yang sedang dicek pada satu menu. Return false bila gagal.
+async function tambahAturanUser(m, aksi) {
+    const data = await ambilJson(`/api/admin/akses/menu/${m.id_menu}`);
+    if (data.error) { Notif.gagal(`${m.nama}: ${data.error}`); return false; }
+    const idUser = String(cekUser.id_user);
+    let a = data.find(x => !x.tolak && x.jenis === 'USER' && String(x.id_target) === idUser);
+    if (!a) {
+        a = { jenis: 'USER', id_target: cekUser.id_user, nama_target: '', tolak: false, aksi: {}, widget: [], cakupan: { cakupan: 'AREA' } };
+        data.push(a);
+    }
+    aksi.forEach(k => { a.aksi[k] = true; });
+    return kirimAturanMenu(m, data);
+}
+
+async function kirimAturanMenu(m, data) {
+    const kirim = data.map(a => ({ jenis: a.jenis, id_target: a.id_target, tolak: a.tolak,
+                                   aksi: AKSI.filter(k => a.aksi[k]), widget: a.widget, cakupan: a.cakupan }));
+    const hasil = await kirimForm(`/api/admin/akses/menu/${m.id_menu}`, { aturan: JSON.stringify(kirim) });
+    if (hasil.error) { Notif.gagal(`${m.nama}: ${hasil.error}`); return false; }
+    return true;
+}
+
+async function simpanHakKhusus() {
+    const kode = hakKhusus;
+    if (!kode || !cekUser) return;
+    const pilih = ['lihat', ...[...document.querySelectorAll('#hkAksi input:checked:not(:disabled)')].map(c => c.value)];
+    await denganTombol(document.getElementById('btnHakKhusus'), async () => {
+        for (const m of rantaiCek(kode)) {
+            if (m.kode !== kode && punyaAturan(m, false)) continue;           // induk yang sudah punya Izinkan Lihat
+            if (!(await tambahAturanUser(m, m.kode === kode ? pilih : ['lihat']))) return;
+        }
+        closeModal('modalHakKhusus');
+        Notif.info(`Hak khusus diberikan ke ${cekUser.nama}. Berlaku dalam ±30 detik.`);
+        await muatAkses();
+        bukaCek(cekUser.id_user);
+    });
+}
+
+async function cabutHakKhusus(kode) {
+    const m = cekMenu.find(x => x.kode === kode);
+    if (!m || !cekUser) return;
+    const ok = await Dialog.konfirmasi({ judul: 'Cabut hak khusus', teksYa: 'Cabut', bahaya: true,
+        pesan: `Hapus aturan level User untuk ${cekUser.nama} pada ${m.nama}? Hak dari Departemen / Jabatan / Peran tidak ikut dicabut.` });
+    if (!ok) return;
+    const data = await ambilJson(`/api/admin/akses/menu/${m.id_menu}`);
+    if (data.error) { Notif.gagal(data.error); return; }
+    const idUser = String(cekUser.id_user);
+    const sisa = data.filter(x => !(x.jenis === 'USER' && !x.tolak && String(x.id_target) === idUser));
+    if (!(await kirimAturanMenu(m, sisa))) return;
+    Notif.info('Hak khusus dicabut.');
+    await muatAkses();
+    bukaCek(cekUser.id_user);
 }
 
 // ===== Halaman awal per peran =====
@@ -400,4 +536,58 @@ function tampilHalamanAwal() {
 
 async function simpanHalamanAwal(el) {
     tampilkanHasil(await kirimForm(`/api/admin/level/${el.dataset.id}/halaman-awal`, { halaman_awal: el.value }));
+}
+
+// ===== Beri ke semua turunan: "beri semua kunci" di induk, lalu tarik satu per satu di turunan =====
+// Memakai tampilan & penyimpanan aturan yang sama dengan Simpan biasa (validasi, audit, cache ikut berjalan).
+const turunanMenu = kode => anakMenu(kode).flatMap(m => [m, ...turunanMenu(m.kode)]);
+
+async function beriKeTurunan() {
+    if (!menuAktif) return;
+    const turunan = turunanMenu(menuAktif.kode);
+    if (!turunan.length) { Notif.info('Menu ini tidak punya turunan.'); return; }
+    if (berubah) { Notif.peringatan('Simpan dulu aturan menu ini, baru diberikan ke turunannya.'); return; }
+    const sumber = aturan.filter(a => !a.tolak);
+    if (!sumber.length) { Notif.peringatan('Belum ada aturan Izinkan di menu ini untuk diberikan.'); return; }
+    const ok = await Dialog.konfirmasi({
+        judul: 'Beri ke semua turunan', teksYa: 'Beri',
+        pesan: `${sumber.length} aturan Izinkan menu ${menuAktif.nama} akan ditambahkan ke ${turunan.length} menu di bawahnya. `
+             + 'Aturan yang sudah ada tidak ditimpa, dan sasaran yang di-Tolak di menu turunan dilewati.' });
+    if (!ok) return;
+
+    const kunci = a => `${a.jenis}|${a.id_target}`;
+    let diubah = 0;
+    for (const anak of turunan) {
+        const data = await ambilJson(`/api/admin/akses/menu/${anak.id_menu}`);
+        if (data.error) { Notif.gagal(`${anak.nama}: ${data.error}`); return; }
+        const berlaku = ['lihat', ...anak.aksi];                       // aksi yang memang ada di menu turunan itu
+        const ditolak = new Set(data.filter(a => a.tolak).map(kunci));  // kunci yang sudah ditarik: tetap ditarik
+        const ada = new Map(data.filter(a => !a.tolak).map(a => [kunci(a), a]));
+        let baru = false;
+        sumber.forEach(s => {
+            const k = kunci(s);
+            if (ditolak.has(k)) return;
+            const aksi = berlaku.filter(x => s.aksi[x]);
+            if (ada.has(k)) {                                           // sasaran sama sudah ada: hanya tambah aksi yang belum ada
+                const a = ada.get(k);
+                aksi.filter(x => !a.aksi[x]).forEach(x => { a.aksi[x] = true; baru = true; });
+            } else if (aksi.length) {
+                const a = { jenis: s.jenis, id_target: s.id_target, nama_target: s.nama_target, tolak: false,
+                            aksi: Object.fromEntries(AKSI.map(x => [x, aksi.includes(x)])), widget: [], cakupan: s.cakupan };
+                data.push(a);
+                ada.set(k, a);
+                baru = true;
+            }
+        });
+        if (!baru) continue;
+        const kirim = data.map(a => ({ jenis: a.jenis, id_target: a.id_target, tolak: a.tolak,
+                                       aksi: AKSI.filter(x => a.aksi[x]), widget: a.widget, cakupan: a.cakupan }));
+        const hasil = await kirimForm(`/api/admin/akses/menu/${anak.id_menu}`, { aturan: JSON.stringify(kirim) });
+        if (hasil.error) { Notif.gagal(`${anak.nama}: ${hasil.error}`); break; }
+        diubah++;
+    }
+    Notif.info(diubah ? `Aturan diberikan ke ${diubah} menu turunan. Berlaku di semua PC dalam ±30 detik.` : 'Semua turunan sudah punya aturan yang sama.');
+    const id = menuAktif.id_menu;
+    await muatAkses();
+    pilihMenuAkses(id);
 }
