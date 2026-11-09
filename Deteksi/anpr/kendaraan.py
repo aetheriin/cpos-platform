@@ -52,7 +52,20 @@ class DetektorKendaraan:
 
         try:
             img, r = self.praproses(frame)
-            out = self.sesi.run(None, {self.input_name: img[None, ...]})[0][0]
+            hasil_model = self.sesi.run(
+                None,
+                {self.input_name: img[None, ...]}
+            )[0]
+
+            if hasil_model.ndim == 3 and hasil_model.shape[0] == 1:
+                out = hasil_model[0].copy()
+            elif hasil_model.ndim == 2:
+                out = hasil_model.copy()
+            else:
+                raise ValueError(f"Bentuk keluaran YOLOX tidak sesuai: {hasil_model.shape}")
+
+            if out.ndim != 2 or out.shape[0] != self.grids.shape[1] or out.shape[1] < 13:
+                raise ValueError(f"Ukuran keluaran YOLOX tidak sesuai: {out.shape}")
 
             out[:, :2] = (out[:, :2] + self.grids[0]) * self.strides[0]
             out[:, 2:4] = np.exp(out[:, 2:4]) * self.strides[0]

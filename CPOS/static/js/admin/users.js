@@ -19,7 +19,7 @@ function tampilkanUser() {
     tbody.innerHTML = baris.map(u => `
         <tr class="hover:bg-slate-50${u.is_active ? '' : ' text-slate-400'}" data-cari="${escapeHtml(`${u.username} ${u.nama} ${u.nik || ''} ${u.email || ''}`.toLowerCase())}">
             <td class="table-cell font-mono">${escapeHtml(u.username)}${u.is_saya ? ' <span class="text-xs text-blue-600">(Anda)</span>' : ''}</td>
-            <td class="table-cell">${escapeHtml(u.nama)}<span class="block text-[11px] text-slate-500">${u.nik ? `NIK ${escapeHtml(u.nik)}` : '<span class="text-amber-700">NIK belum diisi</span>'}${u.email ? ` · ${escapeHtml(u.email)}` : ''}</span></td>
+            <td class="table-cell">${escapeHtml(u.nama)}<span class="block text-[11px] text-slate-500">${u.nik ? `${escapeHtml(u.nik)}` : '<span class="text-amber-700">NIK belum diisi</span>'}${u.email ? ` · ${escapeHtml(u.email)}` : ''}</span></td>
             <td class="table-cell">${badgeRole(u.role, u.nama_level)}${u.jumlah_akses_khusus ? ` <span class="badge-status bg-violet-100 text-violet-800" title="Punya aturan User di ${u.jumlah_akses_khusus} menu (Admin › Hak Akses)">Aturan khusus</span>` : ''}</td>
             <td class="table-cell">${escapeHtml(u.department)}</td>
             <td class="table-cell">${escapeHtml(u.area)}</td>

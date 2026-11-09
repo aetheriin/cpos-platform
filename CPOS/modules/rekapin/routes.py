@@ -308,7 +308,8 @@ def api_harga():
         tanggal = date.fromisoformat(tanggal) if tanggal else ""
     except ValueError:
         return jsonify({"error": "Tanggal tidak valid"}), 400
-    rows = db.daftar_harga(kode, (request.args.get("company") or "").upper(), tanggal)
+    batas = 1 if request.args.get("terakhir") == "1" else 500
+    rows = db.daftar_harga(kode, (request.args.get("company") or "").upper(), tanggal, batas=batas)
     for r in rows:
         r["tanggal"] = r["tanggal"].isoformat()
         for k in ("harga_cpo", "harga_kernel", "oer_cpo", "biaya_olah", "qty_rsi"):

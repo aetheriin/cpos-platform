@@ -12,6 +12,10 @@ document.addEventListener('click', e => {
     e.preventDefault();
     bukaHarga();
 });
+document.addEventListener('change', e => {
+    if (e.target.id !== 'rkHargaCompany' || hargaSementara.length) return;
+    muatHargaTerakhir(e.target.value);
+});
 document.addEventListener('DOMContentLoaded', tampilkanHarga);
 
 function resetFilterHarga() {
@@ -73,7 +77,8 @@ function bukaHarga(i) {
     openModal('modalRkHarga');
     document.getElementById('rkHargaJudul').textContent = t(r ? 'Ubah Harga' : 'Isi Harga');
     const company = document.getElementById('rkHargaCompany');
-    company.value = r ? r.id_company : '';
+    const punyaYbs = [...company.options].some(option => option.value === 'YBS');
+    company.value = r ? r.id_company : (!hargaSementara.length && punyaYbs ? 'YBS' : '');
     company.disabled = !!r;
     const tanggal = document.getElementById('rkHargaTanggal');
     tanggal.value = r ? r.tanggal : new Date().toLocaleDateString('sv-SE');
@@ -85,7 +90,27 @@ function bukaHarga(i) {
             document.getElementById(`rkHarga_${k}`).value = r && r[k] != null ? r[k] : '';
         }
     });
+    if (!r && !hargaSementara.length && company.value) muatHargaTerakhir(company.value);
     tampilkanHargaSementara();
+}
+
+async function muatHargaTerakhir(idCompany) {
+    if (!idCompany) return;
+    const kolomHarga = ['harga_cpo', 'harga_kernel', 'oer_cpo', 'biaya_olah'];
+    kolomHarga.forEach(k => { document.getElementById(`rkHarga_${k}`).value = ''; });
+    document.getElementById('rkHarga_qty_rsi').value = '';
+    const q = new URLSearchParams({ company: idCompany, terakhir: '1' });
+    const rows = await ambilJson(`/rekapin/api/harga?${q}`);
+    const company = document.getElementById('rkHargaCompany');
+    if (company.value !== idCompany || hargaSementara.length) return;
+    if (rows.error) {
+        Notif.gagal(rows.error);
+        return;
+    }
+    if (!rows.length) return;
+    kolomHarga.forEach(k => {
+        document.getElementById(`rkHarga_${k}`).value = rows[0][k] ?? '';
+    });
 }
 
 function resetFormHarga() {

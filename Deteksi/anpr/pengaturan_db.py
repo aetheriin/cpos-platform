@@ -17,7 +17,7 @@ def kamera_dari_db():
             conn.close()
     except Exception as e:  # noqa: BLE001
         print(f"[SQL] gagal baca kamera deteksi: {e}")
-        return []
+        return None
 
 
 def info_kamera():

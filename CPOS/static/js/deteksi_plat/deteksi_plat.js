@@ -1,18 +1,22 @@
 // ===== DETEKSI PLAT: video kamera per area + riwayat plat yang bertambah otomatis =====
 // CPOS hanya menampilkan; backend deteksi jalan terpisah dan menulis ke database. Routes: routes/deteksi_plat.py
-const JEDA_GRID_MS = 2000;        // gambar kamera diperbarui tiap 2 detik
-const JEDA_STATUS_MS = 10000;     // daftar kamera & status backend deteksi tiap 10 detik
-const JEDA_RIWAYAT_MS = 3000;     // cek plat baru tiap 3 detik
+const JEDA_GRID_1_MS = 2000;
+const JEDA_GRID_4_MS = 3500;
+const JEDA_GRID_BANYAK_MS = 5000;        
+const JEDA_STATUS_MS = 10000;     
+const JEDA_RIWAYAT_MS = 3000;     
 
 let dataPlat = [];
-let kameraVideo = [];             // kamera dalam cakupan user (dari server)
-let kolomGrid = '2';              // 1 = satu kamera, 2 = 2 kolom (4 kamera), 3 = 3 kolom (9 kamera)
-let kameraSatu = '';              // kamera terpilih pada tampilan 1 kamera
+let kameraVideo = [];             
+let kolomGrid = '2';              
+let kameraSatu = '';              
 let tandaGrid = '', tandaArea = '';
 let idTerakhirPlat = 0;
 let liveAktif = false;
 let timerGrid = null, timerStatus = null, timerRiwayat = null;
-const urlGambar = {};             // nama kamera -> object URL terakhir (dilepas saat diganti)
+let jedaGridTerpasang = 0;
+let gridSedangMemuat = false;
+const urlGambar = {};
 
 const hariIniLokal = () => {
     const d = new Date();
@@ -30,10 +34,27 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // ---------- Video kamera ----------
+function aturTimerGrid() {
+    if (document.hidden || liveAktif) return;
+
+    const jumlahKamera = kameraTampil().length;
+    const jeda = kolomGrid === '1' || jumlahKamera <= 1
+        ? JEDA_GRID_1_MS
+        : jumlahKamera <= 4
+            ? JEDA_GRID_4_MS
+            : JEDA_GRID_BANYAK_MS;
+
+    if (timerGrid && jedaGridTerpasang === jeda) return;
+
+    clearInterval(timerGrid);
+    jedaGridTerpasang = jeda;
+    timerGrid = setInterval(perbaruiGrid, jeda);
+}
+
 function mulaiVideo() {
     hentikanVideo();
     muatStatusVideo().then(perbaruiGrid);
-    timerGrid = setInterval(perbaruiGrid, JEDA_GRID_MS);
+    aturTimerGrid();
     timerStatus = setInterval(muatStatusVideo, JEDA_STATUS_MS);
 }
 
@@ -41,6 +62,7 @@ function hentikanVideo() {
     clearInterval(timerGrid);
     clearInterval(timerStatus);
     timerGrid = timerStatus = null;
+    jedaGridTerpasang = 0;
 }
 
 async function muatStatusVideo() {
@@ -106,7 +128,13 @@ function renderGrid(paksa) {
         pilihK.classList.toggle('hidden', !(kolomGrid === '1' && semua.length > 1));
         pilihK.innerHTML = semua.map(k => `<option value="${escapeHtml(k.nama)}">${escapeHtml(k.nama)}</option>`).join('');
         pilihK.value = kameraSatu;
-        grid.className = `grid gap-3 mb-5 ${kolomGrid === '1' ? 'grid-cols-1' : kolomGrid === '2' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-3'}`;
+        grid.className = `grid gap-3 mb-5 ${
+            kolomGrid === '1'
+                ? 'grid-cols-1 max-w-3xl mx-auto w-full'
+                : kolomGrid === '2'
+                    ? 'grid-cols-1 md:grid-cols-2'
+                    : 'grid-cols-1 md:grid-cols-3'
+        }`;
         grid.innerHTML = daftar.map(kotakKamera).join('') || `<div class="section-box p-10 text-center text-sm text-slate-400 col-span-full">
             ${kameraVideo.length ? 'Tidak ada kamera di area ini' : 'Belum ada kamera deteksi untuk area Anda'}</div>`;
         perbaruiGrid();
@@ -142,8 +170,25 @@ async function perbaruiSatu(el) {
 }
 
 async function perbaruiGrid() {
-    if (document.hidden) return;
-    await Promise.all([...document.querySelectorAll('#gridVideo [data-kamera]')].map(perbaruiSatu));
+    if (document.hidden || gridSedangMemuat) return;
+
+    const kartuKamera = [
+        ...document.querySelectorAll('#gridVideo [data-kamera]')
+    ];
+
+    if (!kartuKamera.length) return;
+
+    gridSedangMemuat = true;
+
+    try {
+        // Maksimal tiga gambar diminta bersamaan.
+        for (let i = 0; i < kartuKamera.length; i += 3) {
+            const kelompok = kartuKamera.slice(i, i + 3);
+            await Promise.all(kelompok.map(perbaruiSatu));
+        }
+    } finally {
+        gridSedangMemuat = false;
+    }
 }
 
 function gantiArea() {

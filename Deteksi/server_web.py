@@ -193,7 +193,23 @@ class Keadaan:
         self.kamera = {n: {"jpeg": jpeg_pesan(f"{n}: menunggu kamera..."), "nomor": 0,
                            "status": "memulai", "resolusi": "-", "fps": 0.0} for n in daftar_nama}
         self.ai_ms = 0.0
-        self.riwayat = []   # terbaru di depan
+        self.riwayat = []
+
+    def tambah_kamera(self, nama):
+        with self.kondisi:
+            self.kamera.setdefault(nama, {
+                "jpeg": jpeg_pesan(f"{nama}: menyambung ke kamera..."),
+                "nomor": 0,
+                "status": "memulai",
+                "resolusi": "-",
+                "fps": 0.0,
+            })
+            self.kondisi.notify_all()
+
+    def hapus_kamera(self, nama):
+        with self.kondisi:
+            self.kamera.pop(nama, None)
+            self.kondisi.notify_all()
 
     def pasang_gambar(self, nama, jpeg):
         with self.kondisi:
@@ -288,56 +304,177 @@ def proses(j, pembaca, keadaan, detektor_kendaraan):
 
 
 def pekerja(args, daftar_konf, keadaan, berhenti):
-    """Satu thread, satu model AI, kamera dibaca bergantian."""
+    """Satu model AI; daftar kamera aktif disinkronkan berkala dari database."""
     from anpr.pembaca import PembacaPlat
     from anpr.penstabil import PenstabilPlat
     from anpr.penyimpan import Penyimpan
 
+    daftar_jalur = []
+
+    def buat_jalur(konf):
+        sumber = KameraRTSP(
+            konf.daftar_url_rtsp(),
+            konf.nama_kamera
+        ).mulai()
+
+        penstabil = PenstabilPlat(
+            konf.min_frame_sama,
+            konf.jendela_detik,
+            konf.jeda_ulang_detik,
+        )
+
+        keadaan.tambah_kamera(konf.nama_kamera)
+
+        jalur = Jalur(
+            konf,
+            sumber,
+            penstabil,
+            Penyimpan(konf.folder_hasil, konf.nama_kamera),
+        )
+
+        print(f"[{konf.nama_kamera}] Kamera ditambahkan ke backend.")
+        return jalur
+
     try:
-        detektor_kendaraan = DetektorKendaraan(os.path.join(FOLDER_PROYEK, "yolox_s.onnx"))
-        daftar_jalur = []
-        for konf in daftar_konf:
-            if args.video:
-                sumber = SumberFile(args.video).mulai()
-            else:
-                sumber = KameraRTSP(konf.daftar_url_rtsp(), konf.nama_kamera).mulai()
-            foto = isinstance(sumber, SumberFile) and sumber.foto
-            penstabil = PenstabilPlat(1 if foto else konf.min_frame_sama, konf.jendela_detik, konf.jeda_ulang_detik)
-            daftar_jalur.append(Jalur(konf, sumber, penstabil, Penyimpan(konf.folder_hasil, konf.nama_kamera)))
-        
-        pembaca = PembacaPlat(daftar_konf[0])
-        
+        detektor_kendaraan = DetektorKendaraan(
+            os.path.join(FOLDER_PROYEK, "yolox_s.onnx")
+        )
+
+        # Pembaca tetap dapat dibuat meskipun saat startup belum ada kamera aktif.
+        konf_pembaca = daftar_konf[0] if daftar_konf else muat_konfigurasi()
+        pembaca = PembacaPlat(konf_pembaca)
+
+        if args.video:
+            sumber = SumberFile(args.video).mulai()
+            penstabil = PenstabilPlat(
+                1 if sumber.foto else konf_pembaca.min_frame_sama,
+                konf_pembaca.jendela_detik,
+                konf_pembaca.jeda_ulang_detik,
+            )
+            daftar_jalur.append(Jalur(
+                konf_pembaca,
+                sumber,
+                penstabil,
+                Penyimpan(konf_pembaca.folder_hasil, konf_pembaca.nama_kamera),
+            ))
+            keadaan.tambah_kamera(konf_pembaca.nama_kamera)
+        else:
+            for konf in daftar_konf:
+                daftar_jalur.append(buat_jalur(konf))
+
         print("Pembaca plat & CPOS System berjalan.")
 
+        def sinkronkan_kamera():
+            konfigurasi_baru = muat_semua_kamera()
+
+            # Jangan menghentikan kamera jika database sedang gagal dibaca.
+            if konfigurasi_baru is None:
+                print("[SQL] Daftar kamera tidak berubah; database gagal dibaca.")
+                return
+
+            nama_baru = [k.nama_kamera for k in konfigurasi_baru]
+            if len(nama_baru) != len(set(nama_baru)):
+                print("[KAMERA] Ada nama kamera duplikat; daftar tidak diterapkan.")
+                return
+
+            konfigurasi_by_nama = {
+                k.nama_kamera: k for k in konfigurasi_baru
+            }
+
+            # Hentikan kamera yang dinonaktifkan atau URL RTSP-nya berubah.
+            for jalur in list(daftar_jalur):
+                nama = jalur.konf.nama_kamera
+                konf_baru = konfigurasi_by_nama.get(nama)
+
+                url_berubah = (
+                    konf_baru is not None
+                    and konf_baru.daftar_url_rtsp()
+                    != jalur.konf.daftar_url_rtsp()
+                )
+
+                if konf_baru is None or url_berubah:
+                    jalur.sumber.berhenti()
+                    daftar_jalur.remove(jalur)
+                    keadaan.hapus_kamera(nama)
+                    print(f"[{nama}] Kamera dinonaktifkan atau konfigurasinya berubah.")
+
+            nama_berjalan = {
+                jalur.konf.nama_kamera for jalur in daftar_jalur
+            }
+
+            # Jalankan kamera baru atau kamera yang URL RTSP-nya berubah.
+            for konf in konfigurasi_baru:
+                if konf.nama_kamera not in nama_berjalan:
+                    daftar_jalur.append(buat_jalur(konf))
+
         def terapkan_pengaturan():
-            p = baca_pengaturan()
-            if p:
-                pembaca.konf.min_conf_ocr = p["conf"]
-                for j in daftar_jalur:
-                    j.penstabil.jeda_ulang_detik = p["jeda_detik"]
-                gerbang.STATE["jendela"] = p["jendela_detik"]
-            info = info_kamera()                       # gerbang & hadap kamera: perubahan di Admin berlaku tanpa restart
+            pengaturan_baru = baca_pengaturan()
+
+            if pengaturan_baru:
+                pembaca.konf.min_conf_ocr = pengaturan_baru["conf"]
+
+                for jalur in daftar_jalur:
+                    jalur.penstabil.jeda_ulang_detik = pengaturan_baru["jeda_detik"]
+
+                gerbang.STATE["jendela"] = pengaturan_baru["jendela_detik"]
+
+            info = info_kamera()
             if info is not None:
                 gerbang.STATE["info"] = info
 
-        terapkan_pengaturan()
-        terakhir_baca = time.time()
-        while not berhenti.is_set() and not all(j.selesai for j in daftar_jalur):
-            if time.time() - terakhir_baca > 30:
+        terakhir_sinkron = 0
+        terakhir_pengaturan = 0
+
+        while not berhenti.is_set():
+            sekarang = time.time()
+
+            if not args.video and sekarang - terakhir_sinkron >= 10:
+                sinkronkan_kamera()
+                terakhir_sinkron = sekarang
+
+            if sekarang - terakhir_pengaturan >= 30:
                 terapkan_pengaturan()
-                terakhir_baca = time.time()
-            ada = False
-            for j in daftar_jalur:
-                if not j.selesai and proses(j, pembaca, keadaan, detektor_kendaraan):
-                    ada = True
-            if not ada:
-                time.sleep(0.01)
+                terakhir_pengaturan = sekarang
+
+            if args.video and daftar_jalur and all(j.selesai for j in daftar_jalur):
+                break
+
+            if not daftar_jalur:
+                time.sleep(1)
+                continue
+
+            ada_frame_baru = False
+
+            for jalur in list(daftar_jalur):
+                if not jalur.selesai and proses(
+                    jalur, pembaca, keadaan, detektor_kendaraan
+                ):
+                    ada_frame_baru = True
+
+            if not ada_frame_baru:
+                time.sleep(0.05)
+
     except Exception as e:
         traceback.print_exc()
-        for konf in daftar_konf:
-            keadaan.pasang_info(konf.nama_kamera, f"ERROR: {e}", "-", 0.0)
-            keadaan.pasang_gambar(konf.nama_kamera, jpeg_pesan("Terjadi error, lihat jendela konsol"))
 
+        for jalur in daftar_jalur:
+            keadaan.pasang_info(
+                jalur.konf.nama_kamera,
+                f"ERROR: {e}",
+                "-",
+                0.0,
+            )
+            keadaan.pasang_gambar(
+                jalur.konf.nama_kamera,
+                jpeg_pesan("Terjadi error, lihat jendela konsol"),
+            )
+
+    finally:
+        for jalur in daftar_jalur:
+            try:
+                jalur.sumber.berhenti()
+            except Exception:
+                pass
 
 class Penangan(BaseHTTPRequestHandler):
     keadaan = None
@@ -412,15 +549,36 @@ class Penangan(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
+
         terakhir = -1
+
         try:
             while True:
                 with k.kondisi:
-                    k.kondisi.wait_for(lambda: k.kamera[nama]["nomor"] != terakhir, timeout=5)
-                    jpeg, terakhir = k.kamera[nama]["jpeg"], k.kamera[nama]["nomor"]
-                self.wfile.write(b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: %d\r\n\r\n" % len(jpeg))
+                    if nama not in k.kamera:
+                        break
+
+                    k.kondisi.wait_for(
+                        lambda: (
+                            nama not in k.kamera
+                            or k.kamera[nama]["nomor"] != terakhir
+                        ),
+                        timeout=5,
+                    )
+
+                    if nama not in k.kamera:
+                        break
+
+                    jpeg = k.kamera[nama]["jpeg"]
+                    terakhir = k.kamera[nama]["nomor"]
+
+                self.wfile.write(
+                    b"--frame\r\nContent-Type: image/jpeg\r\n"
+                    b"Content-Length: %d\r\n\r\n" % len(jpeg)
+                )
                 self.wfile.write(jpeg)
                 self.wfile.write(b"\r\n")
+
         except OSError:
             pass
 
@@ -453,10 +611,10 @@ def main():
         daftar_konf = [muat_konfigurasi()]
     else:
         daftar_konf = muat_semua_kamera()
-        if not daftar_konf:
-            sys.exit(
-                "Belum ada kamera aktif di Admin > Perangkat > Kamera Deteksi Plat."
-            )
+
+        if daftar_konf is None:
+            print("[SQL] Belum bisa membaca daftar kamera. Akan mencoba kembali.")
+            daftar_konf = []
 
     daftar_nama = [k.nama_kamera for k in daftar_konf]
     if len(set(daftar_nama)) != len(daftar_nama):

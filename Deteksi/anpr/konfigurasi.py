@@ -88,13 +88,17 @@ def muat_konfigurasi():
 
 
 def muat_semua_kamera():
-    """Ambil daftar kamera aktif hanya dari Admin > Perangkat."""
+    """Ambil daftar kamera aktif dari Admin > Perangkat.
+    Mengembalikan None jika database gagal dibaca.
+    """
     dasar = muat_konfigurasi()
+    kamera_db = kamera_dari_db()
 
-    
+    if kamera_db is None:
+        return None
 
     hasil = []
-    for nama, url in kamera_dari_db():
+    for nama, url in kamera_db:
         if not url:
             continue
 
