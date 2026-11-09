@@ -82,14 +82,16 @@ def daftar_do(ticket_type):
         mill_by_do = {}
         if id_do_list:
             tanda_tanya_do = ", ".join("?" for _ in id_do_list)
+
             cursor.execute(
                 f"""
-                SELECT productname, MillID
+                SELECT {nama_id_do}, MillID
                 FROM dbo.{tabel_do}
-                groupby productname, millid
+                WHERE {nama_id_do} IN ({tanda_tanya_do})
                 """,
                 *id_do_list,
             )
+
             mill_by_do = {
                 int(row[0]): int(row[1])
                 for row in cursor.fetchall()
@@ -148,7 +150,7 @@ def daftar_do(ticket_type):
         koneksi.close()
 
 def daftar_associate(ticket_type):
-    """Daftar lengkap Associate beserta kode dan nama."""
+    """Daftar Associate dari Ascend, beserta kode dan nama."""
     if ticket_type == "Produk":
         sql = """
             SELECT CustomerID, CustomerCode, CustomerName
