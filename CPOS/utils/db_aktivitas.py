@@ -11,6 +11,7 @@ from utils import jenis_orang
 from utils.area_filter import sql_area
 from utils.cache import cache_ttl
 from utils.db_utils import get_connection, _rows_to_dicts
+from utils.plat_utils import normalisasi_plat
 
 BERHASIL, TIDAK_DIKENALI, DITOLAK = "WAJAH_BERHASIL", "WAJAH_TIDAK_DIKENALI", "WAJAH_DITOLAK"
 STATUS = (BERHASIL, TIDAK_DIKENALI, DITOLAK)
@@ -144,18 +145,48 @@ def buat_kunjungan_menunggu(
                 conn.commit()
                 return int(lama[0])
 
+        # Nomor tiket kunjungan: KODE_AREA/yyyy-MM/urut, penghitung per area per bulan.
+        cursor.execute(
+            """
+            SELECT AreaCode, CONVERT(char(7), COALESCE(?, GETDATE()), 120)
+            FROM CompanyArea WHERE CompAreaID = ?
+            """,
+            waktu,
+            id_area,
+        )
+        area = cursor.fetchone()
+        if not area:
+            raise ValueError("Area tidak ditemukan untuk nomor tiket kunjungan.")
+        kode_area, periode = area[0], area[1]
+
+        cursor.execute(
+            """
+            MERGE dbo.VisitCounter WITH (HOLDLOCK) AS t
+            USING (SELECT ? AS CompAreaID, ? AS Periode) AS s
+               ON t.CompAreaID = s.CompAreaID AND t.Periode = s.Periode
+            WHEN MATCHED THEN UPDATE SET LastNo = t.LastNo + 1
+            WHEN NOT MATCHED THEN INSERT (CompAreaID, Periode, LastNo)
+                 VALUES (s.CompAreaID, s.Periode, 1)
+            OUTPUT INSERTED.LastNo;
+            """,
+            id_area,
+            periode,
+        )
+        urut = int(cursor.fetchone()[0])
+        visit_no = f"{kode_area}/{periode}/{urut:04d}"    
+
         cursor.execute(
             """
             INSERT INTO FaceActivity (
                 ActivityType, StatusID, LogDate, LogDay,
                 NoVehicle, CompAreaID, Device, IPAddress,
-                VisitData, EntryKejadianID
+                VisitData, EntryKejadianID, VisitNo
             )
             OUTPUT INSERTED.ActivityID
             VALUES (
                 'MASUK', ?, COALESCE(?, GETDATE()),
                 CONVERT(date, COALESCE(?, GETDATE())),
-                ?, ?, ?, ?, N'{}', ?
+                ?, ?, ?, ?, N'{}', ?, ?
             )
             """,
             status_id,
@@ -166,6 +197,7 @@ def buat_kunjungan_menunggu(
             (perangkat or "Kamera")[:50],
             ip,
             entry_id,
+            visit_no,
         )
 
         activity_id = int(cursor.fetchone()[0])
@@ -258,7 +290,7 @@ def lengkapi_kunjungan(
         conn.close()
 
 
-def tutup_kunjungan(activity_id, *, exit_id=None, waktu_keluar=None):
+def tutup_kunjungan(activity_id, *, exit_id=None, waktu_keluar=None, id_area=None):
     """Tutup catatan kunjungan yang sama saat kendaraan/orang keluar."""
     status = _id_status_kunjungan()
     status_dalam = status["KUNJUNGAN_DALAM"]
@@ -277,12 +309,15 @@ def tutup_kunjungan(activity_id, *, exit_id=None, waktu_keluar=None):
             WHERE ActivityID = ?
               AND StatusID = ?
               AND DateTimeOut IS NULL
+              AND (? IS NULL OR CompAreaID = ?)
             """,
             waktu_keluar,
             exit_id,
             status_selesai,
             activity_id,
             status_dalam,
+            id_area,
+            id_area,
         )
 
         baris = cursor.fetchone()
@@ -296,6 +331,65 @@ def tutup_kunjungan(activity_id, *, exit_id=None, waktu_keluar=None):
         raise
     finally:
         conn.close()
+
+def sinkron_kejadian_plat(id_area, jam=24):
+    """Sambungkan kejadian gerbang (KejadianPlat) ke kunjungan, hanya `jam` jam terakhir.
+    MASUK -> buat catatan menunggu; KELUAR -> tutup kunjungan 'di dalam' dengan plat sama.
+    Tiap kejadian diproses sekali (dicek lewat EntryKejadianID / ExitKejadianID), jadi aman dipanggil berulang.
+    Kejadian BELUM_PASTI dilewati. Return (jumlah_masuk, jumlah_keluar)."""
+    baru_masuk = baru_keluar = 0
+    masuk = _query(
+        """SELECT k.KejadianID AS id_kejadian, k.PlatNomor AS plat, k.WaktuMulai AS waktu
+           FROM KejadianPlat k
+           WHERE k.CompAreaID = ? AND k.Arah = 'MASUK' AND k.WaktuMulai >= DATEADD(hour, ?, GETDATE())
+             AND NOT EXISTS (SELECT 1 FROM FaceActivity a WHERE a.EntryKejadianID = k.KejadianID)
+           ORDER BY k.WaktuMulai""",
+        id_area, -jam,
+    )
+    for k in masuk:
+        plat, _ = normalisasi_plat(k["plat"])
+        buat_kunjungan_menunggu(plat or k["plat"], id_area, entry_id=k["id_kejadian"], waktu=k["waktu"], perangkat="Kamera")
+        baru_masuk += 1
+
+    keluar = _query(
+        """SELECT k.KejadianID AS id_kejadian, k.PlatNomor AS plat, k.WaktuMulai AS waktu
+           FROM KejadianPlat k
+           WHERE k.CompAreaID = ? AND k.Arah = 'KELUAR' AND k.WaktuMulai >= DATEADD(hour, ?, GETDATE())
+             AND NOT EXISTS (SELECT 1 FROM FaceActivity a WHERE a.ExitKejadianID = k.KejadianID)
+           ORDER BY k.WaktuMulai""",
+        id_area, -jam,
+    )
+    for k in keluar:
+        buka = _query(
+            """SELECT TOP 1 a.ActivityID AS id_aktivitas
+               FROM FaceActivity a JOIN Status s ON s.StatusID = a.StatusID
+               WHERE s.StatusCode = 'KUNJUNGAN_DALAM' AND a.CompAreaID = ? AND a.DateTimeOut IS NULL
+                 AND REPLACE(a.NoVehicle, ' ', '') = REPLACE(?, ' ', '') AND a.LogDate <= ?
+               ORDER BY a.LogDate DESC""",
+            id_area, k["plat"], k["waktu"],
+        )
+        if not buka:
+            continue
+        try:
+            tutup_kunjungan(buka[0]["id_aktivitas"], exit_id=k["id_kejadian"], waktu_keluar=k["waktu"], id_area=id_area)
+            baru_keluar += 1
+        except ValueError:
+            pass
+    return baru_masuk, baru_keluar
+
+def path_foto_kunjungan(activity_id, arah, sisi, id_area):
+    """Path relatif foto kendaraan (DEPAN/BELAKANG) saat MASUK/KELUAR untuk satu kunjungan, sesuai cakupan area."""
+    kolom = "ExitKejadianID" if arah == "KELUAR" else "EntryKejadianID"   # konstanta, bukan input pengguna
+    f_area, a_area = sql_area("a.CompAreaID", id_area)
+    baris = _query(
+        f"""SELECT TOP 1 r.FotoPath AS p
+            FROM FaceActivity a
+            JOIN RiwayatDeteksi r ON r.KejadianID = a.{kolom} AND r.Sisi = ?
+            WHERE a.ActivityID = ? AND r.FotoPath IS NOT NULL{f_area}
+            ORDER BY r.ConfOCR DESC, r.DeteksiID DESC""",
+        sisi, activity_id, *a_area,
+    )
+    return baris[0]["p"] if baris else None
 
 def kunjungan_aktif(id_personel):
     """Kunjungan yang statusnya masih di dalam untuk orang tersebut."""
@@ -379,6 +473,74 @@ def logs(tanggal, id_area, jenis=None, status=None, cari=None, batas=500):
         params += [pola] * 3
     return _rapikan(_query(sql + " ORDER BY a.LogDate DESC, a.ActivityID DESC", *params))
 
+_KOLOM_KUNJUNGAN = """a.ActivityID AS id_aktivitas, a.VisitNo AS no_tiket, a.NoVehicle AS no_plat,
+             ar.AreaCode AS lokasi, ar.AreaName AS nama_lokasi,
+             a.LogDate AS waktu_masuk, a.DateTimeOut AS waktu_keluar, s.StatusCode AS status,
+             p.Nama AS nama, p.NoKTP AS nik, d.Nama AS host, a.Description AS tujuan,
+             JSON_VALUE(a.VisitData, '$.asal_perusahaan') AS dari,
+             JSON_VALUE(a.VisitData, '$.jenis_kendaraan') AS kategori,
+             JSON_VALUE(a.VisitData, '$.jumlah_penumpang') AS jumlah_penumpang"""
+
+
+def daftar_kunjungan(tanggal, id_area, kelompok, cari=None, batas=500):
+    """Satu baris per kunjungan. VISITOR juga memuat catatan menunggu (belum dilengkapi); EMPLOYEE hanya yang sudah dilengkapi."""
+    f_area, a_area = sql_area("a.CompAreaID", id_area)
+    awal = datetime.combine(tanggal, datetime.min.time())
+    sql = f"""SELECT TOP (?) {_KOLOM_KUNJUNGAN}
+              FROM FaceActivity a
+              JOIN Status s ON s.StatusID = a.StatusID
+              LEFT JOIN UserProfile p ON p.UserID = a.UserID
+              LEFT JOIN Users d ON d.UserID = a.VisitToID
+              LEFT JOIN CompanyArea ar ON ar.CompAreaID = a.CompAreaID
+              WHERE s.StatusCode IN ('KUNJUNGAN_MENUNGGU', 'KUNJUNGAN_DALAM', 'KUNJUNGAN_SELESAI')
+                AND ((a.LogDate >= ? AND a.LogDate < ?) OR s.StatusCode = 'KUNJUNGAN_DALAM'){f_area}"""
+    params = [batas, awal, awal + timedelta(days=1), *a_area]
+    if kelompok == "EMPLOYEE":
+        sql += " AND a.VisitGroup = 'EMPLOYEE'"
+    else:
+        sql += " AND (a.VisitGroup = 'VISITOR' OR a.VisitGroup IS NULL)"
+    if cari:
+        pola = f"%{cari}%"
+        sql += " AND (p.Nama LIKE ? OR p.NoKTP LIKE ? OR a.NoVehicle LIKE ? OR a.VisitNo LIKE ?)"
+        params += [pola] * 4
+    baris = _query(sql + " ORDER BY a.LogDate DESC, a.ActivityID DESC", *params)
+    for r in baris:
+        for k in ("waktu_masuk", "waktu_keluar"):
+            if isinstance(r.get(k), datetime):
+                r[k] = r[k].strftime("%d-%m-%Y %H:%M")
+        r["jumlah_penumpang"] = int(r["jumlah_penumpang"] or 0)
+    return baris
+
+def detail_kunjungan(activity_id, id_area):
+    """Satu kunjungan untuk modal form (None bila tidak ada / di luar cakupan area)."""
+    f_area, a_area = sql_area("a.CompAreaID", id_area)
+    baris = _query(
+        f"""SELECT a.ActivityID AS id_aktivitas, a.VisitNo AS no_tiket, a.NoVehicle AS no_plat, a.VisitGroup AS kelompok,
+                   s.StatusCode AS status, a.LogDate AS waktu_masuk, a.DateTimeOut AS waktu_keluar,
+                   a.EntryKejadianID AS id_kejadian_masuk, a.ExitKejadianID AS id_kejadian_keluar,
+                   a.VisitToID AS id_dituju, a.Description AS tujuan, a.VisitData AS data,
+                   p.UserID AS id_personel, p.Nama AS nama, p.NoKTP AS nik, ar.AreaName AS lokasi
+            FROM FaceActivity a
+            JOIN Status s ON s.StatusID = a.StatusID
+            LEFT JOIN UserProfile p ON p.UserID = a.UserID
+            LEFT JOIN CompanyArea ar ON ar.CompAreaID = a.CompAreaID
+            WHERE a.ActivityID = ?{f_area}""",
+        activity_id, *a_area,
+    )
+    if not baris:
+        return None
+    r = baris[0]
+    try:
+        data = json.loads(r.pop("data") or "{}")
+    except ValueError:
+        data = {}
+    r["asal_perusahaan"] = data.get("asal_perusahaan") or ""
+    r["jenis_kendaraan"] = data.get("jenis_kendaraan") or ""
+    r["penumpang"] = data.get("penumpang") or []
+    for k in ("waktu_masuk", "waktu_keluar"):
+        if isinstance(r.get(k), datetime):
+            r[k] = r[k].strftime("%d-%m-%Y %H:%M")
+    return r
 
 def di_dalam(id_area):
     """Orang yang masih di dalam: aktivitas berhasil terakhirnya (24 jam) MASUK, dalam cakupan area."""

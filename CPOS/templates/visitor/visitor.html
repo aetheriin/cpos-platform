@@ -1,110 +1,138 @@
 {% extends "base.html" %}
-{% from "partials/layout/_macros.html" import tab_header, judul_halaman, section_header %}
+{% from "partials/layout/_macros.html" import judul_halaman %}
 {% block title %}Visitor &amp; Staff Logs · CPOS{% endblock %}
 
-{# Forms › Visitor & Staff Logs: semua scan wajah (absensi karyawan + kunjungan driver / tamu). routes/visitor.py #}
+{# Forms › Visitor & Staff Logs: satu halaman (List Visitor + Employee Logs + form kunjungan). routes/visitor.py #}
 {% block info_bar %}{% endblock %}
 {% block info_bar_script %}{% endblock %}
 
 {% block tab_header %}
-    {{ judul_halaman('Visitor & Staff Logs', 'Scan wajah karyawan, supir, dan tamu yang masuk atau keluar', 'fa-id-card') }}
-    {{ tab_header(tabs, 'hidden') }}
+    {% call judul_halaman('Visitor & Staff Logs', 'Kunjungan tamu, supir, dan karyawan yang masuk atau keluar', 'fa-id-card') %}
+        {% if boleh_scan %}<button type="button" data-on-click="bukaKunjunganBaru" class="btn-primary"><i class="fa-solid fa-plus mr-1"></i> Add Visitor</button>{% endif %}
+    {% endcall %}
 {% endblock %}
 
 {% block tab_content %}
-{# ===== SCAN WAJAH ===== #}
-<div data-tab-content="scan" class="hidden">
-    <div id="kartuRingkasan" class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4"></div>
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <div class="lg:col-span-5 space-y-4">
-            <div class="section-box p-4 space-y-3">
-                <div class="relative bg-black rounded-lg aspect-[4/3] overflow-hidden flex items-center justify-center">
-                    <video id="vslVideo" autoplay playsinline muted class="absolute inset-0 w-full h-full object-contain video-mirror"></video>
-                    <img id="vslFoto" alt="" class="absolute inset-0 w-full h-full object-contain hidden">
-                    <div class="relative w-[38%] h-[70%] rounded-full border-2 border-dashed border-utama-400"></div>
-                    <span id="vslHitung" class="absolute inset-0 hidden items-center justify-center text-7xl font-bold text-white/90"></span>
-                    <span id="vslInstruksi" class="absolute bottom-3 bg-black/60 text-white text-xs font-semibold px-3 py-1 rounded-full">Tekan Mulai Scan</span>
-                </div>
-                {% if boleh_scan %}
-                <div class="flex gap-2">
-                    <button type="button" id="btnMulaiScan" data-on-click="mulaiScan" class="btn-primary flex-1"><i class="fa-solid fa-camera mr-1"></i> Mulai Scan</button>
-                    <button type="button" data-on-click="batalScan" class="btn-secondary">Batal</button>
-                </div>
-                {% endif %}
-            </div>
-            <div class="section-box">
-                {% call section_header('di-dalam', 'Masih di Dalam') %}<span id="jmlDiDalam" class="badge-status bg-emerald-100 text-emerald-700" data-henti-klik>0</span>{% endcall %}
-                <div id="body-di-dalam" class="section-body max-h-96 overflow-y-auto">
-                    <div id="daftarDiDalam" class="divide-y divide-slate-100 text-sm" data-boleh-keluar="{{ 1 if boleh_keluar else 0 }}"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="lg:col-span-7">
-            <div id="vslHasil" class="section-box p-8 text-center text-sm text-slate-400">Belum ada scan</div>
-
-            {# Driver / tamu: data kunjungan #}
-            <form id="formKunjungan" class="section-box p-5 mt-4 space-y-3 hidden" autocomplete="off">
-                <input type="hidden" name="id_personel"><input type="hidden" name="foto_scan">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div><label class="field-label" for="kunjKeperluan">Keperluan</label>
-                        <input type="text" id="kunjKeperluan" name="keperluan" maxlength="120" required class="input-field" list="saranKeperluan">
-                        <datalist id="saranKeperluan"></datalist></div>
-                    <div><label class="field-label" for="kunjDituju">Bertemu Dengan</label>
-                        <select id="kunjDituju" name="id_dituju" class="input-field" data-cari><option value="">-- Tidak ada --</option></select></div>
-                    <div><label class="field-label" for="kunjPlat">No. Plat Kendaraan</label>
-                        <input type="text" id="kunjPlat" data-plat name="no_plat" maxlength="15" class="input-field uppercase"></div>
-                    <div><label class="field-label" for="kunjKet">Keterangan</label>
-                        <input type="text" id="kunjKet" name="keterangan" maxlength="120" class="input-field"></div>
-                </div>
-                <div class="flex justify-end gap-2">
-                    <button type="button" data-on-click="resetHasil" class="btn-secondary">Batal</button>
-                    <button type="submit" class="btn-primary"><i class="fa-solid fa-right-to-bracket mr-1"></i> Catat Masuk</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-{# ===== LOGS ===== #}
-<div data-tab-content="logs" class="hidden">
+<div>
     <div class="filter-bar">
-        <div class="seg">
-            <button type="button" class="chip chip-active" data-mode-log="aktivitas" data-on-click="pilihModeLog" data-arg="$el">Aktivitas Scan</button>
-            <button type="button" class="chip" data-mode-log="absensi" data-on-click="pilihModeLog" data-arg="$el">Absensi Karyawan</button>
-            <button type="button" class="chip" data-mode-log="bulanan" data-on-click="pilihModeLog" data-arg="$el">Rekap Bulanan</button>
-        </div>
         <div class="flex-1"></div>
-        <select id="logJenis" class="input-field w-auto" data-on-change="muatLogs" data-filter-log="aktivitas">
-            <option value="">Semua jenis</option>
-            {% for k in kategori_list %}<option value="{{ k.kode }}">{{ k.nama }}</option>{% endfor %}
-        </select>
-        <select id="logStatus" class="input-field w-auto" data-on-change="muatLogs" data-filter-log="aktivitas">
-            <option value="">Semua hasil</option><option value="WAJAH_BERHASIL">Berhasil</option>
-            <option value="WAJAH_TIDAK_DIKENALI">Tidak dikenali</option><option value="WAJAH_DITOLAK">Ditolak</option>
-        </select>
-        <div class="relative" data-filter-log="aktivitas">
-            <input type="search" id="logCari" placeholder="Cari nama, NIK, plat" class="input-field pl-9 w-56" data-on-input="cariLogTunda">
+        <div class="relative">
+            <input type="search" id="kjCari" placeholder="Cari nama, NIK, plat, tiket" class="input-field pl-9 w-56" data-on-input="cariKunjunganTunda">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
         </div>
-        <input type="date" id="logTanggal" class="input-field w-auto" data-on-change="muatLogs" data-filter-log="aktivitas absensi">
-        <input type="month" id="logBulan" class="input-field w-auto hidden" data-on-change="muatLogs" data-filter-log="bulanan">
+        <input type="date" id="kjTanggal" class="input-field w-auto" data-on-change="muatKunjungan">
     </div>
+
+    <h3 class="font-bold text-slate-800 mb-2">List Visitor</h3>
+    <div class="section-box overflow-x-auto mb-6">
+        <table class="w-full text-left text-sm">
+            <thead class="table-header-row"><tr>
+                <th class="table-cell">Plat Number</th><th class="table-cell">Location</th><th class="table-cell">Date Time In</th>
+                <th class="table-cell">Name</th><th class="table-cell">From</th><th class="table-cell">Passenger Count</th>
+                <th class="table-cell">Host</th><th class="table-cell">Purpose</th><th class="table-cell">Date Time Out</th>
+                <th class="table-cell">Category</th><th class="table-cell">NIK</th>
+            </tr></thead>
+            <tbody id="tabelVisitor" data-per-halaman="10" class="divide-y divide-slate-100"></tbody>
+        </table>
+    </div>
+
+    <h3 class="font-bold text-slate-800 mb-2">Employee Logs</h3>
     <div class="section-box overflow-x-auto">
         <table class="w-full text-left text-sm">
-            <thead id="kepalaLog" class="table-header-row"></thead>
-            <tbody id="tabelLog" data-per-halaman="25" class="divide-y divide-slate-100"></tbody>
+            <thead class="table-header-row"><tr>
+                <th class="table-cell">Plat Number</th><th class="table-cell">NIK</th><th class="table-cell">Employee Name</th>
+                <th class="table-cell">Date Time In</th><th class="table-cell">Date Time Out</th><th class="table-cell">Category</th>
+            </tr></thead>
+            <tbody id="tabelEmployee" data-per-halaman="10" class="divide-y divide-slate-100"></tbody>
         </table>
     </div>
 </div>
-
-{# ===== DATA ORANG ===== #}
-{% with tab_personel='orang' %}{% include "partials/face_recognition/personel_tab.html" %}{% endwith %}
 {% endblock %}
 
 {% block modals %}
-    {% include "partials/face_recognition/personel_modals.html" %}
-    {% include "partials/layout/persetujuan_modal.html" %}
+{# ===== MODAL: Visitor Logs Form ===== #}
+<div id="modalKunjungan" class="modal-overlay" data-boleh-scan="{{ 1 if boleh_scan else 0 }}" data-boleh-keluar="{{ 1 if boleh_keluar else 0 }}">
+    <form id="formKunjungan" class="modal-box modal-box-lg" autocomplete="off">
+        <div class="modal-header">
+            <h3 class="font-bold">Visitor Logs Form</h3>
+            <button type="button" data-on-click="tutupModalKunjungan" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <input type="hidden" name="id_personel" id="kfIdPersonel"><input type="hidden" name="face_id" id="kfFaceId">
+        <fieldset id="kfFieldset" style="border:0;padding:0;margin:0;min-width:0">
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="field-label" for="kfNoTiket">Visit Ticket Number</label>
+                            <input type="text" id="kfNoTiket" class="input-field" readonly></div>
+                        <div><label class="field-label" for="kfLokasi">Company Location</label>
+                            <input type="text" id="kfLokasi" class="input-field" readonly></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="field-label" for="kfNik">Identity Card</label>
+                            <input type="text" id="kfNik" class="input-field" readonly></div>
+                        <div><label class="field-label" for="kfNama">Name</label>
+                            <input type="text" id="kfNama" class="input-field" readonly></div>
+                    </div>
+                    <button type="button" id="btnScanKunjungan" data-on-click="mulaiScanKunjungan" class="btn-secondary"><i class="fa-solid fa-camera mr-1"></i> Scan Face</button>
+                    <div id="kfInfoScan"></div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="field-label" for="kfJenis">Vehicle Type</label>
+                            <select id="kfJenis" name="jenis_kendaraan" class="input-field">
+                                <option value="">-</option><option>Car</option><option>Motorcycle</option><option>Truck</option><option>Bus</option><option>Pedestrian</option>
+                            </select></div>
+                        <div><label class="field-label" for="kfPlat">Vehicle Plat Number</label>
+                            <input type="text" id="kfPlat" name="no_plat" data-plat maxlength="15" class="input-field uppercase" placeholder="Plat Number"></div>
+                        <div><label class="field-label" for="kfDari">From</label>
+                            <input type="text" id="kfDari" name="asal_perusahaan" maxlength="150" class="input-field" placeholder="Company"></div>
+                        <div><label class="field-label" for="kfDituju">Host</label>
+                            <select id="kfDituju" name="id_dituju" class="input-field" data-cari><option value="">Department / PIC</option></select></div>
+                    </div>
+                    <div>
+                        <label class="field-label" for="kfPenumpangBaru">Add Passenger</label>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="kfPenumpangBaru" maxlength="100" class="input-field" placeholder="Name">
+                            <button type="button" data-on-click="tambahPenumpang" class="btn-secondary" title="Tambah"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                        <ol id="kfDaftarPenumpang" class="mt-2 text-sm text-slate-700 space-y-1"></ol>
+                    </div>
+                    <div><label class="field-label" for="kfKeperluan">Purpose</label>
+                        <textarea id="kfKeperluan" name="keperluan" rows="3" maxlength="120" class="input-field"></textarea></div>
+                </div>
+
+                <div class="section-box p-4 space-y-3">
+                    <p class="font-semibold text-slate-800 text-sm">Visual Information</p>
+                    <div class="relative bg-black rounded-lg aspect-[4/3] overflow-hidden flex items-center justify-center">
+                        <video id="kfVideo" autoplay playsinline muted class="absolute inset-0 w-full h-full object-contain video-mirror hidden"></video>
+                        <img id="kfFoto" alt="" class="absolute inset-0 w-full h-full object-contain hidden">
+                        <i id="kfFaceIkon" class="fa-solid fa-user text-5xl text-slate-500"></i>
+                        <span id="kfHitung" class="absolute inset-0 hidden items-center justify-center text-7xl font-bold text-white/90"></span>
+                        <span id="kfInstruksi" class="absolute bottom-3 bg-black/60 text-white text-xs font-semibold px-3 py-1 rounded-full hidden"></span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div><p class="text-xs text-slate-500 mb-1">Front View</p>
+                            <div class="aspect-[4/3] bg-slate-100 rounded-lg overflow-hidden flex items-center justify-center">
+                                <img id="kfDepan" alt="" class="w-full h-full object-contain hidden"><i id="kfDepanIkon" class="fa-solid fa-car-side text-3xl text-slate-300"></i></div></div>
+                        <div><p class="text-xs text-slate-500 mb-1">Back View</p>
+                            <div class="aspect-[4/3] bg-slate-100 rounded-lg overflow-hidden flex items-center justify-center">
+                                <img id="kfBelakang" alt="" class="w-full h-full object-contain hidden"><i id="kfBelakangIkon" class="fa-solid fa-car-side text-3xl text-slate-300"></i></div></div>
+                    </div>
+                    <div class="text-xs text-slate-600 space-y-1">
+                        <p>Date/time in: <span id="kfMasuk" class="font-mono">-</span></p>
+                        <p>Date/time out: <span id="kfKeluar" class="font-mono">-</span> <span id="kfStatus"></span></p>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        <div class="px-6 pb-6 flex justify-end gap-2">
+            <button type="button" data-on-click="tutupModalKunjungan" class="btn-secondary">Close</button>
+            <button type="button" id="btnKeluarKunjungan" data-on-click="keluarDariModal" class="btn-secondary hidden"><i class="fa-solid fa-right-from-bracket mr-1"></i> Going out</button>
+            {% if boleh_scan %}<button type="submit" id="btnSimpanKunjungan" class="btn-primary">Save</button>{% endif %}
+        </div>
+    </form>
+</div>
+
+{% include "partials/face_recognition/personel_modals.html" %}
+{% include "partials/layout/persetujuan_modal.html" %}
 {% endblock %}
 
 {% block extra_scripts %}

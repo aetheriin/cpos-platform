@@ -1,73 +1,186 @@
-// ===== VISITOR & STAFF LOGS: Scan Wajah · Logs (Data Orang: face_recognition/personel.js) =====
-// Scan -> karyawan: absensi langsung tercatat; driver / tamu: form kunjungan atau catat keluar;
-// tidak dikenali: daftarkan di tempat (form Tambah Orang dengan foto hasil scan, jenis dipilih dari dropdown).
-let scanBerjalan = false;
-let fotoScan = null;            // Blob frame terakhir (untuk mendaftarkan wajah yang tidak dikenali)
-let scanDimuat = false, logsDimuat = false;
-let modeLog = 'aktivitas';
-let timerCariLog = null;
+// ===== VISITOR & STAFF LOGS: satu halaman (List Visitor + Employee Logs + modal Visitor Logs Form) =====
+// Kunjungan dibuat dari kamera deteksi (status menunggu) atau manual (Add Visitor), dilengkapi lewat modal (scan wajah di dalamnya).
+let kfIdAktivitas = null;       // null = kunjungan manual baru (belum dibuat di server)
+let kfPenumpang = [];
+let kfBisaEdit = true;
+let kfScanBerjalan = false;
+let kfFotoScan = null;          // Blob frame scan (untuk mendaftarkan wajah yang tidak dikenali)
+let timerCariKunjungan = null;
 
+const byId = id => document.getElementById(id);
 const tglIso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const STATUS_WAKTU = { TEPAT_WAKTU: ['Tepat waktu', WARNA_BADGE.hijau], TERLAMBAT: ['Terlambat', WARNA_BADGE.merah],
-                       PULANG_AWAL: ['Pulang awal', WARNA_BADGE.oranye], HARI_LIBUR: ['Hari libur', WARNA_BADGE.abu] };
-const WARNA_STATUS_SCAN = { WAJAH_BERHASIL: WARNA_BADGE.hijau, WAJAH_TIDAK_DIKENALI: WARNA_BADGE.oranye, WAJAH_DITOLAK: WARNA_BADGE.merah };
+const kjSel = v => (v ? escapeHtml(String(v)) : '<span class="text-slate-300">–</span>');
+const STATUS_KUNJUNGAN = { KUNJUNGAN_MENUNGGU: ['Waiting', WARNA_BADGE.oranye], KUNJUNGAN_DALAM: ['Inside', WARNA_BADGE.hijau],
+                           KUNJUNGAN_SELESAI: ['Done', WARNA_BADGE.abu] };
 
-window.addEventListener('tabChange', e => {
-    if (e.detail !== 'scan') batalScan();
-    if (e.detail === 'scan' && !scanDimuat) { scanDimuat = true; muatScan(); muatPilihanKunjungan(); }
-    if (e.detail === 'logs' && !logsDimuat) {
-        logsDimuat = true;
-        document.getElementById('logTanggal').value = tglIso(new Date());
-        document.getElementById('logBulan').value = tglIso(new Date()).slice(0, 7);
-        pilihModeLog(document.querySelector('[data-mode-log="aktivitas"]'));
-    }
-});
-window.addEventListener('orangDisimpan', () => { if (scanDimuat) muatScan(); });
-
-// ===== Ringkasan & masih di dalam =====
-async function muatScan() {
-    const [r, dalam] = await Promise.all([ambilJson('/api/visitor/ringkasan'), ambilJson('/api/visitor/di-dalam')]);
-    if (!r.error) {
-        const kartu = [['Karyawan masuk', r.karyawan, 'fa-user-tie'], ['Supir masuk', r.driver, 'fa-truck'], ['Tamu masuk', r.tamu, 'fa-user'],
-                       ['Masih di dalam', r.di_dalam, 'fa-door-open'], ['Tidak dikenali / ditolak', r.tidak_dikenali + r.ditolak, 'fa-triangle-exclamation']];
-        document.getElementById('kartuRingkasan').innerHTML = kartu.map(([j, n, ik]) => `
-            <div class="section-box p-3 flex items-center gap-3"><span class="judul-ikon judul-ikon-biru"><i class="fa-solid ${ik}"></i></span>
-                <div><p class="text-xl font-extrabold text-slate-900 leading-none">${n}</p><p class="text-xs text-slate-500 mt-1">${j}</p></div></div>`).join('');
-    }
-    const wadah = document.getElementById('daftarDiDalam');
-    if (dalam.error) { wadah.innerHTML = `<p class="p-4 text-red-600">${escapeHtml(dalam.error)}</p>`; return; }
-    document.getElementById('jmlDiDalam').textContent = dalam.length;
-    const bolehKeluar = wadah.dataset.bolehKeluar === '1';
-    wadah.innerHTML = dalam.map(d => `
-        <div class="px-4 py-2.5 flex items-center justify-between gap-3">
-            <div class="min-w-0"><p class="font-semibold text-slate-800 truncate">${escapeHtml(d.nama_personel)}</p>
-                <p class="text-xs text-slate-500">${escapeHtml(d.nama_kategori || '')} · masuk ${escapeHtml(d.jam)}${d.no_plat ? ` · ${escapeHtml(d.no_plat)}` : ''}</p></div>
-            ${bolehKeluar ? `<button type="button" class="btn-secondary btn-sm" data-on-click="catatKeluar" data-arg="${d.id_personel}">Keluar</button>` : ''}
-        </div>`).join('') || '<p class="p-4 text-center text-slate-400">Tidak ada</p>';
+// ===== Daftar: List Visitor + Employee Logs =====
+function cariKunjunganTunda() {
+    clearTimeout(timerCariKunjungan);
+    timerCariKunjungan = setTimeout(muatKunjungan, 300);
 }
+
+async function muatKunjungan() {
+    const p = new URLSearchParams({ tanggal: byId('kjTanggal').value, cari: byId('kjCari').value.trim() });
+    const [vis, kar] = await Promise.all([
+        ambilJson(`/api/visitor/kunjungan?kelompok=VISITOR&${p}`),
+        ambilJson(`/api/visitor/kunjungan?kelompok=EMPLOYEE&${p}`),
+    ]);
+    byId('tabelVisitor').innerHTML = vis.error ? barisGagal(11, vis.error)
+        : vis.map(r => `<tr class="hover:bg-slate-50 cursor-pointer" data-id="${r.id_aktivitas}">
+            <td class="table-cell font-mono whitespace-nowrap">${kjSel(r.no_plat)}</td><td class="table-cell">${kjSel(r.lokasi)}</td>
+            <td class="table-cell whitespace-nowrap">${kjSel(r.waktu_masuk)}</td><td class="table-cell">${kjSel(r.nama)}</td>
+            <td class="table-cell">${kjSel(r.dari)}</td><td class="table-cell text-center">${r.nama ? r.jumlah_penumpang : kjSel('')}</td>
+            <td class="table-cell">${kjSel(r.host)}</td><td class="table-cell">${kjSel(r.tujuan)}</td>
+            <td class="table-cell whitespace-nowrap">${kjSel(r.waktu_keluar)}</td><td class="table-cell">${kjSel(r.kategori)}</td>
+            <td class="table-cell">${kjSel(r.nik)}</td></tr>`).join('') || barisKosong(11, 'Belum ada kunjungan');
+    byId('tabelEmployee').innerHTML = kar.error ? barisGagal(6, kar.error)
+        : kar.map(r => `<tr class="hover:bg-slate-50 cursor-pointer" data-id="${r.id_aktivitas}">
+            <td class="table-cell font-mono whitespace-nowrap">${kjSel(r.no_plat)}</td><td class="table-cell">${kjSel(r.nik)}</td>
+            <td class="table-cell">${kjSel(r.nama)}</td><td class="table-cell whitespace-nowrap">${kjSel(r.waktu_masuk)}</td>
+            <td class="table-cell whitespace-nowrap">${kjSel(r.waktu_keluar)}</td><td class="table-cell">${kjSel(r.kategori)}</td></tr>`).join('')
+            || barisKosong(6, 'Belum ada log karyawan');
+}
+
+['tabelVisitor', 'tabelEmployee'].forEach(id => byId(id).addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-id]');
+    if (tr) bukaKunjungan(Number(tr.dataset.id));
+}));
 
 async function muatPilihanKunjungan() {
     const d = await ambilJson('/api/visitor/dituju');
     if (d.error) return;
-    document.getElementById('kunjDituju').insertAdjacentHTML('beforeend', d.dituju.map(x =>
+    byId('kfDituju').insertAdjacentHTML('beforeend', d.dituju.map(x =>
         `<option value="${x.id_personel}">${escapeHtml(x.nama_personel)}${x.peran ? ` (${escapeHtml(x.peran)})` : ''}</option>`).join(''));
-    document.getElementById('saranKeperluan').innerHTML = d.keperluan.map(k => `<option value="${escapeHtml(k)}">`).join('');
 }
 
-// ===== Scan =====
-async function mulaiScan() {
-    if (scanBerjalan) return;
-    const video = document.getElementById('vslVideo'), label = document.getElementById('vslInstruksi');
-    const hitung = document.getElementById('vslHitung'), btn = document.getElementById('btnMulaiScan');
-    resetHasil();
-    scanBerjalan = true;
+// ===== Modal: buka / isi / tutup =====
+function resetFormKunjungan() {
+    batalScanKunjungan();
+    byId('formKunjungan').reset();
+    kfIdAktivitas = null;
+    kfPenumpang = [];
+    kfBisaEdit = true;
+    kfFotoScan = null;
+    ['kfIdPersonel', 'kfFaceId', 'kfNoTiket', 'kfLokasi', 'kfNik', 'kfNama'].forEach(id => { byId(id).value = ''; });
+    byId('kfMasuk').textContent = '-';
+    byId('kfKeluar').textContent = '-';
+    byId('kfStatus').innerHTML = '';
+    byId('kfInfoScan').innerHTML = '';
+    byId('kfFoto').classList.add('hidden');
+    byId('kfVideo').classList.add('hidden');
+    byId('kfFaceIkon').classList.remove('hidden');
+    pasangFotoKendaraan('kfDepan', null);
+    pasangFotoKendaraan('kfBelakang', null);
+    byId('btnKeluarKunjungan').classList.add('hidden');
+    aturKunjunganEditable(true);
+    renderPenumpang();
+}
+
+function aturKunjunganEditable(bisa) {
+    kfBisaEdit = bisa;
+    byId('kfFieldset').disabled = !bisa;
+    const simpan = byId('btnSimpanKunjungan');
+    if (simpan) simpan.classList.toggle('hidden', !bisa);
+}
+
+function bukaKunjunganBaru() {
+    resetFormKunjungan();
+    byId('kfNoTiket').value = 'Dibuat saat disimpan';
+    byId('kfStatus').innerHTML = badge('New', WARNA_BADGE.biru);
+    openModal('modalKunjungan');
+}
+
+async function bukaKunjungan(id) {
+    resetFormKunjungan();
+    const d = await ambilJson(`/api/visitor/kunjungan/${id}`);
+    if (d.error) { Notif.gagal(d.error); return; }
+    kfIdAktivitas = d.id_aktivitas;
+    byId('kfIdPersonel').value = d.id_personel || '';
+    byId('kfNoTiket').value = d.no_tiket || '-';
+    byId('kfLokasi').value = d.lokasi || '';
+    byId('kfNik').value = d.nik || '';
+    byId('kfNama').value = d.nama || '';
+    byId('kfPlat').value = d.no_plat || '';
+    byId('kfDari').value = d.asal_perusahaan || '';
+    byId('kfKeperluan').value = d.tujuan || '';
+    isiPilihan(byId('kfJenis'), d.jenis_kendaraan);
+    byId('kfDituju').value = d.id_dituju || '';
+    kfPenumpang = [...(d.penumpang || [])];
+    byId('kfMasuk').textContent = d.waktu_masuk || '-';
+    byId('kfKeluar').textContent = d.waktu_keluar || '-';
+    const [lbl, warna] = STATUS_KUNJUNGAN[d.status] || [d.status, WARNA_BADGE.abu];
+    byId('kfStatus').innerHTML = badge(lbl, warna);
+    if (d.id_kejadian_masuk) {
+        pasangFotoKendaraan('kfDepan', `/api/visitor/${d.id_aktivitas}/foto/masuk/depan`);
+        pasangFotoKendaraan('kfBelakang', `/api/visitor/${d.id_aktivitas}/foto/masuk/belakang`);
+    }
+    aturKunjunganEditable(d.status === 'KUNJUNGAN_MENUNGGU');      // hanya catatan menunggu yang bisa dilengkapi
+    byId('btnKeluarKunjungan').classList.toggle('hidden', !(d.status === 'KUNJUNGAN_DALAM' && byId('modalKunjungan').dataset.bolehKeluar === '1'));
+    renderPenumpang();
+    openModal('modalKunjungan');
+}
+
+function tutupModalKunjungan() {
+    batalScanKunjungan();
+    closeModal('modalKunjungan');
+}
+
+function isiPilihan(sel, nilai) {
+    if (nilai && ![...sel.options].some(o => o.value === nilai)) sel.add(new Option(nilai, nilai));
+    sel.value = nilai || '';
+}
+
+function pasangFotoKendaraan(idImg, url) {
+    const img = byId(idImg), ikon = byId(idImg + 'Ikon');
+    img.onload = () => { img.classList.remove('hidden'); ikon.classList.add('hidden'); };
+    img.onerror = () => { img.classList.add('hidden'); ikon.classList.remove('hidden'); };
+    if (url) img.src = url;
+    else { img.removeAttribute('src'); img.classList.add('hidden'); ikon.classList.remove('hidden'); }
+}
+
+// ===== Penumpang =====
+function renderPenumpang() {
+    byId('kfDaftarPenumpang').innerHTML = kfPenumpang.map((n, i) => `<li class="flex items-center justify-between gap-2">
+        <span>${i + 1}. ${escapeHtml(n)}</span>
+        ${kfBisaEdit ? `<button type="button" class="text-slate-400" data-on-click="hapusPenumpang" data-arg="${i}" title="Hapus"><i class="fa-solid fa-xmark"></i></button>` : ''}</li>`).join('');
+}
+
+function tambahPenumpang() {
+    const input = byId('kfPenumpangBaru');
+    const nama = input.value.trim().slice(0, 100);
+    if (!nama) return;
+    if (kfPenumpang.length >= 50) { Notif.gagal('Penumpang maksimal 50 orang.'); return; }
+    kfPenumpang.push(nama);
+    input.value = '';
+    renderPenumpang();
+    input.focus();
+}
+
+function hapusPenumpang(i) {
+    kfPenumpang.splice(Number(i), 1);
+    renderPenumpang();
+}
+
+byId('kfPenumpangBaru').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); tambahPenumpang(); }
+});
+
+// ===== Scan wajah di dalam modal =====
+async function mulaiScanKunjungan() {
+    if (kfScanBerjalan) return;
+    const video = byId('kfVideo'), label = byId('kfInstruksi'), hitung = byId('kfHitung'), btn = byId('btnScanKunjungan');
+    kfScanBerjalan = true;
     btn.disabled = true;
-    document.getElementById('vslFoto').classList.add('hidden');
+    byId('kfFoto').classList.add('hidden');
+    byId('kfFaceIkon').classList.add('hidden');
+    byId('kfInfoScan').innerHTML = '';
+    video.classList.remove('hidden');
+    label.classList.remove('hidden');
     try {
         await Kamera.mulai(video);
     } catch (err) {
         label.textContent = 'Kamera tidak bisa dibuka. Izinkan akses kamera di browser.';
-        selesaiScan();
+        selesaiScanKunjungan();
         return;
     }
     hitung.classList.replace('hidden', 'flex');
@@ -75,14 +188,15 @@ async function mulaiScan() {
     const hasil = await rekamWajah(video, {
         wajib,
         tampil: (teks, angka) => { label.textContent = teks; if (angka) hitung.textContent = angka; else hitung.classList.replace('flex', 'hidden'); },
-        batal: () => !scanBerjalan,
+        batal: () => !kfScanBerjalan,
     });
     hitung.classList.replace('flex', 'hidden');
-    if (!hasil) return;
-    fotoScan = hasil.frames[0];
-    const img = document.getElementById('vslFoto');
-    img.src = URL.createObjectURL(fotoScan);
+    if (!hasil) { selesaiScanKunjungan(); return; }
+    kfFotoScan = hasil.frames[0];
+    const img = byId('kfFoto');
+    img.src = URL.createObjectURL(kfFotoScan);
     img.classList.remove('hidden');
+    video.classList.add('hidden');
     Kamera.stop();
     label.textContent = 'Memproses...';
     const fd = new FormData();
@@ -90,171 +204,98 @@ async function mulaiScan() {
     fd.append('tantangan', hasil.tantangan);
     fd.append('perangkat', 'Web');
     const data = await kirimForm('/api/visitor/scan', fd, { timeout: TIMEOUT_WAJAH_MS });
-    label.textContent = 'Tekan Mulai Scan';
-    selesaiScan();
-    tampilHasil(data);
-    muatScan();
+    label.classList.add('hidden');
+    selesaiScanKunjungan();
+    terapkanHasilScan(data);
 }
 
-function selesaiScan() {
-    scanBerjalan = false;
-    const btn = document.getElementById('btnMulaiScan');
-    if (btn) btn.disabled = false;
+function selesaiScanKunjungan() {
+    kfScanBerjalan = false;
+    byId('btnScanKunjungan').disabled = false;
 }
 
-function batalScan() {
-    scanBerjalan = false;
+function batalScanKunjungan() {
+    kfScanBerjalan = false;
     if (typeof Kamera !== 'undefined') Kamera.stop();
-    selesaiScan();
+    byId('kfVideo').classList.add('hidden');
+    byId('kfInstruksi').classList.add('hidden');
+    byId('btnScanKunjungan').disabled = false;
 }
 
-function resetHasil() {
-    const form = document.getElementById('formKunjungan');
-    form.classList.add('hidden');
-    form.reset();
-    document.getElementById('vslHasil').className = 'section-box p-8 text-center text-sm text-slate-400';
-    document.getElementById('vslHasil').textContent = 'Belum ada scan';
-}
-
-function kartuOrang(d, isi, warna = 'border-slate-200') {
-    const foto = d.foto_path ? `<img src="${escapeHtml(urlBerkas(d.foto_path))}" class="w-full h-full object-cover" alt="">`
-                             : '<i class="fa-solid fa-user text-3xl text-slate-400"></i>';
-    return `<div class="section-box border-2 ${warna} overflow-hidden">
-        <div class="p-5 flex items-start gap-4">
-            <div class="w-20 h-24 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0">${foto}</div>
-            <div class="flex-1 min-w-0">
-                <div class="flex flex-wrap items-center gap-2"><p class="text-lg font-bold text-slate-900">${escapeHtml(d.nama_personel)}</p>${badgeKategori(d.kategori)}
-                    ${d.is_blacklisted ? badge('BLACKLIST', WARNA_BADGE.merah) : ''}</div>
-                <p class="text-sm text-slate-500">ID ${formatIdPersonel(d.id_personel)} · NIK ${escapeHtml(d.nik || '-')}
-                    ${d.peran ? ` · ${escapeHtml(d.peran)}` : ''}${d.asal_perusahaan ? ` · ${escapeHtml(d.asal_perusahaan)}` : ''}</p>
-                <div class="mt-3">${isi}</div>
-            </div>
-        </div></div>`;
-}
-
-function tampilHasil(d) {
-    const wadah = document.getElementById('vslHasil');
-    wadah.className = '';
-    if (d.error && !d.status) { wadah.innerHTML = `<div class="note-warning">${escapeHtml(d.error)}</div>`; return; }
+function terapkanHasilScan(d) {
+    const info = byId('kfInfoScan');
+    byId('kfIdPersonel').value = '';
+    byId('kfFaceId').value = '';
+    if (d.error && !d.status) { info.innerHTML = `<div class="note-warning">${escapeHtml(d.error)}</div>`; return; }
     if (d.status === 'TIDAK_DIKENALI') {
-        const daftar = document.querySelector('[data-on-click="bukaTambahPersonel"]');
-        wadah.innerHTML = `<div class="section-box border-2 border-amber-300 p-5">
-            <p class="font-bold text-amber-800"><i class="fa-solid fa-circle-question mr-1"></i> Wajah tidak dikenali</p>
-            <p class="text-sm text-slate-600 mt-1">Scan tercatat di Logs. Bila orangnya belum terdaftar, daftarkan sekarang dengan foto ini.</p>
-            ${daftar ? '<button type="button" class="btn-primary mt-3" data-on-click="daftarDariScan"><i class="fa-solid fa-user-plus mr-1"></i> Daftarkan Orang</button>' : ''}
-        </div>`;
+        const bisaDaftar = byId('modalKunjungan').dataset.bolehScan === '1' && typeof bukaTambahDariScan === 'function';
+        info.innerHTML = `<div class="note-warning">Wajah tidak dikenali.${bisaDaftar ? ` <button type="button" class="btn-primary btn-sm ml-2" data-on-click="daftarDariScan"><i class="fa-solid fa-user-plus mr-1"></i> Daftarkan Orang</button>` : ''}</div>`;
         return;
     }
     if (d.status === 'DITOLAK') {
-        wadah.innerHTML = kartuOrang(d, `<div class="note-warning bg-red-50 border-red-200 text-red-700">Masuk daftar BLACKLIST. Akses ditolak dan tercatat.</div>`, 'border-red-300');
+        info.innerHTML = `<div class="note-warning bg-red-50 border-red-200 text-red-700">${escapeHtml(d.nama_personel)} masuk daftar BLACKLIST. Akses ditolak dan tercatat.</div>`;
         return;
     }
-    if (d.status === 'DUPLIKAT') { wadah.innerHTML = kartuOrang(d, `<div class="note-info">${escapeHtml(d.error)}</div>`); return; }
-    if (d.status === 'ABSENSI') {
-        const [lbl, warna] = STATUS_WAKTU[d.status_waktu] || [d.status_waktu || '', WARNA_BADGE.abu];
-        wadah.innerHTML = kartuOrang(d, `<div class="flex flex-wrap items-center gap-2">
-            ${badge(d.jenis === 'MASUK' ? 'MASUK' : 'KELUAR', d.jenis === 'MASUK' ? WARNA_BADGE.hijau : WARNA_BADGE.biru)}
-            <span class="font-mono font-semibold">${escapeHtml(d.waktu)}</span>${badge(lbl, warna)}
-            ${d.selisih_menit && d.status_waktu !== 'TEPAT_WAKTU' ? `<span class="text-xs text-slate-500">${Math.abs(d.selisih_menit)} menit</span>` : ''}</div>`, 'border-emerald-300');
-        return;
-    }
-    // Driver / tamu
     if (d.di_dalam) {
-        wadah.innerHTML = kartuOrang(d, `<p class="text-sm text-slate-600 mb-3">Masih di dalam sejak ${escapeHtml(d.masuk_sejak)}.</p>
-            <button type="button" class="btn-primary" data-on-click="catatKeluar" data-arg="${d.id_personel}|${escapeHtml(d.foto_scan || '')}">
-            <i class="fa-solid fa-right-from-bracket mr-1"></i> Catat Keluar</button>`, 'border-utama-300');
+        info.innerHTML = `<div class="note-info">${escapeHtml(d.nama_personel)} masih di dalam sejak ${escapeHtml(d.masuk_sejak || '-')}.
+            <button type="button" class="btn-primary btn-sm ml-2" data-on-click="keluarKunjungan" data-arg="${d.activity_id}"><i class="fa-solid fa-right-from-bracket mr-1"></i> Going out</button></div>`;
         return;
     }
-    wadah.innerHTML = kartuOrang(d, '<p class="text-sm text-slate-600">Isi data kunjungan di bawah, lalu Catat Masuk.</p>', 'border-utama-300');
-    const form = document.getElementById('formKunjungan');
-    form.elements.id_personel.value = d.id_personel;
-    form.elements.foto_scan.value = d.foto_scan || '';
-    form.elements.keperluan.value = d.keperluan || '';
-    form.classList.remove('hidden');
-    form.elements.keperluan.focus();
+    byId('kfIdPersonel').value = d.id_personel;
+    byId('kfFaceId').value = d.face_id || '';
+    byId('kfNik').value = d.nik || '';
+    byId('kfNama').value = d.nama_personel || '';
+    if (!byId('kfDari').value) byId('kfDari').value = d.asal_perusahaan || '';
+    if (!byId('kfKeperluan').value) byId('kfKeperluan').value = d.keperluan || '';
 }
 
 function daftarDariScan() {
-    if (typeof bukaTambahDariScan === 'function') bukaTambahDariScan(fotoScan);
+    if (typeof bukaTambahDariScan === 'function') bukaTambahDariScan(kfFotoScan);
 }
 
-document.getElementById('formKunjungan').addEventListener('submit', async e => {
+// ===== Simpan & Going out =====
+byId('formKunjungan').addEventListener('submit', async e => {
     e.preventDefault();
-    const btn = e.submitter;
-    const data = await denganTombol(btn, () => kirimForm('/api/visitor/masuk', new FormData(e.target)));
-    if (!tampilkanHasil(data)) return;
-    resetHasil();
-    muatScan();
+    await denganTombol(e.submitter, async () => {
+        const fd = new FormData(e.target);
+        if (kfIdAktivitas === null) {                    // kunjungan manual: buat catatan menunggu dulu
+            const dibuat = await kirimForm('/api/visitor/kunjungan/manual', { no_plat: fd.get('no_plat') || '' });
+            if (!dibuat || dibuat.error) { Notif.gagal((dibuat && dibuat.error) || 'Gagal membuat kunjungan.'); return; }
+            kfIdAktivitas = dibuat.activity_id;          // bila Save gagal validasi, percobaan berikutnya memakai catatan yang sama
+        }
+        fd.delete('penumpang');
+        kfPenumpang.forEach(n => fd.append('penumpang', n));
+        fd.set('jumlah_penumpang', String(kfPenumpang.length));
+        fd.set('perangkat', 'Web');
+        const data = await kirimForm(`/api/visitor/kunjungan/${kfIdAktivitas}/lengkapi`, fd);
+        if (!tampilkanHasil(data)) return;
+        tutupModalKunjungan();
+        muatKunjungan();
+    });
 });
 
-async function catatKeluar(arg) {
-    const [id, foto] = String(arg).split('|');
-    const data = await kirimForm('/api/visitor/keluar', { id_personel: id, foto_scan: foto || '' });
+async function keluarKunjungan(id) {
+    const data = await kirimForm(`/api/visitor/kunjungan/${id}/keluar`, {});
     if (!tampilkanHasil(data)) return;
-    resetHasil();
-    muatScan();
+    tutupModalKunjungan();
+    muatKunjungan();
 }
 
-// ===== Logs =====
-const KEPALA_LOG = {
-    aktivitas: ['Waktu', 'Nama', 'Jenis', 'Aktivitas', 'Hasil', 'Keperluan / Keterangan', 'Area', 'Dicatat oleh'],
-    absensi: ['Nama', 'Jabatan', 'Masuk', 'Status Masuk', 'Keluar', 'Status Keluar'],
-    bulanan: ['Nama', 'Jabatan', 'Hari Hadir', 'Terlambat', 'Menit Terlambat', 'Pulang Awal'],
-};
-const KOLOM_ANGKA = { bulanan: [2, 3, 4, 5] };
-
-function pilihModeLog(el) {
-    aktifkanChip(el);
-    modeLog = el.dataset.modeLog;
-    document.querySelectorAll('[data-filter-log]').forEach(x => x.classList.toggle('hidden', !x.dataset.filterLog.split(' ').includes(modeLog)));
-    const angka = KOLOM_ANGKA[modeLog] || [];
-    document.getElementById('kepalaLog').innerHTML = `<tr>${KEPALA_LOG[modeLog].map((k, i) =>
-        `<th class="table-cell${angka.includes(i) ? ' text-right' : ''}">${k}</th>`).join('')}</tr>`;
-    muatLogs();
+function keluarDariModal() {
+    if (kfIdAktivitas !== null) keluarKunjungan(kfIdAktivitas);
 }
 
-function cariLogTunda() {
-    clearTimeout(timerCariLog);
-    timerCariLog = setTimeout(muatLogs, 300);
+// ===== Sinkron kamera deteksi plat =====
+async function sinkronKunjungan() {
+    try { await kirimForm('/api/visitor/sinkron', {}); } catch (err) { /* gagal diam-diam: daftar tetap dimuat */ }
 }
 
-const badgeWaktu = s => s ? badge(...(STATUS_WAKTU[s] || [s, WARNA_BADGE.abu])) : '<span class="text-slate-300">–</span>';
-
-async function muatLogs() {
-    const tbody = document.getElementById('tabelLog');
-    const n = KEPALA_LOG[modeLog].length;
-    let url;
-    if (modeLog === 'aktivitas') {
-        const p = new URLSearchParams({ tanggal: document.getElementById('logTanggal').value, jenis: document.getElementById('logJenis').value,
-                                        status: document.getElementById('logStatus').value, cari: document.getElementById('logCari').value.trim() });
-        url = `/api/visitor/logs?${p}`;
-    } else if (modeLog === 'absensi') url = `/api/visitor/absensi?tanggal=${document.getElementById('logTanggal').value}`;
-    else url = `/api/visitor/absensi/bulanan?bulan=${document.getElementById('logBulan').value}`;
-    const data = await ambilJson(url);
-    if (data.error) { tbody.innerHTML = barisGagal(n, data.error); return; }
-    if (modeLog === 'aktivitas') {
-        tbody.innerHTML = data.map(r => `<tr class="hover:bg-slate-50">
-            <td class="table-cell font-mono whitespace-nowrap">${escapeHtml(r.jam)}</td>
-            <td class="table-cell">${r.nama_personel ? escapeHtml(r.nama_personel) : '<span class="text-slate-400">Tidak dikenal</span>'}
-                ${r.foto_scan ? ` <a href="${escapeHtml(urlBerkas(r.foto_scan))}" target="_blank" class="text-utama-600" title="Foto saat scan"><i class="fa-solid fa-image"></i></a>` : ''}</td>
-            <td class="table-cell">${r.kategori ? badgeKategori(r.kategori) : '<span class="text-slate-300">–</span>'}</td>
-            <td class="table-cell">${r.jenis ? escapeHtml(r.jenis === 'MASUK' ? 'Masuk' : 'Keluar') : '<span class="text-slate-300">–</span>'}
-                ${r.status_waktu ? ` ${badgeWaktu(r.status_waktu)}` : ''}</td>
-            <td class="table-cell">${badge(r.nama_status, WARNA_STATUS_SCAN[r.status] || WARNA_BADGE.abu)}</td>
-            <td class="table-cell text-slate-600">${escapeHtml([r.keterangan, r.nama_dituju && `bertemu ${r.nama_dituju}`, r.no_plat].filter(Boolean).join(' · ') || '–')}</td>
-            <td class="table-cell text-slate-600">${escapeHtml(r.area || '–')}</td>
-            <td class="table-cell text-slate-600">${escapeHtml(r.dicatat_oleh || '–')}</td></tr>`).join('') || barisKosong(n, 'Belum ada aktivitas');
-    } else if (modeLog === 'absensi') {
-        tbody.innerHTML = data.map(r => `<tr class="hover:bg-slate-50">
-            <td class="table-cell">${escapeHtml(r.nama_personel)}</td><td class="table-cell text-slate-600">${escapeHtml(r.peran || '–')}</td>
-            <td class="table-cell font-mono">${escapeHtml(r.jam_masuk || '–')}</td><td class="table-cell">${badgeWaktu(r.status_masuk)}</td>
-            <td class="table-cell font-mono">${escapeHtml(r.jam_pulang || '–')}</td><td class="table-cell">${badgeWaktu(r.status_pulang)}</td></tr>`).join('')
-            || barisKosong(n, 'Belum ada karyawan');
-    } else {
-        tbody.innerHTML = data.map(r => `<tr class="hover:bg-slate-50">
-            <td class="table-cell">${escapeHtml(r.nama_personel)}</td><td class="table-cell text-slate-600">${escapeHtml(r.peran || '–')}</td>
-            <td class="table-cell text-right font-mono">${r.hari_hadir}</td><td class="table-cell text-right font-mono">${r.jml_terlambat}</td>
-            <td class="table-cell text-right font-mono">${r.menit_terlambat}</td><td class="table-cell text-right font-mono">${r.jml_pulang_awal}</td></tr>`).join('')
-            || barisKosong(n, 'Belum ada absensi bulan ini');
-    }
-}
+// ===== Mulai =====
+byId('kjTanggal').value = tglIso(new Date());
+sinkronKunjungan().finally(muatKunjungan);
+muatPilihanKunjungan();
+setInterval(async () => {
+    if (document.hidden || !byId('modalKunjungan').classList.contains('hidden')) return;   // jangan ganggu saat form terbuka
+    await sinkronKunjungan();
+    muatKunjungan();
+}, 30000);

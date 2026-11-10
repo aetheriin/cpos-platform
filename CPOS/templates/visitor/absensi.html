@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "partials/layout/_macros.html" import judul_halaman %}
+{% block title %}Absensi Karyawan · CPOS{% endblock %}
+
+{# Forms › Absensi Karyawan: absensi harian & rekap bulanan karyawan dari scan wajah. routes/visitor.py #}
+{% block info_bar %}{% endblock %}
+{% block info_bar_script %}{% endblock %}
+
+{% block tab_header %}
+    {{ judul_halaman('Absensi Karyawan', 'Absensi harian dan rekap bulanan karyawan dari scan wajah', 'fa-user-clock') }}
+{% endblock %}
+
+{% block tab_content %}
+<div>
+    <div class="filter-bar">
+        <div class="seg">
+            <button type="button" class="chip chip-active" data-mode-log="absensi" data-on-click="pilihModeAbsensi" data-arg="$el">Absensi Karyawan</button>
+            <button type="button" class="chip" data-mode-log="bulanan" data-on-click="pilihModeAbsensi" data-arg="$el">Rekap Bulanan</button>
+        </div>
+        <div class="flex-1"></div>
+        <input type="date" id="absTanggal" class="input-field w-auto" data-on-change="muatAbsensi" data-filter-log="absensi">
+        <input type="month" id="absBulan" class="input-field w-auto hidden" data-on-change="muatAbsensi" data-filter-log="bulanan">
+    </div>
+    <div class="section-box overflow-x-auto">
+        <table class="w-full text-left text-sm">
+            <thead id="kepalaAbsensi" class="table-header-row"></thead>
+            <tbody id="tabelAbsensi" data-per-halaman="25" class="divide-y divide-slate-100"></tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script defer src="{{ url_for('static', filename='js/visitor/absensi.js') }}"></script>
+{% endblock %}

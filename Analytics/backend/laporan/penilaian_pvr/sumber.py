@@ -28,7 +28,7 @@ _QUERY = """
         COALESCE(
             NULLIF(i.OBNumber, ''''),
             CASE
-                WHEN i.ItemType IN (''PI'', ''PO'')          THEN p.PurchaseNumber
+                WHEN i.ItemType IN (''PI'', ''PO'', ''PR'')  THEN p.PurchaseNumber
                 WHEN i.ItemType IN (''PN'', ''PD'', ''PUK'') THEN n.Number
                 WHEN i.ItemType IN (''TV'', ''BT'', ''BTP'') THEN t.TicketNo
             END,
@@ -50,7 +50,7 @@ _QUERY = """
     CROSS APPLY (SELECT NULLIF(LTRIM(RTRIM(v.CheckNo)), '''') AS CheckNo) ck
     LEFT JOIN {db}.dbo.AP_Purchases p
         ON p.PurchaseID = i.ItemID
-       AND i.ItemType IN (''PI'', ''PO'')
+       AND i.ItemType IN (''PI'', ''PO'', ''PR'')   -- PR = Purchase Return
     LEFT JOIN {db}.dbo.FI_ARAPNotes n
         ON n.ARAPNoteID = i.ItemID
        AND i.ItemType IN (''PN'', ''PD'', ''PUK'')
