@@ -35,7 +35,7 @@ JENIS = {
 MENU_JENIS = {"BLACKLIST_TAMBAH": "BLACKLIST", "BLACKLIST_HAPUS": "BLACKLIST",       # hak Setujui dicek di menu ini
               "KOREKSI_TIKET": "LIST", "ORANG_TAMBAH": "PERSONEL"}
 TAUTAN_MENU = {"BLACKLIST": "/blacklist?tab=persetujuan", "LIST": "/weighbridge?view=list&bagian=koreksi",
-               "PERSONEL": "/visitor-logs?tab=orang"}
+               "PERSONEL": "/data-orang"}
 # Admin › Alur Persetujuan memilih Jenis pengajuan lalu Aksi-nya; tiap pasangan = satu kode di JENIS.
 AKSI = {"TAMBAH": "Tambah", "UBAH": "Ubah / Koreksi", "HAPUS": "Hapus"}
 GRUP_JENIS = {"BLACKLIST": {"nama": "Blacklist", "aksi": {"TAMBAH": "BLACKLIST_TAMBAH", "HAPUS": "BLACKLIST_HAPUS"}, "kategori": True},

@@ -1,14 +1,10 @@
-"""Admin › Alur Persetujuan (migrasi 043): susunan tahap persetujuan per jenis pengajuan + jenis target (jenis orang /
-kendaraan / supplier).
-Tiap tahap = satu peran (departemen + jabatan); dipakai utils/persetujuan.py saat pengajuan dibuat."""
 from utils import hak_akses, jenis_orang
 from utils.db_utils import get_connection, _rows_to_dicts
-from utils.persetujuan import AKSI, GRUP_JENIS, JENIS, MENU_JENIS  # noqa: F401 (GRUP_JENIS & AKSI dipakai halaman admin)
+from utils.persetujuan import AKSI, GRUP_JENIS, JENIS, MENU_JENIS  
 
 KATEGORI_KENDARAAN = ("KENDARAAN", "Kendaraan")
 KATEGORI_SUPPLIER = ("SUPPLIER", "Supplier")
 MAKS_TAHAP = 10
-
 
 def _query(sql, *params):
     conn = get_connection()
@@ -19,12 +15,10 @@ def _query(sql, *params):
     finally:
         conn.close()
 
-
 def daftar_kategori():
     """Pilihan jenis target: jenis orang + Kendaraan + Supplier."""
     return ([{"kode": k, "nama": v["nama"]} for k, v in jenis_orang.JENIS.items()]
             + [{"kode": k, "nama": n} for k, n in (KATEGORI_KENDARAAN, KATEGORI_SUPPLIER)])
-
 
 def daftar():
     """Semua alur beserta tahapnya (peran, jumlah pengguna aktif, peran boleh membuka menu pengajuan)."""
@@ -46,7 +40,6 @@ def daftar():
         a["tahap"] = [{**t, "bisa_lihat": bool(akses.get(t["id_level"], {}).get(menu, {}).get("lihat"))}
                       for t in per_alur.get(a["id_alur_persetujuan"], [])]
     return alur
-
 
 def simpan(id_alur, jenis, kategori, keterangan, daftar_level):
     """Tambah / ubah alur; tahap diganti seluruhnya sesuai urutan daftar_level. Kembalikan id alur."""
@@ -89,7 +82,6 @@ def simpan(id_alur, jenis, kategori, keterangan, daftar_level):
         conn.close()
     return id_alur
 
-
 def set_aktif(id_alur, aktif):
     conn = get_connection()
     try:
@@ -97,7 +89,6 @@ def set_aktif(id_alur, aktif):
         conn.commit()
     finally:
         conn.close()
-
 
 def hapus(id_alur):
     """Hapus alur (pengajuan yang sedang berjalan tidak terpengaruh: tahapnya sudah disalin)."""

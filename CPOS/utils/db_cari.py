@@ -1,7 +1,6 @@
 """Pencarian global (header › Cari / Ctrl+K): tiket, DO / kontrak, personel, kendaraan; admin: akun."""
 from utils.db_utils import get_connection, _rows_to_dicts, _filter_area
 
-
 def _query(sql, *params):
     conn = get_connection()
     try:

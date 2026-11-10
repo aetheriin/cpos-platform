@@ -23,10 +23,8 @@ PESAN_ERROR = {
     500: "Terjadi kesalahan di server. Coba lagi atau hubungi admin.",
 }
 
-
 def _minta_json():
     return request.path.startswith("/api/") or request.headers.get("X-Requested-With") == "fetch"
-
 
 def pasang_cache_static(app):
     """File statis di-cache 1 tahun; URL diberi ?v=<waktu ubah file> sehingga update langsung terbaca."""
@@ -41,7 +39,6 @@ def pasang_cache_static(app):
         except OSError:
             pass
 
-
 def pasang_header_cache(app):
     """Halaman & API berisi data operasional: jangan disimpan browser / proxy."""
     @app.after_request
@@ -49,7 +46,6 @@ def pasang_header_cache(app):
         if not request.path.startswith(("/static/", "/berkas/")):
             resp.headers["Cache-Control"] = "no-store"
         return resp
-
 
 def pasang_kompresi(app):
     try:
@@ -61,7 +57,6 @@ def pasang_kompresi(app):
                                                  "text/javascript", "application/json", "image/svg+xml"])
     app.config.setdefault("COMPRESS_MIN_SIZE", 1024)
     Compress(app)
-
 
 def pasang_error_handler(app):
     """API -> JSON { error }, halaman -> templates/error.html. Tidak ada lagi halaman error bawaan / JSON mentah."""
@@ -99,7 +94,6 @@ def pasang_error_handler(app):
             return jsonify({"error": pesan, "kode_error": kode}), 500
         return render_template("error.html", kode=500, pesan=pesan, masuk=_masuk()), 500
 
-
 def _masuk():
     """Halaman error tetap tampil walau status login tidak bisa dibaca (mis. database mati)."""
     try:
@@ -108,11 +102,9 @@ def _masuk():
     except Exception:  # noqa: BLE001
         return False
 
-
 def kode_error():
     """Mis. ERR-1010-1415-A7F3 (bulan-tanggal, jam-menit, acak) supaya mudah dicari di log."""
     return f"ERR-{datetime.now():%m%d-%H%M}-{secrets.token_hex(2).upper()}"
-
 
 def _username():
     try:
@@ -120,7 +112,6 @@ def _username():
         return current_user.username if current_user.is_authenticated else "-"
     except Exception:       # noqa: BLE001 - jangan sampai pencatatan error membuat error baru
         return "-"
-
 
 def pasang_log_error(app):
     """Semua log WARNING ke atas (termasuk traceback error) ke logs/error_app.log, diputar 5 MB x 10 file."""
@@ -136,7 +127,6 @@ def pasang_log_error(app):
     h.addFilter(lambda r: r.name != "keamanan")          # kejadian keamanan sudah di logs/keamanan.log
     h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s"))
     akar.addHandler(h)
-
 
 def pasang_log_lambat(app):
     """Catat request yang lebih lambat dari BATAS_LAMBAT_MS (default 1 detik) ke log."""

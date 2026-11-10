@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "partials/layout/_macros.html" import judul_halaman %}
+{% block title %}Data Orang · CPOS{% endblock %}
+
+{# Forms › Data Orang: kelola semua jenis orang (karyawan, tamu, supir, dll). Dipindah dari tab "Data Orang" Visitor & Staff Logs. routes/visitor.py #}
+{% block info_bar %}{% endblock %}
+{% block info_bar_script %}{% endblock %}
+
+{% block tab_header %}
+    {{ judul_halaman('Data Orang', 'Karyawan, tamu, supir, dan orang lain yang terdaftar di sistem', 'fa-address-book') }}
+{% endblock %}
+
+{% block tab_content %}
+    {% include "partials/face_recognition/personel_tab.html" %}
+{% endblock %}
+
+{% block modals %}
+    {% if boleh_ubah %}{% include "partials/face_recognition/personel_modals.html" %}{% endif %}
+    {% include "partials/layout/persetujuan_modal.html" %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script defer src="{{ url_for('static', filename='js/face_recognition/kamera.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/face_recognition/personel.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/persetujuan.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/visitor/data_orang.js') }}"></script>
+{% endblock %}

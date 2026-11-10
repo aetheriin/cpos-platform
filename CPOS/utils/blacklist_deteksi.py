@@ -1,16 +1,5 @@
-"""Log Validasi Blacklist (migrasi 028): setiap orang / kendaraan blacklist yang terdeteksi dicatat per kejadian.
-
-Dipanggil otomatis dari catat_security_audit(..., "TRY_SCAN_BLACKLIST", details={...}) dengan kunci details:
-  sumber (SCAN_WAJAH, ABSENSI, TAMU, TAMU_MASUK, TIKET, TAMBAH_SUPIR, PENDAFTARAN, PLAT,
-  POS_MASUK), tindakan (DITOLAK /
-  PERINGATAN / DILOLOSKAN), id_personel, id_kendaraan, no_plat, jarak, keterangan.
-- Kejadian sama (target, sumber, petugas) dalam 60 detik tidak dicatat ulang (mis. plat diketik berulang).
-- Deteksi pertama hari itu untuk target di lokasi tersebut mengirim notifikasi ke jabatan yang punya hak Setujui di
-  menu Blacklist (Admin › Level & Hak Akses) di PT itu; bila belum ada, ke jabatan yang punya hak menu Blacklist.
-Gagal mencatat tidak pernah menggagalkan proses utama."""
 import logging
 from datetime import date, datetime, timedelta
-
 from utils.db_utils import get_connection, _rows_to_dicts
 
 log = logging.getLogger(__name__)
@@ -23,13 +12,11 @@ TINDAKAN = ("DITOLAK", "PERINGATAN", "DILOLOSKAN")
 JEDA_DETIK = 60
 KOLOM_DB = {"id_personel": "UserID", "id_kendaraan": "IDVehicle"}      # kunci target -> kolom BlacklistDetection
 
-
 def catat(details, user_id, no_tiket=None):
     try:
         _catat(details or {}, user_id, no_tiket)
     except Exception:          # noqa: BLE001 - log validasi tidak boleh menggagalkan scan / tiket
         log.exception("Gagal mencatat deteksi blacklist")
-
 
 def _catat(d, user_id, no_tiket):
     from utils.db_aktivitas import area_akun
@@ -70,7 +57,6 @@ def _catat(d, user_id, no_tiket):
     for kolom, nilai in baru:
         _notifikasi(kolom, nilai, id_area, SUMBER[sumber])
 
-
 def _notifikasi(kolom, nilai, id_area, sumber):
     from utils import notifikasi
     from utils.db_organisasi import company_area
@@ -87,7 +73,6 @@ def _notifikasi(kolom, nilai, id_area, sumber):
     if not penerima:            # belum ada jabatan dengan hak Setujui: ke semua yang punya hak di menu Blacklist
         notifikasi.buat("BLACKLIST", judul, isi, tautan, id_area)
 
-
 def _query(sql, *params):
     conn = get_connection()
     try:
@@ -96,7 +81,6 @@ def _query(sql, *params):
         return _rows_to_dicts(cursor)
     finally:
         conn.close()
-
 
 # ===== Halaman Log Validasi =====
 def log_hari(tanggal, id_area):
@@ -147,7 +131,6 @@ def log_hari(tanggal, id_area):
                     "diloloskan": sum(1 for r in rows if r["tindakan"] == "DILOLOSKAN")},
         "target": hasil_target, "kejadian": kejadian,
     }
-
 
 def _kunjungan(daftar_target, tanggal, id_area):
     """Kunjungan = hari berbeda target terdeteksi (di site yang sama bila disaring). Kunjungan ke-N sampai tanggal itu,

@@ -2,7 +2,6 @@ from utils import log_aktivitas
 
 AKSI_VALID = ("TRY_SCAN_BLACKLIST", "OVERRIDE_DRIVER", "MANUAL_INPUT")
 
-
 def catat_security_audit(user_id, action_type, no_tiket=None, details=None, ip_address=None):
     """Gagal mencatat audit tidak boleh menggagalkan proses utama (tiket tetap dibuat / ditolak)."""
     if action_type not in AKSI_VALID or not user_id:
@@ -12,7 +11,6 @@ def catat_security_audit(user_id, action_type, no_tiket=None, details=None, ip_a
     if action_type == "TRY_SCAN_BLACKLIST":            # juga ke Log Validasi Blacklist (per kejadian)
         from utils import blacklist_deteksi
         blacklist_deteksi.catat(details, user_id, no_tiket)
-
 
 def get_security_audit(hari=1, batas=300):
     return [{"id_log": r["id_log"], "created_at": r["waktu"].strftime("%Y-%m-%d %H:%M:%S"), "action_type": r["aksi"],

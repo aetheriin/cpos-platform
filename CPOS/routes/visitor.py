@@ -1,19 +1,11 @@
-"""Forms › Visitor & Staff Logs: satu halaman untuk semua scan wajah (tab Scan Wajah · Logs · Data Orang).
-
-Scan wajah dicocokkan ke wajah terdaftar semua orang (Users). Hasilnya mengikuti jenis orangnya:
-- karyawan (termasuk security & BHL): absensi langsung dicatat MASUK / KELUAR dengan status waktu jadwal kerja area;
-- driver / tamu: form kunjungan (keperluan, orang yang dituju, plat) lalu dicatat MASUK; yang masih di dalam dicatat KELUAR;
-- tidak dikenali: dicatat sebagai bukti, lalu bisa didaftarkan di tempat (hak Tambah di Data Orang).
-Semua tercatat di FaceActivity, foto saat scan di FaceRecog (utils/db_aktivitas.py)."""
 import os
 import re
 import shutil
 import uuid
-from datetime import date, datetime
 
+from datetime import date, datetime
 from flask import Blueprint, abort, jsonify, render_template, request, send_file
 from flask_login import current_user, login_required
-
 from extensions import UPLOAD_FOLDER
 from utils import db_aktivitas as db, kolom_wajib, pengaturan
 from utils.absensi_rules import hari_iso, hitung_status_waktu, is_duplikat, tentukan_jenis
@@ -38,8 +30,11 @@ def halaman():
     from utils.db_organisasi import daftar_area, daftar_department
     from utils.hak_akses import daftar_jabatan
     return render_template("visitor/visitor.html", halaman="visitor", kode_aktif="KUNJUNGAN",
+                           boleh_scan=boleh("KUNJUNGAN", "tambah"), boleh_keluar=boleh("KUNJUNGAN", "ubah"),
                            boleh_ubah=boleh("PERSONEL"), boleh_tambah_orang=boleh("PERSONEL", "tambah"),
+                           kategori_list=list(daftar_kategori().values()),
                            jenis_sim_list=daftar_jenis_sim(),
+                           area_list=[a for a in daftar_area() if a["is_active"]],
                            department_list=[d for d in daftar_department() if d["is_active"]],
                            jabatan_list=[j for j in daftar_jabatan() if j["is_active"] and not j["is_admin"]])
 
@@ -49,9 +44,22 @@ def halaman():
 def halaman_absensi():
     return render_template("visitor/absensi.html", halaman="absensi", kode_aktif="ABSENSI_KARYAWAN")
 
+@visitor_bp.route("/data-orang")
+@login_required
+@lihat_halaman("PERSONEL")
+def halaman_data_orang():
+    from utils.db_organisasi import daftar_area, daftar_department
+    from utils.hak_akses import daftar_jabatan
+    return render_template("visitor/data_orang.html", halaman="data_orang", kode_aktif="PERSONEL", tab_personel="orang",
+                           boleh_ubah=boleh("PERSONEL"), boleh_tambah_orang=boleh("PERSONEL", "tambah"),
+                           kategori_list=list(daftar_kategori().values()),
+                           jenis_sim_list=daftar_jenis_sim(),
+                           area_list=[a for a in daftar_area() if a["is_active"]],
+                           department_list=[d for d in daftar_department() if d["is_active"]],
+                           jabatan_list=[j for j in daftar_jabatan() if j["is_active"] and not j["is_admin"]])
+
 def _area():
     return db.area_akun(current_user.id)
-
 
 def _info(p, jarak=None):
     return {"id_personel": p["id_personel"], "nama_personel": p["nama_personel"],
@@ -61,7 +69,6 @@ def _info(p, jarak=None):
             "nama_tampil": format_nama_personel(p["id_personel"], p["nama_personel"]),
             "jarak_wajah": round(jarak, 3) if jarak is not None else None}
 
-
 def _simpan_foto(path_frame, sekarang):
     folder = os.path.join(UPLOAD_FOLDER, FOLDER_SCAN)
     os.makedirs(folder, exist_ok=True)
@@ -69,16 +76,14 @@ def _simpan_foto(path_frame, sekarang):
     shutil.copyfile(path_frame, os.path.join(folder, nama))
     return f"uploads/{FOLDER_SCAN}/{nama}"
 
-
 def _foto_dari_form():
     """Foto scan yang dikirim balik oleh form kunjungan: hanya file di uploads/scan."""
     teks = (request.form.get("foto_scan") or "").strip()
     return teks if re.fullmatch(rf"uploads/{FOLDER_SCAN}/[\w-]+\.jpg", teks) else None
 
-
 @visitor_bp.route("/api/visitor/scan", methods=["POST"])
 @login_required
-@izin("VSL_SCAN", "tambah")
+@izin("KUNJUNGAN", "tambah")
 def scan():
     area = _area() 
     wajib = pengaturan.nilai("TANTANGAN_ABSENSI", area)
@@ -159,10 +164,8 @@ def scan():
         "foto_scan": foto,
     })
 
-
 def _jam(t):
     return t.strftime("%H:%M") if t else None
-
 
 def _orang_form():
     teks = (request.form.get("id_personel") or "").strip()
@@ -171,10 +174,9 @@ def _orang_form():
         raise ValueError("Scan wajah orangnya terlebih dahulu")
     return p
 
-
 @visitor_bp.route("/api/visitor/masuk", methods=["POST"])
 @login_required
-@izin("VSL_SCAN", "tambah")
+@izin("KUNJUNGAN", "tambah")
 def masuk():
     """Kunjungan driver / tamu masuk: keperluan wajib, orang yang dituju & plat opsional (Kolom Wajib: form TAMU)."""
     f = request.form
@@ -213,7 +215,7 @@ def masuk():
     methods=["POST"],
 )
 @login_required
-@izin("VSL_SCAN", "tambah")
+@izin("KUNJUNGAN", "tambah")
 def lengkapi_kunjungan(activity_id):
     f = request.form
 
@@ -301,7 +303,7 @@ def lengkapi_kunjungan(activity_id):
 
 @visitor_bp.route("/api/visitor/kunjungan/manual", methods=["POST"])
 @login_required
-@izin("VSL_SCAN", "tambah")
+@izin("KUNJUNGAN", "tambah")
 def kunjungan_manual():
     """Buat catatan kunjungan menunggu tanpa kamera (plat tidak terbaca). Plat boleh kosong."""
     id_area = _area()
@@ -316,20 +318,18 @@ def kunjungan_manual():
     activity_id = db.buat_kunjungan_menunggu(no_plat, id_area, perangkat="Web", ip=request.remote_addr)
     return jsonify({"activity_id": activity_id})
 
-
 @visitor_bp.route("/api/visitor/kunjungan/<int:activity_id>")
 @login_required
-@izin(("VSL_SCAN", "VSL_LOGS"), "lihat")
+@izin("KUNJUNGAN", "lihat")
 def detail_kunjungan(activity_id):
     r = db.detail_kunjungan(activity_id, area_data(current_user.id))
     if not r:
         return jsonify({"error": "Kunjungan tidak ditemukan"}), 404
     return jsonify(r)
 
-
 @visitor_bp.route("/api/visitor/kunjungan/<int:activity_id>/keluar", methods=["POST"])
 @login_required
-@izin("VSL_SCAN", "ubah")
+@izin("KUNJUNGAN", "ubah")
 def kunjungan_keluar(activity_id):
     try:
         db.tutup_kunjungan(activity_id, id_area=_area())
@@ -339,18 +339,21 @@ def kunjungan_keluar(activity_id):
 
 @visitor_bp.route("/api/visitor/sinkron", methods=["POST"])
 @login_required
-@izin(("VSL_SCAN", "VSL_LOGS"), "lihat")
+@izin("KUNJUNGAN", "lihat")
 def sinkron_kunjungan():
     """Tarik kejadian gerbang terbaru dari kamera deteksi plat: MASUK jadi catatan menunggu, KELUAR menutup kunjungan."""
     id_area = _area()
     if not id_area:
         return jsonify({"masuk": 0, "keluar": 0})
-    masuk, keluar = db.sinkron_kejadian_plat(id_area)
+    try:
+        masuk, keluar = db.sinkron_kejadian_plat(id_area)
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 500
     return jsonify({"masuk": masuk, "keluar": keluar})
 
 @visitor_bp.route("/api/visitor/keluar", methods=["POST"])
 @login_required
-@izin("VSL_SCAN", "ubah")
+@izin("KUNJUNGAN", "ubah")
 def keluar():
     """Catat keluar orang yang masih di dalam (tombol Keluar di daftar, atau setelah scan driver / tamu)."""
     try:
@@ -370,7 +373,7 @@ def keluar():
 
 @visitor_bp.route("/api/visitor/<int:activity_id>/foto/<arah>/<sisi>")
 @login_required
-@izin(("VSL_SCAN", "VSL_LOGS"), "lihat")
+@izin("KUNJUNGAN", "lihat")
 def foto_kendaraan(activity_id, arah, sisi):
     arah, sisi = arah.upper(), sisi.upper()
     if arah not in ("MASUK", "KELUAR") or sisi not in ("DEPAN", "BELAKANG"):
@@ -392,10 +395,9 @@ def foto_kendaraan(activity_id, arah, sisi):
 def _tanggal():
     return date.fromisoformat(request.args.get("tanggal") or date.today().isoformat())
 
-
 @visitor_bp.route("/api/visitor/logs")
 @login_required
-@izin("VSL_LOGS", "lihat")
+@izin("KUNJUNGAN", "lihat")
 def logs():
     try:
         tanggal = _tanggal()
@@ -406,7 +408,7 @@ def logs():
 
 @visitor_bp.route("/api/visitor/kunjungan")
 @login_required
-@izin(("VSL_SCAN", "VSL_LOGS"), "lihat")
+@izin("KUNJUNGAN", "lihat")
 def daftar_kunjungan():
     kelompok = (request.args.get("kelompok") or "").upper()
     if kelompok not in ("VISITOR", "EMPLOYEE"):
@@ -420,28 +422,25 @@ def daftar_kunjungan():
 
 @visitor_bp.route("/api/visitor/di-dalam")
 @login_required
-@izin(("VSL_SCAN", "VSL_LOGS"), "lihat")
+@izin("KUNJUNGAN", "lihat")
 def di_dalam():
     return jsonify(db.di_dalam(area_data(current_user.id)))
 
-
 @visitor_bp.route("/api/visitor/ringkasan")
 @login_required
-@izin(("VSL_SCAN", "VSL_LOGS"), "lihat")
+@izin("KUNJUNGAN", "lihat")
 def ringkasan():
     return jsonify(db.ringkasan(date.today(), area_data(current_user.id)))
 
-
 @visitor_bp.route("/api/visitor/dituju")
 @login_required
-@izin("VSL_SCAN", "lihat")
+@izin("KUNJUNGAN", "lihat")
 def dituju():
     return jsonify({"dituju": db.daftar_dituju(), "keperluan": db.saran_keperluan()})
 
-
 @visitor_bp.route("/api/visitor/absensi")
 @login_required
-@izin(("ABSENSI_KARYAWAN", "VSL_LOGS"), "lihat")
+@izin(("ABSENSI_KARYAWAN", "KUNJUNGAN"), "lihat")
 def absensi_harian():
     try:
         tanggal = _tanggal()
@@ -449,10 +448,9 @@ def absensi_harian():
         return jsonify({"error": "Tanggal tidak valid"}), 400
     return jsonify(db.rekap_harian(tanggal, area_data(current_user.id)))
 
-
 @visitor_bp.route("/api/visitor/absensi/bulanan")
 @login_required
-@izin(("ABSENSI_KARYAWAN", "VSL_LOGS"), "lihat")
+@izin(("ABSENSI_KARYAWAN", "KUNJUNGAN"), "lihat")
 def absensi_bulanan():
     try:
         tahun, bulan = map(int, (request.args.get("bulan") or date.today().strftime("%Y-%m")).split("-"))
@@ -460,7 +458,6 @@ def absensi_bulanan():
     except ValueError:
         return jsonify({"error": "Bulan tidak valid (YYYY-MM)"}), 400
     return jsonify(db.rekap_bulanan(tahun, bulan, area_data(current_user.id)))
-
 
 @visitor_bp.route("/api/jadwal-kerja")
 @login_required

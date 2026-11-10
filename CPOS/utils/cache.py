@@ -2,7 +2,6 @@ import threading
 import time
 from functools import wraps
 
-
 def cache_ttl(detik):
     def dekorator(fn):
         simpan = {}

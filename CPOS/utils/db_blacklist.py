@@ -1,5 +1,3 @@
-"""Query tabel blacklist (menu Blacklist). Tambah & hapus (cabut) lewat persetujuan (utils/persetujuan.py);
-baris tidak pernah dihapus, pencabutan dicatat di dicabut_at / dicabut_oleh / alasan_cabut (migrasi 027)."""
 import json
 from datetime import date, datetime
 from utils.db_utils import get_connection, _rows_to_dicts
@@ -8,7 +6,6 @@ from utils.dokumen import buat_dokumen
 TIPE_VALID = ("PERSONEL", "KENDARAAN", "SUPPLIER")
 _TARGET = {"PERSONEL": ("Users", "UserID"), "KENDARAAN": ("DetailVehicle", "IDVehicle"), "SUPPLIER": ("Supplier", "SupplierID")}   # tabel & kolom target
 
-
 def _format(r):
     for k, v in list(r.items()):
         if isinstance(v, datetime):
@@ -16,7 +13,6 @@ def _format(r):
         elif isinstance(v, date):
             r[k] = v.isoformat()
     return r
-
 
 def get_riwayat_blacklist(tipe=None, cari=None, batas=200, status="AKTIF", pt=None, kategori=None):
     """List Blacklist. pt = PT yang boleh dilihat user (None = semua): lokasi blacklist (area pengaju) di PT itu.
@@ -84,7 +80,6 @@ def get_riwayat_blacklist(tipe=None, cari=None, batas=200, status="AKTIF", pt=No
     conn.close()
     return data
 
-
 # Data personel + transaksi terakhirnya sebagai SUPIR (plat, customer, pengangkutan saat itu).
 # Bukan supir / belum pernah membawa truk -> kolom transaksi NULL (form blacklist tidak menampilkannya).
 _SELECT_PERSONEL = """
@@ -103,14 +98,12 @@ _SELECT_PERSONEL = """
                  WHERE t.DriverID = p.UserID ORDER BY t.TicketDate DESC) tr
     WHERE p.Active = 1"""
 
-
 def _rapikan_target(data):
     for r in data:
         r["is_blacklisted"] = bool(r["is_blacklisted"])
         if r.get("waktu_terakhir") is not None:
             r["waktu_terakhir"] = r["waktu_terakhir"].strftime("%Y-%m-%d %H:%M")
     return data
-
 
 def cari_target(tipe, kata, batas=8):
     """Kandidat target: personel (NIK / nama / no SIM / ID) atau kendaraan (plat)."""
@@ -169,7 +162,6 @@ def cari_target(tipe, kata, batas=8):
     finally:
         conn.close()
 
-
 def info_supplier(id_supplier):
     """Nama, jenis & produk transaksi terakhir supplier (pengajuan blacklist supplier)."""
     rows = _query_satu("""SELECT s.SupplierCode AS kode_supplier, s.SupplierName AS nama_supplier, pr.ProductName AS produk_terakhir
@@ -180,12 +172,10 @@ def info_supplier(id_supplier):
                           WHERE s.SupplierID = ?""", id_supplier)
     return rows[0] if rows else None
 
-
 def supplier_diblacklist(id_supplier):
     """Nama supplier bila sedang diblacklist, selain itu None (peringatan tiket / kontrak)."""
     rows = _query_satu("SELECT SupplierName AS nama FROM Supplier WHERE SupplierID = ? AND BlacklistID IS NOT NULL", id_supplier)
     return rows[0]["nama"] if rows else None
-
 
 def info_kendaraan(id_kendaraan):
     """Plat, supplier / pengangkutan / produk transaksi terakhir kendaraan (pengajuan blacklist kendaraan)."""
@@ -201,7 +191,6 @@ def info_kendaraan(id_kendaraan):
                           WHERE k.IDVehicle = ?""", id_kendaraan)
     return rows[0] if rows else None
 
-
 def get_target_personel(id_personel):
     """Satu personel (hasil cocok wajah) dengan data transaksi terakhir."""
     conn = get_connection()
@@ -213,12 +202,10 @@ def get_target_personel(id_personel):
     finally:
         conn.close()
 
-
 def _hapus_cache_supplier(tipe):
     if tipe == "SUPPLIER":
         from utils.db_utils import get_semua_supplier
         get_semua_supplier.hapus()
-
 
 def tambah_blacklist(tipe, id_target, no_surat, alasan, file_info, tgl_surat, user_id, terkait=None,
                      nama_alias=None, kategori=None, id_area=None):
@@ -259,7 +246,6 @@ def tambah_blacklist(tipe, id_target, no_surat, alasan, file_info, tgl_surat, us
     finally:
         conn.close()
 
-
 def lampirkan_surat(id_blacklist, no_surat, tgl_surat, file_info, user_id):
     """Surat blacklist yang menyusul. Error bila blacklist tidak ada / surat sudah dilampirkan."""
     conn = get_connection()
@@ -281,7 +267,6 @@ def lampirkan_surat(id_blacklist, no_surat, tgl_surat, file_info, user_id):
     finally:
         conn.close()
 
-
 def get_surat_blacklist(tipe, id_target):
     """Surat blacklist terbaru untuk banner di Form Create Ticket."""
     kolom = _TARGET.get(tipe, _TARGET["KENDARAAN"])[1]
@@ -299,7 +284,6 @@ def get_surat_blacklist(tipe, id_target):
     data = _rows_to_dicts(cursor)
     conn.close()
     return _format(data[0]) if data else None
-
 
 def nama_target(tipe, id_target):
     """(nama tampilan, sudah_blacklist) target; ValueError bila tidak ada."""
@@ -332,7 +316,6 @@ def get_blacklist(id_blacklist):
                           LEFT JOIN Supplier c ON c.SupplierID = b.CustomerID
                           LEFT JOIN Supplier a ON a.SupplierID = b.TransportID WHERE b.BlacklistID = ?""", id_blacklist)
     return rows[0] if rows else None
-
 
 def _query_satu(sql, *params):
     conn = get_connection()

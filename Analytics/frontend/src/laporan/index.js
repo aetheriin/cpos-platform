@@ -5,6 +5,7 @@ import DashboardKasBank from './kas_bank/DashboardKasBank'
 import { DashboardPvKpi, DashboardPvrKpi } from './penilaian'
 import DashboardPiGt from './pi_gt/DashboardPiGt'
 import LaporanPiPvr from './pi_pvr/LaporanPiPvr'
+import LaporanOutstanding from './outstanding/LaporanOutstanding'
 import DashboardPoAmt from './po_amt/DashboardPoAmt'
 import DashboardPoPi from './po_pi/DashboardPoPi'
 import DashboardPrPo from './pr_po/DashboardPrPo'
@@ -23,4 +24,5 @@ export const DASHBOARD = {
   tbs_mingguan: DashboardTbsMingguan,
   cash_flow: DashboardKasBank,
   pi_pvr: LaporanPiPvr,
+  outstanding: LaporanOutstanding,
 }

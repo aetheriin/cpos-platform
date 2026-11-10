@@ -5,6 +5,7 @@ Untuk menambah laporan baru:
    tabel), dan __init__.py yang membuat satu objek LAPORAN (lihat pr_po/__init__.py sebagai contoh).
 2. Tambahkan satu baris impor dan satu elemen di SEMUA di bawah.
 """
+from .hutang_piutang import LAPORAN as _outstanding
 from .kas_bank import LAPORAN as _kas_bank
 from .palm import LAPORAN as _palm
 from .penilaian_pv import LAPORAN as _penilaian_pv
@@ -17,4 +18,4 @@ from .pr_po import LAPORAN as _pr_po
 from .tbs import LAPORAN as _tbs
 from .tbs_mingguan import LAPORAN as _tbs_mingguan
 
-SEMUA = {l.id: l for l in (_pr_po, _po_pi, _po_amt, _pi_gt, _penilaian_pvr, _penilaian_pv, _palm, _tbs_mingguan, _tbs, _pi_pvr, _kas_bank)}
+SEMUA = {l.id: l for l in (_pr_po, _po_pi, _po_amt, _pi_gt, _penilaian_pvr, _penilaian_pv, _palm, _tbs_mingguan, _tbs, _pi_pvr, _outstanding, _kas_bank)}

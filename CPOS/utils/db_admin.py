@@ -1,4 +1,3 @@
-"""Query menu Admin: user, master supplier & produk, jadwal kerja, audit admin, kesehatan database."""
 import pyodbc
 
 from utils.cache import cache_ttl
@@ -9,7 +8,6 @@ from utils.db_absensi import get_jadwal_kerja
 PERAN_SUPPLIER = ("CUSTOMER", "PENGANGKUTAN")    # satu mitra boleh keduanya (tabel mitra_peran)
 KATEGORI_PRODUK = ("TBS", "PRODUK_PKS")
 
-
 def _query(sql, *params):
     conn = get_connection()
     try:
@@ -18,7 +16,6 @@ def _query(sql, *params):
         return _rows_to_dicts(cursor)
     finally:
         conn.close()
-
 
 def _ubah(sql, *params, pesan_kosong="Data tidak ditemukan"):
     conn = get_connection()
@@ -31,9 +28,6 @@ def _ubah(sql, *params, pesan_kosong="Data tidak ditemukan"):
     finally:
         conn.close()
 
-
-# ===== USER (Users + LevelDetails = peran + DepartmentDetails; hak akses di utils/hak_akses.py) =====
-# Akun = baris Users (orang) yang punya UserName + peran. Orang tanpa akun dikelola di menu Personel.
 _SELECT_USER = """SELECT u.UserID AS id_user, u.UserName AS username, u.Nama AS nama, u.UserLevelID AS id_level,
                          ld.LevelDetCode AS role, ld.LevelDetName AS nama_level, lv.IsAdmin AS is_admin, ld.LevelID AS id_jabatan,
                          dd.DeptID AS id_department, ISNULL(d.DeptName, 'Admin sistem') AS department, u.CompAreaID AS id_comp_area,
@@ -45,26 +39,21 @@ _SELECT_USER = """SELECT u.UserID AS id_user, u.UserName AS username, u.Nama AS 
                   LEFT JOIN Department d ON d.DeptID = dd.DeptID
                   JOIN CompanyArea a ON a.CompAreaID = u.CompAreaID"""
 
-
 def daftar_user():
     return _query(_SELECT_USER + " ORDER BY u.Active DESC, lv.IsAdmin DESC, ld.LevelDetName, u.Nama")
-
 
 def get_user(id_user):
     rows = _query(_SELECT_USER + " WHERE u.UserID = ?", id_user)
     return rows[0] if rows else None
 
-
 def username_dipakai(username, kecuali=None):
     rows = _query("SELECT UserID AS id_user FROM Users WHERE LOWER(UserName) = LOWER(?)", username)
     return any(r["id_user"] != kecuali for r in rows)
-
 
 def jumlah_admin_aktif(kecuali=None):
     rows = _query("""SELECT u.UserID AS id_user FROM Users u JOIN LevelDetails ld ON ld.LevelDetID = u.UserLevelID
                      JOIN Level lv ON lv.LevelID = ld.LevelID WHERE lv.IsAdmin = 1 AND ld.Active = 1 AND u.Active = 1""")
     return len([r for r in rows if r["id_user"] != kecuali])
-
 
 def personel_untuk_nik(nik):
     """Personel dengan NIK ini (untuk dihubungkan ke akun baru) beserta akunnya bila sudah punya."""
@@ -72,7 +61,6 @@ def personel_untuk_nik(nik):
                              {jenis_orang.sql_nama('p.PersonType')} AS nama_kategori, CAST(1 AS BIT) AS boleh_akun, p.UserName AS akun
                       FROM UserProfile p WHERE p.NoKTP = ?""", nik)
     return rows[0] if rows else None
-
 
 def _dept_detail(cursor, id_department, id_comp_area):
     """DeptDetailID departemen ini di area user (DepartmentDetails); None untuk admin sistem."""
@@ -83,7 +71,6 @@ def _dept_detail(cursor, id_department, id_comp_area):
     if not row:
         raise ValueError("Departemen ini tidak ada di area yang dipilih. Atur di Admin › Organisasi › Departemen")
     return row[0]
-
 
 def tambah_user(username, id_level, id_department, id_comp_area, password_hash, personel):
     """personel = {id_personel (None = buat baru), nama, nik}. Orang yang sudah terdaftar (dicari dari NIK) diberi login
@@ -113,7 +100,6 @@ def tambah_user(username, id_level, id_department, id_comp_area, password_hash, 
     finally:
         conn.close()
 
-
 def ubah_user(id_user, id_level, id_department, id_comp_area, personel):
     """Ganti peran -> sesi lama dicabut (SessionVersion naik) supaya hak akses baru langsung berlaku."""
     conn = get_connection()
@@ -134,7 +120,6 @@ def ubah_user(id_user, id_level, id_department, id_comp_area, personel):
         conn.close()
     get_user_by_id.hapus()          # perubahan user / sesi langsung berlaku
 
-
 def reset_password(id_user, password_hash):
     # MustChange = 1 -> user wajib mengganti password ini saat login berikutnya
     from utils.db_utils import simpan_password
@@ -150,17 +135,14 @@ def reset_password(id_user, password_hash):
         conn.close()
     get_user_by_id.hapus()          # perubahan user / sesi langsung berlaku
 
-
 def set_aktif_user(id_user, aktif):
     _ubah("""UPDATE Users SET Active = ?, SessionVersion = SessionVersion + 1, UpdateDate = GETDATE()
              WHERE UserID = ?""", 1 if aktif else 0, id_user)
     get_user_by_id.hapus()          # perubahan user / sesi langsung berlaku
 
-
 def cabut_sesi(id_user):
     _ubah("UPDATE Users SET SessionVersion = SessionVersion + 1 WHERE UserID = ?", id_user)
     get_user_by_id.hapus()          # perubahan user / sesi langsung berlaku
-
 
 # ===== MASTER SUPPLIER & PRODUK =====
 def daftar_supplier():
@@ -182,7 +164,6 @@ def daftar_supplier():
                  company=list(pt.get(r["id_supplier"], ())))
     return rows
 
-
 @cache_ttl(300)
 def company_supplier():
     """{id_supplier: (id_company, ...)} (tabel mitra_company, migrasi 032). Supplier yang tidak ada di sini = semua PT."""
@@ -194,17 +175,14 @@ def company_supplier():
         pass
     return {k: tuple(v) for k, v in hasil.items()}
 
-
 def supplier_boleh(id_supplier, pt_user):
     """Supplier berlaku untuk PT user. pt_user = None (kantor pusat: semua PT) atau frozenset id company."""
     pt = company_supplier().get(id_supplier)
     return not pt or pt_user is None or bool(set(pt) & set(pt_user))
 
-
 def kode_supplier_dipakai(kode, kecuali=None):
     rows = _query("SELECT SupplierID AS id_supplier FROM Supplier WHERE SupplierCode = ?", kode)
     return any(r["id_supplier"] != kecuali for r in rows)
-
 
 def simpan_supplier(id_supplier, kode, nama, peran, alamat=None, daftar_company=(), id_grup=None, id_rekening=None):
     """peran: daftar dari PERAN_SUPPLIER (minimal satu). daftar_company kosong = berlaku di semua PT.
@@ -238,11 +216,9 @@ def simpan_supplier(id_supplier, kode, nama, peran, alamat=None, daftar_company=
     get_semua_supplier.hapus()
     company_supplier.hapus()
 
-
 def set_aktif_supplier(id_supplier, aktif):
     _ubah("UPDATE Supplier SET Active = ? WHERE SupplierID = ?", 1 if aktif else 0, id_supplier)
     get_semua_supplier.hapus()
-
 
 def daftar_produk():
     return _query("""SELECT p.ProductID AS id_produk, p.ProductName AS nama_produk, p.Category AS kategori, p.Active AS is_active, p.FlowID AS id_alur, a.FlowName AS nama_alur,
@@ -251,11 +227,9 @@ def daftar_produk():
                      LEFT JOIN Flow a ON a.FlowID = p.FlowID
                      ORDER BY p.Active DESC, p.ProductName""")
 
-
 def nama_produk_dipakai(nama, kecuali=None):
     rows = _query("SELECT ProductID AS id_produk FROM Product WHERE LOWER(ProductName) = LOWER(?)", nama)
     return any(r["id_produk"] != kecuali for r in rows)
-
 
 def simpan_produk(id_produk, nama, kategori, id_alur):
     if id_produk:
@@ -264,18 +238,15 @@ def simpan_produk(id_produk, nama, kategori, id_alur):
         _ubah("INSERT INTO Product (ProductName, Category, FlowID) VALUES (?, ?, ?)", nama, kategori, id_alur)
     get_semua_produk.hapus()
 
-
 def set_aktif_produk(id_produk, aktif):
     _ubah("UPDATE Product SET Active = ? WHERE ProductID = ?", 1 if aktif else 0, id_produk)
     get_semua_produk.hapus()
-
 
 # ===== JADWAL KERJA =====
 def ubah_jadwal(id_comp_area, hari, is_libur, jam_masuk, jam_pulang, toleransi):
     _ubah("""UPDATE WorkSchedule SET IsHoliday = ?, TimeIn = ?, TimeOut = ?, ToleranceMinutes = ?
              WHERE CompAreaID = ? AND DayNo = ?""", 1 if is_libur else 0, jam_masuk, jam_pulang, toleransi, id_comp_area, hari)
     get_jadwal_kerja.hapus()
-
 
 # ===== AUDIT ADMIN =====
 def catat_audit_admin(user_id, aksi, target=None, detail=None, ip=None):
@@ -284,13 +255,11 @@ def catat_audit_admin(user_id, aksi, target=None, detail=None, ip=None):
     log_aktivitas.catat("ADMIN", aksi, id_baris=(target or "")[:100] or None,
                         baru={"detail": detail[:500]} if detail else None, user_id=user_id, ip=ip)
 
-
 def daftar_audit_admin(hari=7, batas=300):
     from utils import log_aktivitas
     return [{"id_log": r["id_log"], "aksi": r["aksi"], "target": r["id_baris"], "detail": r["nilai_baru"].get("detail"),
              "ip_address": r["ip"], "created_at": r["waktu"], "oleh": r["oleh"], "username": r["username"]}
             for r in log_aktivitas.daftar("ADMIN", hari, batas)]
-
 
 # ===== KESEHATAN DATABASE =====
 def info_database():
@@ -308,7 +277,6 @@ def info_database():
     except Exception:       # noqa: BLE001 - akun aplikasi tidak punya akses msdb
         info["backup_terakhir"] = "tidak bisa dibaca"
     return info
-
 
 # ===== VOID TIKET (pembatalan_tiket, migrasi 010) =====
 def daftar_tiket(cari="", hari=30, batas=500):
@@ -329,7 +297,6 @@ def daftar_tiket(cari="", hari=30, batas=500):
                         AND (t.TicketNumber LIKE ? OR k.NoVehicle LIKE ? OR t.DONumber LIKE ?)
                       ORDER BY t.TicketDate DESC""", int(hari), cari, cari, cari)
 
-
 def _ba(cursor, no_tiket, berita_acara, user_id):
     """berita_acara = {no, tanggal, file_info} -> id_dokumen BA_VOID, atau None."""
     if not berita_acara:
@@ -337,7 +304,6 @@ def _ba(cursor, no_tiket, berita_acara, user_id):
     from utils.dokumen import buat_dokumen
     return buat_dokumen(cursor, "BA_VOID", berita_acara["no"], berita_acara["tanggal"], f"Void tiket {no_tiket}",
                         [berita_acara["file_info"]], user_id)
-
 
 def void_tiket(no_tiket, alasan, user_id, berita_acara=None):
     """Tiket dibatalkan (tidak dihapus): keluar dari daftar aktif, QR tidak berlaku, timbang ditolak.
@@ -358,7 +324,6 @@ def void_tiket(no_tiket, alasan, user_id, berita_acara=None):
         raise
     finally:
         conn.close()
-
 
 def lampirkan_ba_void(no_tiket, berita_acara, user_id):
     """Berita acara yang menyusul untuk tiket yang sudah di-void (hanya bila belum ada)."""

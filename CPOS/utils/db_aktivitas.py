@@ -1,9 +1,3 @@
-"""Visitor & Staff Logs: semua aktivitas scan wajah di satu tabel (FaceActivity).
-
-- karyawan (termasuk security & BHL): absensi MASUK / KELUAR (pulang) dengan status waktu dari jadwal kerja area;
-- driver & tamu: kunjungan MASUK (keperluan, orang yang dituju, plat) lalu KELUAR;
-- scan yang tidak dikenali / ditolak blacklist juga dicatat. Foto wajah saat scan disimpan di FaceRecog (bukti).
-"Masih di dalam" = aktivitas berhasil terakhir orang itu (24 jam terakhir) adalah MASUK."""
 import json
 
 from datetime import date, datetime, timedelta
@@ -16,7 +10,6 @@ from utils.plat_utils import normalisasi_plat
 BERHASIL, TIDAK_DIKENALI, DITOLAK = "WAJAH_BERHASIL", "WAJAH_TIDAK_DIKENALI", "WAJAH_DITOLAK"
 STATUS = (BERHASIL, TIDAK_DIKENALI, DITOLAK)
 
-
 def _query(sql, *params):
     conn = get_connection()
     try:
@@ -26,13 +19,11 @@ def _query(sql, *params):
     finally:
         conn.close()
 
-
 @cache_ttl(300)
 def id_status():
     """{kode: StatusID} hasil scan wajah (tabel Status)."""
     return {r["StatusCode"]: r["StatusID"] for r in _query(
         "SELECT StatusCode, StatusID FROM Status WHERE StatusCode IN (?, ?, ?)", *STATUS)}
-
 
 def catat(id_user, jenis, status, id_area, user_id, *, nama_wajah=None, embedding=None, foto_path=None, id_blacklist=None,
           keterangan=None, id_dituju=None, no_plat=None, status_waktu=None, selisih=None, jarak=None, perangkat=None, ip=None,
@@ -81,7 +72,6 @@ def simpan_bukti_wajah(nama_wajah, embedding, foto_path):
     finally:
         conn.close()
 
-
 def bukti_wajah_milik(face_id, nama_wajah):
     """Pastikan bukti scan yang dikirim memang tersimpan untuk nama orang tersebut."""
     baris = _query(
@@ -112,7 +102,6 @@ def _id_status_kunjungan():
         raise RuntimeError("Status kunjungan belum lengkap di tabel Status.")
 
     return hasil
-
 
 def buat_kunjungan_menunggu(
     no_plat,
@@ -199,7 +188,6 @@ def buat_kunjungan_menunggu(
             entry_id,
             visit_no,
         )
-
         activity_id = int(cursor.fetchone()[0])
         conn.commit()
         return activity_id
@@ -208,7 +196,6 @@ def buat_kunjungan_menunggu(
         raise
     finally:
         conn.close()
-
 
 def lengkapi_kunjungan(
     activity_id,
@@ -288,7 +275,6 @@ def lengkapi_kunjungan(
         raise
     finally:
         conn.close()
-
 
 def tutup_kunjungan(activity_id, *, exit_id=None, waktu_keluar=None, id_area=None):
     """Tutup catatan kunjungan yang sama saat kendaraan/orang keluar."""
@@ -421,7 +407,6 @@ def terakhir(id_user):
                      ORDER BY a.LogDate DESC, a.ActivityID DESC""", id_user, id_status()[BERHASIL])
     return rows[0] if rows else None
 
-
 def sudah_masuk_hari_ini(id_user, tanggal):
     """Absensi karyawan: (waktu scan terakhir hari itu, sudah ada MASUK)."""
     rows = _query("""SELECT MAX(LogDate) AS terakhir, SUM(CASE WHEN ActivityType = 'MASUK' THEN 1 ELSE 0 END) AS masuk
@@ -445,7 +430,6 @@ _FROM = """FROM FaceActivity a
            LEFT JOIN Users u ON u.UserID = a.CreateBy
            LEFT JOIN CompanyArea ar ON ar.CompAreaID = a.CompAreaID"""
 
-
 def _rapikan(rows):
     for r in rows:
         r["is_blacklisted"] = bool(r.get("is_blacklisted"))
@@ -453,7 +437,6 @@ def _rapikan(rows):
             r["jam"] = r["waktu"].strftime("%H:%M")
             r["waktu"] = r["waktu"].strftime("%Y-%m-%d %H:%M")
     return rows
-
 
 def logs(tanggal, id_area, jenis=None, status=None, cari=None, batas=500):
     """Semua aktivitas satu hari dalam cakupan area, terbaru dulu. jenis = jenis orang, status = kode status scan."""
@@ -480,7 +463,6 @@ _KOLOM_KUNJUNGAN = """a.ActivityID AS id_aktivitas, a.VisitNo AS no_tiket, a.NoV
              JSON_VALUE(a.VisitData, '$.asal_perusahaan') AS dari,
              JSON_VALUE(a.VisitData, '$.jenis_kendaraan') AS kategori,
              JSON_VALUE(a.VisitData, '$.jumlah_penumpang') AS jumlah_penumpang"""
-
 
 def daftar_kunjungan(tanggal, id_area, kelompok, cari=None, batas=500):
     """Satu baris per kunjungan. VISITOR juga memuat catatan menunggu (belum dilengkapi); EMPLOYEE hanya yang sudah dilengkapi."""
@@ -560,7 +542,6 @@ def di_dalam(id_area):
                               WHERE a.n = 1 AND a.ActivityType = 'MASUK'{f_area}
                               ORDER BY a.LogDate DESC""", id_status()[BERHASIL], *a_area))
 
-
 def ringkasan(tanggal, id_area):
     """Angka kartu: masuk hari ini per jenis, masih di dalam, tidak dikenali, ditolak."""
     f_area, a_area = sql_area("a.CompAreaID", id_area)
@@ -575,13 +556,11 @@ def ringkasan(tanggal, id_area):
                st[BERHASIL], st[BERHASIL], st[BERHASIL], st[TIDAK_DIKENALI], st[DITOLAK], tanggal, *a_area)[0]
     return {k: int(v or 0) for k, v in r.items()} | {"di_dalam": len(di_dalam(id_area))}
 
-
 def daftar_dituju():
     """Orang yang bisa ditemui tamu: karyawan aktif."""
     return _query("""SELECT p.UserID AS id_personel, p.Nama AS nama_personel, ld.LevelDetName AS peran
                      FROM Users p LEFT JOIN LevelDetails ld ON ld.LevelDetID = p.UserLevelID
                      WHERE p.Active = 1 AND p.UserLevelID IS NOT NULL ORDER BY p.Nama""")
-
 
 def saran_keperluan(batas=12):
     """Keperluan yang pernah diketik (isian cepat di form kunjungan)."""
@@ -591,7 +570,6 @@ def saran_keperluan(batas=12):
                                             SELECT LEFT(Description, CHARINDEX(N' · ', Description + N' · ') - 1) FROM FaceActivity
                                             WHERE Description IS NOT NULL AND LogDate >= DATEADD(DAY, -90, GETDATE())) x
                                          GROUP BY x.teks ORDER BY COUNT(*) DESC, x.teks""", batas)]
-
 
 def rekap_harian(tanggal, id_area):
     """Absensi karyawan aktif satu hari: masuk pertama & keluar terakhir."""
@@ -617,7 +595,6 @@ def rekap_harian(tanggal, id_area):
         r["is_blacklisted"] = bool(r["is_blacklisted"])
     return rows
 
-
 def rekap_bulanan(tahun, bulan, id_area):
     awal = date(tahun, bulan, 1)
     akhir = date(tahun + (bulan == 12), bulan % 12 + 1, 1)
@@ -635,7 +612,6 @@ def rekap_bulanan(tahun, bulan, id_area):
         GROUP BY p.UserID, p.Nama, ld.LevelDetName
         HAVING COUNT(a.ActivityID) > 0
         ORDER BY p.Nama""", id_status()[BERHASIL], awal, akhir, *a_area)
-
 
 def area_akun(id_user):
     """Area akun yang sedang login (pengaturan per area: ambang wajah, tantangan, jadwal)."""

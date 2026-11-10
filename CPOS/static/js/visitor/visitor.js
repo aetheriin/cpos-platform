@@ -1,10 +1,8 @@
-// ===== VISITOR & STAFF LOGS: satu halaman (List Visitor + Employee Logs + modal Visitor Logs Form) =====
-// Kunjungan dibuat dari kamera deteksi (status menunggu) atau manual (Add Visitor), dilengkapi lewat modal (scan wajah di dalamnya).
-let kfIdAktivitas = null;       // null = kunjungan manual baru (belum dibuat di server)
+let kfIdAktivitas = null;       
 let kfPenumpang = [];
 let kfBisaEdit = true;
 let kfScanBerjalan = false;
-let kfFotoScan = null;          // Blob frame scan (untuk mendaftarkan wajah yang tidak dikenali)
+let kfFotoScan = null;          
 let timerCariKunjungan = null;
 
 const byId = id => document.getElementById(id);
