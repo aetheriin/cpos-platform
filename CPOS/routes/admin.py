@@ -1,19 +1,14 @@
-"""Menu Admin (super admin): hanya role ADMIN (dijaga juga oleh utils.keamanan.pasang_batas_admin).
-
-Halaman  : /admin/<halaman>      (satu menu sidebar = satu halaman, tanpa tab)
-API      : /api/admin/...        (JSON, semua aksi tercatat di admin_audit_logs)"""
 import json
 import os
 import platform
 import re
 import shutil
 import time
-from datetime import date, datetime
 
+from datetime import date, datetime
 from flask import Blueprint, render_template, request, jsonify, redirect, abort
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-
 from extensions import BASE_DIR, UPLOAD_FOLDER
 from utils.galat_isian import GalatIsian, isi_galat
 from utils.versi import versi_aplikasi
@@ -397,6 +392,82 @@ def akses_menu_simpan(id_menu):
         return jsonify({"message": f"Hak akses {m['nama']} berhasil disimpan dan berlaku di semua PC dalam ±30 detik"})
     return _jalankan(aksi)
 
+# ===== HAK AKSES: Matriks (menu × departemen / jabatan) =====
+STATUS_MATRIKS = ("", "lihat", "penuh", "larang")
+
+
+@admin_bp.route("/api/admin/akses/matriks")
+@_admin
+def akses_matriks():
+    """Status hak Departemen / Jabatan per menu: kosong | lihat | penuh | larang | sebagian."""
+    jenis = request.args.get("jenis", "DEPT")
+    if jenis not in ("DEPT", "LEVEL"):
+        return jsonify({"error": "Jenis kolom tidak dikenal"}), 400
+    sel = []
+    for m in hak_akses.pohon_menu():
+        mendukung = {"lihat", *m["aksi"]}
+        status = {}
+        for a in hak_akses.aturan_menu(m["id_menu"]):
+            if a["jenis"] != jenis:
+                continue
+            idt = str(a["id_target"])
+            ada = {k for k, v in a["aksi"].items() if v}
+            if a["tolak"]:
+                if "lihat" in ada:
+                    status[idt] = "larang"
+            elif "lihat" in ada and status.get(idt) != "larang":
+                status[idt] = "penuh" if mendukung <= ada else ("lihat" if ada == {"lihat"} else "sebagian")
+        sel += [{"id_menu": m["id_menu"], "id_target": t, "status": s} for t, s in status.items()]
+    return jsonify({"jenis": jenis, "sel": sel})
+
+
+@admin_bp.route("/api/admin/akses/matriks", methods=["POST"])
+@_admin
+def akses_matriks_simpan():
+    def aksi():
+        jenis = request.form.get("jenis", "DEPT")
+        if jenis not in ("DEPT", "LEVEL"):
+            raise ValueError("Jenis kolom tidak dikenal")
+        try:
+            perubahan = json.loads(request.form.get("perubahan") or "[]")
+            cakupan_baru = json.loads(request.form.get("cakupan") or '{"cakupan": "AREA"}')
+        except ValueError:
+            raise ValueError("Data perubahan tidak valid") from None
+        per_menu = {}
+        for p in perubahan:
+            if p.get("status") not in STATUS_MATRIKS:
+                raise ValueError("Status tidak dikenal")
+            per_menu.setdefault(int(p["id_menu"]), {})[str(p["id_target"])] = p["status"]
+        daftar = {x["id_menu"]: x for x in hak_akses.pohon_menu()}
+        disimpan = 0
+        for id_menu, target in per_menu.items():
+            m = daftar.get(id_menu)
+            if m is None or m["kode"] == "DASHBOARD":          # Dashboard: isi widget diatur di tab Aturan per Menu
+                continue
+            mendukung = ["lihat", *m["aksi"]]
+            data, cakupan_lama = [], {}
+            for a in hak_akses.aturan_menu(id_menu):
+                idt = str(a["id_target"])
+                if a["jenis"] == jenis and idt in target:       # sasaran ini diganti sesuai status baru
+                    if not a["tolak"] and a["aksi"].get("lihat") and a.get("cakupan"):
+                        cakupan_lama[idt] = a["cakupan"]        # cakupan data hak lama dipertahankan
+                    continue
+                data.append({"jenis": a["jenis"], "id_target": a["id_target"], "tolak": a["tolak"],
+                             "aksi": [k for k, v in a["aksi"].items() if v], "widget": a["widget"], "cakupan": a["cakupan"]})
+            for idt, status in target.items():
+                if status == "larang":
+                    data.append({"jenis": jenis, "id_target": idt, "tolak": True, "aksi": ["lihat"], "widget": [],
+                                 "cakupan": {"cakupan": "AREA"}})
+                elif status in ("lihat", "penuh"):
+                    data.append({"jenis": jenis, "id_target": idt, "tolak": False,
+                                 "aksi": mendukung if status == "penuh" else ["lihat"], "widget": [],
+                                 "cakupan": cakupan_lama.get(idt) or cakupan_baru})
+            hak_akses.simpan_aturan_menu(id_menu, _aturan_dari_json(m, data))
+            disimpan += 1
+        get_user_by_id.hapus()
+        _audit("HAK_AKSES_UBAH", f"MATRIKS_{jenis}", f"Matriks Akses · {disimpan} menu diperbarui")
+        return jsonify({"message": f"Matriks disimpan: {disimpan} menu diperbarui. Berlaku di semua PC dalam ±30 detik", "disimpan": disimpan})
+    return _jalankan(aksi)
 
 @admin_bp.route("/api/admin/akses/user")
 @_admin
@@ -491,6 +562,20 @@ def menu_geser(id_menu):
         return jsonify({"message": "Urutan menu disimpan"})
     return _jalankan(aksi)
 
+@admin_bp.route("/api/admin/menu/urut", methods=["POST"])
+@_admin
+def menu_urut():
+    """Urutan baru satu kelompok menu seinduk dari seret-lepas: id_induk (kosong = Lv1) + urutan (JSON daftar id_menu)."""
+    def aksi():
+        try:
+            urutan = [int(x) for x in json.loads(request.form.get("urutan") or "[]")]
+        except (ValueError, TypeError):
+            raise ValueError("Data urutan tidak valid") from None
+        db_menu.urut_menu(request.form.get("id_induk", type=int), urutan)
+        hak_akses.hapus_cache()
+        _audit("MENU_UBAH", "URUTAN", f"Urutan {len(urutan)} menu diubah (seret-lepas)")
+        return jsonify({"message": "Urutan menu disimpan"})
+    return _jalankan(aksi)
 
 @admin_bp.route("/api/admin/menu/<int:id_menu>/aktif", methods=["POST"])
 @_admin

@@ -7,8 +7,15 @@ import PanelFilter, { TombolFilter } from '../../komponen/PanelFilter'
 import TabelDetail from '../../komponen/TabelDetail'
 import { MemuatLaporan } from '../../komponen/Keadaan'
 
-const FILTER_AWAL = { dari: null, sampai: null, perusahaan: [], sumber: [] }
-const JENIS = [{ kunci: 'perusahaan', nama: 'Perusahaan' }, { kunci: 'sumber', nama: 'Sumber' }]
+const FILTER_AWAL = { dari: null, sampai: null, perusahaan: [], aging: [], sumber: [], status: [], kategori: [] }
+// grup: filter yang hanya menyaring sebagian tabel diberi judul kelompoknya di panel
+const JENIS = [
+  { kunci: 'perusahaan', nama: 'Perusahaan' },
+  { kunci: 'aging', nama: 'Aging' },
+  { kunci: 'sumber', nama: 'Sumber', grup: 'Hutang & piutang' },
+  { kunci: 'status', nama: 'Status', grup: 'Hutang & piutang' },
+  { kunci: 'kategori', nama: 'Kategori', grup: 'PR & PO' },
+]
 const TAB_HUTANG = [
   { kunci: 'hutang', nama: 'Per dokumen', ket: () => 'Tagihan yang belum lunas. Potongan (AP Discount Notes dll) bernilai negatif. Yang paling lama di atas.' },
   { kunci: 'supplier', nama: 'Per supplier', ket: () => 'Sisa bersih = tagihan dikurangi potongan. Yang terbesar di atas.' },
@@ -116,8 +123,11 @@ export default function LaporanOutstanding({ dataId, onDataHilang }) {
       </div>
       <PanelFilter terbuka={panel} onTutup={() => setPanel(false)} jumlahAktif={aktif.length} onReset={reset}>
         {data && <FilterTanggal dari={filter.dari} sampai={filter.sampai} efektif={data.rentang} satuan="hari" bawaan={null} dataset={data.dataset} onUbah={ubah} />}
-        {JENIS.map(({ kunci, nama }) => (
-          <FilterMulti key={kunci} sebaris label={nama} opsi={data?.pilihan[kunci] ?? []} terpilih={filter[kunci]} onUbah={(v) => ubah({ [kunci]: v })} />
+        {JENIS.map(({ kunci, nama, grup }, i) => (
+          <div key={kunci}>
+            {grup && grup !== JENIS[i - 1]?.grup && <p className="mb-1.5 mt-1 text-xs font-medium text-slate-500">Hanya untuk {grup}</p>}
+            <FilterMulti sebaris label={nama} opsi={data?.pilihan[kunci] ?? []} terpilih={filter[kunci]} onUbah={(v) => ubah({ [kunci]: v })} />
+          </div>
         ))}
       </PanelFilter>
     </div>

@@ -326,7 +326,6 @@ def _query_satu(sql, *params):
     finally:
         conn.close()
 
-
 def cabut_blacklist(id_blacklist, alasan, user_id):
     """Blacklist dicabut (hasil persetujuan). Baris tetap ada; target bebas bila tidak ada blacklist aktif lain.
     Trigger blacklist permanen hanya mengizinkan lewat SESSION_CONTEXT cabut_blacklist = 1 (migrasi 027)."""
@@ -361,7 +360,6 @@ def cabut_blacklist(id_blacklist, alasan, user_id):
         except Exception:       # noqa: BLE001 - koneksi sudah tertutup
             pass
         conn.close()
-
 
 def mitra_aktif(id_supplier):
     """Nama mitra aktif, atau None."""

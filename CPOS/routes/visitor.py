@@ -1,5 +1,4 @@
 import os
-import re
 import shutil
 import uuid
 
@@ -7,15 +6,13 @@ from datetime import date, datetime
 from flask import Blueprint, abort, jsonify, render_template, request, send_file
 from flask_login import current_user, login_required
 from extensions import UPLOAD_FOLDER
-from utils import db_aktivitas as db, kolom_wajib, pengaturan
-from utils.absensi_rules import hari_iso, hitung_status_waktu, is_duplikat, tentukan_jenis
+from utils import db_aktivitas as db, pengaturan
 from utils.area import area_data
 from utils.audit_utils import catat_security_audit
-from utils.db_absensi import get_jadwal_hari, get_jadwal_kerja
 from utils.db_personel import daftar_jenis_sim, daftar_kategori, get_personel
 from utils.face_cache import cari_terdekat_konsisten, slot_proses_wajah
 from utils.face_utils import TANPA_TANTANGAN, TANTANGAN_VALID, cek_liveness, embedding_frontal, embedding_to_binary
-from utils.hak_akses import boleh, halaman as lihat_halaman, izin, tab_lihat
+from utils.hak_akses import boleh, halaman as lihat_halaman, izin
 from utils.personel_utils import format_nama_personel
 from utils.plat_utils import normalisasi_plat
 from utils.upload_utils import simpan_frames
@@ -75,11 +72,6 @@ def _simpan_foto(path_frame, sekarang):
     nama = f"{sekarang:%Y%m%d%H%M%S}_{uuid.uuid4().hex[:8]}.jpg"
     shutil.copyfile(path_frame, os.path.join(folder, nama))
     return f"uploads/{FOLDER_SCAN}/{nama}"
-
-def _foto_dari_form():
-    """Foto scan yang dikirim balik oleh form kunjungan: hanya file di uploads/scan."""
-    teks = (request.form.get("foto_scan") or "").strip()
-    return teks if re.fullmatch(rf"uploads/{FOLDER_SCAN}/[\w-]+\.jpg", teks) else None
 
 @visitor_bp.route("/api/visitor/scan", methods=["POST"])
 @login_required
@@ -164,51 +156,12 @@ def scan():
         "foto_scan": foto,
     })
 
-def _jam(t):
-    return t.strftime("%H:%M") if t else None
-
 def _orang_form():
     teks = (request.form.get("id_personel") or "").strip()
     p = get_personel(int(teks)) if teks.isdigit() else None
     if not p or not p["is_active"]:
         raise ValueError("Scan wajah orangnya terlebih dahulu")
     return p
-
-@visitor_bp.route("/api/visitor/masuk", methods=["POST"])
-@login_required
-@izin("KUNJUNGAN", "tambah")
-def masuk():
-    """Kunjungan driver / tamu masuk: keperluan wajib, orang yang dituju & plat opsional (Kolom Wajib: form TAMU)."""
-    f = request.form
-    try:
-        p = _orang_form()
-        if p["kategori"] == "KARYAWAN":
-            raise ValueError(f"{p['nama_personel']} karyawan: absensinya tercatat otomatis saat scan")
-        akhir = db.terakhir(p["id_personel"])
-        if akhir and akhir["jenis"] == "MASUK":
-            raise ValueError(f"{p['nama_personel']} masih tercatat di dalam. Catat keluar terlebih dahulu.")
-        kolom_wajib.cek("TAMU", f)
-        keperluan = (f.get("keperluan") or "").strip()[:120]
-        if not keperluan:
-            raise ValueError("Isi keperluan kunjungan")
-        keterangan = (f.get("keterangan") or "").strip()[:120]
-        id_dituju = None
-        if (f.get("id_dituju") or "").strip():
-            pilihan = {d["id_personel"] for d in db.daftar_dituju()}
-            id_dituju = int(f["id_dituju"]) if f["id_dituju"].isdigit() and int(f["id_dituju"]) in pilihan else None
-            if id_dituju is None:
-                raise ValueError("Pilih orang yang dituju dari daftar")
-        no_plat = None
-        if (f.get("no_plat") or "").strip():
-            no_plat, error = normalisasi_plat(f.get("no_plat"))
-            if error:
-                raise ValueError(error)
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    db.catat(p["id_personel"], "MASUK", db.BERHASIL, _area(), current_user.id, nama_wajah=p["nama_personel"],
-             foto_path=_foto_dari_form(), keterangan=" · ".join(x for x in (keperluan, keterangan) if x),
-             id_dituju=id_dituju, no_plat=no_plat, perangkat=f.get("perangkat"), ip=request.remote_addr)
-    return jsonify({"message": f"{p['nama_personel']} dicatat masuk"})
 
 @visitor_bp.route(
     "/api/visitor/kunjungan/<int:activity_id>/lengkapi",
@@ -315,7 +268,10 @@ def kunjungan_manual():
         no_plat, error = normalisasi_plat(teks_plat)
         if error:
             return jsonify({"error": error}), 400
-    activity_id = db.buat_kunjungan_menunggu(no_plat, id_area, perangkat="Web", ip=request.remote_addr)
+    try:
+        activity_id = db.buat_kunjungan_menunggu(no_plat, id_area, perangkat="Web", ip=request.remote_addr)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     return jsonify({"activity_id": activity_id})
 
 @visitor_bp.route("/api/visitor/kunjungan/<int:activity_id>")
@@ -351,26 +307,6 @@ def sinkron_kunjungan():
         return jsonify({"error": str(e)}), 500
     return jsonify({"masuk": masuk, "keluar": keluar})
 
-@visitor_bp.route("/api/visitor/keluar", methods=["POST"])
-@login_required
-@izin("KUNJUNGAN", "ubah")
-def keluar():
-    """Catat keluar orang yang masih di dalam (tombol Keluar di daftar, atau setelah scan driver / tamu)."""
-    try:
-        p = _orang_form()
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    akhir = db.terakhir(p["id_personel"])
-    if not akhir or akhir["jenis"] != "MASUK":
-        return jsonify({"error": f"{p['nama_personel']} tidak tercatat di dalam"}), 400
-    sekarang = datetime.now()
-    status_waktu = selisih = None
-    if p["kategori"] == "KARYAWAN":
-        status_waktu, selisih = hitung_status_waktu("KELUAR", sekarang, get_jadwal_hari(hari_iso(sekarang), _area()))
-    db.catat(p["id_personel"], "KELUAR", db.BERHASIL, _area(), current_user.id, nama_wajah=p["nama_personel"],
-             foto_path=_foto_dari_form(), status_waktu=status_waktu, selisih=selisih, ip=request.remote_addr, waktu=sekarang)
-    return jsonify({"message": f"{p['nama_personel']} dicatat keluar"})
-
 @visitor_bp.route("/api/visitor/<int:activity_id>/foto/<arah>/<sisi>")
 @login_required
 @izin("KUNJUNGAN", "lihat")
@@ -395,7 +331,6 @@ def foto_kendaraan(activity_id, arah, sisi):
 def _tanggal():
     return date.fromisoformat(request.args.get("tanggal") or date.today().isoformat())
 
-@visitor_bp.route("/api/visitor/logs")
 @login_required
 @izin("KUNJUNGAN", "lihat")
 def logs():
@@ -419,18 +354,6 @@ def daftar_kunjungan():
         return jsonify({"error": "Tanggal tidak valid"}), 400
     return jsonify(db.daftar_kunjungan(tanggal, area_data(current_user.id), kelompok,
                                        (request.args.get("cari") or "").strip()[:60] or None))
-
-@visitor_bp.route("/api/visitor/di-dalam")
-@login_required
-@izin("KUNJUNGAN", "lihat")
-def di_dalam():
-    return jsonify(db.di_dalam(area_data(current_user.id)))
-
-@visitor_bp.route("/api/visitor/ringkasan")
-@login_required
-@izin("KUNJUNGAN", "lihat")
-def ringkasan():
-    return jsonify(db.ringkasan(date.today(), area_data(current_user.id)))
 
 @visitor_bp.route("/api/visitor/dituju")
 @login_required
@@ -458,9 +381,3 @@ def absensi_bulanan():
     except ValueError:
         return jsonify({"error": "Bulan tidak valid (YYYY-MM)"}), 400
     return jsonify(db.rekap_bulanan(tahun, bulan, area_data(current_user.id)))
-
-@visitor_bp.route("/api/jadwal-kerja")
-@login_required
-def jadwal_kerja():
-    return jsonify([{**j, "jam_masuk": _jam(j["jam_masuk"]), "jam_pulang": _jam(j["jam_pulang"])}
-                    for j in get_jadwal_kerja(_area())])

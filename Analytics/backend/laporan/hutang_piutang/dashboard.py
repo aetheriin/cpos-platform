@@ -5,8 +5,22 @@ import pandas as pd
 from inti.filter import kanonik, saring, tgl
 from inti.laporan import rentang_tampil
 from inti.tabel import periksa, susun
+from inti.umur import URUTAN_UMUR, kategori_umur
 
-DIM = {"perusahaan": "comp", "sumber": "sumber"}
+from .sumber import BELUM_RV, RV_SEBAGIAN, URUTAN_STATUS
+
+DIM = {"perusahaan": "comp", "sumber": "sumber", "status": "status", "kategori": "kategori", "aging": "aging"}
+# Filter yang berlaku untuk tiap kelompok tabel; perusahaan dan aging untuk semua
+DIM_ARAP = ("perusahaan", "sumber", "status", "aging")
+DIM_PENGADAAN = ("perusahaan", "kategori", "aging")
+# Aging semua tabel memakai kategori umur yang sama dengan dashboard PR & PO (inti/umur.py)
+URUTAN_AGING = [u for u in URUTAN_UMUR if "Hari" in u]
+
+
+def _aging(df):
+    return ["" if pd.isna(u) else kategori_umur(u) for u in df["umur"]]
+
+
 JENIS_DETAIL = {"hutang": "Hutang per dokumen", "supplier": "Hutang per supplier", "piutang": "Piutang per dokumen", "customer": "Piutang per customer",
                 "pr": "PR outstanding", "po": "PO outstanding"}
 ARAP = ("hutang", "piutang")
@@ -17,7 +31,7 @@ _KURS = [("mata_uang", "Mata Uang", "teks"), ("kurs", "Kurs", "angka"), ("sumber
 KOLOM = {
     "hutang": [
         ("comp", "Perusahaan", "teks"), ("mitra", "Supplier", "teks"), ("no_dok", "No. Dokumen", "teks"), ("sumber", "Sumber", "teks"),
-        ("tgl", "Tanggal", "tanggal"), ("umur", "Umur (hari)", "angka"), ("status", "Status", "teks"),
+        ("tgl", "Tanggal", "tanggal"), ("umur", "Umur (hari)", "angka"), ("aging", "Aging", "teks"), ("status", "Status", "teks"),
         ("sisa_rp", "Sisa", "angka"), ("nilai_rp", "Nilai", "angka"), ("sudah_bayar_rp", "Sudah PV", "angka"),
         ("dalam_pvr_rp", "Sudah Diajukan PVR", "angka"), ("pv_depan_rp", "PV Belum Jatuh Tempo", "angka"), ("belum_diajukan_rp", "Belum Diajukan", "angka"),
         ("no_pvr", "No. PVR", "teks"), ("tgl_pvr", "Tanggal PVR", "tanggal"), ("approve_pvr", "Approve PVR", "teks"),
@@ -32,7 +46,7 @@ KOLOM = {
     ],
     "piutang": [
         ("comp", "Perusahaan", "teks"), ("mitra", "Customer", "teks"), ("no_dok", "No. Dokumen", "teks"), ("sumber", "Sumber", "teks"),
-        ("tgl", "Tanggal", "tanggal"), ("umur", "Umur (hari)", "angka"), ("status", "Status", "teks"),
+        ("tgl", "Tanggal", "tanggal"), ("umur", "Umur (hari)", "angka"), ("aging", "Aging", "teks"), ("status", "Status", "teks"),
         ("sisa_rp", "Sisa", "angka"), ("nilai_rp", "Nilai", "angka"), ("sudah_bayar_rp", "Sudah RV", "angka"),
         ("no_do", "No. DO", "teks"), ("no_kontrak", "No. Kontrak", "teks"), ("no_tc", "No. TC", "teks"), ("no_bayar", "No. RV", "teks"),
         ("keterangan", "Keterangan", "teks"),
@@ -44,14 +58,14 @@ KOLOM = {
     ],
     # PR dan PO: identitas dokumen, lalu barang dan sisanya, lalu tindak lanjut (PO/PI dan supplier), terakhir orang
     "pr": [
-        ("comp", "Perusahaan", "teks"), ("no_dok", "No. PR", "teks"), ("tgl", "Tanggal PR", "tanggal"), ("umur", "Umur (hari)", "angka"),
+        ("comp", "Perusahaan", "teks"), ("no_dok", "No. PR", "teks"), ("tgl", "Tanggal PR", "tanggal"), ("umur", "Umur (hari)", "angka"), ("aging", "Aging", "teks"),
         ("kode_barang", "Kode Barang", "teks"), ("nama_barang", "Nama Barang", "teks"), ("satuan", "Satuan", "teks"),
         ("qty_minta", "Qty Diminta", "angka"), ("qty_proses", "Qty Sudah PO", "angka"), ("qty_sisa", "Qty Outstanding", "angka"),
         ("no_lanjut", "No. PO", "teks"), ("mitra", "Supplier", "teks"), ("kategori", "Kategori", "teks"),
         ("dibuat_oleh", "Dibuat Oleh", "teks"), ("approve_oleh", "Approve Oleh", "teks"),
     ],
     "po": [
-        ("comp", "Perusahaan", "teks"), ("no_dok", "No. PO", "teks"), ("tgl", "Tanggal PO", "tanggal"), ("umur", "Umur (hari)", "angka"),
+        ("comp", "Perusahaan", "teks"), ("no_dok", "No. PO", "teks"), ("tgl", "Tanggal PO", "tanggal"), ("umur", "Umur (hari)", "angka"), ("aging", "Aging", "teks"),
         ("mitra", "Supplier", "teks"), ("kode_barang", "Kode Barang", "teks"), ("nama_barang", "Nama Barang", "teks"), ("satuan", "Satuan", "teks"),
         ("qty_minta", "Qty Order", "angka"), ("qty_proses", "Qty Diterima", "angka"), ("qty_sisa", "Qty Outstanding", "angka"),
         ("no_lanjut", "No. PI", "teks"), ("kategori", "Kategori", "teks"), ("dibuat_oleh", "Dibuat Oleh", "teks"),
@@ -77,13 +91,22 @@ def _saring(df, ds, filt):
     dari, sampai = rentang_tampil(ds)
     if getattr(ds, "dari", None) is None and len(df):   # data selalu semua riwayat; tanpa filter tanggal, dokumen lama tetap tampil
         dari = min(dari, df["tgl"].min())
+    df = df.assign(aging=_aging(df))
     arap = df["jenis"].isin(ARAP)
-    pilihan = {"perusahaan": sorted(df["comp"].unique()), "sumber": sorted(df.loc[arap, "sumber"].dropna().unique(), key=str.casefold)}
-    filt = {k: kanonik((filt or {}).get(k), pilihan[k], judul) for k, judul in (("perusahaan", "Perusahaan"), ("sumber", "Sumber"))}
+    ada = lambda kolom, bagian: set(df.loc[bagian, kolom].dropna()) - {""}
+    pilihan = {
+        "perusahaan": sorted(df["comp"].unique()),
+        "sumber": sorted(ada("sumber", arap), key=str.casefold),
+        "status": [s for s in [*URUTAN_STATUS, BELUM_RV, RV_SEBAGIAN] if s in ada("status", arap)],
+        "kategori": sorted(ada("kategori", ~arap), key=str.casefold),
+        "aging": [u for u in URUTAN_AGING if u in set(df["aging"])],
+    }
+    judul = {"perusahaan": "Perusahaan", "sumber": "Sumber", "status": "Status", "kategori": "Kategori", "aging": "Aging"}
+    filt = {k: kanonik((filt or {}).get(k), pilihan[k], judul[k]) for k in DIM}
     d = df[(df["tgl"] >= dari) & (df["tgl"] <= sampai)]
-    # filter sumber hanya untuk hutang/piutang; PR dan PO cukup filter perusahaan
-    d_arap = saring(d[d["jenis"].isin(ARAP)], filt, DIM)
-    d_pp = saring(d[~d["jenis"].isin(ARAP)], {"perusahaan": filt["perusahaan"]}, {"perusahaan": "comp"})
+    # tiap filter hanya menyaring kelompok tabel yang punya kolomnya
+    d_arap = saring(d[d["jenis"].isin(ARAP)], {k: filt[k] for k in DIM_ARAP}, {k: DIM[k] for k in DIM_ARAP})
+    d_pp = saring(d[~d["jenis"].isin(ARAP)], {k: filt[k] for k in DIM_PENGADAAN}, {k: DIM[k] for k in DIM_PENGADAAN})
     return pd.concat([d_arap, d_pp]), dari, sampai, pilihan
 
 
@@ -135,7 +158,8 @@ def bangun(df, ds, filt=None):
     d, dari, sampai, pilihan = _saring(df, ds, filt)
     return {
         "periode": {"mulai": tgl(dari), "akhir": tgl(sampai)},
-        "rentang": {"dari": tgl(dari), "sampai": tgl(sampai), "satuan": "hari", "bawaan": None},
+        # isian filter Tanggal tetap di dalam data yang dimuat; dokumen lama sebelum itu tetap ikut selama filter Tanggal tidak dipakai
+        "rentang": {"dari": tgl(max(dari, pd.Timestamp(ds.mulai))), "sampai": tgl(sampai), "satuan": "hari", "bawaan": None},
         "kpi": kpi(d),
         "jumlah": {j: int(len(_tabel(d, j))) for j in JENIS_DETAIL},
         "pilihan": pilihan,

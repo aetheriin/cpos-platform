@@ -173,6 +173,9 @@ KOLOM_DETAIL = [
     ("buyer", "Buyer", "teks"),
     ("po_number", "No PO", "teks"),
     ("po_date", "Tgl PO", "tanggal"),
+    ("harga_po", "Harga Satuan", "angka"),              # harga satuan di PO (mata uang PO), dari ERP
+    ("total_po", "Total PO", "angka"),
+    ("mata_uang_po", "Mata Uang", "teks"),
     ("partial", "Partial", "teks"),                 # hanya terisi di tab Sudah PO: Y kalau PR itu di-PO lebih dari satu nomor PO berbeda
 ]
 
@@ -202,6 +205,11 @@ def _satu_baris_per_pr(sub):
         "supplier_name": g["supplier_name"].agg(_gabung),
         "po_date": g["po_date"].max(),
     })
+    if "harga_po" in sub:   # beberapa PO: total dijumlah, harga satuan hanya kalau sama
+        po["total_po"] = g["total_po"].sum(min_count=1)
+        po["harga_po"] = g["harga_po"].agg(lambda s: s.iloc[0] if s.dropna().nunique() == 1 else float("nan"))
+        po["mata_uang_po"] = g["mata_uang_po"].agg(_gabung)
+        dasar = dasar.drop(columns=["harga_po", "total_po", "mata_uang_po"])
     return dasar.drop(columns=_KOLOM_PO).join(po).reset_index()
 
 
@@ -240,6 +248,9 @@ def detail(data, jenis, dari, sampai, minggu=None, comp=None, kategori=None, buy
         t = pilih.drop_duplicates(["line", "po_number", "po_date"]).reset_index(drop=True)   # kolom partial sudah ada (sifat PR-nya)
     if not t.empty:
         t["lama"] = t["line"].map(m.penyelesaian(df)["lama"])   # dari seluruh baris PR itu, bukan hanya yang lolos filter
+    for k, _, _ in KOLOM_DETAIL:   # data yang dimuat sebelum ada kolom harga: kolomnya kosong sampai dimuat ulang
+        if k not in t:
+            t[k] = None
     hasil = susun(t, KOLOM_DETAIL, KOLOM_CARI, cari, urut, arah, urut_awal, arah_awal, halaman, ukuran,
                   pembanding="pr_date" if jenis == "outstanding" else None)
     return {"jenis": jenis, "judul": JENIS_DETAIL[jenis], "periode": {"mulai": _tgl(ws), "akhir": _tgl(we)}, **hasil}

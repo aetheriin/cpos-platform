@@ -1,5 +1,3 @@
-// ===== ADMIN > KELOLA MENU =====
-// Susunan menu 3 level (tabel Menu). Siapa yang mendapat menu diatur di Hak Akses; di sini hanya bentuk menunya.
 const LABEL_AKSI_MENU = { tambah: 'Tambah', ubah: 'Ubah', hapus: 'Hapus', setujui: 'Setujui', tolak: 'Tolak', selesai: 'Selesai' };
 let DATA_MENU = { menu: [], aplikasi: [], aksi: [] };
 
@@ -32,10 +30,11 @@ function tampilMenuKelola() {
     const saudara = m => menu.filter(x => x.id_induk === m.id_induk);
     document.getElementById('tabelMenuKelola').innerHTML = tampil.map(m => {
         const s = saudara(m), i = s.indexOf(m);
-        return `<tr class="hover:bg-slate-50${m.is_active ? '' : ' text-slate-400'}">
+        return `<tr class="hover:bg-slate-50${m.is_active ? '' : ' text-slate-400'}" data-menu="${m.id_menu}" data-induk="${m.id_induk || ''}" data-level="${m.level}">
             <td class="table-cell relative" style="padding-left:${0.75 + (m.level - 1) * 1.6}rem">
                 ${Array.from({ length: m.level - 1 }, (_, n) => `<span class="pohon-garis" style="left:${1.5 + n * 1.6}rem"></span>`).join('')}
-                <div class="flex items-center gap-2.5"><span class="${KELAS_IKON_MENU[m.level]}"><i class="fa-solid ${escapeHtml(m.level === 3 ? 'fa-circle' : (m.ikon || (m.level === 1 ? 'fa-layer-group' : 'fa-file-lines')))}"></i></span>
+                <div class="flex items-center gap-2.5"><span class="seret-menu text-slate-300 hover:text-slate-600" style="cursor:grab" draggable="true" title="Seret untuk mengubah urutan (di antara menu seinduk)"><i class="fa-solid fa-grip-vertical"></i></span>
+                <span class="${KELAS_IKON_MENU[m.level]}"><i class="fa-solid ${escapeHtml(m.level === 3 ? 'fa-circle' : (m.ikon || (m.level === 1 ? 'fa-layer-group' : 'fa-file-lines')))}"></i></span>
                 <p class="min-w-0 ${m.level === 1 ? 'font-bold uppercase text-xs tracking-wider' : m.level === 2 ? 'font-semibold' : 'text-slate-600'}" title="${escapeHtml(m.kode)}">${escapeHtml(m.nama)}</p></div></td>
             <td class="table-cell font-mono text-xs">${m.url ? escapeHtml(m.url) : '<span class="text-slate-400">belum ada</span>'}</td>
             <td class="table-cell text-xs">${m.aksi.map(namaAksi).join(', ') || '<span class="text-slate-400">Lihat saja</span>'}</td>
@@ -114,3 +113,81 @@ function aktifMenuKelola(id) {
     konfirmasiAktif({ url: `/api/admin/menu/${m.id_menu}/aktif`, aktif: !m.is_active, nama: m.nama, jenis: 'menu',
                       pesanNonaktif: 'Menu ini beserta turunannya hilang dari sidebar semua pengguna.', setelahnya: muatMenuKelola });
 }
+
+// ===== Seret & lepas untuk mengubah urutan (hanya di antara menu seinduk; anak ikut pindah bersama induknya) =====
+let seret = null;        // { id, induk }: menu yang sedang diseret
+let sisip = null;        // { target, setelah }: tempat jatuh saat ini
+const tbodyMenu = document.getElementById('tabelMenuKelola');
+const barisMenu = el => el && el.closest ? el.closest('tr[data-menu]') : null;
+const idBaris = tr => Number(tr.dataset.menu);
+
+// Menu itu + semua turunannya yang sedang tampil (baris yang berurutan di bawahnya dengan level lebih dalam)
+function blokMenu(id) {
+    const baris = [...tbodyMenu.querySelectorAll('tr[data-menu]')];
+    const i = baris.findIndex(r => idBaris(r) === id);
+    if (i < 0) return [];
+    const level = Number(baris[i].dataset.level);
+    const blok = [baris[i]];
+    for (let j = i + 1; j < baris.length && Number(baris[j].dataset.level) > level; j++) blok.push(baris[j]);
+    return blok;
+}
+
+// Dari baris yang sedang di-hover, naik ke induknya sampai ketemu menu yang seinduk dengan yang diseret (null = tidak boleh dilepas di sini)
+function saudaraDari(tr) {
+    let m = DATA_MENU.menu.find(x => x.id_menu === idBaris(tr));
+    while (m && String(m.id_induk || '') !== seret.induk) m = DATA_MENU.menu.find(x => x.id_menu === m.id_induk);
+    return m && m.id_menu !== seret.id ? m : null;
+}
+
+function bersihkanGaris() {
+    tbodyMenu.querySelectorAll('td').forEach(td => { td.style.boxShadow = ''; });
+}
+
+function selesaiSeret() {
+    if (seret) blokMenu(seret.id).forEach(r => { r.style.opacity = ''; });
+    bersihkanGaris();
+    seret = sisip = null;
+}
+
+tbodyMenu.addEventListener('dragstart', e => {
+    const pegangan = e.target.closest ? e.target.closest('.seret-menu') : null;
+    if (!pegangan) { e.preventDefault(); return; }
+    const tr = barisMenu(pegangan);
+    seret = { id: idBaris(tr), induk: tr.dataset.induk };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(seret.id));          // Firefox butuh data agar seret berjalan
+    e.dataTransfer.setDragImage(tr, 24, 16);
+    blokMenu(seret.id).forEach(r => { r.style.opacity = '.4'; });
+});
+
+tbodyMenu.addEventListener('dragover', e => {
+    if (!seret) return;
+    const tr = barisMenu(e.target);
+    bersihkanGaris();
+    sisip = null;
+    const s = tr && saudaraDari(tr);
+    if (!s) return;
+    e.preventDefault();                                               // di sini boleh dilepas
+    const blok = blokMenu(s.id_menu);
+    const tengah = (blok[0].getBoundingClientRect().top + blok[blok.length - 1].getBoundingClientRect().bottom) / 2;
+    const setelah = e.clientY > tengah;
+    sisip = { target: s.id_menu, setelah };
+    const baris = setelah ? blok[blok.length - 1] : blok[0];
+    baris.querySelectorAll('td').forEach(td => { td.style.boxShadow = `inset 0 ${setelah ? '-' : ''}3px 0 #3b82f6`; });
+});
+
+tbodyMenu.addEventListener('drop', async e => {
+    if (!seret || !sisip) return;
+    e.preventDefault();
+    const { id, induk } = seret, { target, setelah } = sisip;
+    selesaiSeret();
+    const lama = DATA_MENU.menu.filter(x => String(x.id_induk || '') === induk).map(x => x.id_menu);
+    const urutan = lama.filter(x => x !== id);
+    urutan.splice(urutan.indexOf(target) + (setelah ? 1 : 0), 0, id);
+    if (urutan.join() === lama.join()) return;                        // posisinya tidak berubah
+    const r = await kirimForm('/api/admin/menu/urut', { id_induk: induk, urutan: JSON.stringify(urutan) });
+    if (r.error) { Notif.gagal(r.error); return; }
+    muatMenuKelola();
+});
+
+tbodyMenu.addEventListener('dragend', selesaiSeret);

@@ -47,9 +47,11 @@
             </div>
         </div>
         {% endif %}
-        <div class="hidden sm:block text-right leading-tight pl-2.5 border-l border-slate-200">
-            <p class="text-sm font-bold text-slate-900">{{ current_user.nama_lengkap }}</p>
-            <p class="text-xs text-slate-500">{{ current_user.nama_level }}</p>
+        {# Nama panjang dipotong dengan "…" supaya topbar tidak melebar; nama lengkap muncul di tooltip #}
+        <div class="hidden sm:block min-w-0 text-right leading-tight pl-2.5 border-l border-slate-200" style="max-width: 160px"
+             title="{{ current_user.nama_lengkap }}{% if current_user.nama_level %} ({{ current_user.nama_level }}){% endif %}">
+            <p class="truncate text-sm font-bold text-slate-900">{{ current_user.nama_lengkap }}</p>
+            <p class="truncate text-xs text-slate-500">{{ current_user.nama_level }}</p>
         </div>
         {# Logout wajib POST + token CSRF (tidak bisa dipicu lewat link dari halaman lain) #}
         <form method="post" action="{{ url_for('auth.logout') }}" class="inline">

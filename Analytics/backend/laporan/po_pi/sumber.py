@@ -1,4 +1,6 @@
 """Laporan PO/PI: ambil data dari SP dan bersihkan. PURCHASEID/NUMBER/DATE yang dipisah koma dipecah jadi satu baris per PI."""
+from concurrent.futures import ThreadPoolExecutor
+
 import pandas as pd
 
 from inti import kategori, konfigurasi
@@ -7,6 +9,8 @@ from inti.db import get_connection
 from inti.perusahaan import daftar_perusahaan
 from inti.sp import per_perusahaan
 from inti.umur import kategori_umur
+
+from .. import harga_po
 
 SP_NAME = konfigurasi.SP_PO_PI
 SUMBER = konfigurasi.SUMBER_LAPORAN
@@ -24,10 +28,14 @@ def ambil_data(tgl_mulai, tgl_akhir, perusahaan=None, kendali=None):
 def muat(mulai, akhir, kendali=None):
     """Pemuat untuk Gudang. Periode sebelumnya ikut diambil untuk pembanding KPI, ditandai kolom `lalu`."""
     mulai_lalu, _ = jendela_sebelumnya(mulai, akhir)
-    raw = ambil_data(mulai_lalu.strftime("%Y%m%d"), akhir.replace("-", ""), kendali=kendali)
+    # harga PO (tabel detail) diambil bersamaan dengan SP
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        t_harga = pool.submit(harga_po.ambil, harga_po.mulai_po(mulai_lalu), kendali)
+        raw = ambil_data(mulai_lalu.strftime("%Y%m%d"), akhir.replace("-", ""), kendali=kendali)
+        harga = t_harga.result()
     if kendali:
         kendali.periksa()
-    df = bersihkan(raw)
+    df = harga_po.tempel_po(bersihkan(raw), harga)
     df["lalu"] = df["cd"] < pd.Timestamp(mulai)
     return df, dict(df.attrs.get("catatan", {}), baris_sp=int((~df["lalu"]).sum()))
 

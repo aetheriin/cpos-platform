@@ -162,6 +162,9 @@ KOLOM_DETAIL = [
     ("qtydelivered", "Qty Terima", "angka"),
     ("qtyout", "Qty Out", "angka"),
     ("uom", "Satuan", "teks"),
+    ("harga_po", "Harga Satuan", "angka"),          # harga di PO (mata uang PO), dari ERP
+    ("total_po", "Total PO", "angka"),
+    ("mata_uang_po", "Mata Uang", "teks"),
     ("itemtype", "Tipe Item", "teks"),
     ("supplier_code", "Kode Supplier", "teks"),
     ("supplier_name", "Supplier", "teks"),
@@ -210,6 +213,9 @@ def detail(data, jenis, dari, sampai, minggu=None, perusahaan=None, kategori=Non
 
     if not t.empty:
         t["lama"] = t["line"].map(P.penyelesaian(df)["lama"])   # dari seluruh baris PO itu, bukan hanya yang lolos filter
+    for k, _, _ in KOLOM_DETAIL:   # data yang dimuat sebelum ada kolom harga: kolomnya kosong sampai dimuat ulang
+        if k not in t:
+            t[k] = None
     hasil = susun(t, KOLOM_DETAIL, KOLOM_CARI, cari, urut, arah, urut_awal, arah_awal, halaman, ukuran,
                   pembanding="cd" if jenis == "outstanding" else None)
     return {"jenis": jenis, "judul": JENIS_DETAIL[jenis], "periode": {"mulai": _tgl(ws), "akhir": _tgl(we)}, **hasil}

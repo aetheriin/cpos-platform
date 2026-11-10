@@ -13,6 +13,6 @@ LAPORAN = Laporan(
     bangun=lambda ds, n, mg, f: dashboard.bangun(ds.df, ds, f),
     detail=lambda ds, jenis, n, mg, f, cari, urut, arah, hal, uk: dashboard.detail(ds.df, jenis, ds, f, cari, urut, arah, hal, uk),
     filter_didukung=tuple(dashboard.DIM),
-    label_filter={"perusahaan": "Perusahaan", "sumber": "Sumber"},
+    label_filter={"perusahaan": "Perusahaan", "sumber": "Sumber", "status": "Status", "kategori": "Kategori", "aging": "Aging"},
     mulai_bawaan="2025-01-01",   # hutang lama yang belum lunas tetap ikut
 )

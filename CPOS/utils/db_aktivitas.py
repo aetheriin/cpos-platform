@@ -167,19 +167,17 @@ def buat_kunjungan_menunggu(
         cursor.execute(
             """
             INSERT INTO FaceActivity (
-                ActivityType, StatusID, LogDate, LogDay,
+                ActivityType, StatusID, LogDate,
                 NoVehicle, CompAreaID, Device, IPAddress,
                 VisitData, EntryKejadianID, VisitNo
             )
             OUTPUT INSERTED.ActivityID
             VALUES (
                 'MASUK', ?, COALESCE(?, GETDATE()),
-                CONVERT(date, COALESCE(?, GETDATE())),
                 ?, ?, ?, ?, N'{}', ?, ?
             )
             """,
             status_id,
-            waktu,
             waktu,
             no_plat,
             id_area,
@@ -319,10 +317,6 @@ def tutup_kunjungan(activity_id, *, exit_id=None, waktu_keluar=None, id_area=Non
         conn.close()
 
 def sinkron_kejadian_plat(id_area, jam=24):
-    """Sambungkan kejadian gerbang (KejadianPlat) ke kunjungan, hanya `jam` jam terakhir.
-    MASUK -> buat catatan menunggu; KELUAR -> tutup kunjungan 'di dalam' dengan plat sama.
-    Tiap kejadian diproses sekali (dicek lewat EntryKejadianID / ExitKejadianID), jadi aman dipanggil berulang.
-    Kejadian BELUM_PASTI dilewati. Return (jumlah_masuk, jumlah_keluar)."""
     baru_masuk = baru_keluar = 0
     masuk = _query(
         """SELECT k.KejadianID AS id_kejadian, k.PlatNomor AS plat, k.WaktuMulai AS waktu
@@ -334,8 +328,11 @@ def sinkron_kejadian_plat(id_area, jam=24):
     )
     for k in masuk:
         plat, _ = normalisasi_plat(k["plat"])
-        buat_kunjungan_menunggu(plat or k["plat"], id_area, entry_id=k["id_kejadian"], waktu=k["waktu"], perangkat="Kamera")
-        baru_masuk += 1
+        try:
+            buat_kunjungan_menunggu(plat or k["plat"], id_area, entry_id=k["id_kejadian"], waktu=k["waktu"], perangkat="Kamera")
+            baru_masuk += 1
+        except ValueError:
+            continue
 
     keluar = _query(
         """SELECT k.KejadianID AS id_kejadian, k.PlatNomor AS plat, k.WaktuMulai AS waktu
@@ -399,36 +396,12 @@ def kunjungan_aktif(id_personel):
     )
     return baris[0] if baris else None
 
-def terakhir(id_user):
-    """Aktivitas berhasil terakhir orang ini dalam 24 jam: {jenis, waktu} atau None."""
-    rows = _query("""SELECT TOP 1 a.ActivityType AS jenis, a.LogDate AS waktu FROM FaceActivity a
-                     WHERE a.UserID = ? AND a.StatusID = ? AND a.ActivityType IS NOT NULL
-                       AND a.LogDate >= DATEADD(HOUR, -24, GETDATE())
-                     ORDER BY a.LogDate DESC, a.ActivityID DESC""", id_user, id_status()[BERHASIL])
-    return rows[0] if rows else None
-
-def sudah_masuk_hari_ini(id_user, tanggal):
-    """Absensi karyawan: (waktu scan terakhir hari itu, sudah ada MASUK)."""
-    rows = _query("""SELECT MAX(LogDate) AS terakhir, SUM(CASE WHEN ActivityType = 'MASUK' THEN 1 ELSE 0 END) AS masuk
-                     FROM FaceActivity WHERE UserID = ? AND LogDay = ? AND StatusID = ?""",
-                  id_user, tanggal, id_status()[BERHASIL])
-    r = rows[0] if rows else {"terakhir": None, "masuk": 0}
-    return r["terakhir"], bool(r["masuk"])
-
-
 _KOLOM = f"""a.ActivityID AS id_aktivitas, a.LogDate AS waktu, a.ActivityType AS jenis, s.StatusCode AS status, s.StatusName AS nama_status,
              s.StatusColor AS warna_status, a.Description AS keterangan, a.NoVehicle AS no_plat, a.TimeStatus AS status_waktu,
              a.DiffMinutes AS selisih_menit, a.FaceDistance AS jarak_wajah, a.Device AS perangkat, f.PhotoPath AS foto_scan,
              p.UserID AS id_personel, p.Nama AS nama_personel, p.PersonType AS kategori,
              {jenis_orang.sql_nama('p.PersonType')} AS nama_kategori, p.IsBlacklisted AS is_blacklisted, p.PhotoPath AS foto_path,
              p.CompanyFrom AS asal_perusahaan, d.Nama AS nama_dituju, ar.CompID + ' · ' + ar.AreaName AS area, u.Nama AS dicatat_oleh"""
-_FROM = """FROM FaceActivity a
-           JOIN Status s ON s.StatusID = a.StatusID
-           LEFT JOIN FaceRecog f ON f.FaceID = a.FaceID
-           LEFT JOIN UserProfile p ON p.UserID = a.UserID
-           LEFT JOIN Users d ON d.UserID = a.VisitToID
-           LEFT JOIN Users u ON u.UserID = a.CreateBy
-           LEFT JOIN CompanyArea ar ON ar.CompAreaID = a.CompAreaID"""
 
 def _rapikan(rows):
     for r in rows:
@@ -437,24 +410,6 @@ def _rapikan(rows):
             r["jam"] = r["waktu"].strftime("%H:%M")
             r["waktu"] = r["waktu"].strftime("%Y-%m-%d %H:%M")
     return rows
-
-def logs(tanggal, id_area, jenis=None, status=None, cari=None, batas=500):
-    """Semua aktivitas satu hari dalam cakupan area, terbaru dulu. jenis = jenis orang, status = kode status scan."""
-    f_area, a_area = sql_area("a.CompAreaID", id_area)
-    awal = datetime.combine(tanggal, datetime.min.time())
-    sql = f"SELECT TOP (?) {_KOLOM} {_FROM} WHERE a.LogDate >= ? AND a.LogDate < ?{f_area}"
-    params = [batas, awal, awal + timedelta(days=1), *a_area]
-    if jenis in jenis_orang.JENIS:
-        sql += " AND p.PersonType = ?"
-        params.append(jenis)
-    if status in STATUS:
-        sql += " AND s.StatusCode = ?"
-        params.append(status)
-    if cari:
-        pola = f"%{cari}%"
-        sql += " AND (p.Nama LIKE ? OR p.NoKTP LIKE ? OR a.NoVehicle LIKE ?)"
-        params += [pola] * 3
-    return _rapikan(_query(sql + " ORDER BY a.LogDate DESC, a.ActivityID DESC", *params))
 
 _KOLOM_KUNJUNGAN = """a.ActivityID AS id_aktivitas, a.VisitNo AS no_tiket, a.NoVehicle AS no_plat,
              ar.AreaCode AS lokasi, ar.AreaName AS nama_lokasi,
@@ -541,20 +496,6 @@ def di_dalam(id_area):
                               LEFT JOIN CompanyArea ar ON ar.CompAreaID = a.CompAreaID
                               WHERE a.n = 1 AND a.ActivityType = 'MASUK'{f_area}
                               ORDER BY a.LogDate DESC""", id_status()[BERHASIL], *a_area))
-
-def ringkasan(tanggal, id_area):
-    """Angka kartu: masuk hari ini per jenis, masih di dalam, tidak dikenali, ditolak."""
-    f_area, a_area = sql_area("a.CompAreaID", id_area)
-    st = id_status()
-    r = _query(f"""SELECT SUM(CASE WHEN a.StatusID = ? AND a.ActivityType = 'MASUK' AND p.PersonType = 'KARYAWAN' THEN 1 ELSE 0 END) AS karyawan,
-                          SUM(CASE WHEN a.StatusID = ? AND a.ActivityType = 'MASUK' AND p.PersonType = 'DRIVER' THEN 1 ELSE 0 END) AS driver,
-                          SUM(CASE WHEN a.StatusID = ? AND a.ActivityType = 'MASUK' AND p.PersonType = 'TAMU' THEN 1 ELSE 0 END) AS tamu,
-                          SUM(CASE WHEN a.StatusID = ? THEN 1 ELSE 0 END) AS tidak_dikenali,
-                          SUM(CASE WHEN a.StatusID = ? THEN 1 ELSE 0 END) AS ditolak
-                   FROM FaceActivity a LEFT JOIN UserProfile p ON p.UserID = a.UserID
-                   WHERE a.LogDay = ?{f_area}""",
-               st[BERHASIL], st[BERHASIL], st[BERHASIL], st[TIDAK_DIKENALI], st[DITOLAK], tanggal, *a_area)[0]
-    return {k: int(v or 0) for k, v in r.items()} | {"di_dalam": len(di_dalam(id_area))}
 
 def daftar_dituju():
     """Orang yang bisa ditemui tamu: karyawan aktif."""

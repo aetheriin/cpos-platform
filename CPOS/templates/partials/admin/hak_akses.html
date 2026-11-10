@@ -3,6 +3,7 @@
    Panel pohon menu & panel aturan masing-masing bergulir sendiri (halaman tidak ikut bergulir). #}
 <div class="seg mb-4" role="tablist">
     <button type="button" class="chip chip-active" data-tab-akses="aturan" data-on-click="pilihTabAkses" data-arg="aturan"><i class="fa-solid fa-sitemap mr-1"></i> Aturan per Menu</button>
+    <button type="button" class="chip" data-tab-akses="matriks" data-on-click="pilihTabAkses" data-arg="matriks"><i class="fa-solid fa-table-cells mr-1"></i> Matriks Akses</button>
     <button type="button" class="chip" data-tab-akses="cek" data-on-click="pilihTabAkses" data-arg="cek"><i class="fa-solid fa-user-check mr-1"></i> Cek Akses User</button>
     <button type="button" class="chip" data-tab-akses="awal" data-on-click="pilihTabAkses" data-arg="awal"><i class="fa-solid fa-house mr-1"></i> Halaman Awal Peran</button>
 </div>
@@ -96,5 +97,36 @@
             <thead class="table-header-row"><tr><th class="table-cell">Peran</th><th class="table-cell text-right">User</th><th class="table-cell">Halaman awal</th></tr></thead>
             <tbody data-per-halaman="20" id="tabelHalamanAwal" class="divide-y divide-slate-100"></tbody>
         </table>
+    </div>
+</div>
+
+{# ===== TAB: MATRIKS AKSES (menu × departemen / jabatan; klik sel memutar: kosong → Lihat → Penuh → Larang) ===== #}
+<div id="tabAkses-matriks" class="hidden">
+    <div class="filter-bar">
+        <select id="mxJenis" class="input-field w-56" data-on-change="muatMatriks" data-tanpa-cari>
+            <option value="DEPT">Kolom: Departemen</option>
+            <option value="LEVEL">Kolom: Jabatan</option>
+        </select>
+        <select id="mxCakupan" class="input-field w-56" data-tanpa-cari title="Cakupan data untuk hak yang baru diberikan">
+            <option value="AREA">Hak baru: Area sendiri</option>
+            <option value="PT">Hak baru: PT sendiri</option>
+            <option value="SEMUA">Hak baru: Semua PT</option>
+        </select>
+        <input type="search" id="mxCari" class="input-field w-56" placeholder="Cari menu..." data-on-input="gambarMatriks">
+        <div class="flex-1"></div>
+        <span id="mxRingkas" class="badge-status bg-amber-100 text-amber-800 hidden"></span>
+        <button type="button" class="btn-secondary" id="btnMxBatal" data-on-click="batalMatriks" disabled>Batal</button>
+        <button type="button" class="btn-primary" id="btnMxSimpan" data-on-click="simpanMatriks" disabled><i class="fa-solid fa-floppy-disk mr-1"></i> Simpan matriks</button>
+    </div>
+    <p class="text-xs text-slate-500 mb-2">
+        <i class="fa-solid fa-eye text-blue-600"></i> Lihat ·
+        <i class="fa-solid fa-check-double text-emerald-600"></i> Penuh (semua aksi menu itu) ·
+        <i class="fa-solid fa-ban text-red-600"></i> Larang ·
+        <i class="fa-solid fa-circle-half-stroke text-amber-600"></i> Sebagian aksi (atur di tab Aturan) ·
+        <i class="fa-solid fa-shuffle text-slate-500"></i> Turunan berbeda-beda.
+        Klik baris grup untuk memberi atau menarik ke seluruh turunannya. Bingkai hijau = belum disimpan.
+    </p>
+    <div class="section-box overflow-auto" style="max-height:calc(100vh - 17rem)">
+        <table class="text-sm border-collapse"><thead id="mxHead"></thead><tbody id="mxBody"></tbody></table>
     </div>
 </div>

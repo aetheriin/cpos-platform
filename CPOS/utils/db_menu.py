@@ -1,11 +1,6 @@
-"""Admin › Kelola Menu: susunan menu 3 level (Lv1 grup, Lv2 halaman, Lv3 bagian) di tabel Menu + aksi yang berlaku (MenuAction).
-
-Kode menu tidak bisa diubah (dipakai kode program, mis. izin('LIST', 'ubah')). Pindah induk = level ikut menyesuaikan, beserta
-anak-anaknya; maksimal 3 level. Hak akses menempel di menu (AccessMenu.MenuID), jadi ikut pindah bersama menunya."""
 from utils.db_utils import get_connection, _rows_to_dicts
 
 APLIKASI = ("CPOS", "ANALYTICS", "REKAPIN")
-
 
 def _query(sql, *params):
     conn = get_connection()
@@ -15,7 +10,6 @@ def _query(sql, *params):
         return _rows_to_dicts(cursor)
     finally:
         conn.close()
-
 
 def daftar_menu():
     """Semua menu (termasuk nonaktif) urut seperti sidebar: [{id_menu, kode, nama, url, ikon, level, aplikasi, id_induk,
@@ -40,7 +34,6 @@ def daftar_menu():
     tambah(None)
     return hasil
 
-
 def _turunan(menu, id_menu):
     """id semua turunan menu (anak, cucu)."""
     hasil, antre = [], [id_menu]
@@ -52,12 +45,10 @@ def _turunan(menu, id_menu):
                 antre.append(m["id_menu"])
     return hasil
 
-
 def _kedalaman(menu, id_menu):
     """Berapa level di bawah menu ini (0 = tanpa anak)."""
     anak = [m["id_menu"] for m in menu if m["id_induk"] == id_menu]
     return 1 + max(_kedalaman(menu, a) for a in anak) if anak else 0
-
 
 def simpan_menu(id_menu, kode, nama, id_induk, url, ikon, aplikasi, aksi):
     """Tambah (id_menu None) atau ubah menu. aksi = ActionID selain View yang berlaku. Kembalikan kode menu."""
@@ -110,7 +101,6 @@ def simpan_menu(id_menu, kode, nama, id_induk, url, ikon, aplikasi, aksi):
         conn.close()
     return kode
 
-
 def geser_menu(id_menu, arah):
     """Naik (-1) / turun (+1) satu posisi di antara menu seinduk; urutan ditulis ulang 10, 20, 30, ..."""
     menu = daftar_menu()
@@ -133,6 +123,20 @@ def geser_menu(id_menu, arah):
         conn.close()
     return True
 
+def urut_menu(id_induk, urutan):
+    """Tulis ulang urutan menu seinduk sesuai daftar id hasil seret-lepas (10, 20, 30, ...).
+    `urutan` harus tepat berisi semua menu seinduk itu; kalau tidak (daftar sudah berubah) ditolak."""
+    saudara = [x["id_menu"] for x in daftar_menu() if x["id_induk"] == id_induk]
+    if sorted(urutan) != sorted(saudara):
+        raise ValueError("Daftar menu berubah, muat ulang halaman lalu coba lagi")
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        for n, s in enumerate(urutan, 1):
+            cursor.execute("UPDATE Menu SET SortOrder = ? WHERE MenuID = ?", n * 10, s)
+        conn.commit()
+    finally:
+        conn.close()
 
 def set_aktif_menu(id_menu, aktif):
     """Nonaktif = menu (dan turunannya, karena induk jadi gerbang) hilang dari sidebar; aturan hak tetap tersimpan."""

@@ -50,9 +50,11 @@ async function muatAkses() {
     tampilHalamanAwal();
 }
 
+let mxDimuat = false;
 function pilihTabAkses(tab) {
     document.querySelectorAll('[data-tab-akses]').forEach(b => b.classList.toggle('chip-active', b.dataset.tabAkses === tab));
-    ['aturan', 'cek', 'awal'].forEach(t => document.getElementById(`tabAkses-${t}`).classList.toggle('hidden', t !== tab));
+    ['aturan', 'matriks', 'cek', 'awal'].forEach(t => document.getElementById(`tabAkses-${t}`).classList.toggle('hidden', t !== tab));
+    if (tab === 'matriks' && !mxDimuat) { mxDimuat = true; muatMatriks(); }
 }
 
 // ===== Pohon menu =====
@@ -590,4 +592,119 @@ async function beriKeTurunan() {
     const id = menuAktif.id_menu;
     await muatAkses();
     pilihMenuAkses(id);
+}
+
+// ===== Matriks Akses: menu (baris) × departemen / jabatan (kolom) =====
+// Sel: kosong → Lihat → Penuh (Lihat + semua aksi menu) → Larang → kosong. Klik sel grup berlaku ke seluruh turunannya.
+const IKON_MX = {
+    '': '<span class="text-slate-300">·</span>',
+    lihat: '<i class="fa-solid fa-eye text-blue-600" title="Lihat"></i>',
+    penuh: '<i class="fa-solid fa-check-double text-emerald-600" title="Penuh (semua aksi menu itu)"></i>',
+    larang: '<i class="fa-solid fa-ban text-red-600" title="Larang"></i>',
+    sebagian: '<i class="fa-solid fa-circle-half-stroke text-amber-600" title="Sebagian aksi: atur di tab Aturan per Menu"></i>',
+    campur: '<i class="fa-solid fa-shuffle text-slate-500" title="Turunan berbeda-beda"></i>',
+};
+const SIKLUS_MX = { '': 'lihat', lihat: 'penuh', penuh: 'larang', larang: '', sebagian: 'lihat', campur: 'penuh' };
+let mx = { jenis: 'DEPT', asli: new Map(), draft: new Map() };        // kunci "idMenu|idTarget" -> status
+
+const turunanMx = kode => anakMenu(kode).flatMap(a => [a, ...turunanMx(a.kode)]);
+const kunciMx = (m, t) => `${m.id_menu}|${t}`;
+const statusMx = (m, t) => { const k = kunciMx(m, t); return mx.draft.has(k) ? mx.draft.get(k) : (mx.asli.get(k) || ''); };
+const kolomMx = () => (mx.jenis === 'DEPT' ? DATA.departemen : DATA.jabatan);
+const terkunciMx = m => m.kode === 'DASHBOARD';                       // isi widget diatur di tab Aturan per Menu
+
+async function muatMatriks() {
+    const pilih = document.getElementById('mxJenis');
+    if (mx.draft.size && !(await Dialog.konfirmasi({ judul: 'Buang perubahan?', teksYa: 'Buang', bahaya: true,
+            pesan: 'Perubahan matriks yang belum disimpan akan hilang.' }))) { pilih.value = mx.jenis; return; }
+    const data = await ambilJson(`/api/admin/akses/matriks?jenis=${pilih.value}`);
+    if (data.error) { Notif.gagal(data.error); return; }
+    mx = { jenis: data.jenis, asli: new Map(data.sel.map(s => [`${s.id_menu}|${s.id_target}`, s.status])), draft: new Map() };
+    gambarMatriks();
+}
+
+function statusGabungan(m, t) {                                       // grup: status bersama diri sendiri + turunannya, atau "campur"
+    const anak = turunanMx(m.kode).filter(a => !terkunciMx(a));
+    if (!anak.length) return statusMx(m, t);
+    const semua = [m, ...anak].map(x => statusMx(x, t));
+    return semua.every(s => s === semua[0]) ? semua[0] : 'campur';
+}
+
+function aturMx(daftar, t, status) {
+    daftar.forEach(m => {
+        if (terkunciMx(m)) return;
+        const s = (status === 'lihat' && !m.aksi.length) ? 'penuh' : status;   // menu tanpa aksi lain: Lihat sama dengan Penuh
+        const k = kunciMx(m, t);
+        if ((mx.asli.get(k) || '') === s) mx.draft.delete(k); else mx.draft.set(k, s);
+    });
+}
+
+function bukaIndukMx(m, t) {                                          // induk harus terbuka (Lihat) supaya hak di anak berlaku
+    for (let p = m.induk && menuKode(m.induk); p; p = p.induk && menuKode(p.induk)) {
+        if (['', 'larang'].includes(statusMx(p, t))) aturMx([p], t, 'lihat');
+    }
+}
+
+function klikMx(arg) {
+    const [id, t] = arg.split('|');
+    const m = DATA.menu.find(x => x.id_menu === Number(id));
+    if (!m || terkunciMx(m)) return;
+    const berikut = SIKLUS_MX[statusGabungan(m, t)];
+    aturMx([m, ...turunanMx(m.kode)], t, berikut);
+    if (berikut === 'lihat' || berikut === 'penuh') bukaIndukMx(m, t);
+    gambarMatriks();
+}
+
+function gambarMatriks() {
+    const kolom = kolomMx();
+    const cari = (document.getElementById('mxCari').value || '').trim().toLowerCase();
+    const urut = m => [m, ...anakMenu(m.kode).flatMap(urut)];
+    const semua = DATA.menu.filter(m => !m.induk).flatMap(urut);
+    const tampil = new Set(semua.filter(m => !cari || m.nama.toLowerCase().includes(cari)).map(m => m.id_menu));
+    semua.filter(m => tampil.has(m.id_menu)).forEach(m => {           // induk dari hasil pencarian ikut tampil sebagai konteks
+        for (let p = m.induk && menuKode(m.induk); p; p = p.induk && menuKode(p.induk)) tampil.add(p.id_menu);
+    });
+
+    document.getElementById('mxHead').innerHTML = `<tr><th class="table-cell bg-white" style="position:sticky;left:0;top:0;z-index:3;min-width:16rem">Menu</th>`
+        + kolom.map(k => `<th class="table-cell text-center bg-white" style="position:sticky;top:0;z-index:2;min-width:7rem" title="${escapeHtml(k.nama)}">${escapeHtml(k.nama)}</th>`).join('') + '</tr>';
+    document.getElementById('mxBody').innerHTML = semua.filter(m => tampil.has(m.id_menu)).map(m => {
+        const grup = anakMenu(m.kode).length > 0;
+        const sel = kolom.map(k => {
+            const t = String(k.id);
+            if (terkunciMx(m)) return '<td class="text-center"><i class="fa-solid fa-lock text-slate-300" title="Isi dashboard diatur di tab Aturan per Menu"></i></td>';
+            const s = grup ? statusGabungan(m, t) : statusMx(m, t);
+            const berubah = [m, ...(grup ? turunanMx(m.kode) : [])].some(x => !terkunciMx(x) && mx.draft.has(kunciMx(x, t)));
+            const gaya = berubah ? 'background:rgba(16,185,129,.16);box-shadow:inset 0 0 0 2px #10b981' : '';
+            return `<td class="text-center" style="${gaya}"><button type="button" class="w-full py-1.5" data-on-click="klikMx" data-arg="${m.id_menu}|${escapeHtml(t)}">${IKON_MX[s] || IKON_MX['']}</button></td>`;
+        }).join('');
+        return `<tr class="border-t border-slate-100 ${grup ? 'bg-slate-50' : ''}">
+            <td class="table-cell bg-white" style="position:sticky;left:0;z-index:1;padding-left:${0.75 + (m.level - 1) * 1.1}rem"><span class="${grup ? 'font-semibold' : ''}">${escapeHtml(m.nama)}</span></td>${sel}</tr>`;
+    }).join('') || barisKosong(kolom.length + 1, 'Menu tidak ditemukan');
+
+    const n = mx.draft.size;
+    const ringkas = document.getElementById('mxRingkas');
+    ringkas.textContent = `${n} sel belum disimpan`;
+    ringkas.classList.toggle('hidden', !n);
+    document.getElementById('btnMxSimpan').disabled = !n;
+    document.getElementById('btnMxBatal').disabled = !n;
+}
+
+function batalMatriks() {
+    mx.draft.clear();
+    gambarMatriks();
+}
+
+async function simpanMatriks() {
+    if (!mx.draft.size) return;
+    const perubahan = [...mx.draft].map(([k, status]) => { const [id_menu, id_target] = k.split('|'); return { id_menu: Number(id_menu), id_target, status }; });
+    const kode = document.getElementById('mxCakupan').value;
+    const ok = await Dialog.konfirmasi({ judul: 'Simpan matriks', teksYa: 'Simpan',
+        pesan: `${perubahan.length} perubahan sel akan disimpan. Hak yang baru diberikan memakai cakupan data: ${(CAKUPAN.find(c => c[0] === kode) || [])[1] || kode}.` });
+    if (!ok) return;
+    const data = await denganTombol(document.getElementById('btnMxSimpan'), () => kirimForm('/api/admin/akses/matriks',
+        { jenis: mx.jenis, perubahan: JSON.stringify(perubahan), cakupan: JSON.stringify({ cakupan: kode }) }));
+    if (!tampilkanHasil(data)) return;
+    mx.draft.clear();
+    await muatAkses();
+    await muatMatriks();
 }
