@@ -22,11 +22,20 @@ function tokenCsrf() {
 
 // Waktu aktivitas terakhir (request non-polling) untuk peringatan sesi idle di ui.js
 let aktivitasTerakhir = Date.now();
+let sudahDiarahkanLogin = false;
 
 const Api = {
     // Hasil selalu { ok, status, data, error }; tidak pernah melempar exception.
     // polling: true -> request otomatis, tidak dihitung sebagai aktivitas user.
     async request(url, { method = 'GET', body = null, timeout = TIMEOUT_DEFAULT_MS, polling = false } = {}) {
+        if (sudahDiarahkanLogin) {
+            return {
+                ok: false,
+                status: 401,
+                data: null,
+                error: PESAN_STATUS[401],
+            };
+        }
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), timeout);
         const headers = { 'Accept': 'application/json', 'X-Requested-With': 'fetch' };
@@ -64,8 +73,6 @@ const Api = {
     },
 };
 
-// Sesi habis (idle / logout di tab lain): arahkan ke login sekali saja
-let sudahDiarahkanLogin = false;
 function sesiBerakhir() {
     if (sudahDiarahkanLogin) return;
     sudahDiarahkanLogin = true;
@@ -119,7 +126,10 @@ class Poller {
     }
 
     async _putar() {
-        if (!this.jalan) return;
+        if (!this.jalan || sudahDiarahkanLogin) {
+            this.stop();
+            return;
+        }
         if (this.maksDurasi && Date.now() - this.mulai > this.maksDurasi) {
             this.stop();
             if (this.onHabis) this.onHabis();
@@ -128,6 +138,12 @@ class Poller {
         if (!document.hidden && this.aktif()) {
             try { await this.fn(); } catch (err) { /* satu kegagalan tidak menghentikan polling */ }
         }
-        if (this.jalan) this.timer = setTimeout(() => this._putar(), this.interval);
+        if (sudahDiarahkanLogin) {
+            this.stop();
+            return;
+        }
+        if (this.jalan) {
+            this.timer = setTimeout(() => this._putar(), this.interval);
+        }
     }
 }

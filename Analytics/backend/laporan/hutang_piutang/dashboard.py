@@ -68,6 +68,7 @@ KOLOM = {
         ("comp", "Perusahaan", "teks"), ("no_dok", "No. PO", "teks"), ("tgl", "Tanggal PO", "tanggal"), ("umur", "Umur (hari)", "angka"), ("aging", "Aging", "teks"),
         ("mitra", "Supplier", "teks"), ("kode_barang", "Kode Barang", "teks"), ("nama_barang", "Nama Barang", "teks"), ("satuan", "Satuan", "teks"),
         ("qty_minta", "Qty Order", "angka"), ("qty_proses", "Qty Diterima", "angka"), ("qty_sisa", "Qty Outstanding", "angka"),
+        ("harga_po", "Harga Satuan", "angka"), ("nilai_sisa", "Nilai Outstanding", "angka"), ("mata_uang_po", "Mata Uang", "teks"),
         ("no_lanjut", "No. PI", "teks"), ("kategori", "Kategori", "teks"), ("dibuat_oleh", "Dibuat Oleh", "teks"),
     ],
 }

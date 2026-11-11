@@ -223,40 +223,142 @@ function ubahAktifJembatan(id) {
 async function muatKameraPlat() {
     const tbody = document.getElementById('tabelKameraPlat');
     const data = await ambilJson('/api/admin/deteksi-plat/kamera');
-    if (data.error) { tbody.innerHTML = barisGagal(7, data.error); return; }
+
+    if (data.error) {
+        tbody.innerHTML = barisGagal(6, data.error);
+        return;
+    }
+
     dataKameraPlat = data;
     tbody.innerHTML = data.kamera.map(k => `
-        <tr class="hover:bg-slate-50">
-            <td class="table-cell font-mono font-semibold">${escapeHtml(k.nama)}</td>
-            <td class="table-cell">${escapeHtml(k.area)}</td>
-            <td class="table-cell font-mono">${escapeHtml(k.gate || '-')}</td>
-            <td class="table-cell">${escapeHtml(data.facing[k.facing] || k.facing)}</td>
-            <td class="table-cell">
-                ${escapeHtml(data.view_position[k.view_position] || k.view_position || '-')}
+        <tr class="hover:bg-slate-50${k.is_active ? '' : ' text-slate-400'}">
+            <td class="table-cell font-mono font-semibold">
+                ${escapeHtml(k.nama)}
             </td>
-            <td class="table-cell font-mono text-xs">${escapeHtml(k.rtsp_tersamar)}</td>
-            <td class="table-cell text-center">${k.is_active ? badge('Aktif', WARNA_BADGE.hijau) : badge('Nonaktif', WARNA_BADGE.abu)}</td>
-            <td class="table-cell text-right"><button type="button" class="link-aksi text-blue-600" data-on-click="bukaKameraPlat" data-arg="${k.id_kamera}">Ubah</button></td>
-        </tr>`).join('') || barisKosong(7, 'Belum ada kamera deteksi plat');
+            <td class="table-cell">${escapeHtml(k.company || '-')}</td>
+            <td class="table-cell">${escapeHtml(k.area_name || '-')}</td>
+            <td class="table-cell font-mono text-xs">
+                ${escapeHtml(k.rtsp_tersamar || '-')}
+            </td>
+            <td class="table-cell text-center">
+                ${k.is_active
+                    ? badge('Aktif', WARNA_BADGE.hijau)
+                    : badge('Nonaktif', WARNA_BADGE.abu)}   
+            </td>
+            <td class="table-cell text-right whitespace-nowrap space-x-3">
+                <button type="button" class="link-aksi text-blue-600"
+                    data-on-click="bukaKameraPlat"
+                    data-arg="${k.id_kamera}">Ubah</button>
+
+                <button type="button"
+                    class="link-aksi ${k.is_active ? 'text-emerald-600' : 'text-red-600'}"
+                    data-on-click="ubahAktifKameraPlat"
+                    data-arg="${k.id_kamera}"
+                    title="${k.is_active ? 'Nonaktifkan kamera' : 'Aktifkan kamera'}"
+                    aria-label="${k.is_active ? 'Nonaktifkan kamera' : 'Aktifkan kamera'}">
+                    <i class="fa-solid ${k.is_active ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
+                </button>   
+            </td>
+        </tr>
+    `).join('') || barisKosong(6, 'Belum ada kamera deteksi plat.');
+}
+
+function filterAreaKameraPlat(idCompany) {
+    const area = document.getElementById('kpArea');
+
+    for (const opsi of area.options) {
+        if (!opsi.value) continue;
+
+        const cocok = Boolean(idCompany)
+            && opsi.dataset.company === String(idCompany);
+
+        opsi.hidden = !cocok;
+        opsi.disabled = !cocok;
+    }
+
+    area.disabled = !idCompany;
+
+    const pilihanAktif = area.selectedOptions[0];
+    if (
+        pilihanAktif?.value
+        && pilihanAktif.dataset.company !== String(idCompany)
+    ) {
+        area.value = '';
+    }
+
+    if (!idCompany && !area.value) {
+        area.value = '';
+    }
+}
+
+document.getElementById('kpCompany')
+    .addEventListener('change', e => {
+        filterAreaKameraPlat(e.target.value);
+    });
+
+async function ubahAktifKameraPlat(id) {
+    const k = dataKameraPlat.kamera.find(
+        x => x.id_kamera === Number(id)
+    );
+
+    if (!k) {
+        Notif.gagal('Data kamera tidak ditemukan. Muat ulang daftar kamera.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.set('id_kamera', k.id_kamera);
+    formData.set('nama', k.nama);
+    formData.set('id_comp_area', k.id_comp_area);
+
+    // Konfigurasi ini tetap dikirim dan disimpan untuk kebutuhan deteksi.
+    formData.set('gate', k.gate || '');
+    formData.set('facing', k.facing || 'MASUK');
+    formData.set('view_position', k.view_position || '');
+    formData.set('catatan', k.catatan || '');
+    formData.set('urutan', k.urutan ?? 0);
+
+    // RTSP kosong saat mengubah berarti alamat yang tersimpan tetap dipakai.
+    formData.set('rtsp', '');
+    formData.set('is_active', k.is_active ? '0' : '1');
+
+    const hasil = await kirimForm(
+        '/api/admin/deteksi-plat/kamera',
+        formData
+    );
+
+    if (!tampilkanHasil(hasil)) return;
+
+    await muatKameraPlat();
 }
 
 function bukaKameraPlat(id) {
     const form = document.getElementById('formKameraPlat');
     const k = dataKameraPlat.kamera.find(x => x.id_kamera === Number(id));
     form.reset();
+    const companySelect = document.getElementById('kpCompany');
+    const areaSelect = document.getElementById('kpArea');
+
+    const areaTersimpan = k
+        ? [...areaSelect.options].find(
+            opsi => opsi.value === String(k.id_comp_area)
+        )
+        : null;
+
+    companySelect.value = areaTersimpan?.dataset.company || '';
+    filterAreaKameraPlat(companySelect.value);
     if (k) isiForm(form, { id_kamera: k.id_kamera, nama: k.nama, id_comp_area: k.id_comp_area, gate: k.gate || '', facing: k.facing,
                            view_position: k.view_position || '', catatan: k.catatan || '', urutan: k.urutan });
     else form.elements.id_kamera.value = '';
     form.elements.rtsp.placeholder = k ? k.rtsp_tersamar : 'rtsp://cpos_view:PASSWORD@192.168.10.31:554/Streaming/Channels/101';
-    form.elements.is_active.checked = k ? !!k.is_active : true;
+    form.elements.is_active.value =
+        k && !k.is_active ? '0' : '1';
     document.getElementById('judulModalKameraPlat').textContent = k ? `Ubah Kamera · ${k.nama}` : 'Tambah Kamera Deteksi Plat';
     openModal('modalKameraPlat');
 }
 
 function dataFormPlat(form) {
-    const fd = new FormData(form);
-    fd.set('is_active', form.elements.is_active.checked ? '1' : '0');
-    return fd;
+    return new FormData(form);
 }
 
 document.getElementById('formKameraPlat').addEventListener('submit', async e => {

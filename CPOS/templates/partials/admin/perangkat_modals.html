@@ -153,19 +153,41 @@
         </div>
         <div class="p-6 grid grid-cols-2 gap-3">
             <input type="hidden" name="id_kamera">
-            <div><label class="field-label" for="kpNama">Nama kamera</label>
-                <input type="text" id="kpNama" name="nama" required maxlength="30" class="input-field uppercase font-mono" placeholder="GERBANG1-DEPAN"></div>
-            <div><label class="field-label" for="kpArea">Area</label>
-                <select id="kpArea" name="id_comp_area" required class="input-field">
-                    {% for a in area_list %}<option value="{{ a.id_comp_area }}">{{ a.label }}</option>{% endfor %}
-                </select></div>
-            <div><label class="field-label" for="kpGate">Gerbang</label>
-                <input type="text" id="kpGate" name="gate" maxlength="30" class="input-field uppercase font-mono" placeholder="GERBANG1"></div>
-            <div><label class="field-label" for="kpFacing">Arah hadap kamera</label>
+            <div>
+                <label class="field-label" for="kpNama">Nama kamera</label>
+                <input type="text" id="kpNama" name="nama" required maxlength="30" class="input-field uppercase font-mono" placeholder="GERBANG1-DEPAN">
+            </div>
+            <div>
+                <label class="field-label" for="kpCompany">Company</label>
+                <select id="kpCompany" name="company_id" required class="input-field">
+                    <option value="">-- Pilih Company --</option>
+                    {% for c in company_list %}
+                    <option value="{{ c.id_company }}">{{ c.kode }} · {{ c.nama }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="field-label" for="kpArea">Area</label>
+                <select id="kpArea" name="id_comp_area" required class="input-field" disabled>
+                    <option value="">-- Pilih Company dahulu --</option>
+                    {% for a in area_list %}
+                    <option value="{{ a.id_comp_area }}" data-company="{{ a.id_company }}">
+                        {{ a.nama }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="field-label" for="kpGate">Gerbang</label>
+                <input type="text" id="kpGate" name="gate" maxlength="30" class="input-field uppercase font-mono" placeholder="GERBANG1">
+            </div>
+            <div>
+                <label class="field-label" for="kpFacing">Arah hadap kamera</label>
                 <select id="kpFacing" name="facing" class="input-field">
                     <option value="MASUK">Menghadap kendaraan masuk</option>
                     <option value="KELUAR">Menghadap kendaraan keluar</option>
-                </select></div>
+                </select>
+            </div>
             <div>
                 <label class="field-label" for="kpViewPosition">Posisi kamera</label>
                 <select id="kpViewPosition" name="view_position" class="input-field">
@@ -177,15 +199,17 @@
                     <option value="ATAS">Atas</option>
                 </select>
             </div>
-            <div class="col-span-2"><label class="field-label" for="kpRtsp">Alamat RTSP</label>
+            <div class="col-span-2">
+                <label class="field-label" for="kpRtsp">Alamat RTSP</label>
                 <input type="text" id="kpRtsp" name="rtsp" maxlength="500" class="input-field font-mono" placeholder="rtsp://cpos_view:PASSWORD@192.168.10.31:554/Streaming/Channels/101">
-                <p class="field-hint">Saat ubah: kosongkan bila alamat tidak diganti. Pakai akun kamera view-only.</p></div>
-            <div class="col-span-2"><label class="field-label" for="kpCatatan">Catatan</label>
-                <input type="text" id="kpCatatan" name="catatan" maxlength="100" class="input-field"></div>
-            <div><label class="field-label" for="kpUrutan">Urutan tampil</label>
-                <input type="number" id="kpUrutan" name="urutan" min="0" max="999" class="input-field" value="0"></div>
-            <label class="flex items-end gap-2 text-sm pb-2"><input type="checkbox" name="is_active" value="1" checked> Aktif</label>
-            <p class="col-span-2 text-xs text-slate-500"><i class="fa-solid fa-lock mr-1"></i>Kamera dengan gerbang yang sama dipasangkan untuk menentukan masuk / keluar (fase berikutnya). Kamera baru aktif setelah deteksi di-restart.</p>
+                <p class="field-hint">Saat ubah: kosongkan bila alamat tidak diganti. Pakai akun kamera view-only.</p>
+            </div>
+            <div class="col-span-2">
+                <label class="field-label" for="kpCatatan">Catatan</label>
+                <input type="text" id="kpCatatan" name="catatan" maxlength="100" class="input-field">
+            </div>
+            <input type="hidden" name="is_active" value="1">
+            <p class="col-span-2 text-xs text-slate-500"><i class="fa-solid fa-lock mr-1"></i>Kamera dengan gerbang yang sama dipasangkan untuk menentukan masuk / keluar (fase berikutnya). Perubahan kamera diterapkan otomatis dalam sekitar 10 detik.</p>
         </div>
         <div class="px-6 pb-6 flex justify-end gap-2">
             <button type="button" data-on-click="closeModal" data-arg="modalKameraPlat" class="btn-secondary">Batal</button>

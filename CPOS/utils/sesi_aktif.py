@@ -10,7 +10,7 @@ log = logging.getLogger("weighbridge")
 JEDA_TULIS_DETIK = 60
 
 _lock = threading.Lock()
-_terakhir_tulis = {}        # sid -> waktu terakhir menulis terakhir_aktif ke DB (per proses)
+_terakhir_tulis = {}
 
 
 def sid_baru():
@@ -69,7 +69,7 @@ def periksa(sid, user_id, ip, agen):
                      sid, ambil=True)
     if not rows or rows[0]["akhir"] is not None or rows[0]["id_user"] != user_id:
         return "BERAKHIR"
-    if rows[0]["ip"] != ip or (rows[0]["agen"] or "") != (agen or "")[:200]:
+    if (rows[0]["agen"] or "") != (agen or "")[:200]:
         return "ASING"
     return None
 

@@ -1,18 +1,18 @@
 import logging
 import os
 import threading
+
 from flask import Flask, g, jsonify, request, redirect, session
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
-
 from extensions import login_manager
 from utils.auth import User
 from utils.db_utils import get_user_by_id
 from utils.serial_reader import mulai_pembacaan_serial
 from utils.maintenance import mulai_pembersihan_berkala, pindahkan_upload_lama
 from utils.web_setup import pasang_semua
-from utils.keamanan import pasang_keamanan, log_keamanan
+from utils.keamanan import pasang_keamanan, log_keamanan, log_sesi_sekali
 from utils import sesi_aktif
 from routes.auth import auth_bp
 from routes.main import main_bp
@@ -39,6 +39,7 @@ from routes.pos import pos_bp
 from routes.analytics import analytics_bp
 from modules.rekapin import rekapin_bp
 from modules.item_request import item_request_bp
+from modules.item_dashboard.dashboarditem import item_dashboard_bp
 
 load_dotenv()
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"),
@@ -60,12 +61,20 @@ def load_user(user_id):
         return None
     # Admin menekan "Paksa keluar" / reset password / ubah role -> sesi_versi naik, sesi lama ditolak
     if (row.sesi_versi or 0) != session.get("_versi", 0):
-        log_keamanan("SESI_DICABUT", f"username={row.username}")
+        log_sesi_sekali(
+            "SESI_DICABUT",
+            session.get("_sid"),
+            f"username={row.username}",
+        )
         return None
     # Cookie lama (sudah logout) atau cookie yang disalin ke perangkat lain ditolak walau tanda tangannya sah
     hasil = sesi_aktif.periksa(session.get("_sid"), row.id_user, sesi_aktif.ip_klien(request), request.user_agent.string)
     if hasil:
-        log_keamanan("SESI_ASING" if hasil == "ASING" else "SESI_BERAKHIR", f"username={row.username}")
+        log_sesi_sekali(
+            "SESI_ASING" if hasil == "ASING" else "SESI_BERAKHIR",
+            session.get("_sid"),
+            f"username={row.username}",
+        )
         g.sesi_asing = hasil == "ASING"
         return None
     return User.dari_row(row)
@@ -90,7 +99,7 @@ def belum_login():
 
 for bp in (auth_bp, main_bp, security_bp, timbangan_bp, sortasi_bp, lab_bp, kendaraan_bp,
            personel_bp, blacklist_bp, visitor_bp, deteksi_plat_bp, audit_bp, sistem_bp, admin_bp, kontrak_bp, dashboard_bp, master_bp, agen_bp,
-           kelebihan_do_bp, cari_bp, persetujuan_bp, pos_bp, analytics_bp, rekapin_bp, item_request_bp):
+           kelebihan_do_bp, cari_bp, persetujuan_bp, pos_bp, analytics_bp, rekapin_bp, item_request_bp, item_dashboard_bp):
     app.register_blueprint(bp)
 
 # Agen timbangan (tanpa sesi browser) dilindungi token perangkat, bukan CSRF

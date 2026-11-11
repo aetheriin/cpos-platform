@@ -46,7 +46,7 @@ HALAMAN = {
 
 POLA_USERNAME = re.compile(r"^[A-Z0-9._-]{3,50}$")
 PILIHAN_HALAMAN = {"users": ("jabatan", "department", "area", "company"), "persetujuan": ("jabatan", "department"),
-                   "jadwal": ("area",), "pengaturan": ("area",), "perangkat": ("area",)}
+                   "jadwal": ("area",), "pengaturan": ("area",), "perangkat": ("area", "company")}
 POLA_JAM = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 PASSWORD_MIN = 8
 

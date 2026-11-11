@@ -136,6 +136,7 @@ SP_PI_GT = nama_sp("SP_PI_GT", "dbo.CheckStatItem")              # PI yang belum
 SP_GT_OUT = nama_sp("SP_GT_OUT", "dbo.gt_out")                    # semua GT, sama dengan query di Excel PI GT db
 PVR_TABEL_BOBOT = nama_sp("PVR_TABEL_BOBOT", "dbo.Bobot_PVR")     # kolom Kategori, Bobot
 OUTSTANDING_SP = nama_sp("OUTSTANDING_SP", "dbo.R_OUTSTANDING_ARAP")   # laporan Outstanding; SQL di backend/database/outstanding_sp.sql
+HARGA_PO_SP = nama_sp("HARGA_PO_SP", "dbo.R_HARGA_PO")   # harga per baris PO; SQL di backend/database/harga_po_sp.sql
 # Pembuat PVR yang dinilai: tampilan awal laporan Penilaian PVR (lihat DashboardPenilaianPvr.jsx); nama lain lewat filter
 PVR_PENILAIAN_PEMBUAT = [n.strip() for n in teks("PVR_PENILAIAN_PEMBUAT", "Dinda,Dwi,Ferdinan,Intan").split(",") if n.strip()]
 PV_TABEL_BOBOT = nama_sp("PV_TABEL_BOBOT", "dbo.Bobot_PV")

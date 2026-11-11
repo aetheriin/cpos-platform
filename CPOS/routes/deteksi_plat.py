@@ -219,5 +219,7 @@ def admin_kamera():
         if d["rtsp"] and not re.match(r"^rtsp://\S+$", d["rtsp"]):
             raise GalatIsian("Alamat RTSP contoh: rtsp://user:password@192.168.10.31:554/Streaming/Channels/101", "rtsp")
         dbk.simpan(_angka("id_kamera", False), d)
-        return jsonify({"message": f"Kamera {d['nama']} disimpan. Restart deteksi agar kamera baru aktif"})
+        return jsonify({
+            "message": f"Kamera {d['nama']} disimpan. Perubahan kamera diterapkan otomatis dalam sekitar 10 detik."
+        })
     return _jalankan(aksi)

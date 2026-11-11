@@ -8,6 +8,7 @@ from datetime import date
 
 import pandas as pd
 
+from .. import harga_po
 from ..po_pi import sumber as po_pi
 from ..pr_po import sumber as pr_po
 
@@ -61,16 +62,20 @@ def bersihkan_po(raw):
         "qty_minta": _angka(r["QTYORDERED"]), "qty_proses": _angka(r["QTYDELIVERED"]), "qty_sisa": _angka(r["QTYOUT"]),
         "no_lanjut": _gabung_koma(r["PURCHASENUMBER"]), "mitra": _teks(r["SUPPLIERNAME"]), "kategori": _teks(r["CATEGORY"]),
         "dibuat_oleh": _teks(r["CREATEDBY"]), "approve_oleh": "",
+        "line": _teks(r["COMPID"]) + _teks(r["PODETAILID"]).str.replace(r"\.0$", "", regex=True),
     })
 
 
 def muat(mulai, akhir, kendali=None):
     """(PR, PO) outstanding yang dibuat dalam mulai..akhir (ISO). Dipanggil bersamaan dengan data hutang/piutang."""
     a, b = mulai.replace("-", ""), akhir.replace("-", "")
-    with ThreadPoolExecutor(max_workers=2) as pool:   # kedua SP jalan bersamaan
+    with ThreadPoolExecutor(max_workers=3) as pool:   # kedua SP dan harga PO jalan bersamaan
         t_pr = pool.submit(pr_po.ambil_data, a, b, None, kendali)
         t_po = pool.submit(po_pi.ambil_data, a, b, None, kendali)
-        pr, po = bersihkan_pr(t_pr.result()), bersihkan_po(t_po.result())
+        t_harga = pool.submit(harga_po.ambil, harga_po.mulai_po(mulai), kendali)
+        pr = bersihkan_pr(t_pr.result())
+        po = harga_po.tempel_po(bersihkan_po(t_po.result()), t_harga.result()).drop(columns="line")
+    po["nilai_sisa"] = po["harga_po"] * po["qty_sisa"]   # nilai barang yang belum diterima, dalam mata uang PO
     hasil = pd.concat([pr, po], ignore_index=True)
     hasil["umur"] = (pd.Timestamp(date.today()) - hasil["tgl"]).dt.days
     return hasil

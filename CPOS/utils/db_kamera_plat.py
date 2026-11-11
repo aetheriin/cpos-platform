@@ -43,11 +43,13 @@ def tutup_sandi(url):
 
 @cache_ttl(30)
 def daftar():
-    baris = _query("""SELECT k.CamDetID AS id_kamera, k.CamDetName AS nama, k.CompAreaID AS id_comp_area,
-                             a.CompID + ' · ' + a.AreaName AS area,
-                             k.Gate AS gate, k.Facing AS facing, k.ViewPosition AS view_position,
-                             k.RtspUrl AS rtsp, k.Note AS catatan, k.SortOrder AS urutan, k.Active AS is_active
-                      FROM dbo.CameraDeteksi k JOIN dbo.CompanyArea a ON a.CompAreaID = k.CompAreaID
+    baris = _query("""SELECT k.CamDetID AS id_kamera, k.CamDetName AS nama, k.CompAreaID AS id_comp_area, a.CompID AS id_company,
+                        c.CompName AS company, a.AreaName AS area_name, a.CompID + ' · ' + a.AreaName AS area,
+                        k.Gate AS gate, k.Facing AS facing, k.ViewPosition AS view_position, k.RtspUrl AS rtsp,
+                        k.Note AS catatan, k.SortOrder AS urutan, k.Active AS is_active
+                      FROM dbo.CameraDeteksi k
+                      JOIN dbo.CompanyArea a ON a.CompAreaID = k.CompAreaID
+                      JOIN dbo.Company c ON c.CompID = a.CompID
                       ORDER BY k.Active DESC, a.CompID, a.AreaName, k.SortOrder, k.CamDetName""")
     for b in baris:
         b["rtsp_tersamar"] = tutup_sandi(b.pop("rtsp"))

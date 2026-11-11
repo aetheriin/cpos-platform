@@ -1,11 +1,9 @@
-"""Keamanan web: secret key, cookie sesi, header keamanan, sesi idle, token perangkat kiosk, log keamanan.
-
-Semua dipasang dari app.py lewat pasang_keamanan(app). Rincian: docs/DOKUMENTASI.md."""
 import hmac
 import logging
 import os
 import re
 import time
+import threading
 from datetime import datetime, timedelta
 from functools import wraps
 from logging.handlers import RotatingFileHandler
@@ -36,10 +34,38 @@ def log_keamanan(kejadian, detail=""):
     ip = request.remote_addr if request else "-"
     _log.warning("%-20s user=%s ip=%s %s", kejadian, user, ip, detail)
 
+_LOG_SESI_LOCK = threading.Lock()
+_LOG_SESI_TERAKHIR = {}
+_LOG_SESI_JEDA_DETIK = 300
+_LOG_SESI_MAKS = 10000
+
+def log_sesi_sekali(kejadian, sid, detail=""):
+    """Batasi log kejadian sesi yang sama menjadi sekali per SID dalam 5 menit."""
+    if not sid:
+        log_keamanan(kejadian, detail)
+        return
+
+    sekarang = time.monotonic()
+    kunci = (kejadian, str(sid))
+
+    with _LOG_SESI_LOCK:
+        # Buang kunci lama agar penyimpanan memori tetap terbatas.
+        for k, waktu in list(_LOG_SESI_TERAKHIR.items()):
+            if sekarang - waktu >= _LOG_SESI_JEDA_DETIK:
+                _LOG_SESI_TERAKHIR.pop(k, None)
+
+        terakhir = _LOG_SESI_TERAKHIR.get(kunci)
+        if terakhir is not None and sekarang - terakhir < _LOG_SESI_JEDA_DETIK:
+            return
+
+        if len(_LOG_SESI_TERAKHIR) >= _LOG_SESI_MAKS:
+            _LOG_SESI_TERAKHIR.pop(next(iter(_LOG_SESI_TERAKHIR)))
+
+        _LOG_SESI_TERAKHIR[kunci] = sekarang
+
+    log_keamanan(kejadian, detail)
 
 _POLA_LOG = re.compile(r"^(\S+ \S+?)(?:,\d+)? (\S+)\s+user=(\S+) ip=(\S+) ?(.*)$")
-
-
 def baca_log_keamanan(batas=500, cari="", jenis=""):
     """Baris terbaru logs/keamanan.log (Admin > Log Keamanan), terbaru di atas. Hanya ekor file yang dibaca."""
     path = os.path.join(BASE_DIR, "logs", "keamanan.log")

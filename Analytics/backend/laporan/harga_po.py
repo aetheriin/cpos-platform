@@ -1,10 +1,12 @@
 """Harga PO per baris PO dari ERP (AP_PurchaseOrderDetails), untuk tabel detail laporan PR & PO dan PO & PI.
 
-SP laporan (R_PR_OUT_YBS_2, R_PO_OUT_YBS) tidak membawa harga, jadi diambil terpisah langsung ke database tiap perusahaan
-(server dan database dari tabel company). Baris PO menyimpan baris PR asalnya di SourceID (= PRDETAILID di SP PR), jadi harga bisa
+SP laporan (R_PR_OUT_YBS_2, R_PO_OUT_YBS) tidak membawa harga, jadi diambil terpisah lewat SP HARGA_PO_SP (data mentah saja),
+dipanggil per perusahaan bersamaan. Kalau SP belum ada atau belum diberi izin EXECUTE, query lama dijalankan langsung lewat OPENQUERY. Baris PO menyimpan baris PR asalnya di SourceID (= PRDETAILID di SP PR), jadi harga bisa
 ditempel tepat per baris PR dan per baris PO. Harga dalam mata uang PO; kolom mata uang ikut supaya PO valas tidak terbaca rupiah.
 """
 from datetime import date, timedelta
+
+import logging
 
 import pandas as pd
 
@@ -15,10 +17,12 @@ from inti.sp import per_perusahaan
 
 from .pi_pvr.sumber import _nama
 
+log = logging.getLogger(__name__)
+
 KOLOM = ["comp", "po_detail_id", "pr_detail_id", "po_number", "harga_po", "total_po", "mata_uang_po"]
 
 _QUERY = """
-    SELECT d.PODetailID, d.SourceID, LTRIM(RTRIM(o.PONumber)) AS PONumber, d.UnitCost, d.LineTotal, c.Currency
+    SELECT d.PODetailID, d.SourceID, o.PONumber, d.UnitCost, d.LineTotal, c.Currency
     FROM {db}.dbo.AP_PurchaseOrderDetails d
     JOIN {db}.dbo.AP_PurchaseOrders o ON o.POID = d.POID
     LEFT JOIN {db}.dbo.CO_Currency c ON c.CurrencyID = o.CurrencyID
@@ -26,13 +30,29 @@ _QUERY = """
 """
 
 
+def _ada_sp(buka=get_connection):
+    """SP harga ada dan boleh dijalankan (OBJECT_ID kosong juga kalau login belum diberi izin EXECUTE)."""
+    try:
+        with buka() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT OBJECT_ID(?, 'P')", konfigurasi.HARGA_PO_SP)
+            return cur.fetchone()[0] is not None
+    except Exception:
+        return False
+
+
 def ambil(mulai, kendali=None, sumber=None):
     """DataFrame KOLOM untuk PO bertanggal mulai (date) ke atas, semua perusahaan. Kosong kalau gagal (tabel detail tetap tampil)."""
     lokasi = {k: (s, d) for k, s, d in lokasi_perusahaan(sumber or konfigurasi.SUMBER_LAPORAN)}
-    perintah = lambda c: (f"SELECT * FROM OPENQUERY([{_nama(lokasi[c][0], 'CompAddr', c)}], "
-                          f"'{_QUERY.format(db=_nama(lokasi[c][1], 'CompDataBase', c), mulai=mulai.isoformat())}')")
+    if _ada_sp():
+        perintah, parameter = f"EXEC {konfigurasi.HARGA_PO_SP} ?, ?", (lambda c: (c, mulai.isoformat()))
+    else:
+        log.info("SP %s belum ada atau login belum punya izin EXECUTE, harga PO memakai query langsung", konfigurasi.HARGA_PO_SP)
+        parameter = lambda c: ()
+        perintah = lambda c: (f"SELECT * FROM OPENQUERY([{_nama(lokasi[c][0], 'CompAddr', c)}], "
+                              f"'{_QUERY.format(db=_nama(lokasi[c][1], 'CompDataBase', c), mulai=mulai.isoformat())}')")
     try:
-        raw = per_perusahaan(list(lokasi), get_connection, perintah, lambda c: (), kendali, boleh_kosong=True, tandai=True)
+        raw = per_perusahaan(list(lokasi), get_connection, perintah, parameter, kendali, boleh_kosong=True, tandai=True)
     except RuntimeError:
         return pd.DataFrame(columns=KOLOM)
     angka_id = lambda s: pd.to_numeric(s, errors="coerce").astype("Int64").astype(str)
@@ -40,7 +60,7 @@ def ambil(mulai, kendali=None, sumber=None):
         "comp": raw["__comp"].astype(str),
         "po_detail_id": angka_id(raw["PODetailID"]),
         "pr_detail_id": angka_id(raw["SourceID"]),
-        "po_number": raw["PONumber"].fillna("").astype(str),
+        "po_number": raw["PONumber"].fillna("").astype(str).str.strip(),
         "harga_po": pd.to_numeric(raw["UnitCost"], errors="coerce"),
         "total_po": pd.to_numeric(raw["LineTotal"], errors="coerce"),
         "mata_uang_po": raw["Currency"].fillna("").astype(str).str.strip(),
