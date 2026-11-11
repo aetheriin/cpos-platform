@@ -245,6 +245,46 @@ def api_plat_lookup():
     if row:
         return jsonify({**serialisasi_tiket(row), "kendaraan_blacklist": blacklist}), 200
 
+    # Tiket aktif CPOS tidak ditemukan; periksa tiket kosong yang dibuat di Ascend.
+    try:
+        tiket_ascend = db_ascend.cari_tiket_ascend_berdasarkan_plat(no_plat)
+    except Exception:
+        current_app.logger.exception(
+            "Gagal mencari tiket Ascend untuk plat %s",
+            no_plat,
+        )
+        return jsonify({
+            "error": "Tiket Ascend belum dapat diperiksa. Coba lagi beberapa saat."
+        }), 503
+
+    if tiket_ascend:
+        associate = " · ".join(
+            bagian for bagian in (
+                tiket_ascend["associate_code"],
+                tiket_ascend["associate_name"],
+            )
+            if bagian
+        )
+
+        return jsonify({
+            "status": "ADA_TIKET",
+            "sumber": "ASCEND",
+            "no_tiket": tiket_ascend["no_tiket"],
+            "no_plat": tiket_ascend["no_plat"] or no_plat,
+            "no_do": tiket_ascend["no_do"],
+            "supplier": associate,
+            "produk": tiket_ascend["produk"],
+            "jenis_transaksi": (
+                "PENJUALAN"
+                if tiket_ascend["ticket_type"] == "Produk"
+                else "PEMBELIAN"
+            ),
+            "ticket_type": tiket_ascend["ticket_type"],
+            "mill_id": tiket_ascend["mill_id"],
+            "tanggal": tiket_ascend["tanggal"],
+            "driver": None,
+            "kendaraan_blacklist": blacklist,
+        }), 200
     # Belum ada tiket aktif: nomor tiket cuma "dipesan", belum di-INSERT
     riwayat = cari_riwayat_driver_by_plat(no_plat)
     driver_info = serialisasi_driver(riwayat)

@@ -19,61 +19,6 @@
                     </div>
 
                     <div>
-                        <label class="field-label" for="ascendAssociate">Associate</label>
-                        <select id="ascendAssociate" name="associate_id" required class="input-field">
-                            <option value="">-- Pilih --</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="field-label" for="ascendShipper">Shipper / Pengirim</label>
-                        <select id="ascendShipper" name="shipper_id" class="input-field">
-                            <option value="">-- Pilih --</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <div class="mb-2 flex items-center justify-start gap-3">
-                            <label class="field-label mb-0" for="ascendVehicleNo">No. Kendaraan</label>
-
-                            <label class="flex items-center gap-2 text-xs text-slate-600">
-                                <input id="ascendVehicleManualToggle" type="checkbox" class="rounded">
-                                Input manual
-                            </label>
-                        </div>
-
-                        <div id="ascendVehicleSelectWrap">
-                            <select id="ascendVehicleNo" name="vehicle_no" required class="input-field">
-                                <option value="">-- Pilih Shipper dahulu --</option>
-                            </select>
-                        </div>
-
-                        <div id="ascendVehicleManualWrap" class="hidden">
-                            <input id="ascendVehicleManual" name="vehicle_no" type="text"
-                                maxlength="50" class="input-field uppercase"
-                                placeholder="Contoh: BM 9999 SAD" disabled>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="field-label" for="ascendTanggal">Tanggal</label>
-                        <input id="ascendTanggal" name="tanggal" type="date" required class="input-field">
-                    </div>
-
-                    <div>
-                        <label class="field-label" for="ascendMill">Mill</label>
-                        <select id="ascendMill" name="mill_id" required class="input-field">
-                            <option value="">-- Pilih --</option>
-                            {% for m in mill_list %}
-                            <option value="{{ m.mill_id }}">{{ m.mill_id }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Kolom kanan -->
-                <div class="space-y-4">
-                    <div>
                         <div class="mb-2 flex items-center justify-start gap-3">
                             <label class="field-label mb-0" for="ascendNoDoChoice">
                                 Nomor DO / SP
@@ -104,11 +49,44 @@
                     </div>
 
                     <div>
+                        <label class="field-label" for="ascendAssociate">Associate</label>
+                        <select id="ascendAssociate" name="associate_id" required class="input-field">
+                            <option value="">-- Pilih --</option>
+                        </select>
+                    </div>
+
+                    <div>
                         <label class="field-label" for="ascendProduk">Produk</label>
                         <select id="ascendProduk" name="produk" required class="input-field">
                             <option value="">-- Pilih --</option>
                         </select>
+                    </div> 
+
+                    <div>
+                        <label class="field-label" for="ascendShipper">Shipper / Pengirim</label>
+                        <select id="ascendShipper" name="shipper_id" class="input-field">
+                            <option value="">-- Pilih --</option>
+                        </select>
+                    </div>                    
+
+                    <div>
+                        <label class="field-label" for="ascendTanggal">Tanggal</label>
+                        <input id="ascendTanggal" name="tanggal" type="date" required class="input-field">
                     </div>
+
+                    <div>
+                        <label class="field-label" for="ascendMill">Mill</label>
+                        <select id="ascendMill" name="mill_id" required class="input-field">
+                            <option value="">-- Pilih --</option>
+                            {% for m in mill_list %}
+                            <option value="{{ m.mill_id }}">{{ m.mill_id }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Kolom kanan -->
+                <div class="space-y-4">
 
                     <div>
                         <label class="field-label">Supir Terakhir Truk</label>
@@ -126,6 +104,31 @@
                             </div>
                         </div>
                     </div>
+
+                    <div>
+                        <div class="mb-2 flex items-center justify-start gap-3">
+                            <label class="field-label mb-0" for="ascendVehicleNo">No. Kendaraan</label>
+
+                            <label class="flex items-center gap-2 text-xs text-slate-600">
+                                <input id="ascendVehicleManualToggle" type="checkbox" class="rounded">
+                                Input manual
+                            </label>
+                        </div>
+
+                        <div id="ascendVehicleSelectWrap">
+                            <select id="ascendVehicleNo" name="vehicle_no" required class="input-field">
+                                <option value="">-- Pilih Shipper dahulu --</option>
+                            </select>
+                        </div>
+
+                        <div id="ascendVehicleManualWrap" class="hidden">
+                            <input id="ascendVehicleManual" name="vehicle_no" type="text"
+                                maxlength="50" class="input-field uppercase"
+                                placeholder="Contoh: BM 9999 SAD" disabled>
+                        </div>
+                    </div>
+                    
+                                       
                 </div>
             </div>
 

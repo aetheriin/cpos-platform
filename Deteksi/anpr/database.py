@@ -30,7 +30,7 @@ def get_koneksi(timeout=10):
         driver = "{" + driver + "}"
 
     server = os.getenv("DB_SERVER")
-    database = os.getenv("DB_NAME", "CPOS")
+    database = os.getenv("DB_NAME", "Main")
     user = os.getenv("DB_USER", "").strip()
     password = os.getenv("DB_PASSWORD", "")
     trust = os.getenv("DB_TRUST_CERT", "yes")

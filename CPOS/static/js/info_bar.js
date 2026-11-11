@@ -2,13 +2,22 @@
 let statusValidasi = 'none'; // none | draft | done
 const ICON_USER = '<i class="fa-solid fa-user text-slate-300 text-3xl"></i>';
 
-// Tab Security: info bar hanya No. Tiket + Bruto / Tara / Netto. Tab lain: info bar lengkap.
-// Yang disembunyikan tetap ada di halaman (security.js dan lookup masih mengisinya), hanya tidak terlihat.
 function aturInfoBarPerTab() {
     const security = getTabAktif() === 'security';
-    document.querySelectorAll('[data-info="umum"]').forEach(el => el.classList.toggle('hidden', security));
-    document.querySelectorAll('[data-info="security"]').forEach(el => el.classList.toggle('hidden', !security));
+
+    // Plat dan detail tiket tampil di semua tab, termasuk Security.
+    document.querySelectorAll('[data-info="umum"]').forEach(el => {
+        el.classList.remove('hidden');
+    });
+
+    // Bruto, Tara, Netto hanya tampil di Security.
+    document.querySelectorAll('[data-info="security"]').forEach(el => {
+        el.classList.toggle('hidden', !security);
+    });
 }
+
+window.addEventListener('tabChange', aturInfoBarPerTab);
+document.addEventListener('DOMContentLoaded', aturInfoBarPerTab);
 
 window.addEventListener('tabChange', aturInfoBarPerTab);
 
@@ -90,7 +99,12 @@ function terapkanHasilLookup(data) {
         document.getElementById('infoNoDO').value = data.no_do || '';
         document.getElementById('infoSupplier').value = data.supplier || '';
         document.getElementById('infoProduk').value = data.produk || '';
-        document.getElementById('infoJenis').value = labelKode(data.jenis_transaksi);
+        document.getElementById('infoJenis').value =
+            data.sumber === 'ASCEND'
+                ? (data.ticket_type === 'Produk'
+                    ? 'Produk · Penjualan'
+                    : 'TBS Luar · Penerimaan')
+                : labelKode(data.jenis_transaksi);
         statusValidasi = 'done';
     } else {
         document.getElementById('infoNoTiket').value = data.no_tiket_reserved || '';
@@ -106,7 +120,11 @@ function terapkanHasilLookup(data) {
     document.getElementById('infoSupir').classList.toggle('border-red-500', supirBlacklist);
     tandaiBlacklistInfoBar([data.kendaraan_blacklist && 'Kendaraan', supirBlacklist && 'Supir'].filter(Boolean));
     tampilkanFotoDriver(data.driver ? data.driver.foto_path : null);
-    isiBeratInfoBar(data.status === 'ADA_TIKET' ? data.no_tiket : null);
+    isiBeratInfoBar(
+        data.status === 'ADA_TIKET' && data.sumber !== 'ASCEND'
+            ? data.no_tiket
+            : null
+    );
 
     window.dispatchEvent(new CustomEvent('platLookup', { detail: data }));
 }

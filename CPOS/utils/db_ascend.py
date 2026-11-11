@@ -40,6 +40,75 @@ def _baris_hasil(cursor):
     nama_kolom = [kolom[0] for kolom in cursor.description]
     return [dict(zip(nama_kolom, baris)) for baris in cursor.fetchall()]
 
+def cari_tiket_ascend_berdasarkan_plat(no_plat):
+    """Cari tiket Ascend terbaru berdasarkan nomor plat."""
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute(
+            """
+            SELECT TOP (1)
+                TicketNo,
+                TicketType,
+                ProductName,
+                AssociateID,
+                VehicleNo,
+                [Date],
+                SPDO,
+                MILLID
+            FROM dbo.PALM_Tickets
+            WHERE REPLACE(REPLACE(REPLACE(UPPER(LTRIM(RTRIM(VehicleNo))), ' ', ''), '-', ''), '.', '')
+                = REPLACE(REPLACE(REPLACE(UPPER(?), ' ', ''), '-', ''), '.', '')
+            ORDER BY TicketID DESC
+            """,
+            no_plat,
+        )
+        row = cursor.fetchone()
+
+        if not row:
+            return None
+
+        kode_associate = ""
+        nama_associate = ""
+
+        if row[1] == "Produk":
+            cursor.execute(
+                """
+                SELECT CustomerCode, CustomerName
+                FROM dbo.AR_Customers
+                WHERE CustomerID = ?
+                """,
+                row[3],
+            )
+        elif row[1] == "TBSLuar":
+            cursor.execute(
+                """
+                SELECT SupplierCode, SupplierName
+                FROM dbo.AP_Suppliers
+                WHERE SupplierID = ?
+                """,
+                row[3],
+            )
+
+        associate = cursor.fetchone()
+        if associate:
+            kode_associate = str(associate[0] or "").strip()
+            nama_associate = str(associate[1] or "").strip()
+
+        return {
+            "no_tiket": str(row[0] or "").strip(),
+            "ticket_type": str(row[1] or "").strip(),
+            "produk": str(row[2] or "").strip(),
+            "associate_id": int(row[3]) if row[3] is not None else None,
+            "associate_code": kode_associate,
+            "associate_name": nama_associate,
+            "no_plat": str(row[4] or "").strip(),
+            "tanggal": row[5].isoformat() if row[5] else None,
+            "no_do": str(row[6] or "").strip(),
+            "mill_id": int(row[7]) if row[7] is not None else None,
+        }
+    finally:
+        koneksi.close()
 
 def daftar_do(ticket_type):
     """DO outstanding beserta nama Associate dari database Ascend."""
