@@ -6,7 +6,6 @@ import os
 import re
 from datetime import date
 from pathlib import Path
-
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -119,8 +118,8 @@ TABEL_KAS_GIRO = nama_sp("TABEL_KAS_GIRO", "Main.dbo.GiroAccount")
 TABEL_KAS_KURS = nama_sp("TABEL_KAS_KURS", "Main.dbo.exc_rate")   # kurs ke rupiah per perusahaan, CURRENCYID, dan tahun
 KAS_KURS_ERP_HARI = angka("KAS_KURS_ERP_HARI", 30)   # kurs voucher ERP terakhir masih dipakai sampai sekian hari
 # kurs yang diinput user di CPOS (Data Master › Kurs Mata Uang): riwayat per tanggal berlaku, dipakai lebih dulu dari TABEL_KAS_KURS
-TABEL_KAS_KURS_INPUT = nama_sp("TABEL_KAS_KURS_INPUT", "CPOS.dbo.ExchangeRate")
-TABEL_KAS_MATA_UANG = nama_sp("TABEL_KAS_MATA_UANG", "CPOS.dbo.Currency")
+TABEL_KAS_KURS_INPUT = nama_sp("TABEL_KAS_KURS_INPUT", "Main.dbo.ExchangeRate")
+TABEL_KAS_MATA_UANG = nama_sp("TABEL_KAS_MATA_UANG", "Main.dbo.Currency")
 # kurs harian dari internet untuk mata uang yang tidak ada di TABEL_KAS_KURS; {dari} {sampai} {kode} diisi.
 KAS_KURS_INTERNET = teks("KAS_KURS_INTERNET", "https://api.frankfurter.dev/v1/{dari}..{sampai}?base={kode}&symbols=IDR")
 KAS_HARI_GRAFIK = angka("KAS_HARI_GRAFIK", 31)  # rentang tampilan lebih panjang dari ini: grafik deret waktu per bulan
