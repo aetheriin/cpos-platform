@@ -51,12 +51,12 @@ def param(jenis, company, awal, akhir):
     return (company, awal) if laporan_tbs.LAPORAN[jenis]["periode"] == "daily" else (company, awal, akhir)
 
 
-def jalankan(prosedur, *param):
+def jalankan(prosedur, *param, paksa=False):
     """erp.jalankan_prosedur dengan simpanan singkat. Melempar pyodbc.Error seperti aslinya."""
     k = (prosedur, param)
     with _kunci:
         ada = _hasil.get(k)
-        if ada and time.time() - ada[0] < SIMPAN_DETIK:
+        if ada and not paksa and time.time() - ada[0] < SIMPAN_DETIK:
             return ada[1]
         tanda = _berjalan.get(k)
         milik_saya = tanda is None

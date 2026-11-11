@@ -4,11 +4,13 @@ Di .env: REKAPIN_ERP_SERVER / _DB / _USER / _PASSWORD (sama dengan DB_* di Analy
 database yang sama), atau satu REKAPIN_ERP_CONNECTION_STRING lengkap. Semua kosong = prosedur dicari di database CPOS sendiri."""
 import os
 import re
-
 import pyodbc
+import logging
+import time
 
 from utils.db_utils import get_connection
 
+log = logging.getLogger(__name__)
 NAMA_PROSEDUR = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?$")
 
 
@@ -33,13 +35,22 @@ def _koneksi():
 
 
 def jalankan_prosedur(nama, *params):
-    """EXEC prosedur, kembalikan semua result set: [[{kolom: nilai}]]."""
+    """EXEC prosedur dan catat durasi query ERP yang lambat."""
     if not NAMA_PROSEDUR.fullmatch(nama):
         raise ValueError("Nama prosedur tidak valid")
+
+    mulai_buka = time.perf_counter()
     conn = _koneksi()
+    buka_ms = (time.perf_counter() - mulai_buka) * 1000
+
     try:
+        mulai_query = time.perf_counter()
         cursor = conn.cursor()
-        cursor.execute(f"SET NOCOUNT ON; EXEC {nama} {', '.join('?' * len(params))}".rstrip(), *params)
+        cursor.execute(
+            f"SET NOCOUNT ON; EXEC {nama} {', '.join('?' * len(params))}".rstrip(),
+            *params,
+        )
+
         hasil = []
         while True:
             if cursor.description is not None:
@@ -47,6 +58,15 @@ def jalankan_prosedur(nama, *params):
                 hasil.append([dict(zip(kolom, r)) for r in cursor.fetchall()])
             if not cursor.nextset():
                 break
+
+        query_ms = (time.perf_counter() - mulai_query) * 1000
+        if query_ms >= 1000:
+            company = str(params[0]) if params else "-"
+            log.warning(
+                "ERP_TBS_LAMBAT prosedur=%s company=%s koneksi_ms=%.0f query_ms=%.0f",
+                nama, company, buka_ms, query_ms,
+            )
+
         return hasil
     finally:
         conn.close()

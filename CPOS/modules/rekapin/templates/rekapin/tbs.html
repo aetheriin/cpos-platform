@@ -6,7 +6,12 @@
 {% block tab_header %}
 {{ judul_halaman(lap.judul, 'Laporan pembelian TBS dari ERP per perusahaan.', 'fa-file-lines', 'hijau') }}
 {% endblock %}
-{% block extra_scripts %}{% if jenis == 'daily' %}<script defer src="{{ url_for('rekapin.static', filename='rekapin/tbs_daily.js') }}"></script>{% endif %}{% endblock %}
+{% block extra_scripts %}
+<script defer src="{{ url_for('rekapin.static', filename='rekapin/tbs_refresh.js') }}"></script>
+{% if jenis == 'daily' %}
+<script defer src="{{ url_for('rekapin.static', filename='rekapin/tbs_daily.js') }}"></script>
+{% endif %}
+{% endblock %}
 {% block tab_content %}
 {% set periode_teks = tgl(awal) if lap.periode == 'daily' else tgl(awal) ~ ' — ' ~ tgl(akhir) %}
 <form method="get" class="filter-bar">
@@ -20,6 +25,9 @@
   <div><label class="field-label" for="tbsAkhir">Tanggal Akhir</label><input type="date" id="tbsAkhir" name="end_date" value="{{ akhir }}" class="input-field w-48" required></div>
   {% endif %}
   <div class="self-end"><button type="submit" class="btn-primary"><i class="fa-solid fa-filter"></i> Tampilkan</button></div>
+  <button type="button" id="btnMuatUlangTbs" class="btn-secondary">
+      <i class="fa-solid fa-rotate"></i> Muat Ulang
+  </button>
   <div class="flex-1"></div>
   {% if pilih and not galat and lap.periode != 'daily' %}<span class="self-end text-sm text-slate-500 pb-2"><b class="text-slate-900">{{ pilih }}</b> · {{ periode_teks }}</span>{% endif %}
   {% if tabel %}<span class="self-end text-xs text-slate-500 pb-2">Data ERP diambil {{ diambil }}</span>

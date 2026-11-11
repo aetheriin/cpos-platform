@@ -456,12 +456,12 @@ def _ada_tonase(tabel):
     return not nilai or any(v for v in nilai)
 
 
-def _tbs_semua_perusahaan(jenis, lap, kode, tanggal):
+def _tbs_semua_perusahaan(jenis, lap, kode, tanggal, paksa=False):
     """Laporan Daily semua perusahaan, dijalankan bersamaan. Perusahaan tanpa pembelian atau tanpa data ERP tidak ditampilkan;
     yang gagal karena sebab lain tetap tampil dengan pesannya."""
     def satu(comp):
         try:
-            isi = laporan_tbs.susun_tabel(jenis, pramuat_tbs.jalankan(lap["prosedur"], *pramuat_tbs.param(jenis, comp, tanggal, tanggal)))
+            isi = laporan_tbs.susun_tabel(jenis, pramuat_tbs.jalankan(lap["prosedur"], *pramuat_tbs.param(jenis, comp, tanggal, tanggal), paksa=paksa))
         except pyodbc.Error as e:
             if "Company tidak ditemukan" in str(e):   # perusahaan CPOS yang bukan company ERP, mis. RCM, YbsT
                 return []
@@ -487,6 +487,7 @@ def laporan(jenis):
     company = _company_rekap(current_user.id)
     kode = [c["id_company"] for c in company]
     pilih = (request.args.get("company") or "").strip().upper() or pramuat_tbs.company_bawaan(kode)
+    paksa_muat_ulang = request.args.get("muat_ulang") == "1"
     # Periode bawaan sama dengan yang dijalankan saat login (pramuat_tbs), jadi hasilnya langsung terpakai
     if lap["periode"] == "daily":
         awal = request.args.get("date") or pramuat_tbs.periode_bawaan(jenis, pilih)[0]
@@ -502,7 +503,7 @@ def laporan(jenis):
         galat = "Tanggal laporan tidak valid."
     if not galat and lap["periode"] == "daily":
         if kode:
-            tabel = _tbs_semua_perusahaan(jenis, lap, kode, awal)
+            tabel = _tbs_semua_perusahaan(jenis, lap, kode, awal, paksa=paksa_muat_ulang)
         else:
             galat = "Belum ada perusahaan yang dapat dipilih untuk laporan ini."
         return _halaman("tbs", lap["menu"], jenis=jenis, lap=lap, company=company, pilih=pilih, awal=awal, akhir=akhir,
@@ -514,7 +515,7 @@ def laporan(jenis):
         galat = "Tanggal awal tidak boleh melewati tanggal akhir."
     if not galat:
         try:
-            tabel = laporan_tbs.susun_tabel(jenis, pramuat_tbs.jalankan(lap["prosedur"], *pramuat_tbs.param(jenis, pilih, awal, akhir)))
+            tabel = laporan_tbs.susun_tabel(jenis, pramuat_tbs.jalankan(lap["prosedur"], *pramuat_tbs.param(jenis, pilih, awal, akhir), paksa=paksa_muat_ulang))
         except pyodbc.Error:
             current_app.logger.exception("Laporan TBS %s gagal", jenis)
             galat = "Laporan gagal dimuat. Periksa koneksi database ERP (REKAPIN_ERP_CONNECTION_STRING) dan prosedur " + lap["prosedur"] + "."
