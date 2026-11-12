@@ -9,7 +9,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $caddy = Join-Path $PSScriptRoot 'caddy.exe'
 if (-not (Test-Path $caddy)) { throw "caddy.exe belum ada di $PSScriptRoot" }
-$envCpos = Join-Path $Akar 'CPOS\.env'
+$envCpos = Join-Path $Akar 'backend\.env'
 if (-not (Test-Path $envCpos)) { throw "Tidak menemukan $envCpos" }
 
 function Atur($berkas, $kunci, $nilai) {

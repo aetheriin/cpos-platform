@@ -1,10 +1,9 @@
 # Satu alamat untuk semuanya (HTTPS di jaringan site):
-#   https://<IP server>/            -> CPOS + RekapIn   (waitress, CPOS\serve.py, port 5000)
-#   https://<IP server>/analytics/  -> frontend Analytics (hasil build: Analytics\frontend\dist)
+#   https://<IP server>/            -> CPOS + RekapIn   (waitress, backend\cpos\serve.py, port 5000)
+#   https://<IP server>/analytics/  -> frontend Analytics (hasil build: frontend\analytics\dist)
 #   https://<IP server>/analytics/api/ -> backend Analytics (uvicorn, port 8001)
 # Karena satu alamat, cookie login CPOS ikut terbaca oleh Analytics (login tunggal).
 # Berkas ini templat. Isi @IP@, @AKAR@, dan @PORT@ diganti oleh pasang_https.ps1, yang juga mengatur .env dan menjalankan Caddy.
-# Analytics\backend\.env: CPOS_URL harus memakai port CPOS yang sama, mis. http://127.0.0.1:8080
 @IP@ {
     tls internal
     request_header -X-Analytics-Ip
@@ -15,7 +14,7 @@
         reverse_proxy 127.0.0.1:8001
     }
     handle_path /analytics/* {
-        root * @AKAR@/Analytics/frontend/dist
+        root * @AKAR@/frontend/analytics/dist
         try_files {path} /index.html
         file_server
     }

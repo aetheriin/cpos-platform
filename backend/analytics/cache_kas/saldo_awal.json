@@ -1,0 +1,55 @@
+{
+ "SJN|AS_SJN|2026-01-01": {
+  "dihitung": "2026-11-12T16:13:04",
+  "kode": [
+   "CIMB-NIAGA",
+   "OCBC-01"
+  ],
+  "saldo": {}
+ },
+ "SUN|AS_SUN_YBS|2026-01-01": {
+  "dihitung": "2026-11-12T16:13:04",
+  "kode": [
+   "BANK CIMB NIAGA A/C 8001996683",
+   "BANK MANDIRI 108.00.333.23.669",
+   "BANK MANDIRI 108.00.333.2362.8"
+  ],
+  "saldo": {
+   "BANK CIMB NIAGA A/C 8001996683": -20564311576.05
+  }
+ },
+ "ORI|AS_ORI|2026-01-01": {
+  "dihitung": "2026-11-12T16:13:05",
+  "kode": [
+   "CIMB-NIAGA"
+  ],
+  "saldo": {}
+ },
+ "RCM|AS_YBS_VRA|2026-01-01": {
+  "dihitung": "2026-11-12T16:13:05",
+  "kode": [
+   "CIMB-NIAGA"
+  ],
+  "saldo": {}
+ },
+ "YBS|AS_YBS222|2026-01-01": {
+  "dihitung": "2026-11-12T16:13:09",
+  "kode": [
+   "BNI IDR",
+   "BNI USD",
+   "CIMB USD",
+   "CIMB-NIAGA",
+   "MANDIRI IDR",
+   "MANDIRI USD",
+   "OCBC IDR",
+   "OCBC PINJAMAN"
+  ],
+  "saldo": {
+   "BNI IDR": 374420024.0,
+   "BNI USD": 455.01,
+   "CIMB-NIAGA": 154355799938.8546,
+   "OCBC IDR": 18829328.0,
+   "OCBC PINJAMAN": 56766756.0
+  }
+ }
+}

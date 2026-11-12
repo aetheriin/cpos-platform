@@ -1,7 +1,7 @@
 # Memasang CPOS Platform di PC ini sebagai tugas terjadwal yang menyala sendiri saat Windows menyala (tanpa perlu login).
 # Dipanggil oleh deploy\pasang.bat (Run as administrator). Aman dijalankan ulang, mis. setelah memperbarui file aplikasi.
 #  1. Python 3.11 (untuk semua user) dan ODBC Driver 18 for SQL Server: dipasang lewat winget bila belum ada
-#  2. File .env CPOS, Analytics, Deteksi: harus sudah ada (ikut paket, atau salin dari .env.example lalu isi)
+#  2. File backend\.env (satu untuk semua aplikasi): harus sudah ada (ikut paket, atau salin dari backend\.env.example lalu isi)
 #  3. Firewall: hanya port CPOS yang dibuka untuk PC lain; Analytics dan Deteksi Plat diakses lewat CPOS
 #  4. Tugas terjadwal "CPOS Platform": akun SYSTEM, saat Windows menyala, menyala ulang bila berhenti
 #  5. Menyalakan tugasnya sekarang dan menunggu CPOS siap (pertama kali memasang library Python, bisa 10-20 menit)
@@ -47,15 +47,11 @@ function Odbc-18 {
 }
 
 function Cek-Env {
-    $kurang = @()
-    foreach ($f in 'CPOS\.env', 'Analytics\backend\.env', 'Deteksi\.env') {
-        $p = Join-Path $akar $f
-        if ((Test-Path (Split-Path $p)) -and -not (Test-Path $p)) {
-            Copy-Item ($p + '.example') $p
-            $kurang += $f
-        }
+    $p = Join-Path $akar 'backend\.env'
+    if (-not (Test-Path $p)) {
+        Copy-Item ($p + '.example') $p
+        throw "File $p baru dibuat dari contoh dan harus diisi dulu (server SQL, password, dll). Lalu jalankan pasang.bat lagi."
     }
-    if ($kurang) { throw "File berikut baru dibuat dari contoh dan harus diisi dulu (server SQL, password, dll): $($kurang -join ', '). Lalu jalankan pasang.bat lagi." }
 }
 
 function Cek-Port-Bebas($porta) {
@@ -69,17 +65,17 @@ function Cek-Port-Bebas($porta) {
     }
 }
 
-function Port-Cpos {
-    $baris = Select-String (Join-Path $akar 'CPOS\.env') -Pattern '^\s*PORT\s*=\s*(\d+)' | Select-Object -First 1
+function Port-Env($nama, $bawaan) {
+    $baris = Select-String (Join-Path $akar 'backend\.env') -Pattern "^\s*$nama\s*=\s*(\d+)" -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($baris) { return [int]$baris.Matches[0].Groups[1].Value }
-    return 5000
+    return $bawaan
 }
 
 try {
     $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
     if (-not $admin) { throw 'Jalankan pasang.bat dengan klik kanan > Run as administrator.' }
-    $port = Port-Cpos
-    $adaDeteksi = Test-Path (Join-Path $akar 'Deteksi\server_web.py')
+    $port = Port-Env 'PORT' 5000
+    $adaDeteksi = Test-Path (Join-Path $akar 'backend\deteksi\server_web.py')
 
     Langkah '1. Python 3.11 & ODBC Driver 18'
     Python-Semua-User
@@ -107,9 +103,7 @@ try {
     Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
         Where-Object { $_.ExecutablePath -like "$data\*" } |
         ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-    $portDeteksi = 8000
-    $baris = Select-String (Join-Path $akar 'Deteksi\.env') -Pattern '^\s*PORT_WEB\s*=\s*(\d+)' -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($baris) { $portDeteksi = [int]$baris.Matches[0].Groups[1].Value }
+    $portDeteksi = Port-Env 'DETEKTOR_PORT' 8000
     $portApp = @($port, 8001) + $(if ($adaDeteksi) { $portDeteksi } else { @() })
     # Memperbarui pasangan lama: python.exe venv hanya peluncur, proses sebenarnya memakai python induk di luar folder data dan tetap memegang portnya.
     # Pemasangan pertama tidak mematikan apa pun, jadi port yang dipakai aplikasi lain tetap dilaporkan oleh Cek-Port-Bebas.

@@ -6,13 +6,13 @@
 **/__pycache__/
 **/venv/
 **/.venv/
-Analytics/backend/log_aktivitas/
-Analytics/backend/pengaturan.json
-Analytics/frontend/node_modules/
-Analytics/frontend/dist/
-CPOS/logs/
-CPOS/data/
-Deteksi/foto_bukti/
+backend/cpos/logs/
+backend/cpos/data/
+backend/deteksi/foto_bukti/
+backend/deteksi/hasil/
+frontend/*/node_modules/
+frontend/analytics/dist/
+frontend/cpos/static/uploads/
 # paket deploy hasil deploy\buat_paket.bat
 deploy/paket/
 # file lama yang dipindah dari kode (bukan bagian aplikasi, tidak ikut paket)

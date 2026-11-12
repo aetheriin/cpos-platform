@@ -1,7 +1,0 @@
-.env
-venv/
-__pycache__/
-*.csv
-tests/data/
-log_aktivitas/
-cache_kas/

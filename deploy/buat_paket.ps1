@@ -1,11 +1,11 @@
 ﻿# Membuat paket deploy (zip) CPOS Platform untuk dipasang di PC lain. Dipanggil oleh deploy\buat_paket.bat.
-# Isi: semua file repo yang tidak di-.gitignore (CPOS + RekapIn, Analytics, Deteksi, skrip jalankan & deploy), tampilan Analytics
-# yang baru dibangun (Analytics\frontend\dist), dan file .env yang sekarang (-TanpaEnv: tidak ikut, isi sendiri di PC tujuan).
-# Tidak ikut: venv, node_modules, log, upload, cache laporan, sumber frontend Analytics (yang dipakai hanya dist).
+# Isi: backend\ (CPOS + RekapIn, Analytics, Deteksi), frontend\cpos\templates dan static, frontend\analytics\dist (dibangun ulang di sini),
+# skrip jalankan & deploy, dan backend\.env yang sekarang (-TanpaEnv: tidak ikut, isi sendiri di PC tujuan dari backend\.env.example).
+# Tidak ikut: venv, node_modules, log, upload, cache laporan, sumber frontend (src, package.json, tailwind), docs, lama.
 # Hasil: deploy\paket\CPOS-Platform-<tanggal-jam>.zip. Pasang di PC tujuan: ekstrak ke mis. C:\CPOS-Platform, lalu
 # klik kanan deploy\pasang.bat > Run as administrator (lihat PASANG.txt di dalam zip).
-# -Port 8080: port CPOS di .env dalam paket (PORT dan CPOS_URL), dan Deteksi Plat di port internal -PortDeteksi yang hanya bisa
-# dihubungi dari PC itu (CPOS meneruskan videonya). .env di folder ini tidak berubah.
+# -Port 8080: port CPOS di .env dalam paket (PORT), dan Deteksi Plat di port internal -PortDeteksi (DETEKTOR_PORT, URL_DETEKTOR) yang hanya
+# bisa dihubungi dari PC itu (CPOS meneruskan videonya). backend\.env di folder ini tidak berubah.
 # Paket perubahan: setiap paket mencatat sidik file di deploy\paket\terakhir.json. Bila catatan itu ada, paket berikutnya hanya berisi
 # file yang berbeda dari paket sebelumnya, ditambah HAPUS.txt untuk file yang sudah tidak ada. Paket perubahan dipasang berurutan.
 # -Penuh: paket lengkap walau catatan ada. -Dasar <zip>: hanya menyusun ulang catatan dari zip lengkap yang terpasang di server.
@@ -44,8 +44,8 @@ try {
     }
     if (-not $TanpaBangun) {
         Write-Host '== 1. Membangun tampilan Analytics'
-        $bangun = Join-Path $kerja 'bangun-frontend'
-        robocopy (Join-Path $akar 'Analytics\frontend') $bangun /E /XD node_modules dist /NFL /NDL /NJH /NJS /NP | Out-Null
+        $bangun = Join-Path $kerja 'bangun-frontend\analytics'   # sama dengan bangun-frontend.bat
+        robocopy (Join-Path $akar 'frontend\analytics') $bangun /E /XD node_modules dist /NFL /NDL /NJH /NJS /NP | Out-Null
         Push-Location $bangun
         try {
             & npm install --no-audit --no-fund --loglevel=error
@@ -53,9 +53,9 @@ try {
             & npm run build
             if ($LASTEXITCODE -ne 0) { throw 'npm run build gagal' }
         } finally { Pop-Location }
-        robocopy (Join-Path $bangun 'dist') (Join-Path $akar 'Analytics\frontend\dist') /MIR /NFL /NDL /NJH /NJS /NP | Out-Null
+        robocopy (Join-Path $bangun 'dist') (Join-Path $akar 'frontend\analytics\dist') /MIR /NFL /NDL /NJH /NJS /NP | Out-Null
     }
-    if (-not (Test-Path (Join-Path $akar 'Analytics\frontend\dist\index.html'))) { throw 'Analytics\frontend\dist belum ada. Jalankan tanpa -TanpaBangun.' }
+    if (-not (Test-Path (Join-Path $akar 'frontend\analytics\dist\index.html'))) { throw 'frontend\analytics\dist belum ada. Jalankan tanpa -TanpaBangun.' }
 
     Write-Host '== 2. Menyalin file'
     Push-Location $akar
@@ -63,9 +63,10 @@ try {
         $daftar = & git -c safe.directory=* ls-files --cached --others --exclude-standard
         if ($LASTEXITCODE -ne 0 -or -not $daftar) { throw 'git ls-files gagal. Pastikan Git terpasang dan folder ini repo git.' }
     } finally { Pop-Location }
-    # Sumber frontend tidak perlu di PC tujuan (yang dilayani hanya dist)
-    $daftar = $daftar | Where-Object { $_ -notlike 'Analytics/frontend/*' -or $_ -like 'Analytics/frontend/public/*' } |
-                        Where-Object { $_ -notlike 'deploy/paket/*' -and $_ -notlike '*/log_aktivitas/*' -and $_ -notlike 'Deteksi/foto_bukti/*' -and $_ -notlike 'lama/*' }
+    # Dari frontend hanya yang dipakai saat berjalan: templates & static CPOS (dirender Flask) dan dist Analytics (disalin di bawah)
+    $daftar = $daftar | Where-Object { $_ -notlike 'frontend/*' -or $_ -like 'frontend/cpos/templates/*' -or $_ -like 'frontend/cpos/static/*' } |
+                        Where-Object { $_ -notlike 'deploy/paket/*' -and $_ -notlike 'backend/deteksi/foto_bukti/*' -and
+                                       $_ -notlike 'lama/*' -and $_ -notlike 'docs/*' -and $_ -notlike 'frontend/cpos/static/uploads/*' }
     if (Test-Path $isi) { Remove-Item $isi -Recurse -Force }
     foreach ($f in $daftar) {
         $sumber = Join-Path $akar $f
@@ -74,19 +75,20 @@ try {
         New-Item -ItemType Directory -Force (Split-Path $tujuan) | Out-Null
         Copy-Item $sumber $tujuan
     }
-    robocopy (Join-Path $akar 'Analytics\frontend\dist') (Join-Path $isi 'Analytics\frontend\dist') /MIR /NFL /NDL /NJH /NJS /NP | Out-Null
+    robocopy (Join-Path $akar 'frontend\analytics\dist') (Join-Path $isi 'frontend\analytics\dist') /MIR /NFL /NDL /NJH /NJS /NP | Out-Null
     if (-not $TanpaEnv) {
-        foreach ($f in 'CPOS\.env', 'Analytics\backend\.env', 'Deteksi\.env') {
-            if (Test-Path (Join-Path $akar $f)) { Copy-Item (Join-Path $akar $f) (Join-Path $isi $f) }
-        }
+        $f = 'backend\.env'
+        if (Test-Path (Join-Path $akar $f)) { Copy-Item (Join-Path $akar $f) (Join-Path $isi $f) }
     }
     if ($Port -and -not $TanpaEnv) {
-        $f = Join-Path $isi 'CPOS\.env'
-        [IO.File]::WriteAllText($f, ([IO.File]::ReadAllText($f) -replace '(?m)^PORT=\d+', "PORT=$Port" -replace '(?m)^URL_DETEKTOR=.*$', "URL_DETEKTOR=http://127.0.0.1:$PortDeteksi" -replace '(?m)^DETEKTOR_PORT=.*$', "DETEKTOR_PORT=$PortDeteksi"))
-        $f = Join-Path $isi 'Deteksi\.env'
-        if (Test-Path $f) { [IO.File]::AppendAllText($f, "`r`nPORT_WEB=$PortDeteksi`r`nHOST_WEB=127.0.0.1`r`n") }
-        $f = Join-Path $isi 'Analytics\backend\.env'
-        [IO.File]::WriteAllText($f, ([IO.File]::ReadAllText($f) -replace '(?m)^(CPOS_URL=http://127\.0\.0\.1:)\d+', "`${1}$Port"))
+        # diganti bila ada, ditambahkan bila belum (.env hanya berisi yang berbeda dari bawaan); URL_DETEKTOR ikut DETEKTOR_PORT
+        $f = Join-Path $isi 'backend\.env'
+        $t = [IO.File]::ReadAllText($f) -replace '(?m)^URL_DETEKTOR=.*\r?\n?', ''
+        foreach ($kv in @(@('PORT', $Port), @('DETEKTOR_PORT', $PortDeteksi))) {
+            if ($t -match "(?m)^$($kv[0])=") { $t = $t -replace "(?m)^$($kv[0])=.*$", "$($kv[0])=$($kv[1])" }
+            else { $t = $t.TrimEnd() + "`r`n$($kv[0])=$($kv[1])`r`n" }
+        }
+        [IO.File]::WriteAllText($f, $t)
     }
     Copy-Item (Join-Path $PSScriptRoot 'PASANG.txt') (Join-Path $isi 'PASANG.txt')
 

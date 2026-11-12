@@ -12,7 +12,7 @@ Stop-ScheduledTask -TaskName 'CPOS Platform' -ErrorAction SilentlyContinue
 Unregister-ScheduledTask -TaskName 'CPOS Platform' -Confirm:$false -ErrorAction SilentlyContinue
 Get-CimInstance Win32_Process -Filter "Name='python.exe'" | Where-Object { $_.ExecutablePath -like "$env:ProgramData\CPOS-Platform\*" } |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-foreach ($p in (Port-Dari 'CPOS\.env' 'PORT' 8080), 8001, (Port-Dari 'Deteksi\.env' 'PORT_WEB' 8002)) {
+foreach ($p in (Port-Dari 'backend\.env' 'PORT' 8080), 8001, (Port-Dari 'backend\.env' 'DETEKTOR_PORT' 8002)) {
     Get-NetTCPConnection -State Listen -LocalPort $p -ErrorAction SilentlyContinue | ForEach-Object {
         Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue | Where-Object ProcessName -eq 'python' | Stop-Process -Force -ErrorAction SilentlyContinue
     }

@@ -3,19 +3,25 @@ PEMASANGAN CPOS PLATFORM (CPOS + RekapIn + Analytics + Deteksi Plat)
 
 Kebutuhan PC tujuan
 - Windows 10 / 11 64-bit, akun administrator, internet (sekali, untuk memasang Python & library)
-- Bisa terhubung ke SQL Server yang tertulis di CPOS\.env dan Analytics\backend\.env
+- Bisa terhubung ke SQL Server yang tertulis di backend\.env
 - Python 3.11 dan ODBC Driver 18 for SQL Server: dipasang otomatis lewat winget bila belum ada
+
+Isi zip
+     backend\                   semua kode (CPOS + RekapIn, Analytics, Deteksi Plat) dan backend\.env
+     frontend\cpos\             templates & static CPOS
+     frontend\analytics\dist\   tampilan Analytics
+     deploy\, jalankan.*        skrip pasang dan jalankan
 
 Memasang
 1. Ekstrak zip ini ke folder tetap, mis. C:\CPOS-Platform (jangan di Downloads / Desktop).
-2. Periksa file pengaturan bila PC tujuan berbeda jaringan / server:
-     CPOS\.env                  database CPOS, PORT (port web), URL_DETEKTOR
-     Analytics\backend\.env     database ERP laporan, CPOS_URL (port sama dengan PORT CPOS)
-     Deteksi\.env               kamera & database deteksi plat, PORT_WEB (port internal)
+   Memperbarui dari versi lama (folder CPOS\, Analytics\, Deteksi\): pakai paket lengkap (buat_paket.bat -Penuh), ekstrak ke folder
+   baru, salin pengaturan lama ke backend\.env (lihat backend\.env.example), lalu jalankan pasang.bat dari folder baru.
+2. Periksa backend\.env bila PC tujuan berbeda jaringan / server: database (DB_*, ANALYTICS_DB_*), PORT (port web),
+   DETEKTOR_PORT / URL_DETEKTOR (port internal Deteksi Plat).
 3. Klik kanan deploy\pasang.bat > Run as administrator.
    Pertama kali memasang library Python (10-20 menit). Selesai bila muncul alamat CPOS berwarna hijau.
 4. Buka http://<IP PC ini>:<PORT> dari PC lain di jaringan kantor. Hanya port itu yang dibuka di firewall;
-   Analytics (8001) dan Deteksi Plat (PORT_WEB) hanya dipakai di dalam PC ini.
+   Analytics (8001) dan Deteksi Plat (DETEKTOR_PORT) hanya dipakai di dalam PC ini.
 
 Sesudah terpasang
 - CPOS menyala sendiri setiap Windows menyala (tugas terjadwal "CPOS Platform", akun SYSTEM, tanpa perlu login),

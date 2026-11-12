@@ -1,12 +1,16 @@
+# Menjalankan semua aplikasi di PC ini: CPOS (+ RekapIn, + Analytics di /analytics), backend Analytics, dan Deteksi Plat.
+# Pengaturan semuanya di backend\.env. Python & library disimpan di %LOCALAPPDATA%\cpos-platform (dibuat sendiri saat pertama kali).
 $ErrorActionPreference = 'Stop'
 $akar = $PSScriptRoot
+$be = Join-Path $akar 'backend'
+$fileEnv = Join-Path $be '.env'
 $lokal = Join-Path $env:LOCALAPPDATA 'cpos-platform'
 $log = Join-Path $lokal 'log'
 $PortAnalytics = 8001
 $PortDeteksi = 8000
 $JalankanDeteksi = $true
 New-Item -ItemType Directory -Force $log | Out-Null
-$Host.UI.RawUI.WindowTitle = 'CPOS + Analytics'
+$Host.UI.RawUI.WindowTitle = 'CPOS Platform'
 
 function Cari-Python {
     # CPOS butuh Python 3.10 / 3.11 (mediapipe 0.10.9)
@@ -77,6 +81,12 @@ function Port-Dipakai($port) {
     }
 }
 
+function Nilai-Env($nama, $bawaan) {
+    $baris = Select-String $fileEnv -Pattern "^\s*$nama\s*=\s*(\d+)" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($baris) { return [int]$baris.Matches[0].Groups[1].Value }
+    return $bawaan
+}
+
 function Tunggu-Port($port, $nama, $detik = 90) {
     for ($i = 0; $i -lt $detik; $i++) {
         $tcp = New-Object Net.Sockets.TcpClient
@@ -86,29 +96,26 @@ function Tunggu-Port($port, $nama, $detik = 90) {
 }
 
 try {
-    $portCpos = 5000
-    $baris = Select-String (Join-Path $akar 'CPOS\.env') -Pattern '^\s*PORT\s*=\s*(\d+)' -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($baris) { $portCpos = [int]$baris.Matches[0].Groups[1].Value }
-    # Detektor memakai port dari CPOS\.env; hanya diakses oleh CPOS pada PC yang sama.
-    $hostDeteksi = '127.0.0.1'
-    $baris = Select-String (Join-Path $akar 'CPOS\.env') `
-        -Pattern '^\s*DETEKTOR_PORT\s*=\s*(\d+)' `
-        -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($baris) {
-        $PortDeteksi = [int]$baris.Matches[0].Groups[1].Value
+    if (-not (Test-Path $fileEnv)) {
+        Copy-Item (Join-Path $be ".env.example") $fileEnv
+        throw "File $fileEnv baru dibuat dari contoh. Isi dulu (database, SECRET_KEY, dll), lalu jalankan lagi."
     }
+    $portCpos = Nilai-Env 'PORT' 5000
+    # Deteksi hanya diakses oleh CPOS di PC yang sama
+    $PortDeteksi = Nilai-Env 'DETEKTOR_PORT' $PortDeteksi
+    $hostDeteksi = '127.0.0.1'
 
     # Library modul CPOS (mis. modules\item_request\requirements.txt) ikut dipasang ke Python CPOS; modul baru otomatis ikut
-    $reqCpos = @(Join-Path $akar 'CPOS\requirements.txt') + @(Get-ChildItem (Join-Path $akar 'CPOS\modules') -Recurse -Filter 'requirements.txt' |
+    $reqCpos = @(Join-Path $be 'cpos\requirements.txt') + @(Get-ChildItem (Join-Path $be 'cpos\modules') -Recurse -Filter 'requirements.txt' |
         Sort-Object FullName | ForEach-Object FullName)
     $pyCpos = Siapkan-Venv 'CPOS' (Join-Path $lokal 'venv-cpos') $reqCpos @(, @('--no-deps', 'face-recognition==1.3.0'))
-    $pyAnalytics = Siapkan-Venv 'Analytics' (Join-Path $lokal 'venv-analytics') @(Join-Path $akar 'Analytics\backend\requirements.txt') @()
-    $adaDeteksi = $JalankanDeteksi -and (Test-Path (Join-Path $akar 'Deteksi\server_web.py'))
+    $pyAnalytics = Siapkan-Venv 'Analytics' (Join-Path $lokal 'venv-analytics') @(Join-Path $be 'analytics\requirements.txt') @()
+    $adaDeteksi = $JalankanDeteksi -and (Test-Path (Join-Path $be 'deteksi\server_web.py'))
     if ($adaDeteksi) {
-        $pyDeteksi = Siapkan-Venv 'Deteksi Plat' (Join-Path $env:LOCALAPPDATA 'deteksi-plat\venv') @(Join-Path $akar 'Deteksi\requirements.txt') @()
+        $pyDeteksi = Siapkan-Venv 'Deteksi Plat' (Join-Path $env:LOCALAPPDATA 'deteksi-plat\venv') @(Join-Path $be 'deteksi\requirements.txt') @()
     }
-    if (-not (Test-Path (Join-Path $akar 'Analytics\frontend\dist\index.html'))) {
-        Write-Warning 'Tampilan Analytics belum dibangun: laporan tidak akan tampil. Jalankan bangun-analytics.bat sekali.'
+    if (-not (Test-Path (Join-Path $akar 'frontend\analytics\dist\index.html'))) {
+        Write-Warning 'Tampilan Analytics belum dibangun: laporan tidak akan tampil. Jalankan bangun-frontend.bat sekali.'
     }
 
     Hentikan-Sisa
@@ -118,13 +125,13 @@ try {
 
     Write-Host 'Menyalakan backend Analytics...'
     $analytics = Start-Process $pyAnalytics -ArgumentList '-m', 'uvicorn', 'api:app', '--host', '127.0.0.1', '--port', $PortAnalytics `
-        -WorkingDirectory (Join-Path $akar 'Analytics\backend') -WindowStyle Hidden -PassThru `
+        -WorkingDirectory (Join-Path $be 'analytics') -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput (Join-Path $log 'analytics.log') -RedirectStandardError (Join-Path $log 'analytics-galat.log')
     if (-not (Tunggu-Port $PortAnalytics 'Analytics' 60)) { throw "Backend Analytics gagal menyala. Lihat $log\analytics-galat.log" }
-    if ($adaDeteksi) {        
+    if ($adaDeteksi) {
         Write-Host 'Menyalakan backend Deteksi Plat...'
         $env:PYTHONUNBUFFERED = '1'
-        $deteksi = Start-Process $pyDeteksi -ArgumentList 'server_web.py', '--port', $PortDeteksi, '--host', $hostDeteksi -WorkingDirectory (Join-Path $akar 'Deteksi') -WindowStyle Hidden -PassThru `
+        $deteksi = Start-Process $pyDeteksi -ArgumentList 'server_web.py', '--port', $PortDeteksi, '--host', $hostDeteksi -WorkingDirectory (Join-Path $be 'deteksi') -WindowStyle Hidden -PassThru `
             -RedirectStandardOutput (Join-Path $log 'deteksi.log') -RedirectStandardError (Join-Path $log 'deteksi-galat.log')
         if (-not (Tunggu-Port $PortDeteksi 'Deteksi' 60)) {
             Write-Warning "Backend Deteksi belum siap (model AI masih dimuat, atau ada galat). Lihat $log\deteksi-galat.log. CPOS tetap dijalankan."
@@ -145,7 +152,7 @@ try {
     if ($deteksi) { Write-Host "Deteksi Plat: http://localhost:$PortDeteksi   (log: $log\deteksi.log)" -ForegroundColor Green }
     Write-Host 'Tutup jendela ini untuk berhenti.' -ForegroundColor Green
     Write-Host ''
-    Set-Location (Join-Path $akar 'CPOS')
+    Set-Location (Join-Path $be 'cpos')
     & $pyCpos serve.py
 }
 catch {

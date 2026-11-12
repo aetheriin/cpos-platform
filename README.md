@@ -1,12 +1,13 @@
 # CPOS Platform
 
-Satu repo untuk tiga aplikasi yang tampil sebagai satu web:
+Satu repo untuk beberapa aplikasi yang tampil sebagai satu web:
 
 | Bagian | Isi | Teknologi | Jalan di |
 |---|---|---|---|
 | **CPOS** | Timbangan, security, master, admin (login & hak akses pusat) | Flask + SQL Server | `/` (port 5000) |
 | **RekapIn** | Dashboard RekapIn, Request Operator, Harga CPO & Kernel, Kategori Request, Pembelian TBS | modul di dalam CPOS | `/rekapin/...` (ikut CPOS) |
-| **Analytics** | 8 laporan analitik (PR & PO, PO & PI, PVR/PV KPI, Weighbridge, TBS, PI-PVR, PI-GT) | React + FastAPI | `/analytics/` (backend port 8001) |
+| **Analytics** | Laporan analitik (PR & PO, PO & PI, PVR/PV KPI, Weighbridge, TBS, PI-PVR, PI-GT, Outstanding, Kas & Bank) | React + FastAPI | `/analytics/` (backend port 8001) |
+| **Deteksi Plat** | Baca plat dari kamera, foto bukti | Python | port internal 8000, videonya lewat CPOS |
 
 Pengguna hanya login sekali di CPOS. Semua menu (termasuk RekapIn dan Analytics) ada di sidebar CPOS dan diatur di
 **Admin › Kelola Menu** dan **Admin › Hak Akses**.
@@ -15,50 +16,46 @@ Pengguna hanya login sekali di CPOS. Semua menu (termasuk RekapIn dan Analytics)
 
 ```
 CPOS-Platform/
-├─ CPOS/                         aplikasi utama (Flask)
-│  ├─ app.py, serve.py           jalankan: python serve.py
-│  ├─ routes/  utils/  templates/  static/
-│  ├─ routes/analytics.py        menu /an/<id> -> laporan Analytics dalam bingkai CPOS
-│  ├─ modules/
-│  │  └─ rekapin/                RekapIn sebagai modul CPOS
-│  │     ├─ routes.py  db.py  laporan_tbs.py  erp.py
-│  │     ├─ templates/rekapin/   static/rekapin/
-│  │     └─ database/001_rekap.sql   schema "rekap" + hak bawaan
-│  ├─ database/
-│  │  ├─ schema.sql              database CPOS lengkap dari nol
-│  │  ├─ demo_data.sql           data contoh (opsional)
-│  │  └─ perubahan/              skrip perubahan untuk server yang sudah berjalan
-│  └─ .env.example
-├─ Analytics/
-│  ├─ backend/                   FastAPI (uvicorn api:app), .env.example
-│  ├─ frontend/                  React + Vite (dilayani di /analytics/)
-│  └─ database/001_analytics.sql hak bawaan menu laporan Analytics
-└─ deploy/
-   ├─ buat_database.bat          membuat database CPOS lengkap dari nol
-   └─ Caddyfile                  satu alamat HTTPS untuk CPOS + Analytics
+├─ backend/
+│  ├─ .env                       SATU file pengaturan untuk semua aplikasi (tidak ikut git; contoh: .env.example)
+│  ├─ cpos/                      Flask: app.py, serve.py, routes/, utils/, agen/, tools/
+│  │  ├─ modules/rekapin/  item_request/  item_dashboard/   modul CPOS (kode Python + database/)
+│  │  ├─ database/               schema.sql (database CPOS dari nol), perubahan/, keamanan/
+│  │  └─ data/  logs/            upload privat dan log (dibuat saat berjalan)
+│  ├─ analytics/                 FastAPI: api.py, inti/, laporan/
+│  │  └─ database/               001_analytics.sql (hak menu) dan *_sp.sql (stored procedure laporan di Main)
+│  └─ deteksi/                   server_web.py, anpr/, model, foto_bukti/
+├─ frontend/
+│  ├─ cpos/                      templates/ dan static/ (dirender Flask), termasuk templates|static/rekapin, item_*
+│  │                             package.json + tailwind.config.js: membangun static/css/tailwind.css
+│  └─ analytics/                 React + Vite: src/; hasil build di dist/ (dilayani di /analytics/)
+├─ deploy/                       paket, pasang sebagai layanan, HTTPS (Caddy), buat_database.bat
+├─ docs/                         dokumentasi CPOS dan Analytics
+├─ jalankan.bat                  menjalankan semuanya di PC ini
+├─ berhenti.bat                  menghentikan semuanya
+└─ bangun-frontend.bat           membangun ulang frontend\analytics\dist dan CSS CPOS
 ```
+
+`backend\` berisi semua kode Python; `frontend\` berisi semua tampilan. Halaman CPOS tetap dibuat oleh Flask dari
+`frontend\cpos\templates`, jadi folder itu ikut dibawa ke server bersama `backend\`.
 
 ## Cara kerjanya
 
 ```
-Browser ── https://server/ ─────────────► Caddy ──► CPOS (waitress :5000)  ── SQL Server: database CPOS
-        └─ https://server/analytics/ ────►   │  ──► file Analytics/frontend/dist
-        └─ https://server/analytics/api/ ►   └────► Analytics backend (uvicorn :8001) ── SQL Server ERP (SP laporan)
-                                                         │
-                                                         └─► tanya CPOS /api/analytics/saya: "cookie ini milik siapa,
-                                                             laporan apa saja yang boleh dibuka?"
+Browser ── http(s)://server/ ──────────────► CPOS (waitress :5000) ── SQL Server: database CPOS / Main
+        └─ /analytics/          ─► CPOS menyajikan frontend\analytics\dist
+        └─ /analytics/api/...   ─► CPOS meneruskan ke backend Analytics (uvicorn :8001) ── SP laporan di Main ── ERP
+                                                     │
+                                                     └─► tanya CPOS /api/analytics/saya: "cookie ini milik siapa,
+                                                         laporan apa saja yang boleh dibuka?"
 ```
 
-- **RekapIn** sudah menjadi bagian kode CPOS, jadi otomatis memakai login, sidebar, hak akses, dan tampilan CPOS.
-  Datanya di schema database `rekap` (dalam database CPOS); harga memakai tabel `dbo.DailyPrice` yang sama dengan Dashboard CPOS.
-- **Analytics** tetap aplikasi terpisah (beda bahasa), tetapi:
-  - menu laporan di CPOS beralamat `/an/<id laporan>` (mis. `/an/pr_po`), dan halamannya menampilkan Analytics di dalam bingkai,
-    lengkap dengan sidebar & header CPOS;
-  - backend Analytics tidak punya login sendiri bila `CPOS_URL` diisi: tiap permintaan diperiksa ke CPOS;
-  - yang boleh membuka sebuah laporan = yang punya hak **Lihat** menu itu di Admin › Hak Akses;
-  - font dan warna Analytics disamakan dengan CPOS.
+Karena CPOS sudah menyajikan `/analytics`, di depan cukup **satu** alamat: port CPOS. Reverse proxy (Caddy atau IIS) hanya perlu
+meneruskan semua ke port CPOS.
 
-Daftar menu laporan Analytics:
+- **RekapIn** adalah bagian kode CPOS, jadi otomatis memakai login, sidebar, hak akses, dan tampilan CPOS.
+- **Analytics** aplikasi terpisah (FastAPI + React), tetapi tidak punya login sendiri: tiap permintaan diperiksa ke CPOS
+  (alamatnya dibuat dari `PORT` di `backend\.env`). Menu laporan di CPOS beralamat `/an/<id laporan>`.
 
 | Menu CPOS | Alamat | Laporan Analytics |
 |---|---|---|
@@ -71,147 +68,106 @@ Daftar menu laporan Analytics:
 | Reports › Purchase Invoice | `/an/pi_pvr` | `pi_pvr` |
 | Reports › Goods Transfer | `/an/pi_gt` | `pi_gt` |
 
-Laporan Analytics baru: buat laporannya di Analytics seperti biasa, lalu di **Admin › Kelola Menu** tambah menu dengan alamat
-`/an/<id laporan>` dan beri hak Lihat di Admin › Hak Akses. Tidak perlu mengubah kode CPOS.
+Laporan Analytics baru: buat laporannya di `backend\analytics\laporan`, lalu di **Admin › Kelola Menu** tambah menu dengan alamat
+`/an/<id laporan>` dan beri hak Lihat di Admin › Hak Akses. Kode CPOS tidak perlu diubah.
 
-## 1. Clone
-
-```bat
-git clone https://github.com/<akun>/<repo>.git C:\CPOS-Platform
-cd C:\CPOS-Platform
-```
-
-Yang tidak ikut di repo (dibuat sendiri di tiap PC/server): file `.env`, `venv`, `node_modules`, `Analytics/frontend/dist`, log.
-
-## 2. Database (SQL Server)
-
-Database baru (kosong / server uji):
+## 1. Pengaturan (.env)
 
 ```bat
-deploy\buat_database.bat localhost sa PasswordSa
-:: data contoh (opsional, hanya server uji):
-sqlcmd -S localhost -U sa -P PasswordSa -C -d CPOS -i CPOS\database\demo_data.sql
+copy backend\.env.example backend\.env
 ```
 
-Urutan yang dijalankan skrip itu (bisa juga satu per satu di SSMS):
-
-1. `CPOS\database\schema.sql`: membuat database **CPOS** (tabel, prosedur, menu, hak dasar, `dbo.SchemaLog`).
-2. `CPOS\modules\rekapin\database\*.sql`: schema `rekap` (request operator, kategori) + alamat menu RekapIn + hak bawaan HO.
-3. `Analytics\database\*.sql`: hak bawaan menu laporan Analytics untuk HO.
-4. (opsional) `CPOS\database\keamanan\01_user_aplikasi.sql` bila aplikasi login ke SQL Server dengan user khusus, bukan `sa`.
-   Setelah itu jalankan ulang langkah 2–3, supaya user tersebut juga mendapat hak ke schema `rekap`.
-
-Semua skrip aman dijalankan ulang dan mencatat dirinya di `dbo.SchemaLog`:
-
-```sql
-SELECT * FROM CPOS.dbo.SchemaLog ORDER BY RunDate;
-```
-
-Server yang **sudah berisi data** tidak dibuat ulang: perubahan baru ditulis sebagai skrip bernomor di
-`CPOS\database\perubahan` (contoh: `_contoh.sql`), di folder `database` modul, atau di `Analytics\database`, lalu
-dijalankan sekali. Ubahan yang sama juga dimasukkan ke `schema.sql` supaya server baru langsung lengkap.
-
-Laporan Analytics dan laporan Pembelian TBS memanggil stored procedure ERP (database lain). Koneksinya diatur di `.env`
-masing-masing (lihat langkah 3).
-
-## 3. Pengaturan (.env)
-
-```bat
-copy CPOS\.env.example CPOS\.env
-copy Analytics\backend\.env.example Analytics\backend\.env
-```
-
-`CPOS\.env` (yang terkait gabungan):
+Satu file untuk semua aplikasi, dan cukup berisi yang berbeda dari bawaan. Daftar lengkap dengan nilai bawaannya ada di
+`backend\.env.example`.
 
 | Nama | Isi |
 |---|---|
-| `DB_SERVER`, `DB_NAME=CPOS`, `DB_USER`, `DB_PASSWORD` | database CPOS |
-| `REKAPIN_ERP_CONNECTION_STRING` | connection string ODBC ke database ERP yang punya `dbo.tbsdetailybs2`, `dbo.tbsdetailybsweekly`, `dbo.tbsdetailmonthly` |
-| `ANALYTICS_URL` | `/analytics` (satu alamat lewat Caddy). Saat pengembangan: `http://localhost:5173/analytics` |
+| `SECRET_KEY`, `HASH_SECRET_KEY` | kunci CPOS (pindah PC: salin dari PC lama, harus sama) |
+| `DB_SERVER`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | database utama; dipakai CPOS, Deteksi, Analytics, dan modul RekapIn / Item Request |
+| `ANALYTICS_DB_USER`, `ANALYTICS_DB_PASSWORD` | akun database khusus Analytics (mis. `pythonReport`); kosong = sama dengan `DB_USER` |
+| `HARGA_TABEL` | harga CPO & Kernel dari tabel RekapIn, mis. `Main.dbo.HARGA` (kosong = `dbo.DailyPrice` CPOS) |
+| `PORT` (5000) | port web CPOS; Analytics memeriksa login ke `http://127.0.0.1:<PORT>` |
+| `DETEKTOR_PORT` (8000) | port internal Deteksi Plat |
+| `FOLDER_FOTO` | folder foto plat (kosong = `backend\deteksi\foto_bukti`) |
 
-`Analytics\backend\.env`:
+Modul yang datanya di database lain cukup menulis yang berbeda, mis. `ITEM_REQUEST_SERVER=...`; isian yang kosong ikut `DB_*`
+(`backend\cpos\utils\koneksi_lain.py`).
 
-| Nama | Isi |
-|---|---|
-| `CPOS_URL` | alamat CPOS yang bisa dihubungi server Analytics, mis. `http://127.0.0.1:5000`. Kosong = Analytics berdiri sendiri dengan login sendiri |
-| `CPOS_COOKIE` | `wb_sesi` (nama cookie sesi CPOS) |
-| `DB_SERVER`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | database ERP tempat stored procedure laporan (`SP_*` lain lihat `inti/konfigurasi.py`) |
+Penjelasan tiap nilai ada di `backend\.env.example`. Pengaturan khusus Analytics (nama SP, batas tanggal, dll) ada di
+`backend\analytics\inti\konfigurasi.py`, semuanya punya nilai bawaan.
 
-## 4. Menjalankan saat pengembangan (satu PC)
-
-Tiga jendela terminal:
+## 2. Menjalankan
 
 ```bat
-:: 1) CPOS + RekapIn  -> http://localhost:5000
-cd CPOS
-python -m venv venv & venv\Scripts\activate
-python -m pip install -r requirements.txt
-python serve.py
+jalankan.bat
+```
 
-:: 2) Backend Analytics -> port 8001
-cd Analytics\backend
-python -m venv venv & venv\Scripts\activate
-python -m pip install -r requirements.txt
-uvicorn api:app --host 127.0.0.1 --port 8001
+Sekali klik: CPOS (port `PORT`), backend Analytics (8001), dan Deteksi Plat (`DETEKTOR_PORT`). Pertama kali, Python dan library
+dipasang sendiri di `%LOCALAPPDATA%\cpos-platform` (bukan di folder ini). Tutup jendelanya untuk berhenti, atau `berhenti.bat`.
 
-:: 3) Frontend Analytics -> http://localhost:5173/analytics/
-cd Analytics\frontend
+Setelah mengubah `frontend\analytics\src` atau memakai kelas Tailwind baru di `frontend\cpos`: `bangun-frontend.bat` (butuh Node.js).
+
+Pengembangan frontend Analytics dengan hot reload:
+
+```bat
+cd frontend\analytics
 npm install
 set VITE_API_TARGET=http://127.0.0.1:8001
 npm run dev
 ```
 
-Buka **http://localhost:5000**, login, lalu buka menu Dashboard › Analytical Dashboard. Di `CPOS\.env` isi
-`ANALYTICS_URL=http://localhost:5173/analytics`. Cookie login CPOS ikut terbaca di port 5173 karena alamatnya sama (`localhost`).
-Pakai alamat yang sama di semua tempat (semua `localhost`, atau semua `127.0.0.1`), jangan dicampur.
+Lalu isi `ANALYTICS_URL=http://localhost:5173/analytics` di `backend\.env` dan buka CPOS di `http://localhost:5000`.
 
-## 5. Menjalankan di server
+## 3. Database (SQL Server)
 
-1. Langkah 1–3 di atas (`.env` server: `BEHIND_PROXY=1`, `COOKIE_SECURE=1`, `HOST=127.0.0.1`, `ANALYTICS_URL=/analytics`).
-2. Build frontend Analytics sekali (dan setiap ada perubahan frontend):
-   ```bat
-   cd Analytics\frontend
-   npm ci
-   npm run build        :: hasil di Analytics\frontend\dist, alamatnya /analytics/
-   ```
-3. Jalankan CPOS (`python serve.py`) dan backend Analytics (`uvicorn api:app --host 127.0.0.1 --port 8001`, **satu** proses
-   karena data laporan disimpan di memori) sebagai service Windows (mis. NSSM) atau Task Scheduler.
-4. `deploy\Caddyfile`: ganti IP server dan lokasi repo, lalu `caddy run --config deploy\Caddyfile`. Semua PC membuka
-   `https://<IP server>`.
+Database baru (kosong / server uji):
 
-Memakai IIS (bukan Caddy): satu situs dengan URL Rewrite + ARR. Aturannya sama dengan Caddyfile: `/analytics/api/*` ke
-`127.0.0.1:8001/api/*`, `/analytics/*` ke folder `Analytics\frontend\dist` (lihat `Analytics\frontend\public\web.config`),
-selain itu ke `127.0.0.1:5000`.
+```bat
+deploy\buat_database.bat localhost sa PasswordSa
+```
 
-## 6. Hak akses
+Urutannya (bisa juga satu per satu di SSMS):
+
+1. `backend\cpos\database\schema.sql`: membuat database **CPOS** (tabel, prosedur, menu, hak dasar, `dbo.SchemaLog`).
+2. `backend\cpos\modules\rekapin\database\*.sql`: schema `rekap` + menu RekapIn + hak bawaan HO.
+3. `backend\analytics\database\0*.sql`: hak bawaan menu laporan Analytics.
+
+Stored procedure laporan Analytics (`backend\analytics\database\*_sp.sql`) dibuat sekali di database **Main**, terpisah dari langkah
+di atas. Server yang sudah berisi data tidak dibuat ulang: perubahan ditulis sebagai skrip bernomor di
+`backend\cpos\database\perubahan`, lalu dijalankan sekali.
+
+## 4. Deploy ke server
+
+Yang dibutuhkan server hanya:
+
+```
+backend\                         semua kode + backend\.env
+frontend\cpos\templates, static  tampilan CPOS
+frontend\analytics\dist          tampilan Analytics (hasil build)
+deploy\, jalankan.*              skrip pasang dan jalankan
+```
+
+`deploy\buat_paket.bat` membuat zip berisi persis itu (frontend dibangun ulang dulu). Di server: ekstrak, lalu klik kanan
+`deploy\pasang.bat` › Run as administrator. Rinciannya di `deploy\PASANG.txt`.
+
+- **HTTPS dengan Caddy:** `deploy\pasang_https.ps1` (lihat PASANG.txt).
+- **IIS:** buat satu situs dengan URL Rewrite + ARR yang meneruskan semua permintaan ke `http://127.0.0.1:<PORT>` (CPOS).
+  `/analytics` sudah dilayani CPOS. Isi `BEHIND_PROXY=1`, `COOKIE_SECURE=1` (bila HTTPS), dan `HOST=127.0.0.1` di `backend\.env`.
+  Kalau ingin IIS sendiri yang menyajikan file Analytics, arahkan `/analytics/*` ke folder `frontend\analytics\dist`
+  (`frontend\analytics\public\web.config`) dan `/analytics/api/*` ke `127.0.0.1:8001/api/*`.
+
+## 5. Hak akses
 
 Semua di CPOS, **Admin › Hak Akses**, per menu (siapa: semua / jabatan / level / departemen / user; aksi: Lihat, Tambah, Ubah,
 Hapus, Setujui, Tolak, Selesai):
 
-- RekapIn: menu `RK_DASHBOARD`, `RK_REQUEST` (Setujui / Tolak / Selesai untuk menindaklanjuti request), `RK_HARGA`,
-  `RK_FITUR` (Kategori Request), `RK_TBS_DAILY/WEEKLY/MONTHLY`. Operator timbangan (departemen TBG) yang hanya punya Tambah
-  melihat request miliknya saja.
-- Analytics: hak **Lihat** menu `/an/<id>` = boleh membuka laporan itu. Halaman Pengguna / Permission Control milik Analytics
-  tidak dipakai lagi (tertutup saat `CPOS_URL` diisi).
-- Hak bawaan setelah database dibuat: HO boleh semua menu RekapIn & Analytics; operator timbangan boleh membuat Request Operator.
+- RekapIn: menu `RK_DASHBOARD`, `RK_REQUEST`, `RK_HARGA`, `RK_FITUR` (Kategori Request), `RK_TBS_DAILY/WEEKLY/MONTHLY`.
+- Analytics: hak **Lihat** menu `/an/<id>` = boleh membuka laporan itu. Cakupan perusahaan per laporan diatur di Hak Akses › Cakupan data.
 
-## 7. Kerja tim
+## 6. Kerja tim
 
-Disarankan semua perubahan lewat git (repo ini), bukan folder sharing: tiap orang `git pull` sebelum mulai, membuat branch,
-lalu commit & push. Pembagian folder:
+Semua perubahan lewat git: `git pull` sebelum mulai, buat branch, lalu commit & push. Pembagian folder:
 
-- tim CPOS: `CPOS/` (selain `modules/rekapin`)
-- tim RekapIn: `CPOS/modules/rekapin/` (+ menu `RK_*` di schema)
-- tim Analytics: `Analytics/`
-
-Kalau tetap memakai folder sharing, cukup satu orang yang memindahkan perubahan dari folder sharing ke repo ini, supaya
-riwayat dan versi server tetap satu.
-
-## Yang berubah dari aplikasi lama
-
-- **RekapIn**: tabel `USERS`, `PERMISSIONS`, `FEATURES`, `OPERATOR_REQUESTS` lama diganti akun & hak akses CPOS,
-  `rekap.RequestCategory`, dan `rekap.OperatorRequest`. Harga dari `Main.dbo.HARGA` diganti `dbo.DailyPrice` CPOS
-  (sama dengan Isi Harga di Dashboard). Laporan Pembelian TBS memakai stored procedure ERP yang sama dengan susunan tabel
-  yang sama, dibaca lewat `REKAPIN_ERP_CONNECTION_STRING`. Ekspor Excel memakai tombol Excel / PDF CPOS di tiap tabel.
-- **Analytics**: login, ganti password, dan halaman admin sendiri tidak dipakai saat `CPOS_URL` diisi; aplikasi dilayani di
-  `/analytics/` (build dengan `VITE_BASE=/` bila ingin berdiri sendiri di root).
+- tim CPOS: `backend\cpos`, `frontend\cpos` (selain bagian RekapIn)
+- tim RekapIn: `backend\cpos\modules\rekapin`, `frontend\cpos\templates\rekapin`, `frontend\cpos\static\rekapin`
+- tim Analytics: `backend\analytics`, `frontend\analytics`
