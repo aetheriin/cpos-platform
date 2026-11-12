@@ -67,19 +67,8 @@ def tanggal(nama, bawaan):
     return nilai
 
 
-def pilihan(nama, bawaan, sah):
-    nilai = teks(nama, bawaan).lower()
-    if nilai not in sah:
-        raise KonfigurasiSalah(f"{nama} harus salah satu dari {', '.join(sah)}, tetapi isinya {nilai!r}. Perbaiki di backend/.env.")
-    return nilai
-
-
-# ---------- Tabel di database aplikasi (tempat akun login) ----------
-TABEL_PENGGUNA = teks("DB_APP_TABEL", "users")
-TABEL_ROLE = teks("DB_APP_TABEL_ROLE", "role")
+# ---------- Tabel company di database aplikasi ----------
 TABEL_COMPANY = teks("DB_APP_TABEL_COMPANY", "company")
-TABEL_DIVISI = teks("DB_APP_TABEL_DIVISI", "DIVISION")
-TABEL_IZIN =teks("DB_APP_TABEL_IZIN", "PERMISSIONS")      # boleh di database lain: "Main.dbo.PERMISSIONS"
 
 # ---------- Stored procedure laporan ----------
 SUMBER_LAPORAN = teks("LAPORAN_SUMBER", "cloud")     # parameter sumber SP, sekaligus CompType perusahaan yang dipanggil
@@ -117,13 +106,11 @@ TABEL_KAS_PERUSAHAAN = nama_sp("TABEL_KAS_PERUSAHAAN", "Main.dbo.Company")
 TABEL_KAS_GIRO = nama_sp("TABEL_KAS_GIRO", "Main.dbo.GiroAccount")
 TABEL_KAS_AREA = nama_sp("TABEL_KAS_AREA", "Main.dbo.CompanyArea")            # struktur baru: Bank.CompAreaID -> CompanyArea.CompID
 TABEL_KAS_BANK_DETAIL = nama_sp("TABEL_KAS_BANK_DETAIL", "Main.dbo.BankDetails")  # struktur baru: no. rekening (BankAccountCode)
-TABEL_KAS_KURS = nama_sp("TABEL_KAS_KURS", "Main.dbo.exc_rate")   # kurs ke rupiah per perusahaan, CURRENCYID, dan tahun
+TABEL_KAS_KURS = nama_sp("TABEL_KAS_KURS", "Main.dbo.exc_rate")   # kurs tahunan per perusahaan, CURRENCYID, dan tahun
 KAS_KURS_ERP_HARI = angka("KAS_KURS_ERP_HARI", 30)   # kurs voucher ERP terakhir masih dipakai sampai sekian hari
-# kurs yang diinput user di CPOS (Data Master › Kurs Mata Uang): riwayat per tanggal berlaku, dipakai lebih dulu dari TABEL_KAS_KURS
+# kurs yang diinput user di CPOS (Data Master › Kurs Mata Uang): riwayat per tanggal berlaku, dipakai kalau tidak ada kurs voucher ERP
 TABEL_KAS_KURS_INPUT = nama_sp("TABEL_KAS_KURS_INPUT", "Main.dbo.ExchangeRate")
 TABEL_KAS_MATA_UANG = nama_sp("TABEL_KAS_MATA_UANG", "Main.dbo.Currency")
-# kurs harian dari internet untuk mata uang yang tidak ada di TABEL_KAS_KURS; {dari} {sampai} {kode} diisi.
-KAS_KURS_INTERNET = teks("KAS_KURS_INTERNET", "https://api.frankfurter.dev/v1/{dari}..{sampai}?base={kode}&symbols=IDR")
 KAS_HARI_GRAFIK = angka("KAS_HARI_GRAFIK", 31)  # rentang tampilan lebih panjang dari ini: grafik deret waktu per bulan
 KAS_PARALEL = angka("KAS_PARALEL", 6)                   # perusahaan yang diambil bersamaan
 # Saldo awal rekening per 1 Januari (membaca seluruh riwayat ERP, lambat) disimpan di folder ini; dihitung ulang di latar belakang kalau
@@ -192,9 +179,6 @@ def _simulasi(teks_env):
 TBS_SIMULASI_DAFTAR = _simulasi(TBS_SIMULASI)
 
 # ---------- Akun dan role ----------
-ROLE_ADMIN = teks("ROLE_ADMIN", "System Administrator")   # selalu akses penuh dan mengelola pengguna
-ROLE_BAWAAN = teks("ROLE_BAWAAN", "Operator")             # terpilih lebih dulu di formulir akun baru
-LOGIN_BERSAMAAN = pilihan("LOGIN_BERSAMAAN", "ganti", ("ganti", "izinkan"))   # ganti: login baru mengakhiri sesi lama
 
 # ---------- Batas laporan ----------
 TANGGAL_MULAI_BAWAAN = tanggal("LAPORAN_MULAI_BAWAAN", "2025-10-01")

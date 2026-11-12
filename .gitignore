@@ -15,3 +15,5 @@ CPOS/data/
 Deteksi/foto_bukti/
 # paket deploy hasil deploy\buat_paket.bat
 deploy/paket/
+# file lama yang dipindah dari kode (bukan bagian aplikasi, tidak ikut paket)
+lama/

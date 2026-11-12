@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { IkonLaporan, IkonPanah, IkonPengguna, IkonPerisai, IkonRiwayat, IkonStruktur, IkonTabel } from './Ikon'
+import { IkonLaporan, IkonPanah, IkonTabel } from './Ikon'
 import Logo from './Logo'
-import MenuAkun from './MenuAkun'
 
 const KUNCI_LIPAT = 'menu-terlipat'
 const bacaLipat = () => {
@@ -17,11 +16,6 @@ const TITIK = {
   memuat: { kelas: 'bg-amber-400', arti: 'Sedang memuat' },
   siap: { kelas: 'bg-emerald-500', arti: 'Data siap' },
 }
-
-export const ID_PENGGUNA = '__pengguna'
-export const ID_STRUKTUR = '__struktur'
-export const ID_IZIN = '__izin'
-export const ID_AKTIVITAS = '__aktivitas'
 
 // Satu grup menu yang bisa dilipat. Saat terlipat, judulnya tetap ditandai kalau halaman yang terbuka ada di dalamnya.
 function Grup({ judul, terlipat, onLipat, berisiAktif, children }) {
@@ -70,9 +64,9 @@ const butir = ({ kunci, aktif, Ikon, label, onClick, titik }) => (
   </li>
 )
 
-// Bisa disembunyikan lewat tombol di bilah atas. nama: nama aplikasi dari server. tanpaAkses: akun belum punya akses ke laporan mana pun, jadi menunya
-// dikosongkan dan yang tersisa hanya menu akun (untuk keluar).
-export default function Sidebar({ nama = '', laporan, aktif, status, onPilih, admin = false, pengguna = null, onKeluar = () => {}, tanpaAkses = false }) {
+// Hanya tampil kalau Analytics dibuka langsung (bukan di dalam CPOS). Bisa disembunyikan lewat tombol di bilah atas.
+// nama: nama aplikasi dari server. tanpaAkses: akun belum punya akses ke laporan mana pun, jadi menunya dikosongkan.
+export default function Sidebar({ nama = '', laporan, aktif, status, onPilih, tanpaAkses = false }) {
   const [terlipat, setTerlipat] = useState(bacaLipat)
   const lipat = (judul) =>
     setTerlipat((lama) => {
@@ -93,13 +87,6 @@ export default function Sidebar({ nama = '', laporan, aktif, status, onPilih, ad
     if (ada) ada.laporan.push(l)
     else grup.push({ nama, laporan: [l] })
   }
-  const menuAdmin = [
-    { kunci: ID_PENGGUNA, Ikon: IkonPengguna, label: 'Pengguna' },
-    { kunci: ID_STRUKTUR, Ikon: IkonStruktur, label: 'Role & Divisi' },
-    { kunci: ID_IZIN, Ikon: IkonPerisai, label: 'Permission Control' },
-    { kunci: ID_AKTIVITAS, Ikon: IkonRiwayat, label: 'Log Aktivitas' },
-  ]
-
   return (
     <nav aria-label="Menu utama" className="sticky top-0 flex h-screen w-64 shrink-0 flex-col self-start border-r border-slate-200 bg-white">
       <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-slate-200 px-4">
@@ -127,20 +114,10 @@ export default function Sidebar({ nama = '', laporan, aktif, status, onPilih, ad
                 )}
               </Grup>
             ))}
-            {admin && (
-              <Grup judul="Administrasi" terlipat={terlipat.includes('Administrasi')} onLipat={() => lipat('Administrasi')} berisiAktif={menuAdmin.some((m) => m.kunci === aktif)}>
-                {menuAdmin.map((m) => butir({ ...m, aktif: aktif === m.kunci, onClick: () => onPilih(m.kunci) }))}
-              </Grup>
-            )}
           </>
         )}
       </div>
 
-      {pengguna && (
-        <div className="shrink-0 border-t border-slate-200 p-2">
-          <MenuAkun pengguna={pengguna} onKeluar={onKeluar} arah="atas" penuh />
-        </div>
-      )}
     </nav>
   )
 }

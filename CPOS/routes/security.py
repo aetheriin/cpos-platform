@@ -18,7 +18,7 @@ from utils.db_utils import (
     cari_transaksi_aktif, buat_transaksi_full, get_list_tiket_aktif, get_history_driver,
     get_driver_by_id, cari_driver_by_nik, cek_nik_ada, cari_wajah_mirip_driver,
     insert_driver, update_driver_dengan_audit, get_kendaraan_by_plat, get_semua_supplier, get_semua_produk,
-    cari_riwayat_driver_by_plat
+    cari_riwayat_driver_by_plat, get_supir_kendaraan
 )
 from utils.serializers import serialisasi_driver
 from utils.audit_utils import catat_security_audit
@@ -94,6 +94,29 @@ def security_supir_terakhir():
     if error:
         return jsonify({"error": error}), 400
 
+    # Supir utama yang terdaftar untuk kendaraan didahulukan.
+    kendaraan = get_kendaraan_by_plat(no_plat)
+    if kendaraan:
+        daftar_supir = get_supir_kendaraan(kendaraan.id_kendaraan)
+        driver_utama = next(
+            (d for d in daftar_supir if d.get("is_utama")),
+            daftar_supir[0] if daftar_supir else None,
+        )
+
+        if driver_utama:
+            return jsonify({
+                "driver": {
+                    "id_driver": driver_utama["id_driver"],
+                    "nama": driver_utama["nama_driver"],
+                    "nik": driver_utama.get("nik"),
+                    "no_sim": driver_utama.get("no_sim"),
+                    "foto_path": driver_utama.get("foto_path"),
+                    "is_updated": bool(driver_utama.get("is_updated")),
+                    "is_blacklisted": bool(driver_utama.get("is_blacklisted")),
+                }
+            })
+
+    # Jika belum ada supir yang terdaftar pada kendaraan, pakai riwayat tiket timbang.
     row = cari_riwayat_driver_by_plat(no_plat)
     return jsonify({
         "driver": serialisasi_driver(row) if row else None

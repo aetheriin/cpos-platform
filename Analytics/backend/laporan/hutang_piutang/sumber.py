@@ -9,7 +9,7 @@ SQL hanya mengambil dokumen yang belum lunas beserta nilai mentahnya. Di sini:
 - Hutang: potongan (AP Discount Notes dll, IsPositive = 0) diberi nilai negatif, jadi jumlah sisa = hutang bersih.
 - Status: PVR pending (belum dibuatkan PV) dan PV bertanggal setelah hari muat dihitung belum dibayar.
 - Kurs ke rupiah: kurs yang tercatat di dokumen ERP itu sendiri (KursDok > 1); kalau tidak ada, urutan laporan Cash Flow
-  (kurs voucher ERP, kurs input CPOS, kurs tahunan exc_rate, kurs internet).
+  (kurs voucher ERP, kurs input CPOS, kurs tahunan exc_rate).
 """
 import logging
 from concurrent.futures import ThreadPoolExecutor
@@ -168,7 +168,7 @@ def _kurs_tahunan(lokasi, buka=get_connection):
 
 def kurs_cadangan(t):
     """(Series kurs, [sumber]) untuk dokumen valas tanpa kurs dokumen; t: DataFrame comp (CompID), mata_uang, tgl.
-    Urutan sama dengan laporan Cash Flow: kurs voucher ERP, kurs input CPOS, kurs tahunan exc_rate, kurs internet.
+    Urutan sama dengan laporan Cash Flow: kurs voucher ERP, kurs input CPOS, kurs tahunan exc_rate (kurs internet tidak dipakai).
     Sumber yang gagal dibaca dilewati; dokumen yang tetap tanpa kurs ditandai."""
     def aman(f, *a):
         try:
@@ -181,14 +181,12 @@ def kurs_cadangan(t):
     erp = aman(kas.ambil_kurs_erp, mulai, akhir)                                   # kunci: CompID
     masukan = aman(kas.ambil_kurs_input)                                             # kunci: CompID
     tahunan = aman(_kurs_tahunan, list(peta.values())) if peta else {}               # kunci: CompID
-    internet = {u: kas.kurs_internet(u, mulai, akhir) for u in sorted(set(t["mata_uang"]))}
     k, s = [], []
     for c, u, tg in zip(t["comp"], t["mata_uang"], t["tgl"]):
         pilihan = [
             ("ERP", kas._kurs_erp(erp, c, u, tg) if pd.notna(tg) else None),
             ("CPOS", kas._kurs_berlaku(masukan, c, u, tg) if pd.notna(tg) else None),
             ("EXC_RATE", tahunan.get((c, u, tg.year)) if pd.notna(tg) else None),
-            ("internet", internet.get(u, pd.Series(dtype=float)).get(tg) if pd.notna(tg) else None),
         ]
         sumber, nilai = next(((n, v) for n, v in pilihan if v is not None and pd.notna(v)), ("", float("nan")))
         k.append(nilai); s.append(sumber)

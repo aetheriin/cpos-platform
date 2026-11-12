@@ -8,16 +8,16 @@ Dashboard laporan procurement (React + Tailwind + Recharts di depan, FastAPI + S
 backend/
   api.py                  endpoint (tipis, tidak berisi rumus)
   inti/                   dipakai SEMUA laporan: db, gudang (cache + pemuatan + batal), kategori, filter, tabel,
-                          pengguna + sandi + sesi (login), alat_pengguna (alat bantu tabel pengguna)
+                          cpos (login & hak akses dari CPOS), perusahaan (tabel company)
   laporan/
     __init__.py           daftar laporan (satu elemen per laporan)
     pr_po/                sumber.py (SP + pembersihan), ukuran.py (rumus), dashboard.py (grafik + tabel)
     po_pi/                sama
     palm/                 laporan Deteksi Kecurangan Timbangan (sama)
-  database/               users.sql (tabel pengguna) dan permission.sql (izin untuk tabel PERMISSIONS)
+  database/               sumber SQL stored procedure laporan di database Main (dijalankan manual, bukan oleh program)
 frontend/src/
-  App.jsx  api.js         kerangka (menu samping, login, daftar laporan)
-  komponen/               umum: Sidebar, PanelPeriode, LaporanView, FilterMulti, Kartu, TabelBaris, TabelDetail, Login, HalamanPengguna, HalamanIzin
+  App.jsx  api.js         kerangka (menu samping, daftar laporan)
+  komponen/               umum: Sidebar, PanelPeriode, LaporanView, FilterMulti, Kartu, TabelBaris, TabelDetail
   grafik/                 umum: WeeklyChart, GarisSeri, DonatKategori, KategoriOutstandingChart, BatangPembuat,
                           BatangRisiko, BatangKendaraan, BatangRisikoSupplier, SebaranTara (laporan timbangan)
   laporan/                index.js (daftar dashboard) + satu folder per laporan
@@ -29,7 +29,6 @@ frontend/src/
 ```
 cd backend
 pip install -r requirements.txt
-python -m inti.alat_pengguna cek  # periksa tabel pengguna (lihat bagian Login dan pengguna)
 uvicorn api:app --reload          # satu proses saja, jangan pakai banyak worker
 
 cd frontend
@@ -39,103 +38,23 @@ npm run dev
 Isi `backend/.env` (lihat `.env.contoh`).
 
 **Setelah memperbarui kode dari zip baru, jalankan `pip install -r requirements.txt` lagi** (di venv yang sama). Daftar pustaka bisa bertambah,
-mis. `openpyxl` untuk Export Excel dan `argon2-cffi`/`bcrypt` untuk hash kata sandi tertentu. Kalau `openpyxl` belum terpasang, server tetap menyala
+mis. `openpyxl` untuk Export Excel. Kalau `openpyxl` belum terpasang, server tetap menyala
 (dengan peringatan di terminal) dan hanya tombol Export Excel yang gagal, dengan pesan yang menyebut apa yang harus dipasang.
 
-## Login dan pengguna
+## Login dan hak akses (CPOS)
 
-Semua halaman dan endpoint (kecuali halaman masuk) membutuhkan login. Pengecekan dilakukan di server pada setiap permintaan.
-Akun dibaca dari **tabel pengguna yang sudah ada** di SQL Server dengan kolom `id, username, password_hash, full_name, role, division,
-company, created_at` (nama tabel: `DB_APP_TABEL` di `.env`, bawaan `users`), dan role dari **tabel role** dengan kolom `RoleId, DivisionId,
-RoleName, RoleDescription, Status, CreatedAt` (nama tabel: `DB_APP_TABEL_ROLE`, bawaan `role`), dan pilihan company dari **tabel company** dengan
-kolom `CompID, CompName, CompType, CompAddr, CompDataBase, Status` (nama tabel: `DB_APP_TABEL_COMPANY`, bawaan `company`). Server, database, dan akun database bawaannya sama dengan
-database data (`DB_SERVER`, `DB_NAME`, `DB_USER`); kalau tabelnya di tempat lain, isi `DB_APP_SERVER`, `DB_APP_NAME`, `DB_APP_USER`,
-`DB_APP_PASSWORD` (lihat `backend/inti/db.py`).
+Analytics tidak punya login sendiri. `CPOS_URL` di `backend/.env` wajib diisi; tanpa itu server tidak mau menyala.
 
-**Role.** Daftar role (dan pilihan di formulir akun baru) diambil dari tabel role; hanya role berstatus aktif yang ditawarkan (Status 0,
-false, no, nonaktif, inactive dianggap nonaktif; kosong dianggap aktif). Kolom `users.role` boleh berisi **nama role** atau **RoleId**:
-keduanya dikenali, dan akun baru disimpan dengan cara yang sama dengan akun yang sudah ada (`ROLE_DISIMPAN=auto`; boleh dipaksa `nama` atau
-`id`). Huruf besar-kecil dan spasi pada nama role diabaikan ("Software Engineer" sama dengan "SoftwareEngineer").
+- **Login.** Laporan dibuka dari menu CPOS (`/an/<id laporan>`). Setiap permintaan, backend meneruskan cookie sesi CPOS milik browser ke
+  `CPOS_URL/api/analytics/saya` (`backend/inti/cpos.py`). Sesi CPOS yang berakhir dijawab 401, dan layar menampilkan tombol Masuk ke CPOS.
+- **Laporan yang boleh dibuka** mengikuti hak **Lihat** menu laporan itu di Hak Akses CPOS.
+- **Cakupan perusahaan.** Kalau di CPOS (Admin › Hak Akses › Cakupan data) seorang pengguna dibatasi ke perusahaan tertentu untuk sebuah laporan,
+  semua kartu, grafik, tabel, dan Export Excel hanya berisi baris perusahaan itu (`_pt_boleh` dan `_saring_pt` di `api.py`, menurut kolom `comp`).
+- **Data laporan per sesi.** Data yang dimuat disimpan di memori server milik sesi CPOS yang memuatnya. Sesi yang tidak memanggil Analytics selama
+  `SESI_IDLE_MENIT` (paling cepat 30 menit) dibuang datanya; penyapu berjalan tiap `SESI_SAPU_DETIK` (bawaan 60 detik).
+- **Pramuat.** Sidebar CPOS memanggil `POST /api/laporan/pramuat` sekali setelah login, sehingga semua laporan yang boleh dibuka mulai dimuat di latar.
 
-**Hak akses halaman (menu Permission Control).** Siapa boleh membuka laporan **tidak tertulis di kode**, tetapi dibaca dari tabel izin yang sudah ada dan dipakai
-bersama aplikasi lain (`DB_APP_TABEL_IZIN`, bawaan `PERMISSIONS`; kolom `role, page_key, can_access, can_edit, can_delete, can_approve, can_reject, can_done`).
-Untuk laporan, `page_key` berisi id laporan (mis. `pr_po`) dan hanya kolom `can_access` yang dipakai; baris halaman lain tidak pernah disentuh. System Administrator
-mengaturnya lewat menu **Administrasi → Permission Control**: pilih role, lalu nyalakan saklar **Akses** untuk tiap laporan. Perubahan berlaku **langsung** pada
-permintaan berikutnya (akun yang sedang masuk tidak perlu masuk ulang).
-
-- **Role admin** (`ROLE_ADMIN` di `.env`, bawaan System Administrator) selalu punya akses penuh ke semua laporan, kelola pengguna, dan Permission Control. Hak ini
-  tidak disimpan di tabel dan tidak bisa dibatasi, supaya tidak ada yang bisa mengunci dirinya sendiri.
-- **Role lain tanpa baris di tabel izin tidak melihat laporan apa pun.** Begitu juga laporan baru yang ditambahkan di program: tertutup bagi semua role selain admin
-  sampai diberi akses di Permission Control. Saat akses dicabut, barisnya tetap ada dengan `can_access = 0`; baris baru diisi 0 pada kolom lainnya.
-- **Struktur tabel izin tidak dibuat atau diubah oleh program ini.** Akun database server butuh `SELECT, INSERT, UPDATE` di tabel itu (contoh GRANT dan seed opsional
-  ada di `backend/database/permission.sql`). Kalau tabel izin tidak terbaca, akun non-admin mendapat pesan 503 (bukan akses terbuka), dan admin tetap bisa masuk untuk memperbaikinya.
-- **Export Excel tidak punya izin terpisah**: siapa yang boleh membuka laporan boleh meng-export tabel detailnya (tabel izin bersama tidak punya kolom export).
-- `python -m inti.alat_pengguna cek` menampilkan hak tiap role dan menandai role yang punya akun tetapi belum punya akses ke laporan apa pun.
-
-Kolom `division` dan `company` dicatat dan ditampilkan, tetapi belum membatasi data yang terlihat.
-
-**Memeriksa tabel (lakukan sekali sebelum dipakai):**
-
-```
-cd backend
-python -m inti.alat_pengguna cek          # koneksi, kolom, tabel role, akun per role, cara role disimpan, jenis hash, izin tulis (tanpa menampilkan hash)
-python -m inti.alat_pengguna buat-admin   # hanya kalau belum ada System Administrator
-```
-
-**Format hash.** Kata sandi lama di tabel diperiksa sesuai jenis hash-nya, dikenali dari awalan: argon2 (`$argon2...`), bcrypt (`$2b$...`),
-scrypt dan PBKDF2 gaya Werkzeug/Flask, PBKDF2 gaya Django, serta scrypt buatan aplikasi ini. Argon2 dan bcrypt membutuhkan pustaka
-`argon2-cffi` dan `bcrypt` (ada di `requirements.txt`). Akun yang formatnya tidak dikenal tidak bisa masuk; `cek` menyebutkannya.
-Akun baru dibuat dengan jenis hash yang sama dengan akun yang sudah ada (`PASSWORD_HASH=auto`), supaya aplikasi lain yang memakai tabel
-yang sama tetap bisa memeriksanya. Boleh dipaksa lewat `PASSWORD_HASH=scrypt|werkzeug-scrypt|werkzeug-pbkdf2|django-pbkdf2|argon2|bcrypt`. Format Werkzeug (yang dipakai
-akun Flask) sudah diuji silang dengan pustaka Werkzeug asli: hash buatan Werkzeug dibaca aplikasi ini, dan akun baru buatan aplikasi ini
-dibaca Werkzeug.
-
-**Izin database.** Akun database yang dipakai server harus boleh membaca, menambah, dan menghapus di tabel pengguna, dan membaca tabel role
-(`GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.users TO ...`, lihat `backend/database/users.sql`). Kolom `id` harus terisi otomatis (IDENTITY atau nilai
-bawaan), karena aplikasi tidak mengisi `id`.
-
-**Kelola pengguna (menu Administrasi, hanya System Administrator):** daftar akun (dengan pencarian), tambah akun lewat popup **Tambah User**,
-edit akun lewat tombol **Edit**, dan hapus akun yang tidak terpakai (dengan konfirmasi). Akun sendiri dan System Administrator terakhir tidak bisa dihapus. Akun yang dihapus
-langsung keluar dari sesinya. Password minimal 8 karakter, disimpan sebagai hash, dan tidak pernah dikirim kembali ke layar.
-
-Popup Tambah User berisi Username, Password (ada ikon mata untuk melihatnya), Nama lengkap, Role, Division, dan Company. Isian Role, Division,
-dan Company berupa dropdown dengan nilai bawaan: role dari `ROLE_BAWAAN` di `.env` (bawaan Operator; kalau tidak ada di tabel role, role pertama), division
-dan company yang pertama menurut abjad. Pilihannya:
-
-- **Role:** dari tabel role, yang Status-nya aktif.
-- **Company:** nama unik dari tabel company (satu nama bisa punya beberapa baris: CLOUD, TRAINING, PKS_LOKAL, ...; spasi di ujung nama dibuang).
-  Sebuah company ditawarkan kalau minimal satu barisnya aktif. Server menolak company yang tidak ada di tabel itu.
-- **Division:** nama division yang sudah dipakai di tabel pengguna. Kalau tabel pengguna belum punya satu pun, isian berupa teks biasa.
-
-**Edit akun.** Tombol **Edit** di tiap baris membuka popup untuk mengubah nama lengkap, role, division, company, dan (opsional) password baru. Username tidak
-bisa diubah. Aturannya:
-
-- Role atau company yang **tidak diubah** boleh tetap walau sekarang sudah tidak ada di pilihan (mis. role dinonaktifkan), supaya akun lama tetap bisa
-  disunting; yang baru harus dari pilihan. Hanya kolom yang benar-benar berubah yang ditulis, jadi nilai role aslinya di database (nama atau RoleId) tidak rusak.
-- Admin **tidak bisa mengubah role akunnya sendiri**, dan System Administrator terakhir tidak bisa diturunkan rolenya. Admin boleh menaikkan akun lain jadi admin.
-- Perubahan role langsung berlaku pada sesi yang sedang berjalan. **Password yang diganti** mencabut semua sesi akun itu (beserta data laporannya) dan perangkatnya
-  diberi tahu sebabnya; kalau yang diganti adalah akun admin sendiri, sesinya tetap hidup.
-- Akun database server butuh izin `UPDATE` di tabel pengguna (`cek` memeriksanya).
-
-- Sesi disimpan di memori server (hilang saat server dimulai ulang), berlaku 8 jam (`SESI_JAM`), dan dikenali lewat cookie
-  httpOnly dengan SameSite=Strict. Setelah memakai HTTPS, atur `COOKIE_SECURE=1`.
-- **Keluar otomatis saat idle.** Pengguna dikeluarkan kalau tidak menggerakkan mouse atau mengetik selama batas idle (bawaan 30 menit,
-  `SESI_IDLE_MENIT`; 0 = mati). Administrator mengubahnya di menu **Log Aktivitas → Keluar otomatis saat idle**; nilainya disimpan di
-  `backend/pengaturan.json` (lokasi lain: `PENGATURAN_BERKAS`) dan langsung berlaku. Tabel "Sedang masuk" di menu yang sama menampilkan
-  lama masuk dan lama idle tiap sesi.
-- **Laporan tidak tersisa setelah keluar atau sesi berakhir.** Data laporan yang dimuat disimpan di memori server dan dimiliki oleh sesi login
-  yang memuatnya; hanya sesi itu yang bisa membacanya. Saat sesi berakhir (menekan Keluar, sesi habis, atau akunnya dihapus), data itu
-  dibuang dan pemuatan yang sedang berjalan dihentikan, jadi setelah masuk lagi pengguna harus memilih tanggal dan menekan Muat data lagi.
-  Sesi yang habis disapu tiap `SESI_SAPU_DETIK` (bawaan 60 detik), walau tidak ada yang mengaksesnya lagi. Kalau dua pengguna meminta periode yang
-  sama pada saat yang sama, data dipakai bersama tanpa SQL kedua; data baru dibuang setelah keduanya berakhir. Di layar, semua yang sudah
-  ditampilkan ikut dihapus saat keluar.
-- **Satu akun, satu sesi aktif.** Login baru mengakhiri sesi lama akun itu di perangkat atau IP lain (beserta data laporannya), sehingga satu akun hanya bisa
-  dipakai di satu tempat pada satu waktu. Perangkat lama mendapat pesan sebabnya pada permintaan berikutnya, mis. "Akun ini baru saja masuk di perangkat lain
-  (IP ...) pukul 14.05 ...". Di belakang proxy (mis. IIS) alamat yang tampil adalah alamat proxy-nya. `LOGIN_BERSAMAAN=izinkan` mematikan aturan ini.
-- Lima kali salah sandi dalam 5 menit mengunci username itu sementara.
-- Perubahan yang dibuat langsung di database (bukan lewat aplikasi) berlaku paling lambat 30 detik kemudian (`PENGGUNA_CACHE_DETIK`).
-- Kalau tabel pengguna tidak terbaca saat server dinyalakan, server berhenti dengan pesan yang menyebut tabel dan kolomnya. Kalau
-  database mati saat server berjalan, pengguna mendapat pesan 503 (bukan dikira salah sandi).
+Kode login mandiri yang lama (tabel users, role, PERMISSIONS, halaman admin) sudah dibuang dan disimpan di `X:\lama\Analytics\`.
 
 ## Konfigurasi (.env) dan hard code
 
@@ -145,13 +64,12 @@ role dan hak aksesnya, batas-batas), sehingga mengubahnya berarti mengedit progr
 | Jenis | Disimpan di |
 |---|---|
 | Kata sandi, server, dan database | `backend/.env` (tidak ikut di zip) |
-| Perusahaan yang dipanggil SP laporan | tabel company (kolom CompName, CompType, Status; jenis dipilih `LAPORAN_SUMBER`) |
-| Daftar role dan role bawaan | tabel role; `ROLE_ADMIN` dan `ROLE_BAWAAN` di `.env` |
-| Hak akses role per laporan | tabel izin, diatur lewat Permission Control |
+| Perusahaan yang dipanggil SP laporan | tabel company (kolom CompID, CompType, Status, CompAddr, CompDataBase; jenis dipilih `LAPORAN_SUMBER`) |
+| Login, laporan yang boleh dibuka, dan cakupan perusahaan | CPOS (Hak Akses) |
 | Nama stored procedure dan parameternya | `.env`: `SP_PR_PO`, `SP_PO_PI`, `LAPORAN_SUMBER`, `SP_STATUS` |
 | Batas dan bawaan | `.env`, dibaca di satu tempat (`backend/inti/konfigurasi.py`) |
 
-Frontend tidak memegang angka atau nama itu: batas rentang hari, role bawaan, nama aplikasi, dan daftar laporan yang boleh dibuka dikirim server. Alamat backend untuk `npm run dev`
+Frontend tidak memegang angka atau nama itu: batas rentang hari, nama aplikasi, dan daftar laporan yang boleh dibuka dikirim server. Alamat backend untuk `npm run dev`
 diatur `VITE_API_TARGET` di `frontend/.env.local` (bawaan `http://localhost:8001`). Semua variabel di `.env` bersifat opsional kecuali `DB_*`; nilai bawaannya
 sama dengan perilaku sebelumnya, dan isian yang salah (mis. angka berisi huruf) menghentikan server dengan pesan yang menyebut nama variabelnya.
 
@@ -189,21 +107,18 @@ sama dengan perilaku sebelumnya, dan isian yang salah (mis. angka berisi huruf) 
 | `PALM_MIN_TRANSAKSI_PERSEN` | `10` | supplier di bawah jumlah transaksi ini tidak ikut urutan persentase berisiko |
 | `PALM_TOP_OPERATOR` | `12` | operator dengan transaksi terbanyak di peta Operator per Jam Masuk |
 | `PALM_TITIK_EKSTREM` | `100` | titik ekstrem (durasi terlama, selisih terbesar) yang selalu ikut saat disampel |
-| `ROLE_ADMIN`, `ROLE_BAWAAN` | `System Administrator`, `Operator` | role yang selalu penuh; role yang terpilih lebih dulu di akun baru |
-| `LOGIN_BERSAMAAN` | `ganti` | `ganti` = login baru mengakhiri sesi lama; `izinkan` = boleh banyak perangkat |
-| `DB_APP_TABEL`, `DB_APP_TABEL_ROLE`, `DB_APP_TABEL_COMPANY`, `DB_APP_TABEL_IZIN` | `users`, `role`, `company`, `PERMISSIONS` | nama tabel (boleh `Main.dbo.PERMISSIONS` kalau di database lain) |
-| `NAMA_APLIKASI` | `Dashboard Analytics` | nama di halaman masuk, menu samping, dan judul tab browser |
+| `CPOS_URL` | (wajib) | alamat CPOS untuk memeriksa sesi dan hak akses |
+| `DB_APP_TABEL_COMPANY` | `company` | nama tabel company (boleh di database lain lewat `DB_APP_*`) |
+| `NAMA_APLIKASI` | `Dashboard Analytics` | nama di menu samping dan judul tab browser |
 
 **Yang sengaja tetap di kode**, di satu tempat masing-masing: aturan bisnis laporan (batas kategori aging di `inti/umur.py`, status aktif, rumus, definisi kolom tabel),
-teks tampilan, biaya hash kata sandi, dan nama cookie. Aturan-aturan itu jarang berubah;
+dan teks tampilan. Aturan-aturan itu jarang berubah;
 memindahkannya ke tabel masuk akal hanya kalau pengguna bisnis perlu mengubahnya sendiri.
 
 ## Log aktivitas
 
-Menu **Log Aktivitas** (hanya System Administrator) menampilkan siapa yang masuk, gagal masuk, keluar, membuka laporan (periode dan apakah
-SQL Server dijalankan), Export Excel (tab, jumlah baris, filter, pencarian), serta pembuatan, perubahan, dan penghapusan akun dan hak akses.
-Tiap catatan memuat waktu, pengguna, laporan, keterangan, dan alamat IP. Filter: periode, jenis aktivitas, laporan, dan pengguna (klik nama di
-tabel Per pengguna). Log disimpan sebagai file JSON Lines di `AKTIVITAS_FOLDER`, bukan di database, jadi tidak perlu tabel baru.
+Setiap pemuatan laporan (periode dan apakah SQL Server dijalankan) dan Export Excel (tab, jumlah baris, filter, pencarian) dicatat dengan waktu,
+pengguna CPOS, laporan, keterangan, dan alamat IP. Log disimpan sebagai file JSON Lines di `AKTIVITAS_FOLDER` (satu file per hari), bukan di database.
 Gagal menulis log tidak menggagalkan permintaan pengguna; penyebabnya dicatat di log server.
 
 ## Periode, muat ulang, export, dan navigasi
@@ -226,12 +141,9 @@ pembaruan otomatis.
   Data dan lembar Info (laporan, periode, filter, jumlah baris, pengekspor, waktu). Paling banyak 100.000 baris; kalau lebih, tampil
   peringatan di atas tabel dan lembar Info mencatatnya. Teks yang diawali `=` disimpan sebagai teks, bukan rumus, supaya isi database tidak
   bisa dijalankan Excel. Export memakai data yang sudah dimuat (tanpa SQL).
-- **Laporan pertama langsung dimuat.** Setelah masuk, laporan paling atas di daftar yang boleh dibuka akun itu langsung dibuka dan dimuat
-  dengan tanggal bawaan, tanpa memilih tanggal dulu. Laporan lain tetap meminta periode seperti biasa. Hanya sekali per sesi masuk.
-- **Sapaan di bilah atas.** "Selamat Pagi/Siang/Sore/Malam, nama pengguna" menurut jam di perangkat pengguna saat halaman dibuka
-  (pagi 05.00-10.59, siang 11.00-14.59, sore 15.00-17.59, selain itu malam). Bilah atas tidak memuat nama laporan; itu ada di menu samping.
-- **Akun tanpa akses laporan.** Akun non-admin yang belum diberi akses ke laporan mana pun tetap bisa masuk. Ia melihat pesan "Tidak dapat
-  mengakses laporan", dan menu samping hanya berisi menu akun untuk keluar.
+- **Dibuka langsung (bukan dari CPOS).** Kalau `/analytics` dibuka langsung dengan sesi CPOS yang masih berlaku, tampil menu samping berisi
+  laporan dan bilah atas dengan sapaan "Selamat Pagi/Siang/Sore/Malam, nama pengguna". Di dalam CPOS keduanya disembunyikan.
+- **Akun tanpa akses laporan** melihat pesan "Tidak dapat mengakses laporan"; aksesnya diberikan di Hak Akses CPOS.
 - **Kembali ke atas.** Tombol bundar di pojok kanan bawah muncul setelah halaman digulir lebih dari 300 px dan menggulir kembali ke atas
   (tanpa animasi kalau pengguna meminta mengurangi animasi di sistemnya).
 
@@ -331,7 +243,7 @@ transaksi dan Berisiko. Laporan ini tidak memakai pilihan minggu.
 
 **Cross filter.** Klik batang atau titik memfilter semua kartu, grafik, dan tabel (Ctrl/Shift + klik menambah pilihan). Klik satu titik di grafik sebaran
 memfilter satu transaksi itu (filter No. Tiket). Panel filter: Perusahaan, Jenis Transaksi, Indikator Risiko, Operator, No. Kendaraan, Supplier, Nama Supir, Produk, Splitted.
-Seperti laporan lain, laporan ini tertutup bagi semua role selain admin sampai diberi akses di Permission Control.
+Seperti laporan lain, siapa yang boleh membukanya diatur di Hak Akses CPOS.
 
 ## Penerimaan TBS
 

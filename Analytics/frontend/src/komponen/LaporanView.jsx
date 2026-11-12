@@ -2,7 +2,7 @@ import { memo, useEffect, useState } from 'react'
 import { batalkanPekerjaan, mulaiMuat, statusPekerjaan } from '../api'
 import { rentangTgl, tglLengkap, waktuDari } from '../lib/data'
 import { LaporanAktif } from '../lib/tampilan'
-import { IkonKalender, IkonSegarkan } from './Ikon'
+import { IkonKalender, IkonPeringatan, IkonSegarkan } from './Ikon'
 import { PopupPeriode } from './PanelPeriode'
 
 export function LayarMemuat({ nama, mulai, akhir, detik, onBatalkan }) {
@@ -20,17 +20,19 @@ export function LayarMemuat({ nama, mulai, akhir, detik, onBatalkan }) {
   )
 }
 
-// Pemuatan pertama gagal atau dibatalkan. Tanggal hanya bisa diganti lewat popup setelah data tampil.
+// Pemuatan pertama gagal atau dibatalkan. Bentuknya sama dengan kartu "Sesi CPOS berakhir" (App.jsx); pesannya dari server, sudah dalam
+// bahasa pengguna (gudang.pesan_galat). Tanggal hanya bisa diganti lewat popup setelah data tampil.
 export function LayarGagal({ pesan, onCoba }) {
   return (
-    <section className="mx-auto mt-10 max-w-lg rounded-xl border border-red-200 bg-red-50 p-6 shadow-sm">
-      <h1 className="text-lg font-semibold text-red-800">Data belum dimuat</h1>
-      <p className="mt-1 text-sm text-red-700">{pesan}</p>
-      <div className="mt-4 flex justify-end gap-2">
-        <button type="button" onClick={onCoba} className="rounded-md bg-sky-600 px-4 py-1.5 text-sm text-white hover:bg-sky-700">
-          Coba lagi
-        </button>
-      </div>
+    <section role="alert" className="mx-auto mt-10 max-w-md rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+      <span aria-hidden="true" className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
+        <IkonPeringatan className="h-6 w-6" />
+      </span>
+      <h1 className="mt-4 text-lg font-semibold">Data belum bisa ditampilkan</h1>
+      <p className="mt-1 text-sm text-slate-600">{pesan}</p>
+      <button type="button" onClick={onCoba} className="mt-5 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700">
+        Coba lagi
+      </button>
     </section>
   )
 }

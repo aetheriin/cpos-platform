@@ -1,4 +1,4 @@
-# Membuat paket deploy (zip) CPOS Platform untuk dipasang di PC lain. Dipanggil oleh deploy\buat_paket.bat.
+﻿# Membuat paket deploy (zip) CPOS Platform untuk dipasang di PC lain. Dipanggil oleh deploy\buat_paket.bat.
 # Isi: semua file repo yang tidak di-.gitignore (CPOS + RekapIn, Analytics, Deteksi, skrip jalankan & deploy), tampilan Analytics
 # yang baru dibangun (Analytics\frontend\dist), dan file .env yang sekarang (-TanpaEnv: tidak ikut, isi sendiri di PC tujuan).
 # Tidak ikut: venv, node_modules, log, upload, cache laporan, sumber frontend Analytics (yang dipakai hanya dist).
@@ -65,7 +65,7 @@ try {
     } finally { Pop-Location }
     # Sumber frontend tidak perlu di PC tujuan (yang dilayani hanya dist)
     $daftar = $daftar | Where-Object { $_ -notlike 'Analytics/frontend/*' -or $_ -like 'Analytics/frontend/public/*' } |
-                        Where-Object { $_ -notlike 'deploy/paket/*' -and $_ -notlike '*/log_aktivitas/*' -and $_ -notlike 'Deteksi/foto_bukti/*' }
+                        Where-Object { $_ -notlike 'deploy/paket/*' -and $_ -notlike '*/log_aktivitas/*' -and $_ -notlike 'Deteksi/foto_bukti/*' -and $_ -notlike 'lama/*' }
     if (Test-Path $isi) { Remove-Item $isi -Recurse -Force }
     foreach ($f in $daftar) {
         $sumber = Join-Path $akar $f

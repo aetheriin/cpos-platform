@@ -27,13 +27,6 @@ def minggu_dinilai(minggu):
     return lengkap[-1], lengkap[:-1]
 
 
-def per_grup_minggu(d, kolom_minggu):
-    """Tonase kg per grup (baris) per minggu (kolom), minggu tanpa kiriman = 0."""
-    if d.empty:
-        return pd.DataFrame(columns=kolom_minggu, dtype=float)
-    return d.pivot_table(index="grup", columns="minggu", values="netto", aggfunc="sum").reindex(columns=kolom_minggu).fillna(0.0)
-
-
 def atensi(tabel, dinilai, riwayat):
     """Per grup: rata, sd, nilai minggu dinilai, selisih, status ('NAIK', 'TURUN', atau None)."""
     if dinilai is None or tabel.empty:

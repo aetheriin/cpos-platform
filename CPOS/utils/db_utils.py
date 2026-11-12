@@ -379,6 +379,7 @@ def akhiri_kontrak(id_kontrak):
 # supaya kode & JSON tab Security / Timbangan / Sortasi / Lab tidak perlu berubah.
 
 SQL_KOLOM_DRIVER = """d.UserID AS id_driver, d.NoKTP AS nik, d.Nama AS nama_driver, d.LicenseNumber AS no_sim,
+                      d.LicenseID AS id_jenis_sim, d.LicenseCode AS kode_jenis_sim, d.ExpiredSIM AS sim_berlaku_sampai,
                       d.PersonType AS kategori, d.IsBlacklisted AS is_blacklisted, d.IsUpload AS is_updated, d.PhotoPath AS foto_path"""
 
 def get_all_driver_embeddings():

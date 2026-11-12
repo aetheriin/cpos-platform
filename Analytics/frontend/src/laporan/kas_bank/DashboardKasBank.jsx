@@ -21,7 +21,7 @@ const TAB = [
   { kunci: 'mutasi', nama: 'Mutasi', ket: (h) => `${tglLengkap(h.periode.mulai)} – ${tglLengkap(h.periode.akhir)}. Urut perusahaan, rekening, dan tanggal.` },
 ]
 const persenGiro = (x) => (x == null ? '–' : `${(x * 100).toLocaleString('id-ID', { maximumFractionDigits: 3 })}%`)
-const SUMBER_KURS = { ERP: 'kurs voucher ERP', CPOS: 'kurs input CPOS', EXC_RATE: 'EXC_RATE', internet: 'kurs ECB' }
+const SUMBER_KURS = { ERP: 'kurs voucher ERP', CPOS: 'kurs input CPOS', EXC_RATE: 'kurs tahunan exc_rate' }
 const kursRingkas = (v) => v.map((x) => `${x.mata_uang} ${angka.format(x.kurs)} (${x.sumber.filter(Boolean).map((s) => SUMBER_KURS[s] ?? s).join(', ')}; ${x.rekening.length} rekening)`).join('; ')
 
 // Lawan transaksi terbesar: pengalih Keluar / Masuk, satu daftar batang. Klik nama untuk memfilter seluruh laporan.
@@ -231,7 +231,7 @@ export default function DashboardKasBank({ dataId, onDataHilang }) {
                 Dalam rupiah.
                 {data.valas.length > 0 && ` Valas dikonversi: ${kursRingkas(data.valas)}.`}
                 {data.tanpa_kurs.length > 0 && (
-                  <span className="text-amber-700"> Tanpa kurs, tidak dihitung: {data.tanpa_kurs.join(', ')}.</span>
+                  <span className="text-amber-700"> Tanpa kurs, tidak dihitung (isi kursnya di CPOS): {data.tanpa_kurs.join(', ')}.</span>
                 )}
               </p>
             )}

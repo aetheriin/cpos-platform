@@ -4,22 +4,36 @@ const ICON_USER = '<i class="fa-solid fa-user text-slate-300 text-3xl"></i>';
 
 function aturInfoBarPerTab() {
     const security = getTabAktif() === 'security';
+    const kelompokAktif = security ? 'security' : 'umum';
 
-    // Plat dan detail tiket tampil di semua tab, termasuk Security.
-    document.querySelectorAll('[data-info="umum"]').forEach(el => {
-        el.classList.remove('hidden');
+    document.querySelectorAll('[data-info]').forEach(el => {
+        const kelompok = (el.dataset.info || '').split(/\s+/);
+        el.classList.toggle('hidden', !kelompok.includes(kelompokAktif));
     });
 
-    // Bruto, Tara, Netto hanya tampil di Security.
-    document.querySelectorAll('[data-info="security"]').forEach(el => {
-        el.classList.toggle('hidden', !security);
+    // Urutan khusus Security; tampilan tab lain mengikuti urutan Info Bar semula.
+    document.querySelectorAll('.info-grid > div').forEach(el => {
+        el.style.order = '';
     });
+
+    if (security) {
+        [
+            ['infoPlat', 1],
+            ['infoNoTiket', 2],
+            ['infoBruto', 3],
+            ['infoTara', 4],
+            ['infoNetto', 5],
+        ].forEach(([id, urutan]) => {
+            const input = document.getElementById(id);
+            if (input?.parentElement) {
+                input.parentElement.style.order = urutan;
+            }
+        });
+    }
 }
 
 window.addEventListener('tabChange', aturInfoBarPerTab);
 document.addEventListener('DOMContentLoaded', aturInfoBarPerTab);
-
-window.addEventListener('tabChange', aturInfoBarPerTab);
 
 // Bruto / Tara / Netto tiket untuk info bar Security (sumber sama dengan tab Timbangan); tanpa tiket atau belum ditimbang = '-'
 let noTiketBerat = null;

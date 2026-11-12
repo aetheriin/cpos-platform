@@ -1,7 +1,7 @@
 import { createContext, useContext, useSyncExternalStore } from 'react'
 
 // Tata letak per laporan: 'padat' (bawaan) atau 'panjang'. Laporannya diketahui dari LaporanAktif, jadi grafik cukup memanggil
-// useTataLetak(). Disimpan di browser, tapi kembali ke padat setiap login (kembaliKeBawaan).
+// useTataLetak(). Disimpan di browser.
 const KUNCI = 'tata-letak'
 const BAWAAN = 'padat'
 const pendengar = new Set()
@@ -34,7 +34,6 @@ const langgan = (f) => {
   return () => pendengar.delete(f)
 }
 
-export const kembaliKeBawaan = () => simpan({})
 
 // laporan: id laporan; tanpa argumen memakai laporan dari LaporanAktif.
 export function useTataLetak(laporan) {

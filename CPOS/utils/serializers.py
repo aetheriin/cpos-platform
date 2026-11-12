@@ -40,6 +40,25 @@ def serialisasi_tiket(row):
 def serialisasi_driver(row):
     if row is None:
         return None
-    return {"id_driver": row.id_driver, "nik": row.nik, "nama": row.nama_driver,
-            "no_sim": row.no_sim, "kategori": row.kategori, "is_blacklisted": bool(row.is_blacklisted),
-            "is_updated": bool(row.is_updated), "foto_path": row.foto_path}
+
+    masa_berlaku = getattr(row, "sim_berlaku_sampai", None)
+    if masa_berlaku is not None:
+        masa_berlaku = (
+            masa_berlaku.isoformat()
+            if hasattr(masa_berlaku, "isoformat")
+            else str(masa_berlaku)
+        )
+
+    return {
+        "id_driver": row.id_driver,
+        "nik": row.nik,
+        "nama": row.nama_driver,
+        "no_sim": row.no_sim,
+        "id_jenis_sim": getattr(row, "id_jenis_sim", None),
+        "kode_jenis_sim": getattr(row, "kode_jenis_sim", None),
+        "sim_berlaku_sampai": masa_berlaku,
+        "kategori": row.kategori,
+        "is_blacklisted": bool(row.is_blacklisted),
+        "is_updated": bool(row.is_updated),
+        "foto_path": row.foto_path,
+    }

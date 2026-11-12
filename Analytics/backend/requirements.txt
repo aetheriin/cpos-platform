@@ -3,6 +3,4 @@ uvicorn
 pyodbc
 python-dotenv
 pandas
-argon2-cffi
-bcrypt
 openpyxl

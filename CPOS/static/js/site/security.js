@@ -383,8 +383,49 @@ async function toggleRekamWajah(konteks) {
 // Modal yang sama dipakai dari form tiket ('tiket') dan dari menu Update Truk ('kendaraan')
 let konteksTambahSupir = 'tiket';
 
+function bukaGantiSupirAscend() {
+    const manual = document.getElementById('ascendVehicleManualToggle').checked;
+    const plat = (
+        manual
+            ? document.getElementById('ascendVehicleManual').value
+            : document.getElementById('ascendVehicleNo').value
+    ).trim().toUpperCase();
+
+    if (!plat) {
+        Notif.peringatan('Isi nomor kendaraan dahulu.');
+        return;
+    }
+
+    window.platGantiSupirAscend = plat;
+
+    document.getElementById('cariNik').value = '';
+    document.getElementById('hasilCariNik').classList.add('hidden');
+    document.getElementById('tidakDitemukan').classList.add('hidden');
+    document.getElementById('btnPakaiSupirIni').disabled = true;
+    driverHasilCari = null;
+
+    setModeUpdate('cari');
+    document.getElementById('updJudulPlat').textContent = plat;
+    openModal('modalUpdateData');
+}
+
 function bukaTambahSupir(konteks) {
     konteksTambahSupir = konteks;
+    if (konteks === 'ascend') {
+        const manual = document.getElementById('ascendVehicleManualToggle').checked;
+        const plat = (
+            manual
+                ? document.getElementById('ascendVehicleManual').value
+                : document.getElementById('ascendVehicleNo').value
+        ).trim().toUpperCase();
+
+        if (!plat) {
+            Notif.peringatan('Isi nomor kendaraan dahulu.');
+            return;
+        }
+
+        window.platTambahSupirAscend = plat;
+    }
     if (konteks === 'kendaraan') {
         if (!pastikanTrukDipilih()) return;
         tutupModalUpdate();                            // modal Tambah dibuka di atas, Update dibuka lagi setelah simpan
@@ -408,6 +449,25 @@ async function simpanSupirBaru(btn) {
                                     'Memeriksa wajah...');
     if (tampilkanHasil(data)) {
         closeModal('modalTambahSupir');
+        if (konteksTambahSupir === 'ascend') {
+            const link = await kirimForm('/api/kendaraan/supir/tambah', {
+                no_plat: window.platTambahSupirAscend,
+                id_driver: data.id_driver,
+                is_utama: '1',
+            });
+
+            if (!tampilkanHasil(link)) {
+                Notif.gagal(
+                    'Data supir berhasil dibuat, tetapi belum berhasil dihubungkan ke kendaraan. ' +
+                    'Hubungkan supir melalui menu Update Truk.'
+                );
+                return;
+            }
+
+            await muatSupirTerakhirAscend();
+            window.platTambahSupirAscend = null;
+            return;
+        }
         if (konteksTambahSupir === 'kendaraan') {      // dari modal Update -> tab Supir Truk
             await daftarkanSupirKeTruk(data.id_driver);
             openModal('modalUpdateData');
@@ -500,8 +560,28 @@ async function cariSupirByNik(inputEl) {
     }
 }
 
-function pakaiSupirIni() {
-    if (driverHasilCari) gantiSupirTiket(driverHasilCari);
+async function pakaiSupirIni() {
+    if (!driverHasilCari) return;
+
+    if (window.platGantiSupirAscend) {
+        const plat = window.platGantiSupirAscend;
+
+        const data = await kirimForm('/api/kendaraan/supir/tambah', {
+            no_plat: plat,
+            id_driver: driverHasilCari.id_driver,
+            is_utama: '1',
+        });
+
+        if (!tampilkanHasil(data)) return;
+
+        window.platGantiSupirAscend = null;
+        tutupModalUpdate();
+        await muatSupirTerakhirAscend();
+        return;
+    }
+
+    // Alur lama untuk mengganti supir pada tiket tetap berjalan.
+    gantiSupirTiket(driverHasilCari);
 }
 
 // Ganti supir untuk tiket ini (dari Cari NIK atau daftar Supir Truk). Wajib scan wajah ulang.
@@ -1103,43 +1183,97 @@ if (formTiketAscend) {
             });
 }
 
+let permintaanSupirAscend = 0;
+
+function tampilkanTombolTambahSupirAscend(tampil) {
+    document.getElementById('btnTambahSupirAscend')
+        ?.classList.toggle('hidden', !tampil);
+}
+
+function tampilkanTombolGantiSupirAscend(tampil) {
+    document.getElementById('btnGantiSupirAscend')
+        ?.classList.toggle('hidden', !tampil);
+}
+
 async function muatSupirTerakhirAscend() {
-    const manual = document.getElementById('ascendVehicleManualToggle').checked;
-    const plat = (
-        manual
-            ? document.getElementById('ascendVehicleManual').value
-            : document.getElementById('ascendVehicleNo').value
-    ).trim().toUpperCase();
+    const idManual = document.getElementById('ascendVehicleManualToggle');
+    const inputManual = document.getElementById('ascendVehicleManual');
+    const inputPilihan = document.getElementById('ascendVehicleNo');
     const hasil = document.getElementById('ascendSupirTerakhir');
+    const foto = document.getElementById('ascendSupirFoto');
+    const nomorPermintaan = ++permintaanSupirAscend;
+
+    const tampilkanFotoKosong = () => {
+        foto.innerHTML = '<i class="fa-solid fa-user text-slate-300 text-3xl"></i>';
+    };
+
+    const plat = (
+        idManual.checked ? inputManual.value : inputPilihan.value
+    ).trim().toUpperCase();
 
     if (!plat) {
+        tampilkanTombolTambahSupirAscend(false);
+        tampilkanTombolGantiSupirAscend(false);
         hasil.textContent = 'Isi nomor kendaraan untuk melihat riwayat supir.';
         return;
     }
 
-    hasil.textContent = 'Mencari riwayat supir...';
-    const data = await ambilJson(
-        `/api/security/supir-terakhir?no_plat=${encodeURIComponent(plat)}`
-    );
+    tampilkanFotoKosong();
+    hasil.textContent = `Mencari riwayat supir untuk ${plat}...`;
+    tampilkanTombolTambahSupirAscend(false);
+    tampilkanTombolGantiSupirAscend(false);
 
-    if (data.error) {
-        hasil.textContent = data.error;
-        return;
+    try {
+        const data = await ambilJson(
+            `/api/security/supir-terakhir?no_plat=${encodeURIComponent(plat)}`
+        );
+
+        // Abaikan hasil lama jika plat sudah diganti saat pencarian berlangsung.
+        if (nomorPermintaan !== permintaanSupirAscend) return;
+
+        if (data.error) {
+            hasil.textContent = data.error;
+            return;
+        }
+
+        if (!data.driver) {
+            tampilkanTombolTambahSupirAscend(true);
+            tampilkanTombolGantiSupirAscend(false);
+            hasil.textContent = `Belum ada riwayat supir untuk ${plat}.`;
+            return;
+        }
+
+        tampilkanTombolTambahSupirAscend(false);
+        const d = data.driver;
+        const aman = nilai => escapeHtml(String(nilai ?? '-'));
+        const tanggalSIM = d.sim_berlaku_sampai
+            ? new Date(d.sim_berlaku_sampai).toLocaleDateString('id-ID')
+            : '-';
+
+        foto.innerHTML = d.foto_path
+            ? `<img src="${aman(urlBerkas(d.foto_path))}"
+                    class="w-full h-full object-cover rounded-lg" alt="Foto supir">`
+            : '<i class="fa-solid fa-user text-slate-300 text-3xl"></i>';
+
+        hasil.innerHTML = `
+            <div class="space-y-1 text-sm">
+                <p class="font-semibold text-slate-800">${aman(d.nama)}</p>
+                <p>ID Personel: ${aman(d.id_driver)}</p>
+                <p>NIK: ${aman(d.nik)}</p>
+                <p>Nomor SIM: ${aman(d.no_sim)}</p>
+                <p>Jenis SIM: ${aman(d.kode_jenis_sim || d.id_jenis_sim)}</p>
+                <p>SIM berlaku sampai: ${aman(tanggalSIM)}</p>
+                ${d.is_blacklisted
+                    ? '<p class="font-semibold text-red-600">BLACKLIST</p>'
+                    : ''}
+                ${d.is_updated
+                    ? '<p class="text-amber-600">Data identitas pernah diperbarui</p>'
+                    : ''}
+            </div>`;
+    } catch (error) {
+        if (nomorPermintaan !== permintaanSupirAscend) return;
+
+        tampilkanFotoKosong();
+        hasil.textContent = 'Gagal memuat riwayat supir. Coba ubah atau pilih ulang nomor kendaraan.';
     }
-
-    if (!data.driver) {
-        hasil.textContent = 'Belum ada riwayat supir untuk kendaraan ini.';
-        return;
-    }
-
-    const d = data.driver;
-    const foto = document.getElementById('ascendSupirFoto');
-
-    foto.innerHTML = d.foto_path
-        ? `<img src="${escapeHtml(urlBerkas(d.foto_path))}"
-                class="w-full h-full object-cover rounded-lg" alt="">`
-        : '<i class="fa-solid fa-user text-slate-300 text-3xl"></i>';
-    hasil.innerHTML =
-        `<b>${escapeHtml(d.nama)}</b>` +
-        `<span class="text-slate-500"> · NIK ${escapeHtml(d.nik || '-')} · SIM ${escapeHtml(d.no_sim || '-')}</span>`;
 }

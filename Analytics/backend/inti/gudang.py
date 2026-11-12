@@ -5,6 +5,7 @@ dipakai sesi lain tanpa memuat ulang dari SQL; data tanpa pemilik disimpan selam
 Data yang diganti hasil muat ulang tetap bisa diminta dengan id lamanya (alias).
 """
 import logging
+import os
 import threading
 import time
 import uuid
@@ -20,6 +21,42 @@ MAKS_DATASET = konfigurasi.MAKS_DATASET
 SIMPAN_PEKERJAAN_DETIK = konfigurasi.SIMPAN_PEKERJAAN_DETIK
 DATA_SEGAR_DETIK = konfigurasi.DATA_SEGAR_MENIT * 60
 PESAN_BATAL = "Pemuatan dibatalkan."
+
+# Pesan untuk pengguna saat pemuatan gagal. Rincian teknisnya tetap dicatat lengkap di log server.
+# Sengaja "ERP", bukan nama produknya, karena ERP-nya bisa berganti. Istilah teknis lain (database, linked server) tidak dipakai.
+PESAN_ERP = "Koneksi ke ERP terputus. Coba lagi nanti."
+PESAN_LOGIN_ERP = "Akses ke ERP ditolak. Hubungi tim IT."
+PESAN_DATABASE = "Server laporan tidak bisa dihubungi. Coba lagi nanti."
+PESAN_AKSES = "Laporan ini belum bisa dibuka. Hubungi tim IT."
+PESAN_LAMA = "Terlalu lama memuat. Coba rentang tanggal lebih pendek."
+PESAN_KOSONG = "Tidak ada data di tanggal ini."
+PESAN_UMUM = "Terjadi kesalahan. Coba lagi nanti."
+
+_TANDA_JARINGAN = ("tcp provider", "login timeout", "network-related", "not accessible", "10060", "08001", "08s01",
+                   "communication link failure", "physical connection is not usable", "unable to open a logical session")
+
+
+def pesan_galat(e):
+    """Satu kalimat yang bisa dipahami pengguna untuk galat pemuatan, menurut jenis galatnya."""
+    t = str(e).lower()
+    if isinstance(e, RuntimeError) and t.startswith("tidak ada data"):
+        return PESAN_KOSONG
+    if isinstance(e, RuntimeError) and t.startswith("belum ada rekening bank"):
+        return str(e)                                   # pesan yang memang ditulis untuk pengguna (Kas & Bank)
+    jaringan = any(k in t for k in _TANDA_JARINGAN)
+    if jaringan and ("linked server" in t or "7412" in t or "7303" in t):
+        return PESAN_ERP                                # SQL Server Main hidup, tapi server ERP (linked server) tidak terjangkau
+    if "18456" in t or "login failed" in t:
+        # Login yang ditolak bukan akun aplikasi (DB_USER) berarti akun linked server ke ERP, mis. password-nya diganti di ERP
+        akun_app = os.environ.get("DB_USER", "").strip().lower()
+        return PESAN_DATABASE if akun_app and f"'{akun_app}'" in t else PESAN_LOGIN_ERP
+    if jaringan or "4060" in t:
+        return PESAN_DATABASE
+    if "permission" in t or "(229)" in t or "could not find stored procedure" in t or "belum ada di database main" in t:
+        return PESAN_AKSES
+    if "hyt00" in t or "query timeout" in t:
+        return PESAN_LAMA
+    return PESAN_UMUM
 
 
 class Dibatalkan(Exception):
@@ -203,13 +240,13 @@ class Gudang:
             log.info("Data %s %s..%s dimuat: %d baris dalam %.1f detik", p.laporan, p.mulai, p.akhir, len(df), time.time() - p.dibuat)
         except Dibatalkan:
             p.status, p.pesan = "dibatalkan", PESAN_BATAL
-        except Exception:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
             log.exception("Gagal memuat data %s", p.laporan)
             if p.kendali.dibatalkan:
                 p.status, p.pesan = "dibatalkan", PESAN_BATAL
             else:
                 p.status = "gagal"
-                p.pesan = "Gagal mengambil data dari SQL Server. Rincian ada di terminal server."
+                p.pesan = pesan_galat(e)
         finally:
             p.selesai_pada = time.time()
 
