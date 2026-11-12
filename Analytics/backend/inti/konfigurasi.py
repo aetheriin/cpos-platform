@@ -115,6 +115,8 @@ PALM_TOP_OPERATOR = angka("PALM_TOP_OPERATOR", 12)
 TABEL_KAS_BANK = nama_sp("TABEL_KAS_BANK", "Main.dbo.Bank")
 TABEL_KAS_PERUSAHAAN = nama_sp("TABEL_KAS_PERUSAHAAN", "Main.dbo.Company")
 TABEL_KAS_GIRO = nama_sp("TABEL_KAS_GIRO", "Main.dbo.GiroAccount")
+TABEL_KAS_AREA = nama_sp("TABEL_KAS_AREA", "Main.dbo.CompanyArea")            # struktur baru: Bank.CompAreaID -> CompanyArea.CompID
+TABEL_KAS_BANK_DETAIL = nama_sp("TABEL_KAS_BANK_DETAIL", "Main.dbo.BankDetails")  # struktur baru: no. rekening (BankAccountCode)
 TABEL_KAS_KURS = nama_sp("TABEL_KAS_KURS", "Main.dbo.exc_rate")   # kurs ke rupiah per perusahaan, CURRENCYID, dan tahun
 KAS_KURS_ERP_HARI = angka("KAS_KURS_ERP_HARI", 30)   # kurs voucher ERP terakhir masih dipakai sampai sekian hari
 # kurs yang diinput user di CPOS (Data Master › Kurs Mata Uang): riwayat per tanggal berlaku, dipakai lebih dulu dari TABEL_KAS_KURS
@@ -136,6 +138,9 @@ SP_GT_OUT = nama_sp("SP_GT_OUT", "dbo.gt_out")                    # semua GT, sa
 PVR_TABEL_BOBOT = nama_sp("PVR_TABEL_BOBOT", "dbo.Bobot_PVR")     # kolom Kategori, Bobot
 OUTSTANDING_SP = nama_sp("OUTSTANDING_SP", "dbo.R_OUTSTANDING_ARAP")   # laporan Outstanding; SQL di backend/database/outstanding_sp.sql
 HARGA_PO_SP = nama_sp("HARGA_PO_SP", "dbo.R_HARGA_PO")   # harga per baris PO; SQL di backend/database/harga_po_sp.sql
+PI_PVR_SP = nama_sp("PI_PVR_SP", "dbo.PI_PVR")   # laporan PI & PVR; SQL di backend/database/pi_pvr_sp.sql
+PENILAIAN_PVR_SP = nama_sp("PENILAIAN_PVR_SP", "dbo.PENILAIAN_PVR")   # laporan Penilaian PVR; SQL di backend/database/penilaian_pvr_sp.sql
+PENILAIAN_PV_SP = nama_sp("PENILAIAN_PV_SP", "dbo.PENILAIAN_PV")   # laporan Penilaian PV; SQL di backend/database/penilaian_pv_sp.sql
 # Pembuat PVR yang dinilai: tampilan awal laporan Penilaian PVR (lihat DashboardPenilaianPvr.jsx); nama lain lewat filter
 PVR_PENILAIAN_PEMBUAT = [n.strip() for n in teks("PVR_PENILAIAN_PEMBUAT", "Dinda,Dwi,Ferdinan,Intan").split(",") if n.strip()]
 PV_TABEL_BOBOT = nama_sp("PV_TABEL_BOBOT", "dbo.Bobot_PV")

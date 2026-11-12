@@ -1,10 +1,12 @@
-"""Laporan Purchase Invoice: PI beserta PVR yang menyebut nomor PI itu di kolom details, dan PV yang membayar PI itu (item PV bertipe
-PI/PO), langsung lewat OPENQUERY ke database tiap perusahaan. PI bisa dibayar PV tanpa lewat PVR; status membedakannya.
+"""Laporan Purchase Invoice: PI beserta PVR dan PV yang memuat PI itu (item bertipe PI/PO, dicocokkan lewat ID). PI bisa dibayar PV tanpa
+lewat PVR; status membedakannya.
 
-Server tertaut dan nama database diambil dari tabel company (CompAddr, CompDataBase), jadi perusahaan baru langsung ikut.
+Data mentah dari SP PI_PVR_SP (Main.dbo.PI_PVR, SQL-nya di backend/database/pi_pvr_sp.sql), dipanggil per perusahaan bersamaan. Di sini:
+kurs ke rupiah (LineTotal x ExchangeRate), PVR yang void atau bersumber lain (PVRSource terisi) tidak dihitung, penggabungan nomor PVR/PV,
+status, dan umur.
 """
 import re
-from datetime import date, timedelta
+from datetime import date
 
 import pandas as pd
 
@@ -16,53 +18,6 @@ from inti.sp import per_perusahaan
 SUMBER = konfigurasi.SUMBER_LAPORAN
 _NAMA_SQL = re.compile(r"^[A-Za-z0-9_]+$")   # nama server dan database disisipkan ke teks SQL, jadi hanya huruf, angka, dan _
 
-# {db}, {mulai}, dan {akhir} diisi per perusahaan.
-_QUERY = """
-    SELECT
-        pi.PONumbers AS PONumber,
-        s.SupplierCode AS SupplierCode,
-        s.SupplierName AS SupplierName,
-        pid.PurchaseDetailID AS DetailID,
-        pi.PurchaseNumber,
-        pi.PurchaseDate AS PIDate,
-        pid.Quantity AS QtyPI,
-        it.ItemCode,
-        it.ItemName,
-        (pid.LineTotal * ISNULL(pi.ExchangeRate, 1)) AS LineTotal,
-        pvr.VoucherNo AS PVRNumber,
-        pvr.VoucherDate AS PVRDate,
-        pi.CreateDate AS PICreateDate,
-        pi.CreatedBy AS PICreateBy,
-        pvr.CreateDate AS PVRCreateDate,
-        pvr.CreatedBy AS PVRCreateBy,
-        pv.VoucherNo AS PVNumber,
-        pv.VoucherDate AS PVDate,
-        pv.CreatedBy AS PVCreateBy
-    FROM {db}.dbo.ap_purchases pi
-    INNER JOIN {db}.dbo.ap_purchasedetails pid
-        ON pid.PurchaseID = pi.PurchaseID
-    LEFT JOIN {db}.dbo.ic_items it
-        ON it.ItemID = pid.ItemID
-    LEFT JOIN {db}.dbo.ap_suppliers s
-        ON s.SupplierID = pi.SupplierID
-    LEFT JOIN {db}.dbo.fi_aprequest pvr
-        ON CHARINDEX(RTRIM(LTRIM(pi.PurchaseNumber)), pvr.Details) > 0
-        AND TRIM(ISNULL(pvr.PVRSource, '''')) = ''''
-    LEFT JOIN (
-        SELECT i.ItemID, v.VoucherNo, v.VoucherDate, v.CreatedBy
-        FROM {db}.dbo.FI_ARAPItems i
-        JOIN {db}.dbo.FI_ARAP v
-            ON v.VoucherID = i.VoucherID
-        WHERE i.ItemType IN (''PI'', ''PO'')
-          AND v.IsAR = 0
-          AND ISNULL(v.Void, 0) = 0
-    ) pv
-        ON pv.ItemID = pi.PurchaseID
-    WHERE pi.PurchaseDate >= ''{mulai}'' AND pi.PurchaseDate < ''{akhir}''
-      AND ISNULL(pi.Void, 0) = 0
-      AND pi.PurchaseNumber LIKE ''%/PI/%''
-"""
-
 
 def _nama(teks, apa, comp):
     if not _NAMA_SQL.match(teks or ""):
@@ -70,18 +25,11 @@ def _nama(teks, apa, comp):
     return teks
 
 
-def perintah(lokasi, mulai, akhir):
-    """lokasi: (nama, server, database). mulai dan akhir: date, akhir ikut dihitung."""
-    comp, server, db = lokasi
-    isi = _QUERY.format(db=_nama(db, "CompDataBase", comp), mulai=mulai.isoformat(), akhir=(akhir + timedelta(days=1)).isoformat())
-    return f"SELECT * FROM OPENQUERY([{_nama(server, 'CompAddr', comp)}], '{isi}')"
-
-
 def ambil_data(mulai, akhir, lokasi=None, kendali=None):
+    """mulai dan akhir: date, akhir ikut dihitung."""
     lokasi = lokasi if lokasi is not None else lokasi_perusahaan(SUMBER)
-    peta = {l[0]: l for l in lokasi}
-    return per_perusahaan(list(peta), get_connection, lambda comp: perintah(peta[comp], mulai, akhir), lambda comp: (), kendali,
-                          boleh_kosong=True, tandai=True)
+    return per_perusahaan([l[0] for l in lokasi], get_connection, f"EXEC {konfigurasi.PI_PVR_SP} ?, ?, ?",
+                          lambda comp: (comp, mulai.isoformat(), akhir.isoformat()), kendali, boleh_kosong=True, tandai=True)
 
 
 def muat(mulai, akhir, kendali=None):
@@ -108,9 +56,15 @@ URUTAN_STATUS = [BELUM, PV_TANPA_PVR, PVR_BELUM_PV, LENGKAP]
 
 def bersihkan(raw):
     """Satu baris per baris PI. PI yang disebut beberapa PVR atau dibayar beberapa PV digabung: nomor dipisah koma, tanggal yang paling awal."""
-    for k in ("PVNumber", "PVDate", "PVCreateBy"):   # data lama tanpa kolom PV
-        if k not in raw.columns:
-            raw = raw.assign(**{k: None})
+    if raw.empty:
+        raw = pd.DataFrame(columns=["__comp", "DetailID", "PONumber", "SupplierCode", "SupplierName", "PurchaseNumber", "PICreateDate", "QtyPI",
+                                    "ItemCode", "ItemName", "LineTotal", "ExchangeRate", "PICreateBy", "PVRNumber", "PVRDate", "PVRCreateBy",
+                                    "PVRCreateDate", "PVRVoid", "PVRSource", "PVNumber", "PVDate", "PVCreateBy"])
+    # PVR yang void atau bersumber lain (PVRSource terisi) tidak dihitung: kolom PVR-nya dikosongkan, baris PI tetap ada
+    abaikan = raw["PVRVoid"].fillna(False).astype(bool) | (_teks(raw["PVRSource"]) != "")
+    raw = raw.copy()
+    raw.loc[abaikan, ["PVRNumber", "PVRDate", "PVRCreateDate", "PVRCreateBy"]] = None
+    kurs = pd.to_numeric(raw["ExchangeRate"], errors="coerce").fillna(1)
     d = pd.DataFrame({
         "comp": _teks(raw["__comp"]),
         "detail_id": _teks(raw["DetailID"].astype(str).str.replace(r"\.0$", "", regex=True)),
@@ -122,13 +76,13 @@ def bersihkan(raw):
         "qty": pd.to_numeric(raw["QtyPI"], errors="coerce"),
         "itemcode": _teks(raw["ItemCode"]),
         "itemname": _teks(raw["ItemName"]),
-        "line_total": pd.to_numeric(raw["LineTotal"], errors="coerce"),
+        "line_total": pd.to_numeric(raw["LineTotal"], errors="coerce") * kurs,
         "pi_by": _teks(raw["PICreateBy"]),
         "pvr_number": _teks(raw["PVRNumber"]),
         "pvr_date": pd.to_datetime(raw["PVRDate"], errors="coerce").dt.normalize(),
         "pvr_by": _teks(raw["PVRCreateBy"]),
         # Tanggal PVR dibuat di sistem: dipakai untuk lama PI ke PVR, karena VoucherDate kadang salah ketik (mis. tahun 1968)
-        "pvr_dibuat": pd.to_datetime(raw["PVRCreateDate"] if "PVRCreateDate" in raw.columns else raw["PVRDate"], errors="coerce").dt.normalize(),
+        "pvr_dibuat": pd.to_datetime(raw["PVRCreateDate"], errors="coerce").dt.normalize(),
         "pv_number": _teks(raw["PVNumber"]),
         "pv_date": pd.to_datetime(raw["PVDate"], errors="coerce").dt.normalize(),
         "pv_by": _teks(raw["PVCreateBy"]),

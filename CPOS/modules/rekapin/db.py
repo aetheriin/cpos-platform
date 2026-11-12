@@ -36,8 +36,8 @@ def _ubah(sql, *params):
 # ===== Kategori kesalahan =====
 def daftar_kategori(aktif_saja=False):
     return _query(f"""SELECT c.CategoryID AS id, c.CategoryName AS nama, c.Active AS is_active, c.CreateDate AS dibuat,
-                             (SELECT COUNT(*) FROM rekap.OperatorRequest r WHERE r.CategoryID = c.CategoryID) AS jumlah_request
-                      FROM rekap.RequestCategory c {'WHERE c.Active = 1' if aktif_saja else ''}
+                             (SELECT COUNT(*) FROM dbo.OperatorRequest r WHERE r.CategoryID = c.CategoryID) AS jumlah_request
+                      FROM dbo.RequestCategory c {'WHERE c.Active = 1' if aktif_saja else ''}
                       ORDER BY c.Active DESC, c.CategoryName""")
 
 
@@ -45,23 +45,23 @@ def simpan_kategori(id_kategori, nama, id_user):
     if any(k["nama"].casefold() == nama.casefold() and k["id"] != id_kategori for k in daftar_kategori()):
         raise ValueError("Kategori dengan nama itu sudah ada")
     if id_kategori is None:
-        _ubah("INSERT INTO rekap.RequestCategory (CategoryName, CreateBy) VALUES (?, ?)", nama, id_user)
-    elif not _ubah("UPDATE rekap.RequestCategory SET CategoryName = ? WHERE CategoryID = ?", nama, id_kategori):
+        _ubah("INSERT INTO dbo.RequestCategory (CategoryName, CreateBy) VALUES (?, ?)", nama, id_user)
+    elif not _ubah("UPDATE dbo.RequestCategory SET CategoryName = ? WHERE CategoryID = ?", nama, id_kategori):
         raise ValueError("Kategori tidak ditemukan")
 
 
 def hapus_kategori(id_kategori):
     """Kategori yang sudah dipakai request tidak dihapus, hanya dinonaktifkan. Kembalikan 'hapus' / 'nonaktif'."""
-    if _query("SELECT 1 AS x FROM rekap.OperatorRequest WHERE CategoryID = ?", id_kategori):
-        _ubah("UPDATE rekap.RequestCategory SET Active = 0 WHERE CategoryID = ?", id_kategori)
+    if _query("SELECT 1 AS x FROM dbo.OperatorRequest WHERE CategoryID = ?", id_kategori):
+        _ubah("UPDATE dbo.RequestCategory SET Active = 0 WHERE CategoryID = ?", id_kategori)
         return "nonaktif"
-    if not _ubah("DELETE FROM rekap.RequestCategory WHERE CategoryID = ?", id_kategori):
+    if not _ubah("DELETE FROM dbo.RequestCategory WHERE CategoryID = ?", id_kategori):
         raise ValueError("Kategori tidak ditemukan")
     return "hapus"
 
 
 def set_aktif_kategori(id_kategori, aktif):
-    if not _ubah("UPDATE rekap.RequestCategory SET Active = ? WHERE CategoryID = ?", 1 if aktif else 0, id_kategori):
+    if not _ubah("UPDATE dbo.RequestCategory SET Active = ? WHERE CategoryID = ?", 1 if aktif else 0, id_kategori):
         raise ValueError("Kategori tidak ditemukan")
 
 
@@ -145,10 +145,10 @@ _SELECT_REQ = """SELECT r.RequestID AS id, r.OperatorID AS id_operator, o.Nama A
                         r.TicketDetails AS info_tiket, r.Remarks AS catatan, r.ActionRemarks AS catatan_aksi, r.Status AS status,
                         r.CreateDate AS dibuat, b.Nama AS dibuat_oleh, r.ActionDate AS tgl_aksi, x.Nama AS aksi_oleh,
                         r.DoneDate AS tgl_selesai
-                 FROM rekap.OperatorRequest r
+                 FROM dbo.OperatorRequest r
                  JOIN Users o ON o.UserID = r.OperatorID
                  LEFT JOIN CompanyArea a ON a.CompAreaID = o.CompAreaID
-                 JOIN rekap.RequestCategory c ON c.CategoryID = r.CategoryID
+                 JOIN dbo.RequestCategory c ON c.CategoryID = r.CategoryID
                  LEFT JOIN Users b ON b.UserID = r.CreateBy
                  LEFT JOIN Users x ON x.UserID = r.ActionBy"""
 
@@ -185,14 +185,14 @@ def simpan_request(id_request, id_operator, id_kategori, tiket, info_tiket, cata
         conn = get_connection()
         try:
             cursor = conn.cursor()
-            cursor.execute("""INSERT INTO rekap.OperatorRequest (OperatorID, CategoryID, TicketNumber, TicketDetails, Remarks, CreateBy)
+            cursor.execute("""INSERT INTO dbo.OperatorRequest (OperatorID, CategoryID, TicketNumber, TicketDetails, Remarks, CreateBy)
                               OUTPUT INSERTED.RequestID VALUES (?, ?, ?, ?, ?, ?)""", id_operator, id_kategori, tiket, info, catatan, id_user)
             id_baru = cursor.fetchone()[0]
             conn.commit()
             return id_baru
         finally:
             conn.close()
-    if not _ubah("""UPDATE rekap.OperatorRequest SET OperatorID = ?, CategoryID = ?, TicketNumber = ?, TicketDetails = ?, Remarks = ?
+    if not _ubah("""UPDATE dbo.OperatorRequest SET OperatorID = ?, CategoryID = ?, TicketNumber = ?, TicketDetails = ?, Remarks = ?
                       WHERE RequestID = ? AND Status NOT IN ('Rejected', 'Done')""",
                    id_operator, id_kategori, tiket, info, catatan, id_request):
         raise ValueError("Request yang sudah ditolak atau selesai tidak dapat diubah")
@@ -200,18 +200,18 @@ def simpan_request(id_request, id_operator, id_kategori, tiket, info_tiket, cata
 
 
 def hapus_request(id_request):
-    if not _ubah("DELETE FROM rekap.OperatorRequest WHERE RequestID = ? AND Status NOT IN ('Rejected', 'Done')", id_request):
+    if not _ubah("DELETE FROM dbo.OperatorRequest WHERE RequestID = ? AND Status NOT IN ('Rejected', 'Done')", id_request):
         raise ValueError("Request yang sudah ditolak atau selesai tidak dapat dihapus")
 
 
 def ubah_status(id_request, status, catatan, id_user):
     """Approved / Rejected hanya dari Pending (dipanggil saat persetujuan selesai); Done hanya dari Approved."""
     if status in ("Approved", "Rejected"):
-        return bool(_ubah("""UPDATE rekap.OperatorRequest SET Status = ?, ActionRemarks = ISNULL(CAST(? AS NVARCHAR(255)), ActionRemarks), ActionBy = ?,
+        return bool(_ubah("""UPDATE dbo.OperatorRequest SET Status = ?, ActionRemarks = ISNULL(CAST(? AS NVARCHAR(255)), ActionRemarks), ActionBy = ?,
                                     ActionDate = GETDATE()
                              WHERE RequestID = ? AND Status = 'Pending'""", status, (catatan or "")[:255] or None, id_user, id_request))
     if status == "Done":
-        return bool(_ubah("""UPDATE rekap.OperatorRequest SET Status = 'Done', DoneBy = ?, DoneDate = GETDATE()
+        return bool(_ubah("""UPDATE dbo.OperatorRequest SET Status = 'Done', DoneBy = ?, DoneDate = GETDATE()
                              WHERE RequestID = ? AND Status = 'Approved'""", id_user, id_request))
     raise ValueError("Status tidak dikenal")
 
@@ -219,7 +219,7 @@ def ubah_status(id_request, status, catatan, id_user):
 def ringkas_request(id_user, hanya_operator=None):
     hasil = dict.fromkeys(STATUS, 0)
     syarat = "o.CompAreaID IN (SELECT CompAreaID FROM dbo.fn_UserMenuScope(?, 'RK_REQUEST'))" + (" AND (r.OperatorID = ? OR r.CreateBy = ?)" if hanya_operator else "")
-    for r in _query(f"""SELECT r.Status, COUNT(*) AS n FROM rekap.OperatorRequest r JOIN Users o ON o.UserID = r.OperatorID
+    for r in _query(f"""SELECT r.Status, COUNT(*) AS n FROM dbo.OperatorRequest r JOIN Users o ON o.UserID = r.OperatorID
                         WHERE {syarat} GROUP BY r.Status""", id_user, *([hanya_operator] * 2 if hanya_operator else [])):
         hasil[r["Status"]] = r["n"]
     return hasil
@@ -276,7 +276,7 @@ def tren_harga(companies, hari=7):
 
 def request_dalam_cakupan(id_request, id_user):
     """Request ada dan operatornya di area yang boleh diurus user."""
-    return bool(_query("""SELECT 1 AS x FROM rekap.OperatorRequest r JOIN Users o ON o.UserID = r.OperatorID
+    return bool(_query("""SELECT 1 AS x FROM dbo.OperatorRequest r JOIN Users o ON o.UserID = r.OperatorID
                           WHERE r.RequestID = ? AND o.CompAreaID IN (SELECT CompAreaID FROM dbo.fn_UserMenuScope(?, 'RK_REQUEST'))""",
                        id_request, id_user))
 
@@ -284,7 +284,7 @@ def request_dalam_cakupan(id_request, id_user):
 def catat_aksi(id_request, catatan):
     """Catatan penyetuju (tiap tahap) ke kolom Remarks Aksi."""
     if catatan:
-        _ubah("UPDATE rekap.OperatorRequest SET ActionRemarks = ? WHERE RequestID = ?", catatan[:255], id_request)
+        _ubah("UPDATE dbo.OperatorRequest SET ActionRemarks = ? WHERE RequestID = ?", catatan[:255], id_request)
 
 
 def pengajuan_berjalan():

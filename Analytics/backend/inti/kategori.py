@@ -7,11 +7,13 @@ besar-kecil) dicocokkan dulu, lalu yang mirip dengan ambang kemiripan teks 0,8. 
 dan yang tidak cocok dilaporkan di catatan pemuatan supaya bisa dicek dan ditambahkan ke tabel.
 """
 import difflib
+import logging
 import re
 
 from . import konfigurasi
 from .db import get_connection
 
+log = logging.getLogger(__name__)
 AMBANG_MIRIP = 0.8
 
 
@@ -20,7 +22,8 @@ def _norm(teks):
 
 
 def baca_peta(buka=get_connection):
-    """{perusahaan: {kategori lama: kategori baru}}. Tabel tidak terbaca atau kosong menghentikan pemuatan, bukan diam-diam memakai kategori mentah."""
+    """{perusahaan: {kategori lama: kategori baru}}. Tabel tidak terbaca atau kosong: peta kosong, jadi kategori ERP dipakai apa adanya
+    (laporan tetap tampil) dan peringatannya dicatat di log."""
     tabel = ".".join(f"[{b}]" for b in konfigurasi.TABEL_KATEGORI.split("."))
     try:
         conn = buka()
@@ -31,15 +34,16 @@ def baca_peta(buka=get_connection):
         finally:
             conn.close()
     except Exception as e:
-        raise RuntimeError(f"Tabel pemetaan kategori '{konfigurasi.TABEL_KATEGORI}' tidak bisa dibaca (kolom Company, OldCategory, Category). "
-                           f"Periksa TABEL_KATEGORI di backend/.env. Detail: {e}") from e
+        log.warning("Tabel pemetaan kategori '%s' tidak bisa dibaca (kolom Company, OldCategory, Category), kategori ERP dipakai apa adanya. "
+                    "Periksa TABEL_KATEGORI di backend/.env. Detail: %s", konfigurasi.TABEL_KATEGORI, e)
+        return {}
     peta = {}
     for comp, lama, baru in baris:
         comp, lama, baru = (str(v).strip() if v is not None else "" for v in (comp, lama, baru))
         if comp and lama and baru:
             peta.setdefault(comp, {})[lama] = baru
     if not peta:
-        raise RuntimeError(f"Tabel pemetaan kategori '{konfigurasi.TABEL_KATEGORI}' kosong.")
+        log.warning("Tabel pemetaan kategori '%s' kosong, kategori ERP dipakai apa adanya.", konfigurasi.TABEL_KATEGORI)
     return peta
 
 

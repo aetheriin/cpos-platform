@@ -1,9 +1,12 @@
 """Laporan Penilaian PVR: skor pembuat PVR menurut kategori (Check Number) dan bobotnya, sama dengan Excel Penilaian PVR.
 
-Data PVR diambil langsung lewat OPENQUERY ke database tiap perusahaan (server dan database dari tabel company), bobot dari tabel Bobot_PVR.
+Data mentah dari SP PENILAIAN_PVR_SP (Main.dbo.PENILAIAN_PVR, SQL-nya di backend/database/penilaian_pvr_sp.sql), dipanggil per perusahaan
+bersamaan: item PVR pada periode itu, dan riwayat Check Number per supplier. Bobot dari tabel Bobot_PVR. Di sini: nomor dokumen (ItemRef),
+nama supplier, Check Number kosong diisi yang paling sering dipakai supplier itu (seri: yang terakhir dipakai), kategori, dan bobot.
 Aturan hitung: kategori Angkutan (termasuk Angkutan Penjualan) dinilai per baris item, kategori lain cukup sekali per PVR.
 """
-from datetime import date, timedelta
+from concurrent.futures import ThreadPoolExecutor
+from datetime import date
 
 import pandas as pd
 
@@ -12,89 +15,69 @@ from inti.db import get_connection
 from inti.perusahaan import lokasi_perusahaan
 from inti.sp import per_perusahaan
 
-from ..pi_pvr.sumber import _nama
-
 SUMBER = konfigurasi.SUMBER_LAPORAN
 TABEL_BOBOT = konfigurasi.PVR_TABEL_BOBOT
 ANGKUTAN = "Angkutan"
 _SEBUTAN_ANGKUTAN = {"angkutan", "angkutan penjualan"}   # disatukan jadi satu kategori
 KOSONG = "(kosong)"
 
-# Query dari pengguna; {db}, {mulai}, dan {akhir} diisi per perusahaan. Check Number kosong diisi Check Number yang paling sering dipakai supplier itu.
-_QUERY = """
-    SELECT
-        CAST(v.VoucherDate AS date)          AS VoucherDate,
-        v.VoucherNo,
-        COALESCE(
-            NULLIF(i.OBNumber, ''''),
-            CASE
-                WHEN i.ItemType IN (''PI'', ''PO'', ''PR'')  THEN p.PurchaseNumber
-                WHEN i.ItemType IN (''PN'', ''PD'', ''PUK'') THEN n.Number
-                WHEN i.ItemType IN (''TV'', ''BT'', ''BTP'') THEN t.TicketNo
-            END,
-            i.Remarks
-        )                                    AS ItemRef,
-        COALESCE(ck.CheckNo, h.CheckNo)      AS CheckNumber,
-        CASE
-            WHEN ck.CheckNo IS NOT NULL THEN ''Asli''
-            WHEN h.CheckNo  IS NOT NULL THEN ''Histori Supplier''
-            ELSE ''Kosong''
-        END                                  AS CheckNoSource,
-        i.AmountPaid                         AS ItemAmountPaid,
-        v.CreatedBy,
-        COALESCE(s.SupplierName, NULLIF(v.AssociateName, '''')) AS SupplierName,
-        i.ItemType                           AS RefType
-    FROM {db}.dbo.FI_APRequest v
-    JOIN {db}.dbo.FI_APRequestItems i
-        ON i.VoucherID = v.VoucherID
-    CROSS APPLY (SELECT NULLIF(LTRIM(RTRIM(v.CheckNo)), '''') AS CheckNo) ck
-    LEFT JOIN {db}.dbo.AP_Purchases p
-        ON p.PurchaseID = i.ItemID
-       AND i.ItemType IN (''PI'', ''PO'', ''PR'')   -- PR = Purchase Return
-    LEFT JOIN {db}.dbo.FI_ARAPNotes n
-        ON n.ARAPNoteID = i.ItemID
-       AND i.ItemType IN (''PN'', ''PD'', ''PUK'')
-    LEFT JOIN {db}.dbo.PALM_Tickets t
-        ON t.TicketID = i.ItemID
-       AND i.ItemType IN (''TV'', ''BT'', ''BTP'')
-    LEFT JOIN {db}.dbo.AP_Suppliers s
-        ON s.SupplierID = v.AssociateID
-    LEFT JOIN (
-        SELECT AssociateID, CheckNo
-        FROM (
-            SELECT
-                AssociateID,
-                LTRIM(RTRIM(CheckNo)) AS CheckNo,
-                ROW_NUMBER() OVER (
-                    PARTITION BY AssociateID
-                    ORDER BY COUNT(*) DESC, MAX(VoucherDate) DESC
-                ) AS rn
-            FROM {db}.dbo.FI_APRequest
-            WHERE NULLIF(LTRIM(RTRIM(CheckNo)), '''') IS NOT NULL
-              AND ISNULL(Void, 0) = 0
-            GROUP BY AssociateID, LTRIM(RTRIM(CheckNo))
-        ) x
-        WHERE rn = 1
-    ) h
-        ON h.AssociateID = v.AssociateID
-       AND ck.CheckNo IS NULL
-    WHERE v.VoucherDate >= ''{mulai}'' AND v.VoucherDate < ''{akhir}''
-      AND ISNULL(v.Void, 0) = 0
-"""
-
-
-def perintah(lokasi, mulai, akhir, query=_QUERY):
-    """lokasi: (nama, server, database). mulai dan akhir: date, akhir ikut dihitung."""
-    comp, server, db = lokasi
-    isi = query.format(db=_nama(db, "CompDataBase", comp), mulai=mulai.isoformat(), akhir=(akhir + timedelta(days=1)).isoformat())
-    return f"SELECT * FROM OPENQUERY([{_nama(server, 'CompAddr', comp)}], '{isi}')"
-
-
-def ambil_data(mulai, akhir, lokasi=None, kendali=None, query=_QUERY):
+def ambil_sp(mulai, akhir, bagian, lokasi=None, kendali=None):
+    """Satu bagian SP Penilaian PVR ('ITEM' atau 'CEK') untuk semua perusahaan, kolom __comp = CompID."""
     lokasi = lokasi if lokasi is not None else lokasi_perusahaan(SUMBER)
-    peta = {l[0]: l for l in lokasi}
-    return per_perusahaan(list(peta), get_connection, lambda comp: perintah(peta[comp], mulai, akhir, query), lambda comp: (), kendali,
-                          boleh_kosong=True, tandai=True)
+    tgl = (mulai.isoformat(), akhir.isoformat()) if bagian == "ITEM" else (None, None)
+    d = per_perusahaan([l[0] for l in lokasi], get_connection, f"EXEC {konfigurasi.PENILAIAN_PVR_SP} ?, ?, ?, ?",
+                       lambda comp: (comp, *tgl, bagian), kendali, boleh_kosong=True, tandai=True)
+    return d.drop(columns=["CompID"], errors="ignore")
+
+
+_REF_DOKUMEN = {"PurchaseNumber": ("PI", "PO", "PR"), "NoteNumber": ("PN", "PD", "PUK"), "TicketNo": ("TV", "BT", "BTP")}
+
+
+def _kosong_jadi_na(seri):
+    t = seri.astype("string").str.strip()
+    return t.where(t != "")
+
+
+def cek_supplier(cek):
+    """{(perusahaan, AssociateID): Check Number} yang paling sering dipakai supplier itu; seri: yang terakhir dipakai."""
+    if cek.empty:
+        return {}
+    c = cek.assign(Jumlah=pd.to_numeric(cek["Jumlah"], errors="coerce"), Terakhir=pd.to_datetime(cek["Terakhir"], errors="coerce"))
+    c = c.sort_values(["Jumlah", "Terakhir"], ascending=False, kind="stable").drop_duplicates(["__comp", "AssociateID"])
+    return {(k, int(a)): str(n).strip() for k, a, n in zip(c["__comp"], c["AssociateID"], c["CheckNo"]) if pd.notna(a)}
+
+
+def rakit(item, cek):
+    """Data mentah SP jadi bentuk yang dibaca bersihkan(): ItemRef, CheckNumber + sumbernya, SupplierName, RefType."""
+    if item.empty:
+        return pd.DataFrame(columns=["__comp", "VoucherDate", "VoucherNo", "ItemRef", "CheckNumber", "CheckNoSource", "ItemAmountPaid",
+                                     "CreatedBy", "SupplierName", "RefType", "Urut"])
+    jenis = item["ItemType"].fillna("").astype(str).str.strip()
+    # ItemRef: OBNumber, lalu nomor dokumen asal menurut jenis item, lalu Remarks
+    dok = pd.Series(pd.NA, index=item.index, dtype="string")
+    for kolom, jenis_ini in _REF_DOKUMEN.items():
+        dok = dok.mask(jenis.isin(jenis_ini), item[kolom].astype("string"))
+    ref = _kosong_jadi_na(item["OBNumber"]).fillna(dok).fillna(item["Remarks"].astype("string"))
+    # Check Number: yang tertulis di PVR; kalau kosong, yang paling sering dipakai supplier itu
+    asli = _kosong_jadi_na(item["CheckNo"])
+    peta = cek_supplier(cek)
+    histori = pd.Series([peta.get((k, int(a))) if pd.notna(a) else None for k, a in zip(item["__comp"], item["AssociateID"])],
+                        index=item.index, dtype="string")
+    histori = histori.where(asli.isna())
+    sumber = pd.Series("Kosong", index=item.index).mask(histori.notna(), "Histori Supplier").mask(asli.notna(), "Asli")
+    return pd.DataFrame({
+        "__comp": item["__comp"],
+        "VoucherDate": pd.to_datetime(item["VoucherDate"], errors="coerce").dt.normalize(),
+        "VoucherNo": item["VoucherNo"],
+        "Urut": pd.to_numeric(item["VoucherItemID"], errors="coerce"),
+        "ItemRef": ref,
+        "CheckNumber": asli.fillna(histori),
+        "CheckNoSource": sumber,
+        "ItemAmountPaid": item["AmountPaid"],
+        "CreatedBy": item["CreatedBy"],
+        "SupplierName": item["SupplierName"].astype("string").fillna(_kosong_jadi_na(item["AssociateName"])),
+        "RefType": item["ItemType"],
+    })
 
 
 def ambil_bobot(tabel=TABEL_BOBOT):
@@ -110,7 +93,11 @@ def ambil_bobot(tabel=TABEL_BOBOT):
 
 def muat(mulai, akhir, kendali=None):
     """Pemuat untuk Gudang."""
-    raw = ambil_data(date.fromisoformat(mulai), date.fromisoformat(akhir), kendali=kendali)
+    m, a = date.fromisoformat(mulai), date.fromisoformat(akhir)
+    with ThreadPoolExecutor(max_workers=2) as pool:   # item dan riwayat Check Number diambil bersamaan
+        t_item = pool.submit(ambil_sp, m, a, "ITEM", None, kendali)
+        t_cek = pool.submit(ambil_sp, m, a, "CEK", None, kendali)
+        raw = rakit(t_item.result(), t_cek.result())
     bobot = ambil_bobot()
     if kendali:
         kendali.periksa()
@@ -155,6 +142,8 @@ def bersihkan(raw, bobot):
         "supplier": _teks(raw["SupplierName"]),
         "jenis_ref": _teks(jenis_ref),
     })
+    if "Urut" in raw.columns:   # item pertama per PVR = yang diinput paling awal (VoucherItemID), supaya hasilnya tetap tiap kali dimuat
+        d = d.loc[pd.to_numeric(raw["Urut"], errors="coerce").sort_values(kind="stable").index]
     d = d[d["tanggal"].notna() & (d["pvr_number"] != "")]
     d["bobot"] = cek.loc[d.index].map(lambda c: peta.get(c.casefold(), (None, 0.0))[1]).astype(float)
     d["item_pvr"] = d.groupby(["comp", "pvr_number"])["pvr_number"].transform("size")

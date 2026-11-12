@@ -1,80 +1,63 @@
 """Laporan PV KPI: skor kasir pembuat PV menurut kategori (Check Number) dan bobotnya, sama dengan Excel Penilaian PV.
 
-Aturan hitung dan pembersihan sama dengan PVR KPI (laporan.penilaian_pvr.sumber); yang beda hanya query (tabel FI_ARAP, IsAR = 0)
-dan tabel bobot (Bobot_PV). Satu baris per item PV, ditambah item lain-lain dan potongan PPh.
+Aturan hitung dan pembersihan sama dengan PVR KPI (laporan.penilaian_pvr.sumber); yang beda hanya sumber datanya (PV hutang, FI_ARAP
+IsAR = 0) dan tabel bobot (Bobot_PV). Satu baris per item PV, ditambah item lain-lain dan potongan PPh.
+
+Data mentah dari SP PENILAIAN_PV_SP (Main.dbo.PENILAIAN_PV, SQL-nya di backend/database/penilaian_pv_sp.sql), dipanggil per perusahaan
+bersamaan. Di sini: nomor dokumen (ItemRef), label dan tanda potongan PPh, nama supplier, Check Number kosong diisi dari histori supplier,
+kategori, bobot, dan item pertama per PV.
 """
 from datetime import date
 
+import pandas as pd
+
 from inti import konfigurasi
+from inti.db import get_connection
+from inti.perusahaan import lokasi_perusahaan
+from inti.sp import per_perusahaan
 
-from ..penilaian_pvr.sumber import ambil_bobot, ambil_data, bersihkan
+from ..penilaian_pvr.sumber import SUMBER, _kosong_jadi_na, _REF_DOKUMEN, ambil_bobot, bersihkan
 
-# Query dari pengguna; {db}, {mulai}, dan {akhir} diisi per perusahaan.
-_QUERY = """
-    SELECT
-        CAST(v.VoucherDate AS date)           AS VoucherDate,
-        v.VoucherNo,
-        d.ItemRef,
-        v.CreatedBy,
-        NULLIF(LTRIM(RTRIM(v.CheckNo)), '''') AS CheckNumber,
-        d.Amount                              AS ItemAmountPaid,
-        COALESCE(s.SupplierName,
-                 NULLIF(v.AssociateName, ''''),
-                 NULLIF(v.AnonymName, ''''))   AS SupplierName,
-        d.Source
-    FROM {db}.dbo.FI_ARAP v
-    JOIN (
-        SELECT
-            i.VoucherID,
-            COALESCE(
-                CASE
-                    WHEN i.ItemType IN (''PI'', ''PO'')          THEN p.PurchaseNumber
-                    WHEN i.ItemType IN (''PN'', ''PD'', ''PUK'') THEN n.Number
-                    WHEN i.ItemType IN (''TV'', ''BT'', ''BTP'') THEN t.TicketNo
-                END,
-                NULLIF(LTRIM(RTRIM(i.Remarks)), '''')
-            )            AS ItemRef,
-            i.AmountPaid AS Amount,
-            i.ItemType   AS Source
-        FROM {db}.dbo.FI_ARAPItems i
-        LEFT JOIN {db}.dbo.AP_Purchases p
-            ON p.PurchaseID = i.ItemID
-           AND i.ItemType IN (''PI'', ''PO'')
-        LEFT JOIN {db}.dbo.FI_ARAPNotes n
-            ON n.ARAPNoteID = i.ItemID
-           AND i.ItemType IN (''PN'', ''PD'', ''PUK'')
-        LEFT JOIN {db}.dbo.PALM_Tickets t
-            ON t.TicketID = i.ItemID
-           AND i.ItemType IN (''TV'', ''BT'', ''BTP'')
+_URUT_BAGIAN = {"ITEM": 0, "LAIN": 1, "PPH": 2}   # item pertama per PV: item dokumen, lalu lain-lain, lalu potongan PPh
 
-        UNION ALL
 
-        SELECT
-            e.VoucherID,
-            LTRIM(RTRIM(e.Description)),
-            e.Amount,
-            ''Others''
-        FROM {db}.dbo.FI_ARAPExtraItems e
+def ambil_data(mulai, akhir, lokasi=None, kendali=None):
+    """mulai dan akhir: date, akhir ikut dihitung."""
+    lokasi = lokasi if lokasi is not None else lokasi_perusahaan(SUMBER)
+    d = per_perusahaan([l[0] for l in lokasi], get_connection, f"EXEC {konfigurasi.PENILAIAN_PV_SP} ?, ?, ?",
+                       lambda comp: (comp, mulai.isoformat(), akhir.isoformat()), kendali, boleh_kosong=True, tandai=True)
+    return d.drop(columns=["CompID"], errors="ignore")
 
-        UNION ALL
 
-        SELECT
-            x.VoucherID,
-            ''Pot. PPh '' + ISNULL(pt.PPHTypeDescription, ''''),
-            -ABS(x.DeductedPPh),
-            ''PPh''
-        FROM {db}.dbo.FI_ARAP x
-        LEFT JOIN {db}.dbo.FI_PPhTypes pt
-            ON pt.PPHTypeID = x.PPhTypeID
-        WHERE ISNULL(x.DeductedPPh, 0) <> 0
-    ) d
-        ON d.VoucherID = v.VoucherID
-    LEFT JOIN {db}.dbo.AP_Suppliers s
-        ON s.SupplierID = v.AssociateID
-    WHERE v.IsAR = 0
-      AND ISNULL(v.Void, 0) = 0
-      AND v.VoucherDate >= ''{mulai}'' AND v.VoucherDate < ''{akhir}''
-"""
+def rakit(raw):
+    """Data mentah SP jadi bentuk yang dibaca isi_dari_histori() dan bersihkan()."""
+    if raw.empty:
+        return pd.DataFrame(columns=["__comp", "VoucherDate", "VoucherNo", "ItemRef", "CheckNumber", "ItemAmountPaid", "CreatedBy",
+                                     "SupplierName", "Source", "Urut"])
+    bagian = raw["Bagian"].fillna("").astype(str).str.strip()
+    jenis = raw["ItemType"].fillna("").astype(str).str.strip()
+    ket = _kosong_jadi_na(raw["Keterangan"])
+    jumlah = pd.to_numeric(raw["Jumlah"], errors="coerce")
+    # Item dokumen: nomor dokumen asal menurut jenisnya, lalu Remarks. Lain-lain: keterangannya. PPh: "Pot. PPh <jenis>", nilainya negatif.
+    dok = pd.Series(pd.NA, index=raw.index, dtype="string")
+    for kolom, jenis_ini in _REF_DOKUMEN.items():
+        dok = dok.mask(jenis.isin(jenis_ini), raw[kolom].astype("string"))
+    pph = bagian == "PPH"
+    ref = dok.fillna(ket).mask(pph, "Pot. PPh " + raw["Keterangan"].astype("string").fillna(""))
+    sumber = jenis.mask(bagian == "LAIN", "Others").mask(pph, "PPh")
+    urut = bagian.map(_URUT_BAGIAN).fillna(9) * 1e10 + pd.to_numeric(raw["Urut"], errors="coerce").fillna(0)
+    return pd.DataFrame({
+        "__comp": raw["__comp"],
+        "VoucherDate": pd.to_datetime(raw["VoucherDate"], errors="coerce").dt.normalize(),
+        "VoucherNo": raw["VoucherNo"],
+        "ItemRef": ref,
+        "CheckNumber": _kosong_jadi_na(raw["CheckNo"]),
+        "ItemAmountPaid": jumlah.mask(pph, -jumlah.abs()),
+        "CreatedBy": raw["CreatedBy"],
+        "SupplierName": raw["SupplierName"].astype("string").fillna(_kosong_jadi_na(raw["AssociateName"])).fillna(_kosong_jadi_na(raw["AnonymName"])),
+        "Source": sumber,
+        "Urut": urut,
+    })
 
 
 def isi_dari_histori(raw):
@@ -96,7 +79,7 @@ def isi_dari_histori(raw):
 
 def muat(mulai, akhir, kendali=None):
     """Pemuat untuk Gudang."""
-    raw = ambil_data(date.fromisoformat(mulai), date.fromisoformat(akhir), kendali=kendali, query=_QUERY)
+    raw = rakit(ambil_data(date.fromisoformat(mulai), date.fromisoformat(akhir), kendali=kendali))
     bobot = ambil_bobot(konfigurasi.PV_TABEL_BOBOT)
     if kendali:
         kendali.periksa()

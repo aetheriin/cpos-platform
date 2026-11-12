@@ -59,18 +59,50 @@ def _jalankan(perintah, parameter, periode, buka, kendali):
         conn.close()
 
 
+_REKENING_LAMA = ("SELECT RTRIM(C.CompID), RTRIM(C.CompAddr), RTRIM(C.CompDataBase), B.BANKACCOUNTCODE, B.BANKACCOUNTID "
+                  "FROM {perusahaan} C JOIN {bank} B ON B.COMPID = C.CompID AND B.ACTIVE = 1 "
+                  "WHERE C.CompType = 'CLOUD' AND C.Status = 1 ORDER BY C.CompID")
+# Struktur baru (skema CPOS): Bank -> CompanyArea (perusahaan) dan BankDetails (no. rekening). BankAccountID di sini milik CPOS,
+# jadi ID rekening ERP dicari dari kode rekening di FI_BankAccounts tiap perusahaan.
+_REKENING_BARU = ("SELECT RTRIM(C.CompID), RTRIM(C.CompAddr), RTRIM(C.CompDataBase), RTRIM(D.BankAccountCode) "
+                  "FROM {bank} B JOIN {area} A ON A.CompAreaID = B.CompAreaID JOIN {perusahaan} C ON C.CompID = A.CompID "
+                  "JOIN {detail} D ON D.BankAccountID = B.BankAccountID AND D.Active = 1 "
+                  "WHERE B.Active = 1 AND C.CompType = 'CLOUD' AND C.Status = 1 ORDER BY C.CompID")
+
+
+def _baris_rekening(cur):
+    """[(comp, server, database, kode, id ERP atau None)] dari tabel Bank, struktur lama atau baru."""
+    nama = dict(perusahaan=konfigurasi.TABEL_KAS_PERUSAHAAN, bank=konfigurasi.TABEL_KAS_BANK,
+                area=konfigurasi.TABEL_KAS_AREA, detail=konfigurasi.TABEL_KAS_BANK_DETAIL)
+    cur.execute(f"SELECT TOP 0 * FROM {konfigurasi.TABEL_KAS_BANK}")
+    if "bankaccountcode" in {d[0].lower() for d in cur.description}:
+        cur.execute(_REKENING_LAMA.format(**nama))
+        return [tuple(r) for r in cur.fetchall()]
+    cur.execute(_REKENING_BARU.format(**nama))
+    return [tuple(r) + (None,) for r in cur.fetchall()]
+
+
+def _id_erp(cur, server, basis, kode):
+    """{BankAccountID ERP: kode} untuk kode rekening yang diminta, dari FI_BankAccounts perusahaan itu."""
+    cur.execute(f"SELECT * FROM OPENQUERY([{server}], 'SELECT BankAccountID, RTRIM(BankAccountCode) FROM {basis}.dbo.FI_BankAccounts')")
+    cari = set(kode)
+    return {int(i): str(k).strip() for i, k in cur.fetchall() if k is not None and str(k).strip() in cari}
+
+
 def _rekening(buka):
-    """{perusahaan: (server tertaut, database ERP, [kode rekening aktif], {BankAccountID: kode}, [kode akun giro])}."""
+    """{perusahaan: (server tertaut, database ERP, [kode rekening aktif], {BankAccountID ERP: kode}, [kode akun giro])}."""
     conn = buka()
     try:
         cur = conn.cursor()
-        cur.execute(f"SELECT RTRIM(C.CompID), RTRIM(C.CompAddr), RTRIM(C.CompDataBase), B.BANKACCOUNTCODE, B.BANKACCOUNTID "
-                    f"FROM {konfigurasi.TABEL_KAS_PERUSAHAAN} C JOIN {konfigurasi.TABEL_KAS_BANK} B ON B.COMPID = C.CompID AND B.ACTIVE = 1 "
-                    "WHERE C.CompType = 'CLOUD' AND C.Status = 1 ORDER BY C.CompID")
-        baris = cur.fetchall()
-        cur.execute(f"SELECT COMPID, RTRIM(ACCOUNTCODE) FROM {konfigurasi.TABEL_KAS_GIRO} WHERE ACTIVE = 1")
+        baris = _baris_rekening(cur)
+        try:
+            cur.execute(f"SELECT COMPID, RTRIM(ACCOUNTCODE) FROM {konfigurasi.TABEL_KAS_GIRO} WHERE ACTIVE = 1")
+            giro_baris = cur.fetchall()
+        except Exception as e:      # tanpa giro, mutasi bank tetap tampil
+            log.warning("Akun giro (%s) tidak terbaca: %s", konfigurasi.TABEL_KAS_GIRO, e)
+            giro_baris = []
         giro = {}
-        for comp, akun in cur.fetchall():
+        for comp, akun in giro_baris:
             giro.setdefault(str(comp).strip(), []).append(str(akun))
         hasil = {}
         for comp, server, basis, kode, id_bank in baris:
@@ -78,7 +110,11 @@ def _rekening(buka):
                 raise RuntimeError(f"Server/database perusahaan {comp} di tabel company tidak valid: {server}.{basis}")
             isi = hasil.setdefault(str(comp), (str(server), str(basis), [], {}, giro.get(str(comp), [])))
             isi[2].append(str(kode).strip())
-            isi[3][int(id_bank)] = str(kode).strip()
+            if id_bank is not None:
+                isi[3][int(id_bank)] = str(kode).strip()
+        for server, basis, kode, id_kode, _ in hasil.values():
+            if not id_kode and kode:
+                id_kode.update(_id_erp(cur, server, basis, kode))
         return hasil
     finally:
         conn.close()
@@ -173,6 +209,9 @@ def ambil(mulai, akhir, kendali=None, buka=get_connection):
     patokan = pd.Timestamp(year=pd.Timestamp(mulai).year, month=1, day=1)
     sampai = pd.Timestamp(akhir) + pd.offsets.MonthEnd(0)
     rekening = _rekening(buka)
+    if not rekening:
+        raise RuntimeError(f"Belum ada rekening bank aktif di {konfigurasi.TABEL_KAS_BANK} (beserta CompanyArea dan BankDetails). "
+                           "Isi data rekeningnya di CPOS dulu.")
     with ThreadPoolExecutor(max_workers=max(1, min(konfigurasi.KAS_PARALEL, len(rekening) + 1))) as pool:
         giro = [pool.submit(_giro_perusahaan, comp, lok, pd.Timestamp(f"{awal}01"), sampai + pd.Timedelta(days=1), buka, kendali)
                 for comp, lok in rekening.items()]
@@ -414,7 +453,12 @@ def muat(mulai, akhir, kendali=None):
     raw_mutasi, raw_giro = ambil(mulai, akhir, kendali)
     if kendali:
         kendali.periksa()
-    kurs, masukan, erp = ambil_kurs(), ambil_kurs_input(), ambil_kurs_erp(mulai, akhir)
+    try:
+        kurs = ambil_kurs()
+    except Exception as e:      # tabel kurs tahunan tidak ada: lanjut dengan kurs ERP, input CPOS, dan internet
+        log.warning("Kurs tahunan (%s) tidak terbaca: %s", konfigurasi.TABEL_KAS_KURS, e)
+        kurs = {}
+    masukan, erp = ambil_kurs_input(), ambil_kurs_erp(mulai, akhir)
     # kurs internet hanya untuk mata uang asing yang ada di data (nama rekening/bank memuat kodenya)
     valas = sorted({u for u in _mata_uang(raw_mutasi.get("BankAccountCode", []), raw_mutasi.get("BankName", [])) if u != "IDR"})
     internet = {u: kurs_internet(u, mulai, akhir) for u in valas}

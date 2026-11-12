@@ -2,7 +2,7 @@
 (SH_ARAPCalculations), semua riwayat.
 
 Data diambil lewat SP OUTSTANDING_SP (Main.dbo.R_OUTSTANDING_ARAP, SQL-nya di backend/database/outstanding_sp.sql), dipanggil per perusahaan
-secara bersamaan. Selama SP itu belum dibuat, isi yang sama (query.sql) dijalankan langsung ke database tiap perusahaan.
+secara bersamaan. SP itu wajib ada di Main dan diberi izin EXECUTE untuk login aplikasi.
 Perusahaan memakai CompID (YBS, SUN, ...) dari tabel company; baris tanpa server/database (HEAD OFFICE) dilewati.
 
 SQL hanya mengambil dokumen yang belum lunas beserta nilai mentahnya. Di sini:
@@ -14,7 +14,6 @@ SQL hanya mengambil dokumen yang belum lunas beserta nilai mentahnya. Di sini:
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
-from pathlib import Path
 
 import pandas as pd
 
@@ -29,7 +28,6 @@ from ..pi_pvr.sumber import _nama
 
 SUMBER = konfigurasi.SUMBER_LAPORAN
 log = logging.getLogger("dashboard")
-QUERY = (Path(__file__).with_name("query.sql")).read_text(encoding="utf-8")
 
 # Status hutang, urut dari yang paling perlu ditindaklanjuti
 BELUM_PVR, PV_SEBAGIAN, PVR_SEBAGIAN, PVR_PENDING, PV_DEPAN_SEBAGIAN, PV_DEPAN = (
@@ -58,13 +56,10 @@ def ambil_data(kendali=None, peta=None):
     peta = peta if peta is not None else perusahaan()
     if not peta:
         raise RuntimeError(f"Tabel company tidak punya perusahaan aktif bertipe '{SUMBER}' yang punya server dan database.")
-    if _ada_sp():
-        cmd, par = f"EXEC {konfigurasi.OUTSTANDING_SP} ?", (lambda c: (c,))
-    else:
-        # OBJECT_ID kosong juga kalau login aplikasi belum diberi izin EXECUTE pada SP itu
-        log.info("SP %s belum ada atau login belum punya izin EXECUTE, Outstanding menjalankan query.sql langsung", konfigurasi.OUTSTANDING_SP)
-        cmd, par = (lambda c: f"EXEC [{peta[c][0]}].[{peta[c][1]}].dbo.sp_executesql ?"), (lambda c: (QUERY,))
-    d = per_perusahaan(list(peta), get_connection, cmd, par, kendali, boleh_kosong=True, tandai=True)
+    if not _ada_sp():   # OBJECT_ID kosong juga kalau login aplikasi belum diberi izin EXECUTE pada SP itu
+        raise RuntimeError(f"Stored procedure {konfigurasi.OUTSTANDING_SP} belum ada di database Main atau login aplikasi belum diberi izin EXECUTE. "
+                           "Jalankan backend/database/outstanding_sp.sql lalu GRANT EXECUTE.")
+    d = per_perusahaan(list(peta), get_connection, f"EXEC {konfigurasi.OUTSTANDING_SP} ?", lambda c: (c,), kendali, boleh_kosong=True, tandai=True)
     return d.drop(columns=["CompID"], errors="ignore")
 
 

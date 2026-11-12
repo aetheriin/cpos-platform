@@ -604,7 +604,6 @@ function isiDriver(dr) {
 }
 
 // Ringkasan perbandingan: supir sekarang sama (hijau) atau berbeda (kuning) dari supir terakhir truk ini.
-// Hanya keterangan; data supir utama truk tetap diubah lewat Ubah Supir.
 function tandaiPengemudiCocok(dr) {
     const el = document.getElementById('pengemudiCocok');
     const ada = dr && pengemudiTerakhir;
