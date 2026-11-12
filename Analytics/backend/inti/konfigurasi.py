@@ -107,10 +107,12 @@ TABEL_KAS_GIRO = nama_sp("TABEL_KAS_GIRO", "Main.dbo.GiroAccount")
 TABEL_KAS_AREA = nama_sp("TABEL_KAS_AREA", "Main.dbo.CompanyArea")            # struktur baru: Bank.CompAreaID -> CompanyArea.CompID
 TABEL_KAS_BANK_DETAIL = nama_sp("TABEL_KAS_BANK_DETAIL", "Main.dbo.BankDetails")  # struktur baru: no. rekening (BankAccountCode)
 TABEL_KAS_KURS = nama_sp("TABEL_KAS_KURS", "Main.dbo.exc_rate")   # kurs tahunan per perusahaan, CURRENCYID, dan tahun
-KAS_KURS_ERP_HARI = angka("KAS_KURS_ERP_HARI", 30)   # kurs voucher ERP terakhir masih dipakai sampai sekian hari
+KAS_KURS_ERP_HARI = angka("KAS_KURS_ERP_HARI", 30)   # kurs voucher ERP terdekat (sebelum atau sesudah) dipakai sampai sekian hari
 # kurs yang diinput user di CPOS (Data Master › Kurs Mata Uang): riwayat per tanggal berlaku, dipakai kalau tidak ada kurs voucher ERP
 TABEL_KAS_KURS_INPUT = nama_sp("TABEL_KAS_KURS_INPUT", "Main.dbo.ExchangeRate")
 TABEL_KAS_MATA_UANG = nama_sp("TABEL_KAS_MATA_UANG", "Main.dbo.Currency")
+# kurs harian dari internet, sumber terakhir kalau ERP, CPOS, dan exc_rate tidak punya kurs; {dari} {sampai} {kode} diisi.
+KAS_KURS_INTERNET = teks("KAS_KURS_INTERNET", "https://api.frankfurter.dev/v1/{dari}..{sampai}?base={kode}&symbols=IDR")
 KAS_HARI_GRAFIK = angka("KAS_HARI_GRAFIK", 31)  # rentang tampilan lebih panjang dari ini: grafik deret waktu per bulan
 KAS_PARALEL = angka("KAS_PARALEL", 6)                   # perusahaan yang diambil bersamaan
 # Saldo awal rekening per 1 Januari (membaca seluruh riwayat ERP, lambat) disimpan di folder ini; dihitung ulang di latar belakang kalau
