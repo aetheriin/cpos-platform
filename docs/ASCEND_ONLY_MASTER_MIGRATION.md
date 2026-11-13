@@ -1,5 +1,7 @@
 # Rencana Penghapusan Master Supplier/Product Lokal CPOS
 
+Update 14 November 2026: skrip audit SQL 027 tersedia; migrasi persiapan Contract/DO 028 dibuat (belum dijalankan). 028 melepas FK lokal Contract/DOTransport dan membuat ID lokal Contract nullable; jalankan hanya setelah verifikasi backup dan urutan deploy kode.
+
 Status: audit awal pada branch `feature/ascend-master-data-only`. Dokumen ini bukan izin untuk menjalankan DROP di database produksi.
 
 ## Prinsip
