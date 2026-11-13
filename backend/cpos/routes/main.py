@@ -14,7 +14,7 @@ from utils.db_utils import (
     periksa_tiket,
     get_semua_supplier, get_semua_produk, get_history_produk, cari_transaksi_aktif,
     cari_riwayat_driver_by_plat, generate_no_tiket,
-    get_kendaraan_by_plat, get_supir_kendaraan, get_kontrak_kendaraan, catat_cetak_qr
+    get_kendaraan_by_plat, get_supir_kendaraan, get_kontrak_kendaraan
 )
 from utils.serializers import serialisasi_tiket, serialisasi_driver
 from utils.db_blacklist import get_surat_blacklist
@@ -340,12 +340,42 @@ def qr_tiket(no_tiket):
 @login_required
 @lihat(*MENU_OPERASI)
 def cetak_tiket(no_tiket):
-    row = cari_transaksi_aktif(no_tiket=no_tiket)
-    if not row:
-        abort(404, "Tiket tidak ditemukan atau sudah selesai")
-    cetakan_ke = catat_cetak_qr(no_tiket) + 1
-    return render_template("site/cetak_tiket.html", t=row, qr_svg=_svg_qr(row.no_tiket), cetakan_ke=cetakan_ke,
-                           now=datetime.now().strftime("%d-%m-%Y %H:%M"))
+    try:
+        tiket = db_ascend.cari_tiket_ascend_berdasarkan_no_tiket(no_tiket)
+    except Exception:
+        current_app.logger.exception(
+            "Gagal membaca tiket Ascend untuk cetak QR: %s",
+            no_tiket,
+        )
+        abort(503, "Data tiket Ascend belum dapat dibaca.")
+
+    if not tiket:
+        abort(404, "Tiket Ascend tidak ditemukan atau sudah selesai.")
+
+    data_cetak = {
+        "no_tiket": tiket["no_tiket"],
+        "no_plat": tiket["no_plat"],
+        "nama_driver": "-",
+        "nik": "-",
+        "jenis_transaksi": (
+            "PENJUALAN"
+            if tiket["ticket_type"] == "Produk"
+            else "PEMBELIAN"
+        ),
+        "nama_supplier": tiket["associate"],
+        "nama_produk": tiket["produk"],
+        "no_do": tiket["no_do"],
+        "created_at": tiket["tanggal"],
+        "qr_expired_at": None,
+    }
+
+    return render_template(
+        "site/cetak_tiket.html",
+        t=data_cetak,
+        qr_svg=_svg_qr(tiket["no_tiket"]),
+        cetakan_ke=1,
+        now=datetime.now().strftime("%d-%m-%Y %H:%M"),
+    )
 
 
 @main_bp.route("/halaman/<kode>")

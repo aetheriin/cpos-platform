@@ -1,8 +1,6 @@
 // Pengaturan site dari server (.env WAJIB_SCAN_WAJAH), dikirim lewat <meta> di weighbridge.html
 const WAJIB_SCAN_WAJAH = document.querySelector('meta[name="wajib-scan-wajah"]')?.content !== 'false';
 
-document.addEventListener('DOMContentLoaded', () => aturStatusForm('draft'));
-
 // ===== SINKRON FORM DENGAN HASIL LOOKUP PLAT =====
 let saranDriver = null;
 
@@ -165,8 +163,6 @@ function sinkronInfoBarForm() {
     const jenis = document.getElementById('formJenisTransaksi').value;
     document.getElementById('infoJenis').value = jenis ? labelKode(jenis) : '';
 }
-['formJenisTransaksi', 'formSupplier', 'formProduk']
-    .forEach(id => document.getElementById(id).addEventListener('change', sinkronInfoBarForm));
 
 function isiDariDO(d) {
     if (d) document.getElementById('formNoDo').value = d.no_do;
@@ -193,57 +189,6 @@ async function cariDO(noDo, diam = false) {
     info.textContent = `✓ DO dari HO (kontrak ${d.no_kontrak}): ${d.nama_customer} · ${d.nama_produk}` +
         (d.berlaku_sampai ? ` · berlaku s/d ${d.berlaku_sampai}` : '') + '. Masih bisa diubah.';
 }
-
-// Lupa menekan Tab: DO juga dicari saat kotak ditinggalkan
-document.getElementById('formNoDo').addEventListener('blur', e => {
-    const v = e.target.value.trim().toUpperCase();
-    if (v && v !== doTerakhir && !e.target.disabled) cariDO(v);
-    if (!v) document.getElementById('infoDO').classList.add('hidden');
-});
-document.getElementById('formNoDo').addEventListener('input', () => { doTerakhir = ''; sinkronInfoBarForm(); });
-
-window.addEventListener('platLookup', (e) => {
-    const d = e.detail;
-    const inputPlatAscend = document.getElementById('ascendVehicleNo');
-    if (inputPlatAscend && d.no_plat) {
-        const nilaiInput = inputPlatAscend.value.replace(/\s+/g, '').toUpperCase();
-        const nilaiHasil = d.no_plat.replace(/\s+/g, '').toUpperCase();
-
-        if (nilaiInput === nilaiHasil) {
-            inputPlatAscend.value = d.no_plat;
-        }
-    }
-    if (!['ADA_TIKET', 'DRAFT'].includes(d.status)) return;
-
-    document.getElementById('formNoPlat').value = d.no_plat;
-    document.getElementById('formNoTiket').value = d.no_tiket || d.no_tiket_reserved || '';
-    document.getElementById('formNoStnk').value = d.no_stnk || '';
-    tampilkanPengemudiTerakhir(d.driver, d.driver_utama);
-    // Peringatan blacklist selalu tampil, juga untuk plat yang sudah punya tiket (mis. diblacklist setelah tiket dibuat)
-    aturBlacklist('kendaraan', d.kendaraan_blacklist ? { siapa: d.no_plat, info: d.kendaraan_blacklist } : null);
-
-    if (d.status === 'ADA_TIKET') {
-        document.getElementById('formNoDo').value = d.no_do || '';
-        document.getElementById('formJenisTransaksi').value = d.jenis_transaksi;
-        document.getElementById('formSupplier').value = d.id_supplier;
-        document.getElementById('formProduk').value = d.id_produk;
-        sinkronInfoBarForm();
-        if (d.no_do) cariDO(d.no_do, true);             // keterangan DO saja, isian tiket tidak ditimpa
-        if (d.driver) isiDriver(d.driver);
-        tandaiSudahValidasi();
-        document.getElementById('btnCetakQR').classList.remove('hidden');
-    } else {
-        resetValidasiForm();
-        saranDriver = d.driver_utama || d.driver;   // supir utama (menu Update Truk) didahulukan
-        kontrakAktif = d.kontrak_aktif || [];
-        isiDariDO(null);
-        document.getElementById('formNoDo').value = '';
-        document.getElementById('infoDO').classList.add('hidden');
-    }
-    // Tiket yang sudah ada: supir tiket itu. Draft: supir terakhir / utama yang blacklist ikut diperingatkan
-    aturBlacklistSupir(d.status === 'ADA_TIKET' ? (d.driver && d.driver.is_blacklisted ? d.driver : null)
-        : [d.driver_utama, d.driver].find(x => x && x.is_blacklisted) || null);
-});
 
 // ===== VALIDASI AWAL (buka section Informasi Supir) =====
 function mulaiValidasiAwal() {
