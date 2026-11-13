@@ -1,8 +1,9 @@
 {% from "partials/layout/_macros.html" import section_header %}
 <div data-tab-content="produk" class="hidden">
-    <div class="filter-bar"><p class="text-sm text-slate-500">Produk ditampilkan dari DO Ascend. TBS Luar ditampilkan terpisah sesuai jenis tiket.</p><div class="flex-1"></div></div>
+    <div class="filter-bar"><p class="text-sm text-slate-500">Read-only dari DO Outstanding Ascend. Tidak memakai tabel Product lokal CPOS.</p><div class="flex-1"></div>
+        <input type="text" id="cariProdukAscend" placeholder="Cari nama produk" class="input-field w-64" data-on-input="cariProdukAscend" data-arg="$value"></div>
     <div class="section-box">{{ section_header('master-produk-ascend', 'Produk Ascend') }}
-        <div class="section-body overflow-x-auto"><table class="w-full text-left text-sm"><thead class="table-header-row"><tr><th class="table-cell">Nama Produk</th><th class="table-cell">Jenis Tiket</th><th class="table-cell">Sumber</th></tr></thead>
+        <div class="section-body overflow-x-auto"><table class="w-full text-left text-sm"><thead class="table-header-row"><tr><th class="table-cell">Nama Produk</th><th class="table-cell">Jenis Tiket</th><th class="table-cell">Asal Data</th></tr></thead>
         <tbody data-per-halaman="20" id="tabelProduk" class="divide-y divide-slate-100"></tbody></table></div>
     </div>
 </div>
