@@ -42,11 +42,8 @@ def kontrak_halaman():
     produk_list = db_ascend.daftar_master_produk("Produk")
     return render_template("kontrak/kontrak.html", halaman="kontrak", jenis_list=db.JENIS_VALID,
                            boleh_ubah=boleh("KONTRAK_DO"),
-                           customer_list=[m for m in mitra if m["peran"] == "CUSTOMER"],
-                           angkutan_list=[m for m in mitra if m["peran"] == "PENGANGKUTAN"],
-                           company_list=_company_user(),
-                           produk_list=produk_list)
-
+                           customer_list=customer_list, angkutan_list=angkutan_list,
+                           company_list=_company_user(), produk_list=produk_list)
 
 @kontrak_bp.route("/api/kontrak/do")
 @login_required
