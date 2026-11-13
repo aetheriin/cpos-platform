@@ -554,8 +554,8 @@ CREATE TABLE dbo.DOTransport (
     DOQty            DECIMAL(14, 2) NULL,               -- alokasi (opsional), total <= Contract.ContractQty
     PriceTransport   DECIMAL(14, 2) NULL,               -- ongkos angkut per kg
     CONSTRAINT CK_DOTrans_Mode CHECK (TransportMode IN ('PENGIRIM', 'PENERIMA', 'PIHAK_KETIGA')),
-    CONSTRAINT CK_DOTrans_ThirdParty CHECK ((TransportMode = 'PIHAK_KETIGA' AND TransportID IS NOT NULL)
-                                            OR (TransportMode <> 'PIHAK_KETIGA' AND TransportID IS NULL)),
+    CONSTRAINT CK_DOTrans_ThirdParty CHECK ((TransportMode = 'PIHAK_KETIGA' AND (TransportID IS NOT NULL OR AscendTransportID IS NOT NULL))
+                                            OR (TransportMode <> 'PIHAK_KETIGA' AND TransportID IS NULL AND AscendTransportID IS NULL)),
     CONSTRAINT UX_DOTransport UNIQUE (DeliveryOrderID, TransportMode, TransportID)
 );
 GO
