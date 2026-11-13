@@ -53,3 +53,36 @@ SELECT @sql = @sql + CASE WHEN @sql = N'' THEN N'' ELSE N' UNION ALL ' END
     + QUOTENAME(OBJECT_SCHEMA_NAME(OBJECT_ID(N'dbo.' + TableName + N'))) + N'.' + QUOTENAME(TableName)
 FROM @Target WHERE OBJECT_ID(N'dbo.' + TableName, N'U') IS NOT NULL;
 IF @sql <> N'' EXEC sys.sp_executesql @sql;
+
+-- 5) Snapshot kosong pada transaksi historis (sebelum migrasi 026).
+SELECT N'Contract.CustomerNameSnapshot' AS CheckName, COUNT_BIG(*) AS RowsMissing
+FROM dbo.Contract WHERE CustomerNameSnapshot IS NULL AND SupplierID IS NOT NULL
+UNION ALL SELECT N'Contract.ProductNameSnapshot', COUNT_BIG(*)
+FROM dbo.Contract WHERE ProductNameSnapshot IS NULL AND ProductID IS NOT NULL
+UNION ALL SELECT N'DOTransport.TransportNameSnapshot', COUNT_BIG(*)
+FROM dbo.DOTransport WHERE TransportNameSnapshot IS NULL AND TransportID IS NOT NULL
+UNION ALL SELECT N'VehicleContract.SupplierNameSnapshot', COUNT_BIG(*)
+FROM dbo.VehicleContract WHERE SupplierNameSnapshot IS NULL AND SupplierID IS NOT NULL
+UNION ALL SELECT N'VehicleContract.ProductNameSnapshot', COUNT_BIG(*)
+FROM dbo.VehicleContract WHERE ProductNameSnapshot IS NULL AND ProductID IS NOT NULL
+UNION ALL SELECT N'Invoice.SupplierNameSnapshot', COUNT_BIG(*)
+FROM dbo.Invoice WHERE SupplierNameSnapshot IS NULL AND SupplierID IS NOT NULL
+UNION ALL SELECT N'Invoice.TransportNameSnapshot', COUNT_BIG(*)
+FROM dbo.Invoice WHERE TransportNameSnapshot IS NULL AND TransportID IS NOT NULL
+UNION ALL SELECT N'WeightBridge.CustomerNameSnapshot', COUNT_BIG(*)
+FROM dbo.WeightBridge WHERE CustomerNameSnapshot IS NULL AND SupplierID IS NOT NULL
+UNION ALL SELECT N'WeightBridge.ProductNameSnapshot', COUNT_BIG(*)
+FROM dbo.WeightBridge WHERE ProductNameSnapshot IS NULL AND ProductID IS NOT NULL
+UNION ALL SELECT N'WeightBridge.TransportNameSnapshot', COUNT_BIG(*)
+FROM dbo.WeightBridge WHERE TransportNameSnapshot IS NULL AND TransportID IS NOT NULL
+UNION ALL SELECT N'ProductPrice.ProductNameSnapshot', COUNT_BIG(*)
+FROM dbo.ProductPrice WHERE ProductNameSnapshot IS NULL AND ProductID IS NOT NULL
+UNION ALL SELECT N'FlowRule.ProductNameSnapshot', COUNT_BIG(*)
+FROM dbo.FlowRule WHERE ProductNameSnapshot IS NULL AND ProductID IS NOT NULL;
+
+-- 6) Legacy key wajib masih terisi (harus 0 sebelum migrasi nullable/FK dilepas).
+SELECT N'Contract.SupplierID NOT NULL' AS CheckName, COUNT_BIG(*) AS RowsBlocking
+FROM dbo.Contract WHERE SupplierID IS NULL
+UNION ALL SELECT N'Contract.ProductID NOT NULL', COUNT_BIG(*) FROM dbo.Contract WHERE ProductID IS NULL
+UNION ALL SELECT N'VehicleContract.SupplierID NOT NULL', COUNT_BIG(*) FROM dbo.VehicleContract WHERE SupplierID IS NULL
+UNION ALL SELECT N'WeightBridge.SupplierID NOT NULL', COUNT_BIG(*) FROM dbo.WeightBridge WHERE SupplierID IS NULL;
