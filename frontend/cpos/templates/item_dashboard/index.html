@@ -16,22 +16,15 @@
         </button>
     </div>
     <div id="errorItemDashboard" class="hidden mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert"></div>
-    <section id="kpiItemDashboard" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-4" aria-label="Ringkasan analisis"></section>
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
-        <section class="section-box p-4 xl:col-span-1">
-            <div class="mb-3">
-                <h2 class="font-bold text-slate-800">Ringkasan Kategori</h2>
-                <p id="labelGrafikItem" class="text-xs text-slate-500 mt-1">Jumlah item per kategori</p>
-            </div>
-            <div id="grafikItemDashboard" class="space-y-3" aria-label="Grafik item per kategori"></div>
-        </section>
-        <section class="section-box xl:col-span-2 overflow-hidden">
+    <section id="grafikSetItemDashboard" class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 mb-4" aria-label="Grafik hasil analisis"></section>
+    <section class="section-box overflow-hidden">
             <div class="p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h2 class="font-bold text-slate-800">Data Analisis Item</h2>
                     <p id="infoTabelItemDashboard" class="text-xs text-slate-500 mt-1"></p>
                 </div>
                 <div class="flex flex-wrap gap-2">
+                    <select id="pilihHasilItemDashboard" class="input-field py-1.5" aria-label="Pilih hasil analisis"></select>
                     <select id="filterKategoriItem" class="input-field py-1.5" aria-label="Filter kategori">
                         <option value="">Semua kategori</option>
                     </select>
@@ -51,11 +44,16 @@
                     <button id="sesudahItemDashboard" type="button" class="btn-secondary btn-sm">Berikutnya</button>
                 </div>
             </div>
-        </section>
+    </section>
+    <div id="popupWaktuItemDashboard" class="hidden fixed bottom-5 right-5 z-50 max-w-sm rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-lg" role="status" aria-live="polite">
+        <div class="flex items-start justify-between gap-4">
+            <p id="pesanWaktuItemDashboard" class="text-sm text-slate-700"></p>
+            <button id="tutupPopupWaktuItemDashboard" type="button" class="text-slate-500 hover:text-slate-800" aria-label="Tutup notifikasi">&times;</button>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
-<script defer src="{{ url_for('static', filename='item_dashboard/dashboard.js', v='20261111') }}"></script>
+<script defer src="{{ url_for('static', filename='item_dashboard/dashboard.js', v='20261113') }}"></script>
 {% endblock %}

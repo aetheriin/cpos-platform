@@ -13,7 +13,7 @@ from utils.db_organisasi import daftar_lokasi
 from utils.keamanan import id_pos
 from utils.upload_utils import simpan_upload, simpan_frames, hapus_file
 from utils.db_utils import (
-    cari_transaksi_aktif, buat_transaksi_full, get_list_tiket_aktif, get_history_driver,
+    cari_transaksi_aktif, buat_transaksi_full, get_history_driver,
     get_driver_by_id, cari_driver_by_nik, cek_nik_ada, cari_wajah_mirip_driver,
     insert_driver, update_driver_dengan_audit, get_kendaraan_by_plat, get_semua_supplier, get_semua_produk,
     cari_riwayat_driver_by_plat, get_supir_kendaraan
@@ -36,10 +36,9 @@ security_bp = Blueprint('security', __name__)
 def list_tiket_aktif():
     area = area_data(current_user.id)
 
-    tiket_lokal = get_list_tiket_aktif(area)
     try:
         ticket_ids = db_ascend_split.daftar_ticket_id_di_area(area)
-        tiket_ascend = db_ascend.daftar_tiket_ascend_aktif(ticket_ids)
+        hasil = db_ascend.daftar_tiket_ascend_aktif(ticket_ids)
     except Exception:
         current_app.logger.exception(
             "Gagal memuat daftar tiket Ascend untuk area %s",
@@ -49,24 +48,14 @@ def list_tiket_aktif():
             "error": "Daftar tiket Ascend belum dapat dimuat. Coba lagi."
         }), 503
 
-    # Ascend menjadi sumber utama bila nomor tiket yang sama ada di kedua sumber.
-    gabungan = {t["no_tiket"]: dict(t) for t in tiket_lokal}
-    gabungan.update({t["no_tiket"]: dict(t) for t in tiket_ascend})
-
-    hasil = []
-    for tiket in gabungan.values():
+    for tiket in hasil:
         dibuat = tiket.get("created_at")
         tiket["created_at"] = (
             dibuat.strftime("%Y-%m-%d %H:%M")
             if hasattr(dibuat, "strftime")
             else str(dibuat or "")
         )
-        tiket["alur_tahap"] = (
-            alur.tahap_alur(tiket.get("id_alur"))
-            if tiket.get("id_alur")
-            else []
-        )
-        hasil.append(tiket)
+        tiket["alur_tahap"] = []
 
     hasil.sort(key=lambda t: t["created_at"], reverse=True)
     return jsonify(hasil)

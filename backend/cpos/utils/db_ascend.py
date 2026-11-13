@@ -286,7 +286,7 @@ def daftar_tiket_ascend_aktif(ticket_ids):
         return hasil
     finally:
         koneksi.close()
-        
+
 def baca_berat_tiket_ascend(no_tiket):
     """Baca berat Ascend sesuai tahap timbang tiket."""
     koneksi = _koneksi()
@@ -331,7 +331,87 @@ def baca_berat_tiket_ascend(no_tiket):
         }
     finally:
         koneksi.close()
+def riwayat_timbang_associate(
+    ticket_ids, associate_id, ticket_type, mulai, sampai
+):
+    """Riwayat timbang Ascend dalam cakupan tiket CPOS."""
+    if ticket_type not in ("Produk", "TBSLuar"):
+        raise ValueError("Jenis tiket Ascend tidak valid.")
 
+    ticket_ids = sorted({int(i) for i in (ticket_ids or [])})
+    if not ticket_ids:
+        return []
+
+    rows = []
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+
+        for awal in range(0, len(ticket_ids), 900):
+            bagian = ticket_ids[awal:awal + 900]
+            tanda_tanya = ", ".join("?" for _ in bagian)
+
+            cursor.execute(
+                f"""
+                SELECT
+                    w.WeighAt AS created_at,
+                    t.VehicleNo AS no_plat,
+                    COALESCE(c.CustomerName, s.SupplierName) AS nama_supplier,
+                    t.Bruto AS berat_bruto,
+                    t.Tara AS berat_tara,
+                    t.Netto AS berat_netto
+                FROM dbo.PALM_Tickets t
+                CROSS APPLY (
+                    SELECT COALESCE(
+                        t.DateTimeOut,
+                        t.DateTimeIn,
+                        CONVERT(DATETIME, t.[Date])
+                    ) AS WeighAt
+                ) w
+                LEFT JOIN dbo.AR_Customers c
+                    ON t.TicketType = 'Produk'
+                   AND c.CustomerID = t.AssociateID
+                LEFT JOIN dbo.AP_Suppliers s
+                    ON t.TicketType = 'TBSLuar'
+                   AND s.SupplierID = t.AssociateID
+                WHERE t.TicketID IN ({tanda_tanya})
+                  AND t.AssociateID = ?
+                  AND t.TicketType = ?
+                  AND ISNULL(t.Void, 0) = 0
+                  AND ISNULL(t.ParentTicketID, 0) = 0
+                  AND ISNULL(t.[Step], 0) >= 2
+                  AND w.WeighAt >= ?
+                  AND w.WeighAt < ?
+                """,
+                *bagian,
+                int(associate_id),
+                ticket_type,
+                mulai,
+                sampai,
+            )
+
+            for row in _baris_hasil(cursor):
+                rows.append({
+                    **row,
+                    "berat_bruto": (
+                        float(row["berat_bruto"])
+                        if row["berat_bruto"] is not None else None
+                    ),
+                    "berat_tara": (
+                        float(row["berat_tara"])
+                        if row["berat_tara"] is not None else None
+                    ),
+                    "berat_netto": (
+                        float(row["berat_netto"])
+                        if row["berat_netto"] is not None else None
+                    ),
+                })
+
+        rows.sort(key=lambda r: r["created_at"] or datetime.min, reverse=True)
+        return rows[:500]
+    finally:
+        koneksi.close()
+        
 def baca_hasil_split_ascend(ticket_id):
     koneksi = _koneksi()
     try:

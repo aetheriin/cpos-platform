@@ -29,7 +29,7 @@ window.addEventListener('platLookup', (e) => {
         document.getElementById('tbJenisTransaksi').value = labelKode(data.jenis_transaksi);
         document.getElementById('tbSupplier').value = data.supplier;
         document.getElementById('tbProduk').value = data.produk;
-        muatHistorySupplier(data.id_supplier);
+        muatHistoryAscend(data.associate_id, data.ticket_type);
         muatDataTimbanganTersimpan(data.no_tiket);
     } else {
         sumberTiketAktif = null;
@@ -119,7 +119,8 @@ function pilihJembatanTimbang(id) {
 
 // History: default 7 hari terakhir, atau satu tanggal dalam 30 hari terakhir
 const HARI_HISTORY_MAKS = 30;
-let idSupplierHistory = null;
+let associateHistory = null;
+let ticketTypeHistory = null;
 
 function tanggalLokal(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -139,33 +140,63 @@ function resetTanggalTimbang() {
 }
 
 function muatHistoryTimbanganUlang() {
-    muatHistorySupplier(idSupplierHistory);
+    muatHistoryAscend(associateHistory, ticketTypeHistory);
 }
 
-async function muatHistorySupplier(idSupplier) {
-    if (!idSupplier) return;
-    idSupplierHistory = idSupplier;
+async function muatHistoryAscend(associateId, ticketType) {
+    if (!associateId || !ticketType) return;
+
+    associateHistory = associateId;
+    ticketTypeHistory = ticketType;
+
     const input = document.getElementById('filterTanggalTimbang');
     let tanggal = input.value;
+
     if (tanggal && (tanggal < input.min || tanggal > input.max)) {
-        Notif.peringatan(`Tanggal hanya bisa dipilih ${HARI_HISTORY_MAKS} hari terakhir`);
+        Notif.peringatan(
+            `Tanggal hanya bisa dipilih ${HARI_HISTORY_MAKS} hari terakhir`
+        );
         input.value = tanggal = '';
     }
+
     document.getElementById('keteranganHistoryTimbang').textContent =
         tanggal ? `Menampilkan tanggal ${tanggal}` : 'Menampilkan 7 hari terakhir';
-    const url = `/api/history-timbangan-supplier?id_supplier=${encodeURIComponent(idSupplier)}` +
-                (tanggal ? `&tanggal=${tanggal}` : '');
-    const data = await ambilJson(url);
+
+    const params = new URLSearchParams({
+        associate_id: associateId,
+        ticket_type: ticketType,
+    });
+    if (tanggal) params.set('tanggal', tanggal);
+
+    const data = await ambilJson(
+        `/api/history-timbangan-ascend?${params.toString()}`
+    );
     const tbody = document.getElementById('tabelHistoryTimbangan');
-    if (data.error) { tbody.innerHTML = barisGagal(6, data.error); return; }
-    if (!data.length) {
-        tbody.innerHTML = barisKosong(6, tanggal ? `Belum ada riwayat pada ${tanggal}` : 'Belum ada riwayat 7 hari terakhir');
+
+    if (data.error) {
+        tbody.innerHTML = barisGagal(6, data.error);
         return;
     }
+
+    if (!data.length) {
+        tbody.innerHTML = barisKosong(
+            6,
+            tanggal
+                ? `Belum ada riwayat pada ${tanggal}`
+                : 'Belum ada riwayat 7 hari terakhir'
+        );
+        return;
+    }
+
     tbody.innerHTML = data.map(r => `
-        <tr><td class="table-cell whitespace-nowrap text-xs">${escapeHtml(r.created_at || '-')}</td><td class="table-cell">${escapeHtml(r.no_plat)}</td>
-        <td class="table-cell">${escapeHtml(r.nama_supplier)}</td><td class="table-cell">${escapeHtml(r.berat_bruto ?? '-')}</td>
-        <td class="table-cell">${escapeHtml(r.berat_tara ?? '-')}</td><td class="table-cell">${escapeHtml(r.berat_netto ?? '-')}</td></tr>
+        <tr>
+            <td class="table-cell whitespace-nowrap text-xs">${escapeHtml(r.created_at || '-')}</td>
+            <td class="table-cell">${escapeHtml(r.no_plat || '-')}</td>
+            <td class="table-cell">${escapeHtml(r.nama_supplier || '-')}</td>
+            <td class="table-cell">${escapeHtml(r.berat_bruto ?? '-')}</td>
+            <td class="table-cell">${escapeHtml(r.berat_tara ?? '-')}</td>
+            <td class="table-cell">${escapeHtml(r.berat_netto ?? '-')}</td>
+        </tr>
     `).join('');
 }
 

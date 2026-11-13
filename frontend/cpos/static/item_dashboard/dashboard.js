@@ -6,9 +6,8 @@
     const elements = {
         status: document.getElementById('statusItemDashboard'),
         error: document.getElementById('errorItemDashboard'),
-        kpi: document.getElementById('kpiItemDashboard'),
-        chart: document.getElementById('grafikItemDashboard'),
-        chartLabel: document.getElementById('labelGrafikItem'),
+        charts: document.getElementById('grafikSetItemDashboard'),
+        dataset: document.getElementById('pilihHasilItemDashboard'),
         category: document.getElementById('filterKategoriItem'),
         search: document.getElementById('cariItemDashboard'),
         head: document.getElementById('headTabelItemDashboard'),
@@ -18,13 +17,18 @@
         previous: document.getElementById('sebelumItemDashboard'),
         next: document.getElementById('sesudahItemDashboard'),
         refresh: document.getElementById('refreshItemDashboard'),
+        toast: document.getElementById('popupWaktuItemDashboard'),
+        toastMessage: document.getElementById('pesanWaktuItemDashboard'),
+        toastClose: document.getElementById('tutupPopupWaktuItemDashboard'),
     };
 
+    let datasets = [];
+    let activeDataset = 0;
     let columns = [];
     let rows = [];
     let page = 1;
     let categoryKey = null;
-    let metricKey = null;
+    let toastTimeout = null;
 
     const normalized = value => String(value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -38,11 +42,73 @@
     function selectColumns() {
         const categoryNames = new Set(['category', 'kategori', 'categoryname', 'namakategori', 'itemcategory']);
         categoryKey = columns.find(column => categoryNames.has(normalized(column))) || null;
-        const numericColumns = columns.filter(column => rows.some(row => numberOf(row[column]) !== null));
-        const metricNames = ['itemcount', 'totalitems', 'jumlahitem', 'itemqty', 'quantity', 'qty', 'count', 'total'];
-        metricKey = numericColumns.find(column => metricNames.includes(normalized(column)))
-            || numericColumns[0]
+    }
+
+    function chooseColumn(dataset, preferredNames, numeric = false) {
+        const candidates = dataset.kolom.filter(column => {
+            const isNumeric = dataset.baris.some(row => numberOf(row[column]) !== null);
+            return numeric ? isNumeric : !isNumeric;
+        });
+        const byName = candidates.find(column => preferredNames.some(name => normalized(column).includes(name)));
+        if (byName) return byName;
+        if (!numeric) return candidates[0] || null;
+        return candidates.find(column => !/(^id|id$|code|kode|nomor|no$)/.test(normalized(column)))
+            || candidates[0]
             || null;
+    }
+
+    function renderCharts() {
+        const labelNames = [
+            ['itemname', 'namaitem', 'itemcode', 'kodeitem', 'description', 'deskripsi', 'item', 'nama', 'sku'],
+            ['itemname', 'namaitem', 'itemcode', 'kodeitem', 'description', 'deskripsi', 'item', 'nama', 'sku'],
+            ['itemname', 'namaitem', 'itemcode', 'kodeitem', 'description', 'deskripsi', 'item', 'nama', 'sku'],
+            ['categoryname', 'namakategori', 'category', 'kategori', 'name', 'nama'],
+            ['categoryname', 'namakategori', 'category', 'kategori', 'name', 'nama'],
+            ['itemname', 'namaitem', 'itemcode', 'kodeitem', 'description', 'deskripsi', 'item', 'nama', 'sku'],
+        ];
+        const metricNames = [
+            ['stock', 'stok', 'quantity', 'qty', 'onhand', 'saldo', 'jumlah'],
+            ['pocount', 'jumlahpo', 'ordercount', 'purchaseorder', 'dokumen', 'count', 'jumlah', 'total'],
+            ['usagecount', 'jumlahpemakaian', 'icusage', 'usage', 'pemakaian', 'dokumen', 'count', 'jumlah', 'total'],
+            ['pocount', 'jumlahpo', 'ordercount', 'purchaseorder', 'dokumen', 'count', 'jumlah', 'total'],
+            ['cost', 'nilai', 'amount', 'value', 'total', 'rp'],
+            ['cost', 'nilai', 'amount', 'value', 'total', 'rp'],
+        ];
+
+        elements.charts.innerHTML = datasets.map((dataset, index) => {
+            const labelKey = chooseColumn(dataset, labelNames[index] || ['name', 'nama', 'item', 'category', 'kategori']);
+            const metricKey = chooseColumn(dataset, metricNames[index] || ['total', 'count', 'jumlah', 'value', 'cost'], true);
+            const points = metricKey
+                ? dataset.baris.map((row, rowIndex) => ({
+                    label: String(labelKey ? row[labelKey] ?? '(Kosong)' : `Baris ${rowIndex + 1}`),
+                    value: numberOf(row[metricKey]),
+                })).filter(point => point.value !== null)
+                    .sort((a, b) => b.value - a.value)
+                    .slice(0, 10)
+                : [];
+            const title = dataset.judul || `Result set ${index + 1}`;
+            let chartBody = '<p class="py-6 text-center text-sm text-slate-500">Tidak ada data angka untuk divisualisasikan.</p>';
+            if (points.length) {
+                const maximum = Math.max(...points.map(point => point.value), 1);
+                chartBody = `<div class="space-y-3">${points.map(point => {
+                    const width = Math.max(2, Math.min(100, point.value / maximum * 100));
+                    return `<div>
+                        <div class="mb-1 flex justify-between gap-3 text-xs">
+                            <span class="truncate text-slate-600" title="${escapeHtml(point.label)}">${escapeHtml(point.label)}</span>
+                            <span class="shrink-0 font-semibold text-slate-700">${formatNumber(point.value)}</span>
+                        </div>
+                        <div class="h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-blue-600" style="width:${width}%"></div></div>
+                    </div>`;
+                }).join('')}</div>`;
+            } else if (!dataset.baris.length) {
+                chartBody = '<p class="py-6 text-center text-sm text-slate-500">Tidak ada data untuk ditampilkan.</p>';
+            }
+            return `<article class="section-box p-4">
+                <h2 class="font-bold text-slate-800">${escapeHtml(title)}</h2>
+                <p class="mb-4 mt-1 text-xs text-slate-500">${formatNumber(dataset.baris.length)} baris${metricKey ? ` · ${escapeHtml(labelOf(metricKey))}` : ''}</p>
+                ${chartBody}
+            </article>`;
+        }).join('');
     }
 
     function filteredRows() {
@@ -52,53 +118,6 @@
             if (category && categoryValue(row) !== category) return false;
             return !search || columns.some(column => String(row[column] ?? '').toLocaleLowerCase('id-ID').includes(search));
         });
-    }
-
-    function categorySummary(data) {
-        const totals = new Map();
-        data.forEach(row => {
-            const name = categoryValue(row);
-            const value = metricKey ? numberOf(row[metricKey]) : 1;
-            totals.set(name, (totals.get(name) || 0) + (value ?? 0));
-        });
-        return [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
-    }
-
-    function renderKpis(data, categories) {
-        const values = metricKey
-            ? data.reduce((sum, row) => sum + (numberOf(row[metricKey]) ?? 0), 0)
-            : data.length;
-        const cards = [
-            ['Baris Analisis', formatNumber(data.length), 'fa-list'],
-            ['Kategori', formatNumber(new Set(data.map(categoryValue)).size), 'fa-layer-group'],
-            [metricKey ? `Total ${labelOf(metricKey)}` : 'Total Item', formatNumber(values), 'fa-boxes-stacked'],
-            ['Kategori Teratas', categories[0]?.[0] || '-', 'fa-ranking-star'],
-        ];
-        elements.kpi.innerHTML = cards.map(([title, value, icon]) => `
-            <article class="section-box p-4 flex items-center gap-3">
-                <div class="judul-ikon judul-ikon-biru shrink-0"><i class="fa-solid ${icon}"></i></div>
-                <div class="min-w-0"><p class="text-xs text-slate-500">${escapeHtml(title)}</p>
-                    <p class="font-bold text-lg text-slate-800 truncate" title="${escapeHtml(value)}">${escapeHtml(value)}</p></div>
-            </article>`).join('');
-    }
-
-    function renderChart(categories) {
-        elements.chartLabel.textContent = metricKey
-            ? `Berdasarkan ${labelOf(metricKey)} · 10 kategori teratas`
-            : 'Jumlah baris per kategori · 10 kategori teratas';
-        if (!categories.length) {
-            elements.chart.innerHTML = '<p class="text-sm text-slate-500 py-6 text-center">Tidak ada data untuk ditampilkan.</p>';
-            return;
-        }
-        const maximum = Math.max(...categories.map(([, value]) => value), 1);
-        elements.chart.innerHTML = categories.map(([name, value]) => {
-            const width = Math.max(2, Math.min(100, value / maximum * 100));
-            return `<div>
-                <div class="mb-1 flex justify-between gap-3 text-xs"><span class="truncate text-slate-600" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
-                    <span class="shrink-0 font-semibold text-slate-700">${formatNumber(value)}</span></div>
-                <div class="h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-blue-600" style="width:${width}%"></div></div>
-            </div>`;
-        }).join('');
     }
 
     function renderTable(data) {
@@ -121,24 +140,50 @@
     }
 
     function render() {
-        const data = filteredRows();
-        const categories = categorySummary(data);
-        renderKpis(data, categories);
-        renderChart(categories);
-        renderTable(data);
+        renderTable(filteredRows());
     }
 
     function populateCategoryFilter() {
+        elements.category.innerHTML = '<option value="">Semua kategori</option>';
         if (!categoryKey) {
             elements.category.disabled = true;
             return;
         }
+        elements.category.disabled = false;
         const categories = [...new Set(rows.map(categoryValue))].sort((a, b) => a.localeCompare(b, 'id'));
-        elements.category.innerHTML = '<option value="">Semua kategori</option>'
-            + categories.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('');
+        elements.category.innerHTML += categories
+            .map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('');
+    }
+
+    function selectDataset() {
+        activeDataset = Number(elements.dataset.value) || 0;
+        const dataset = datasets[activeDataset];
+        columns = dataset?.kolom || [];
+        rows = dataset?.baris || [];
+        selectColumns();
+        populateCategoryFilter();
+        elements.search.value = '';
+        page = 1;
+        render();
+    }
+
+    function formatDuration(milliseconds) {
+        return milliseconds < 1000
+            ? `${Math.round(milliseconds)} ms`
+            : `${(milliseconds / 1000).toFixed(2)} detik`;
+    }
+
+    function showDuration(message) {
+        elements.toastMessage.textContent = message;
+        elements.toast.classList.remove('hidden');
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => elements.toast.classList.add('hidden'), 5000);
     }
 
     async function load() {
+        const mulai = performance.now();
+        let pesanSelesai = 'Data analisis item berhasil dimuat.';
+        let statusSelesai = '';
         elements.refresh.disabled = true;
         elements.status.textContent = 'Memuat data analisis item…';
         elements.error.classList.add('hidden');
@@ -146,26 +191,35 @@
             const response = await fetch(root.dataset.api, { headers: { Accept: 'application/json' } });
             const data = await response.json();
             if (!response.ok || data.error) throw new Error(data.error || `Permintaan gagal (${response.status}).`);
-            columns = data.kolom || [];
-            rows = data.baris || [];
-            selectColumns();
-            populateCategoryFilter();
-            page = 1;
-            render();
-            elements.status.textContent = `Sumber: dbo.top_item_category_analysis · ${formatNumber(rows.length)} baris`;
+            datasets = data.hasil || (data.kolom ? [{ judul: 'Item dengan stok tertinggi', kolom: data.kolom, baris: data.baris || [] }] : []);
+            if (!datasets.length) throw new Error('Stored procedure tidak menghasilkan data analisis.');
+            elements.dataset.innerHTML = datasets.map((dataset, index) =>
+                `<option value="${index}">${escapeHtml(dataset.judul || `Result set ${index + 1}`)}</option>`
+            ).join('');
+            activeDataset = 0;
+            renderCharts();
+            selectDataset();
+            const totalBaris = datasets.reduce((total, dataset) => total + dataset.baris.length, 0);
+            statusSelesai = `Sumber: dbo.top_item_category_analysis · ${formatNumber(datasets.length)} result set · ${formatNumber(totalBaris)} baris`;
         } catch (error) {
-            elements.status.textContent = 'Data analisis belum tersedia.';
+            pesanSelesai = 'Data analisis item gagal dimuat.';
+            statusSelesai = 'Data analisis belum tersedia.';
             elements.error.textContent = error.message || 'Terjadi kesalahan saat memuat data.';
             elements.error.classList.remove('hidden');
         } finally {
+            const durasi = formatDuration(performance.now() - mulai);
+            elements.status.textContent = `${statusSelesai} · ${durasi}`;
+            showDuration(`${pesanSelesai} Waktu loading: ${durasi}.`);
             elements.refresh.disabled = false;
         }
     }
 
+    elements.dataset.addEventListener('change', selectDataset);
     elements.category.addEventListener('change', () => { page = 1; render(); });
     elements.search.addEventListener('input', () => { page = 1; render(); });
     elements.previous.addEventListener('click', () => { page -= 1; render(); });
     elements.next.addEventListener('click', () => { page += 1; render(); });
     elements.refresh.addEventListener('click', load);
+    elements.toastClose.addEventListener('click', () => elements.toast.classList.add('hidden'));
     load();
 })();

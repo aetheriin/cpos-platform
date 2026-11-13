@@ -14,6 +14,14 @@ from utils.hak_akses import halaman as lihat_halaman, izin, remah_menu
 
 log = logging.getLogger(__name__)
 KODE = "AN_ITEM_CATEGORY"
+JUDUL_HASIL = (
+    "Item dengan stok tertinggi",
+    "Item paling sering diorder",
+    "Item paling sering digunakan",
+    "Kategori paling sering diorder",
+    "Kategori dengan cost tertinggi",
+    "Item dengan cost tertinggi",
+)
 
 
 def _nilai_json(nilai):
@@ -36,16 +44,26 @@ def _muat_data():
     try:
         cursor = conn.cursor()
         cursor.execute("EXEC dbo.top_item_category_analysis")
-        while cursor.description is None:
+        hasil = []
+        while True:
+            if cursor.description is not None:
+                kolom = [str(deskripsi[0]) for deskripsi in cursor.description]
+                baris = [
+                    {nama: _nilai_json(nilai) for nama, nilai in zip(kolom, row)}
+                    for row in cursor.fetchall()
+                ]
+                urutan = len(hasil)
+                hasil.append({
+                    "judul": JUDUL_HASIL[urutan] if urutan < len(JUDUL_HASIL) else f"Result set {urutan + 1}",
+                    "kolom": kolom,
+                    "baris": baris,
+                })
             if not cursor.nextset():
-                raise RuntimeError("Stored procedure tidak menghasilkan result set.")
+                break
 
-        kolom = [str(deskripsi[0]) for deskripsi in cursor.description]
-        baris = [
-            {nama: _nilai_json(nilai) for nama, nilai in zip(kolom, row)}
-            for row in cursor.fetchall()
-        ]
-        return {"kolom": kolom, "baris": baris}
+        if not hasil:
+            raise RuntimeError("Stored procedure tidak menghasilkan result set.")
+        return {"hasil": hasil, "kolom": hasil[0]["kolom"], "baris": hasil[0]["baris"]}
     finally:
         conn.close()
 

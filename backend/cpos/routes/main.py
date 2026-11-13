@@ -264,15 +264,6 @@ def api_plat_lookup():
             "error": "Tiket Ascend belum dapat diperiksa. Coba lagi beberapa saat."
         }), 503
 
-    if row and tiket_ascend:
-        return jsonify({
-            "error": (
-                f"Plat {no_plat} memiliki tiket aktif lokal "
-                f"{row.no_tiket} dan tiket Ascend "
-                f"{tiket_ascend['no_tiket']}. Periksa konflik tiket sebelum melanjutkan."
-            )
-        }), 409
-
     if tiket_ascend:
         associate = " · ".join(
             bagian for bagian in (
@@ -289,6 +280,7 @@ def api_plat_lookup():
             "no_plat": tiket_ascend["no_plat"] or no_plat,
             "no_do": tiket_ascend["no_do"],
             "supplier": associate,
+            "associate_id": tiket_ascend["associate_id"],
             "produk": tiket_ascend["produk"],
             "jenis_transaksi": (
                 "PENJUALAN"
@@ -301,14 +293,7 @@ def api_plat_lookup():
             "driver": None,
             "kendaraan_blacklist": blacklist,
         }), 200
-
-    if row:
-        return jsonify({
-            "error": (
-                f"Truk {no_plat} masih memiliki tiket lokal "
-                f"{row.no_tiket} yang belum selesai."
-            )
-        }), 409
+    
     # Belum ada tiket aktif: nomor tiket cuma "dipesan", belum di-INSERT
     riwayat = cari_riwayat_driver_by_plat(no_plat)
     driver_info = serialisasi_driver(riwayat)
