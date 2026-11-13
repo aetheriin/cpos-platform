@@ -5,6 +5,8 @@ pemeriksaan sesi CPOS (backend Analytics memeriksa login sendiri ke CPOS lewat c
   /analytics/api/...  diteruskan ke backend Analytics (uvicorn, ANALYTICS_BACKEND, bawaan http://127.0.0.1:8001)
   /analytics/...      file hasil build frontend (frontend/analytics/dist); alamat lain -> index.html (rute React)
 Karena satu alamat, ANALYTICS_URL di .env cukup dibiarkan kosong (/analytics) dan sama untuk semua PC."""
+import logging
+import json
 import mimetypes
 import os
 from pathlib import Path
@@ -22,6 +24,9 @@ WAKTU_TUNGGU = 600   # detik; ekspor Excel besar bisa lama
 _LEWATI = {"connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailers", "transfer-encoding",
            "upgrade", "content-length", "content-encoding", "host"}
 _sesi = requests.Session()
+log = logging.getLogger("weighbridge")
+# Pesan untuk pengguna; penyebab teknisnya (backend mati, frontend belum dibangun) dicatat di log untuk IT
+PESAN_TIDAK_BISA = "Laporan sedang tidak bisa dibuka. Coba lagi beberapa saat. Bila masih sama, hubungi IT."
 
 
 def pasang(app_cpos):
@@ -48,19 +53,30 @@ def _teruskan(environ, start_response, path):
     for k in list(header):
         if k.lower() in _LEWATI:
             header.pop(k)
-    header["X-Forwarded-For"] = environ.get("REMOTE_ADDR", "")
+    header["X-Forwarded-For"] = _ip_browser(environ)
     panjang = int(environ.get("CONTENT_LENGTH") or 0)
     isi = environ["wsgi.input"].read(panjang) if panjang else None
     url = BACKEND + path + ("?" + environ["QUERY_STRING"] if environ.get("QUERY_STRING") else "")
     try:
         r = _sesi.request(environ["REQUEST_METHOD"], url, headers=header, data=isi, stream=True, allow_redirects=False,
                           timeout=(5, WAKTU_TUNGGU))
-    except requests.RequestException:
-        pesan = b'{"detail":"Backend Analytics tidak berjalan. Jalankan ulang jalankan.bat."}'
+    except requests.RequestException as e:
+        log.error("Backend Analytics di %s tidak menjawab (%s). Jalankan ulang jalankan.bat di server.", BACKEND, e)
+        pesan = json.dumps({"detail": PESAN_TIDAK_BISA}).encode()
         start_response("502 Bad Gateway", [("Content-Type", "application/json"), ("Content-Length", str(len(pesan)))])
         return [pesan]
     start_response(f"{r.status_code} {r.reason}", [(k, v) for k, v in r.raw.headers.items() if k.lower() not in _LEWATI])
     return _alirkan(r)
+
+
+def _ip_browser(environ):
+    """IP PC pengguna. Di belakang Caddy (BEHIND_PROXY=1) alamat langsungnya 127.0.0.1, jadi dipakai entri terakhir X-Forwarded-For
+    yang ditulis Caddy (sama dengan ProxyFix x_for=1 di app.py). Selain itu header kiriman browser diabaikan."""
+    ip = environ.get("REMOTE_ADDR", "")
+    if os.getenv("BEHIND_PROXY", "0") == "1" and ip in ("127.0.0.1", "::1"):
+        terusan = [x.strip() for x in environ.get("HTTP_X_FORWARDED_FOR", "").split(",") if x.strip()]
+        return terusan[-1] if terusan else ip
+    return ip
 
 
 def _alirkan(r):
@@ -75,7 +91,8 @@ def _berkas(start_response, sisa):
     if not berkas.is_relative_to(DIST.resolve()) or not berkas.is_file():
         berkas = DIST / "index.html"           # rute React (/analytics/laporan/...) atau berkas tidak ada
     if not berkas.is_file():
-        pesan = "Frontend Analytics belum dibangun. Jalankan bangun-frontend.bat sekali.".encode()
+        log.error("Frontend Analytics belum dibangun (%s tidak ada). Jalankan bangun-frontend.bat sekali.", DIST / "index.html")
+        pesan = PESAN_TIDAK_BISA.encode()
         start_response("503 Service Unavailable", [("Content-Type", "text/plain; charset=utf-8"), ("Content-Length", str(len(pesan)))])
         return [pesan]
     jenis = mimetypes.guess_type(berkas.name)[0] or "application/octet-stream"

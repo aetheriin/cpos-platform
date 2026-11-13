@@ -88,11 +88,19 @@ def pasang_error_handler(app):
         # Kode rujukan unik: operator melapor kode ini, IT mencarinya di logs/error_app.log (traceback lengkap)
         kode = kode_error()
         log.exception("%s Error tak tertangani di %s %s (user=%s, ip=%s)", kode, request.method, request.path,
-                      _username(), request.remote_addr)
+                      _username(), _ip())
         pesan = f"Terjadi kesalahan sistem. Kode error: {kode}. Catat kode ini & No. Tiket, lalu hubungi IT site."
         if _minta_json():
             return jsonify({"error": pesan, "kode_error": kode}), 500
         return render_template("error.html", kode=500, pesan=pesan, masuk=_masuk()), 500
+
+def _ip():
+    try:
+        from utils.sesi_aktif import ip_klien
+        return ip_klien(request)
+    except Exception:       # noqa: BLE001 - pencatatan error tidak boleh gagal karena ini
+        return request.remote_addr
+
 
 def _masuk():
     """Halaman error tetap tampil walau status login tidak bisa dibaca (mis. database mati)."""

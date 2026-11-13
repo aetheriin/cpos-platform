@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { angka, tambahDariEvent, tglLengkap, ubahPilihan } from '../../lib/data'
+import { angka, rupiah, rupiahPenuh, tambahDariEvent, tglLengkap, ubahPilihan } from '../../lib/data'
 import { chipDaftar, chipRentang, useDashboard } from '../../lib/filter'
 import FilterMulti from '../../komponen/FilterMulti'
 import FilterTanggal from '../../komponen/FilterTanggal'
@@ -23,11 +23,6 @@ const JENIS = [
 const TAB = [
   { kunci: 'po', nama: 'Semua PO', ket: (h) => `PO yang dibuat ${tglLengkap(h.periode.mulai)} sampai ${tglLengkap(h.periode.akhir)}.` },
 ]
-const miliar = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 })
-const dua = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-const rp = (v) => `Rp${miliar.format(v / 1e9)} miliar`
-// Pendek supaya ukuran angkanya sama dengan kartu lain; nilai lengkap di catatan kartu
-const rpSingkat = (v) => (v >= 1e12 ? `Rp${dua.format(v / 1e12)} T` : `Rp${miliar.format(v / 1e9)} M`)
 const UKURAN = [['po', 'Jumlah PO'], ['nilai', 'Nilai']]
 
 function PilihUkuran({ nilai, onUbah }) {
@@ -50,6 +45,7 @@ export default function DashboardPoAmt({ dataId, onDataHilang }) {
   const aktif = [...chipRentang(filter), ...chipDaftar(JENIS, terpilih)]
   const kpi = data?.kpi
   const kecil = data?.kategori[0]
+  const besar = data?.kategori.at(-1)   // kelompok nilai PO terbesar, mis. '>500JT'
   const [ukuran, setUkuran] = useState('po')
   const formatUkuran = ukuran === 'nilai' ? rupiahPendek : angka.format
   const [ukuranSeri, setUkuranSeri] = useState('po')
@@ -65,11 +61,14 @@ export default function DashboardPoAmt({ dataId, onDataHilang }) {
 
         {data && (
           <div className={memuat ? 'space-y-4 opacity-60 transition-opacity' : 'space-y-4 transition-opacity'}>
-            <GridKartu kolom={3}>
-              <Kartu judul="Total nilai PO" nilai={rpSingkat(kpi.nilai)} catatan={kpi.nilai >= 1e12 ? rp(kpi.nilai) : undefined} />
-              <Kartu judul="Jumlah PO" nilai={angka.format(kpi.po)} />
-              <Kartu judul="PO di bawah Rp1 juta" nilai={angka.format(kecil.po)}
-                catatan={`${formatPersen(kecil.pct_po)} dari total PO, ${formatPersen(kecil.pct_nilai)} dari total nilai`} />
+            <GridKartu>
+              <Kartu judul="Total nilai PO" nilai={rupiah(kpi.nilai)} info={`total ${rupiahPenuh.format(kpi.nilai)}`} />
+              <Kartu judul="Jumlah PO" nilai={angka.format(kpi.po)} catatan="dokumen" />
+              <Kartu judul="Rata-rata per PO" nilai={kpi.po ? rupiah(kpi.nilai / kpi.po) : '-'} />
+              <Kartu judul="PO di bawah Rp 1 juta" nilai={angka.format(kecil.po)}
+                catatan={`${formatPersen(kecil.pct_po)} PO, ${formatPersen(kecil.pct_nilai)} nilai`} />
+              <Kartu judul={`PO ${besar.nama.replace('>', 'di atas Rp ').replace('JT', ' juta')}`} nilai={angka.format(besar.po)}
+                catatan={`${formatPersen(besar.pct_po)} PO, ${formatPersen(besar.pct_nilai)} nilai`} />
             </GridKartu>
 
             <KisiGrafik>

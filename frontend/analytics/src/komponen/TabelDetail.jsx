@@ -8,6 +8,7 @@ import TabelBaris from './TabelBaris'
 import { Memuat } from './Keadaan'
 
 export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumlah, hasil, galat, memuat, cariInput, onCari, ukuran, onUkuran, onHalaman, onUrut, onEkspor, mengekspor = false, galatEkspor = '', onPilihBaris, barisTerpilih }) {
+  const [terbuka, setTerbuka] = useState(true)
   const acuan = hasil ? tab.find((t) => t.kunci === jenis)?.ket(hasil) ?? '' : ''
   const { dari, sampai } = hasil ? rentangBaris(hasil.halaman, hasil.ukuran, hasil.total) : { dari: 0, sampai: 0 }
   // Export Excel memuat semua baris yang cocok, paling banyak maks_ekspor (dikirim server); sisanya dipotong
@@ -16,8 +17,18 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="font-medium">{judul}</h2>
-      <p className="mb-3 text-xs text-slate-500">
+      {/* Judul bisa diklik untuk buka / tutup tabel, seperti header section di CPOS (panah ke bawah = terbuka) */}
+      <button type="button" onClick={() => setTerbuka(!terbuka)} aria-expanded={terbuka}
+        className="flex w-full cursor-pointer items-center gap-2 text-left select-none">
+        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+          className={'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' + (terbuka ? '' : '-rotate-90')}>
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clipRule="evenodd" />
+        </svg>
+        <h2 className="font-medium">{judul}</h2>
+        {!terbuka && hasil && <span className="text-xs text-slate-500 tabular-nums">{angka.format(hasil.total)} baris</span>}
+      </button>
+      {terbuka && (<>
+      <p className="mb-3 mt-0.5 text-xs text-slate-500">
         {acuan}
         {onPilihBaris && ' Klik baris untuk memfilter semua grafik dan kartu ke transaksi itu.'}
       </p>
@@ -116,6 +127,7 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
           </div>
         </div>
       )}
+      </>)}
     </section>
   )
 }

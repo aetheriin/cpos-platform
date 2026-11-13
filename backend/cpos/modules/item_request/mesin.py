@@ -723,6 +723,7 @@ class ItemNLP:
 
 # ===== pemuatan di belakang (CPOS) =====
 _kunci = threading.Lock()          # satu pencarian dalam satu waktu (model & matriks dipakai bersama)
+PESAN_GAGAL = "Data item belum bisa dimuat. Coba lagi nanti, atau hubungi IT."
 _status = {"keadaan": "BELUM", "pesan": "", "engine": None, "companies": []}
 
 
@@ -739,11 +740,11 @@ def _muat():
         _status.update(engine=engine, companies=companies, keadaan="SIAP",
                        pesan=f"{len(df):,} item dimuat".replace(",", "."))
     except ImportError as e:
-        _status.update(keadaan="GAGAL", pesan=f"Library belum terpasang ({e.name}). Jalankan: "
-                                              "pip install -r modules/item_request/requirements.txt")
-    except Exception as e:      # noqa: BLE001 - pesan ditampilkan di halaman
+        log.error("Item Request: library %s belum terpasang. Jalankan: pip install -r modules/item_request/requirements.txt", e.name)
+        _status.update(keadaan="GAGAL", pesan=PESAN_GAGAL)
+    except Exception:           # noqa: BLE001 - penyebab teknis ke log, pengguna mendapat pesan umum
         log.exception("Item Request gagal dimuat")
-        _status.update(keadaan="GAGAL", pesan=str(e))
+        _status.update(keadaan="GAGAL", pesan=PESAN_GAGAL)
 
 
 def mulai_muat(ulang=False):

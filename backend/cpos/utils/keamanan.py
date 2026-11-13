@@ -31,7 +31,7 @@ def log_keamanan(kejadian, detail=""):
         user = current_user.username if current_user and current_user.is_authenticated else "-"
     except Exception:       # noqa: BLE001 - di luar request context
         user = "-"
-    ip = request.remote_addr if request else "-"
+    ip = sesi_aktif.ip_klien(request) if request else "-"     # lewat Analytics: IP browser, bukan 127.0.0.1
     _log.warning("%-20s user=%s ip=%s %s", kejadian, user, ip, detail)
 
 _LOG_SESI_LOCK = threading.Lock()

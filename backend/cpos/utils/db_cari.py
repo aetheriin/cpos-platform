@@ -25,9 +25,13 @@ def cari_tiket(kata, id_area=None, batas=8):
         ORDER BY t.TicketDate DESC""", pola, pola, pola, pola, pola, *param_area)
 
 
-def cari_do(kata, batas=5):
-    """DO / kontrak: no. DO, no. kontrak, atau nama customer. Realisasi = total netto tiket DO (tanpa VOID)."""
+def cari_do(kata, company=None, batas=5):
+    """DO / kontrak: no. DO, no. kontrak, atau nama customer. Realisasi = total netto tiket DO (tanpa VOID).
+    company: None = semua PT, atau kode PT yang boleh dilihat (kontrak milik PT itu)."""
     pola = _pola(kata)
+    if company is not None and not company:
+        return []
+    f_pt = "" if company is None else f" AND k.CompID IN ({', '.join('?' * len(company))})"
     return _query(f"""
         SELECT TOP {int(batas)} o.DONumber AS no_do, k.ContractNumber AS no_kontrak, c.SupplierName AS customer, p.ProductName AS produk,
                k.ContractQty AS qty_kg, o.Active AS is_active, o.ExpiredDate AS berlaku_sampai,
@@ -38,17 +42,22 @@ def cari_do(kata, batas=5):
         JOIN Contract k ON k.ContractID = o.ContractID
         JOIN Supplier c ON c.SupplierID = k.SupplierID
         JOIN Product p ON p.ProductID = k.ProductID
-        WHERE o.DONumber LIKE ? OR k.ContractNumber LIKE ? OR c.SupplierName LIKE ?
-        ORDER BY o.Active DESC, o.CreateDate DESC""", pola, pola, pola)
+        WHERE (o.DONumber LIKE ? OR k.ContractNumber LIKE ? OR c.SupplierName LIKE ?){f_pt}
+        ORDER BY o.Active DESC, o.CreateDate DESC""", pola, pola, pola, *sorted(company or ()))
+
+
+NIK_MIN_ANGKA = 6     # NIK baru dicari bila yang diketik minimal sekian angka, supaya NIK tidak bisa ditelusuri dari 2 angka
 
 
 def cari_personel(kata, batas=5):
     pola = _pola(kata)
+    angka = kata.replace(" ", "")
+    pakai_nik = angka.isdigit() and len(angka) >= NIK_MIN_ANGKA
     return _query(f"""
         SELECT TOP {int(batas)} UserID AS id_personel, Nama AS nama_personel, NoKTP AS nik, PersonType AS kategori, IsBlacklisted AS is_blacklisted
         FROM UserProfile
-        WHERE Active = 1 AND (Nama LIKE ? OR NoKTP LIKE ?)
-        ORDER BY Nama""", pola, pola)
+        WHERE Active = 1 AND (Nama LIKE ?{" OR NoKTP LIKE ?" if pakai_nik else ""})
+        ORDER BY Nama""", pola, *([f"%{angka}%"] if pakai_nik else []))
 
 
 def cari_kendaraan(kata, batas=5):

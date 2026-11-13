@@ -604,9 +604,11 @@ def get_data_timbangan(no_tiket):
     cursor = conn.cursor()
     cursor.execute("""
         SELECT tb.TicketNumber AS no_tiket, tb.Bruto AS berat_bruto, tb.BrutoDate AS waktu_bruto, tb.Tara AS berat_tara, tb.TaraDate AS waktu_tara, tb.Netto AS berat_netto,
-               tb.OperatorID AS operator_timbang_id, tb.ScaleID AS id_jembatan, tb.ScaleCode AS kode_jembatan, s.DeductionKg AS total_potongan_kg
+               tb.OperatorID AS operator_timbang_id, tb.ScaleID AS id_jembatan, tb.ScaleCode AS kode_jembatan, s.DeductionKg AS total_potongan_kg,
+               t.CompAreaID AS id_comp_area
         FROM WeighingSummary tb
         LEFT JOIN Grading s ON s.TicketNumber = tb.TicketNumber
+        LEFT JOIN WeightBridge t ON t.TicketNumber = tb.TicketNumber
         WHERE tb.TicketNumber = ?
     """, no_tiket)
     row = cursor.fetchone()

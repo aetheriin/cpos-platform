@@ -12,6 +12,7 @@ import pandas as pd
 
 from inti import konfigurasi
 from inti.db import get_connection
+from inti.nama import orang, seragam
 from inti.perusahaan import lokasi_perusahaan
 from inti.sp import per_perusahaan
 
@@ -96,6 +97,9 @@ def bersihkan(raw):
              pvr_date=("pvr_date", "min"), pvr_by=("pvr_by", _gabung), pvr_dibuat=("pvr_dibuat", "min"),
              pv_number=("pv_number", _gabung), pv_date=("pv_date", "min"), pv_by=("pv_by", _gabung))
     )
+    for kolom in ("pi_by", "pvr_by", "pv_by"):
+        d[kolom] = orang(d[kolom])
+    d["supplier_name"] = seragam(d["supplier_name"])
     d["sudah_pvr"] = d["pvr_number"] != ""
     d["sudah_pv"] = d["pv_number"] != ""
     d["status"] = BELUM

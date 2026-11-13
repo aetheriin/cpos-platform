@@ -416,7 +416,7 @@ def ekspor_detail(
     _izinkan(user, lap.id)
     if not ekspor.tersedia():
         log.error("%s", ekspor.PESAN_PUSTAKA_HILANG)
-        raise HTTPException(503, ekspor.PESAN_PUSTAKA_HILANG)
+        raise HTTPException(503, ekspor.PESAN_EKSPOR_TIDAK_BISA)
     ds = _dataset(lap, data_id, user)
     f = _filter(lap, request)
     lihat, jumlah_minggu = _rentang(lap, ds, jumlah_minggu, dari, sampai)

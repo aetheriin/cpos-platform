@@ -9,6 +9,8 @@ import LaporanOutstanding from './outstanding/LaporanOutstanding'
 import DashboardPoAmt from './po_amt/DashboardPoAmt'
 import DashboardPoPi from './po_pi/DashboardPoPi'
 import DashboardPrPo from './pr_po/DashboardPrPo'
+import LaporanPurchaseOrder from './purchase_order/LaporanPurchaseOrder'
+import LaporanPurchaseRequest from './purchase_request/LaporanPurchaseRequest'
 import DashboardTbs from './tbs/DashboardTbs'
 import DashboardTbsMingguan from './tbs_mingguan/DashboardTbsMingguan'
 
@@ -23,6 +25,8 @@ export const DASHBOARD = {
   penerimaan_tbs: DashboardTbs,
   tbs_mingguan: DashboardTbsMingguan,
   cash_flow: DashboardKasBank,
+  purchase_request: LaporanPurchaseRequest,
+  purchase_order: LaporanPurchaseOrder,
   pi_pvr: LaporanPiPvr,
   outstanding: LaporanOutstanding,
 }

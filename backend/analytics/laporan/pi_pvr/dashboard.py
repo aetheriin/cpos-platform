@@ -2,10 +2,12 @@
 from inti.filter import kanonik, saring, tgl
 from inti.laporan import rentang_tampil
 from inti.tabel import periksa, susun
+from inti.umur import URUTAN_KELOMPOK_UMUR, kelompok_umur
 
 from .sumber import BELUM, PV_TANPA_PVR, URUTAN_STATUS
 
-DIM = {"perusahaan": "comp", "status": "status"}
+DIM = {"perusahaan": "comp", "status": "status", "aging": "aging", "supplier": "supplier_name", "pembuat": "pi_by"}
+LABEL_FILTER = {"perusahaan": "Perusahaan", "status": "Status", "aging": "Aging", "supplier": "Supplier", "pembuat": "PI dibuat oleh"}
 JENIS_DETAIL = {"belum": "Belum PVR & PV", "pv_tanpa_pvr": "PV tanpa PVR", "sudah": "Sudah PVR"}
 
 _KOLOM_AWAL = [("comp", "Perusahaan", "teks"), ("status", "Status", "teks"), ("po_number", "No. PO", "teks"), ("supplier_code", "Kode Supplier", "teks"),
@@ -26,9 +28,12 @@ def _saring(df, ds, filt):
     dari, sampai = rentang_tampil(ds)
     if "status" not in df.columns:
         raise RuntimeError("Data Purchase Invoice yang tersimpan masih versi lama (tanpa PV). Klik Muat ulang data.")
-    pilihan = {"perusahaan": sorted(df["comp"].unique()), "status": URUTAN_STATUS}
-    filt = {"perusahaan": kanonik((filt or {}).get("perusahaan"), pilihan["perusahaan"], "Perusahaan"),
-            "status": kanonik((filt or {}).get("status"), pilihan["status"], "Status")}
+    df = df.assign(aging=[kelompok_umur(u) for u in df["umur"]])   # umur PI (hari sejak PI dibuat)
+    teks = lambda kolom: sorted({v for v in df[kolom].dropna().astype(str) if v.strip()}, key=str.casefold)
+    pilihan = {"perusahaan": sorted(df["comp"].unique()), "status": URUTAN_STATUS,
+               "aging": [u for u in URUTAN_KELOMPOK_UMUR if u in set(df["aging"])],
+               "supplier": teks("supplier_name"), "pembuat": teks("pi_by")}
+    filt = {k: kanonik((filt or {}).get(k), pilihan[k], LABEL_FILTER[k]) for k in DIM}
     d = df[(df["pi_date"] >= dari) & (df["pi_date"] <= sampai)]
     return saring(d, filt, DIM), dari, sampai, pilihan
 

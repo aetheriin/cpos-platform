@@ -1,4 +1,4 @@
-import { angka, rentangTgl } from '../../lib/data'
+import { angka, rentangTgl, rupiah, rupiahPenuh } from '../../lib/data'
 import { chipDaftar, chipRentang, useDashboard } from '../../lib/filter'
 import FilterMulti from '../../komponen/FilterMulti'
 import FilterTanggal from '../../komponen/FilterTanggal'
@@ -7,8 +7,11 @@ import PanelFilter, { TombolFilter } from '../../komponen/PanelFilter'
 import TabelDetail from '../../komponen/TabelDetail'
 import { MemuatLaporan } from '../../komponen/Keadaan'
 
-const FILTER_AWAL = { dari: null, sampai: null, perusahaan: [], status: [] }
-const JENIS = [{ kunci: 'perusahaan', nama: 'Perusahaan' }, { kunci: 'status', nama: 'Status' }]
+const FILTER_AWAL = { dari: null, sampai: null, perusahaan: [], status: [], aging: [], supplier: [], pembuat: [] }
+const JENIS = [
+  { kunci: 'perusahaan', nama: 'Perusahaan' }, { kunci: 'status', nama: 'Status' }, { kunci: 'aging', nama: 'Aging' },
+  { kunci: 'supplier', nama: 'Supplier' }, { kunci: 'pembuat', nama: 'PI dibuat oleh' },
+]
 const TAB_BELUM = [
   { kunci: 'belum', nama: 'Belum PVR & PV', ket: () => 'PI yang belum ada PVR dan belum dibayar PV. Yang paling lama di atas.' },
   { kunci: 'pv_tanpa_pvr', nama: 'PV tanpa PVR', ket: () => 'PI yang sudah dibayar PV tanpa lewat PVR.' },
@@ -16,12 +19,6 @@ const TAB_BELUM = [
 const TAB_SUDAH = [{ kunci: 'sudah', nama: 'Sudah PVR', ket: () => 'PI yang sudah ada PVR, dengan PV-nya kalau sudah dibayar.' }]
 const satu = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 })
 
-// Rupiah ringkas dengan satuan ditulis lengkap, mis. "Rp 7,7 miliar", supaya besarnya terbaca sekilas
-function rupiah(x) {
-  const [bagi, satuan] = x >= 1e12 ? [1e12, ' triliun'] : x >= 1e9 ? [1e9, ' miliar'] : x >= 1e6 ? [1e6, ' juta'] : [1, '']
-  return `Rp ${satu.format(x / bagi)}${satuan}`
-}
-const rupiahPenuh = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })
 
 // Report tabel saja, menurut tanggal PI. Ganti periode di bar atas menarik data baru; filter Tanggal mempersempit data yang sudah dimuat.
 export default function LaporanPiPvr({ dataId, onDataHilang }) {

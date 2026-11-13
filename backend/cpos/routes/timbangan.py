@@ -3,6 +3,7 @@ from datetime import date, datetime
 from flask import Blueprint, request, jsonify
 from utils.hak_akses import lihat, MENU_OPERASI
 from utils.area import area_data
+from utils.area_filter import area_cocok
 from flask_login import login_required, current_user
 from utils.serial_reader import baca_status, reset_deteksi_stabil, wajib_kembali_nol
 from utils.db_utils import (
@@ -12,7 +13,7 @@ from utils.db_utils import (
 from utils.serializers import serialisasi_tiket
 from utils.hak_akses import izin
 from utils.db_jembatan import jembatan_dipilih
-from utils import alur, db_kelebihan_do, log_aktivitas, db_ascend
+from utils import alur, db_kelebihan_do, log_aktivitas, db_ascend, db_ascend_split
 from utils.db_master import cek_kapasitas
 
 timbangan_bp = Blueprint('timbangan', __name__)
@@ -36,8 +37,17 @@ def timbang_reset():
         reset_deteksi_stabil(j["id_jembatan"])
     return jsonify({"message": "Titik nol timbangan berhasil diatur ulang"}), 200
 
+KOSONG = {"berat_bruto": None, "berat_tara": None, "berat_netto": None, "potongan_kg": None, "netto_akhir": None}
+
+
+def _tiket_di_area(id_comp_area):
+    """Tiket site lain diperlakukan seperti tidak ada (tanpa memberi tahu bahwa nomornya ada)."""
+    return area_cocok(area_data(current_user.id), id_comp_area)
+
+
 @timbangan_bp.route("/api/timbang/data/<no_tiket>")
 @login_required
+@lihat(*MENU_OPERASI)
 def timbang_data(no_tiket):
     if request.args.get("sumber", "").upper() == "ASCEND":
         try:
@@ -60,9 +70,8 @@ def timbang_data(no_tiket):
 
         return jsonify(data)
     row = get_data_timbangan(no_tiket)
-    if not row:
-        return jsonify({"berat_bruto": None, "berat_tara": None, "berat_netto": None,
-                        "potongan_kg": None, "netto_akhir": None})
+    if not row or not _tiket_di_area(row.id_comp_area):
+        return jsonify(KOSONG)
     return jsonify({"berat_bruto": row.berat_bruto, "berat_tara": row.berat_tara, "berat_netto": row.berat_netto,
                     "potongan_kg": row.total_potongan_kg, "netto_akhir": _netto_akhir(row),
                     "jembatan_masuk": row.kode_jembatan})
@@ -74,6 +83,7 @@ def _netto_akhir(row):
 
 @timbangan_bp.route("/api/timbang/scan-qr", methods=["POST"])
 @login_required
+@lihat(*MENU_OPERASI)
 def timbang_scan_qr():
     try:
         tiket_ascend = db_ascend.cari_tiket_ascend_berdasarkan_no_tiket(
@@ -102,7 +112,7 @@ def timbang_scan_qr():
             "driver": None,
         }), 200
     row = cari_transaksi_aktif(no_tiket=request.form.get("no_tiket", "").strip())
-    if not row:
+    if not row or not _tiket_di_area(row.id_comp_area):
         return jsonify({"error": "Tiket tidak ditemukan atau sudah selesai"}), 404
     return jsonify(serialisasi_tiket(row)), 200
 
@@ -170,7 +180,34 @@ def timbang_simpan():
                 )
             }), 503
 
+        if hasil.get("step") == 2 and hasil.get("no_do2"):
+            try:
+                db_ascend_split.simpan_pasangan_do2(
+                    hasil["ticket_id"],
+                    hasil["ticket_no"],
+                    hasil["no_do2"],
+                    int(current_user.id),
+                )
+            except Exception:
+                logging.getLogger("weighbridge").exception(
+                    "Split Ascend tersimpan, tetapi catatan pasangan DO2 gagal diperbarui."
+                )
+
         wajib_kembali_nol(jembatan["id_jembatan"])
+
+        if hasil.get("pending_do2"):
+            return jsonify({
+                "message": (
+                    "Berat akhir sudah tersimpan. "
+                    "Tiket menunggu DO kedua dan akan diproses otomatis."
+                ),
+                "status": "MENUNGGU_DO2",
+                "no_tiket": hasil["ticket_no"],
+                "berat_netto": hasil["berat_netto"],
+                "tiket_split": [],
+                "peringatan": [],
+                "kelebihan_do": None,
+            }), 202
 
         if hasil["step"] == 1:
             label = "Tara" if hasil["ticket_type"] == "Produk" else "Bruto"
@@ -185,6 +222,7 @@ def timbang_simpan():
             "message": pesan,
             "peringatan": [],
             "kelebihan_do": None,
+            "tiket_split": hasil.get("tiket_split", []),
         }), 200
     trx = cari_transaksi_aktif(no_tiket=no_tiket)
     data_lama = get_data_timbangan(no_tiket)

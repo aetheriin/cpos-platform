@@ -1,4 +1,4 @@
-import { angka, rentangTgl } from '../../lib/data'
+import { angka, rentangTgl, rupiah, rupiahPenuh } from '../../lib/data'
 import { chipDaftar, chipRentang, useDashboard } from '../../lib/filter'
 import FilterMulti from '../../komponen/FilterMulti'
 import FilterTanggal from '../../komponen/FilterTanggal'
@@ -40,14 +40,7 @@ function Kelompok({ judul, kolom, children }) {
     </section>
   )
 }
-const satu = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 })
 
-function rupiah(x) {
-  const n = Math.abs(x)
-  const [bagi, satuan] = n >= 1e12 ? [1e12, ' triliun'] : n >= 1e9 ? [1e9, ' miliar'] : n >= 1e6 ? [1e6, ' juta'] : [1, '']
-  return `Rp ${satu.format(x / bagi)}${satuan}`
-}
-const rupiahPenuh = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })
 
 // Report tabel saja, menurut tanggal dokumen. Semua nilai dalam rupiah (valas memakai kurs dokumen ERP).
 export default function LaporanOutstanding({ dataId, onDataHilang }) {

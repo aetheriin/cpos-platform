@@ -1,4 +1,13 @@
 export const angka = new Intl.NumberFormat('id-ID')
+
+// Rupiah ringkas dengan satuan ditulis lengkap, mis. "Rp 7,7 miliar", supaya besarnya terbaca sekilas; dipakai semua kartu nilai rupiah
+const desimalRupiah = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 })
+export function rupiah(x) {
+  const n = Math.abs(x)
+  const [bagi, satuan] = n >= 1e12 ? [1e12, ' triliun'] : n >= 1e9 ? [1e9, ' miliar'] : n >= 1e6 ? [1e6, ' juta'] : [1, '']
+  return `Rp ${desimalRupiah.format(x / bagi)}${satuan}`
+}
+export const rupiahPenuh = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })
 export const persen = (x) => `${(x * 100).toFixed(1).replace('.', ',')}%`
 
 // Item terpilih yang tidak masuk teratas tetap ditambahkan, supaya pilihan aktif selalu terlihat.

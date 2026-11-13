@@ -5,20 +5,18 @@ import pandas as pd
 from inti.filter import kanonik, saring, tgl
 from inti.laporan import rentang_tampil
 from inti.tabel import periksa, susun
-from inti.umur import URUTAN_UMUR, kategori_umur
-
+from inti.umur import URUTAN_KELOMPOK_UMUR as URUTAN_AGING, kelompok_umur
 from .sumber import BELUM_RV, RV_SEBAGIAN, URUTAN_STATUS
 
 DIM = {"perusahaan": "comp", "sumber": "sumber", "status": "status", "kategori": "kategori", "aging": "aging"}
 # Filter yang berlaku untuk tiap kelompok tabel; perusahaan dan aging untuk semua
 DIM_ARAP = ("perusahaan", "sumber", "status", "aging")
 DIM_PENGADAAN = ("perusahaan", "kategori", "aging")
-# Aging semua tabel memakai kategori umur yang sama dengan dashboard PR & PO (inti/umur.py)
-URUTAN_AGING = [u for u in URUTAN_UMUR if "Hari" in u]
 
 
 def _aging(df):
-    return ["" if pd.isna(u) else kategori_umur(u) for u in df["umur"]]
+    """Kolom & filter Aging: Tepat Waktu / Perlu Perhatian / Telat / Perlu Tindakan (inti/umur.py), sama dengan laporan Reports lain."""
+    return [kelompok_umur(u) for u in df["umur"]]
 
 
 JENIS_DETAIL = {"hutang": "Hutang per dokumen", "supplier": "Hutang per supplier", "piutang": "Piutang per dokumen", "customer": "Piutang per customer",

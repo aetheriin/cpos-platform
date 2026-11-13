@@ -21,6 +21,7 @@ _ILEGAL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 _NAMA_SHEET_ILEGAL = re.compile(r"[\[\]:*?/\\]")
 _BERKAS_ILEGAL = re.compile(r"[^A-Za-z0-9._-]+")
 PESAN_PUSTAKA_HILANG = "Export Excel butuh pustaka openpyxl yang belum terpasang di server. Jalankan: pip install -r requirements.txt, lalu mulai ulang server."
+PESAN_EKSPOR_TIDAK_BISA = "Export Excel sedang tidak bisa dipakai. Hubungi IT."   # untuk pengguna; PESAN_PUSTAKA_HILANG ke log
 
 
 class PustakaHilang(RuntimeError):

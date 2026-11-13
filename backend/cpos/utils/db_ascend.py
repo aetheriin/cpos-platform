@@ -3,6 +3,7 @@ import pyodbc
 
 from datetime import datetime
 from decimal import Decimal
+from utils import db_ascend_split
 from utils.koneksi_lain import connection_string
 
 
@@ -295,6 +296,7 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator):
         bruto = Decimal(str(nilai("Bruto", 0) or 0))
         tara = Decimal(str(nilai("Tara", 0) or 0))
         now = datetime.now()
+        spdo2 = ""
 
         if step == 0:
             if ticket_type == "Produk":
@@ -333,6 +335,52 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator):
         tiket["step"] = step_baru
         tiket["datetimeout"] = date_time_out
 
+        if step_baru == 2 and ticket_type == "Produk":
+            no_do1 = str(nilai("SPDO", "") or "").strip()
+            daftar = daftar_do("Produk")
+
+            do1 = next(
+                (
+                    d for d in daftar
+                    if d["no_do"].strip().casefold() == no_do1.casefold()
+                ),
+                None,
+            )
+            if not do1:
+                raise ValueError(
+                    "DO pertama tidak lagi tersedia sebagai DO outstanding Ascend."
+                )
+
+            netto_final = Decimal(str(tiket["netto"]))
+            sisa_do1 = Decimal(str(do1.get("sisa") or 0))
+
+            if netto_final > sisa_do1:
+                do2 = cari_pasangan_do2_ascend("Produk", no_do1)
+                if not do2:
+                    pending = db_ascend_split.simpan_timbang_akhir_pending(
+                        int(nilai("TicketID")),
+                        berat,
+                        now,
+                        int(operator),
+                        "Netto melewati sisa DO1; menunggu DO2 yang cocok.",
+                    )
+
+                    koneksi.rollback()
+                    return {
+                        "step": 2,
+                        "ticket_type": ticket_type,
+                        "ticket_id": int(nilai("TicketID")),
+                        "ticket_no": no_tiket,
+                        "pending_do2": True,
+                        "pending_status": pending["status"],
+                        "no_do2": None,
+                        "tiket_split": [],
+                        "berat_bruto": float(bruto),
+                        "berat_tara": float(tara),
+                        "berat_netto": float(bruto - tara),
+                    }
+                spdo2 = do2["no_do"]
+
         # Ambil parameter prosedur Ascend; kirim nilai yang tersedia di baris tiket.
         cursor.execute(
             """
@@ -362,6 +410,8 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator):
 
             if kunci == "operator":
                 isi = str(operator)[:50]
+            elif kunci == "spdo2":
+                isi = spdo2
             elif kunci == "loginname":
                 isi = str(operator)[:30]
             elif kunci in tiket:
@@ -385,11 +435,69 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator):
             + ", ".join(f"{nama} = ?" for nama in parameter_terisi)
         )
         cursor.execute(sql, *nilai_parameter)
+        ticket_id_induk = int(nilai("TicketID"))
+        tiket_split = []
+
+        if spdo2:
+            cursor.execute(
+                """
+                SELECT TicketID, TicketNo, SPDO, Netto, [Step]
+                FROM dbo.PALM_Tickets
+                WHERE ParentTicketID = ?
+                  AND ISNULL([Void], 0) = 0
+                ORDER BY TicketID
+                """,
+                ticket_id_induk,
+            )
+
+            tiket_split = [
+                {
+                    "ticket_id": int(row[0]),
+                    "no_tiket": str(row[1] or "").strip(),
+                    "no_do": str(row[2] or "").strip(),
+                    "berat_netto": float(row[3] or 0),
+                    "step": int(row[4] or 0),
+                }
+                for row in cursor.fetchall()
+            ]
+
+            if len(tiket_split) != 2:
+                raise RuntimeError(
+                    "Ascend menerima permintaan split, tetapi tidak "
+                    "mengembalikan tepat dua tiket pecahan."
+                )
+
+            do_pecahan = {
+                baris["no_do"].casefold()
+                for baris in tiket_split
+            }
+            if do_pecahan != {
+                str(nilai("SPDO", "") or "").strip().casefold(),
+                spdo2.strip().casefold(),
+            }:
+                raise RuntimeError(
+                    "DO pada tiket pecahan Ascend tidak cocok dengan DO1 dan DO2."
+                )
+
+            netto_pecahan = sum(
+                Decimal(str(baris["berat_netto"]))
+                for baris in tiket_split
+            )
+            netto_awal = Decimal(str(tiket["netto"] or 0))
+
+            if abs(netto_pecahan - netto_awal) > Decimal("0.01"):
+                raise RuntimeError(
+                    "Jumlah netto tiket pecahan tidak sama dengan netto truk."
+                )
         koneksi.commit()
 
         return {
             "step": step_baru,
             "ticket_type": ticket_type,
+            "ticket_id": int(nilai("TicketID")),
+            "ticket_no": no_tiket,
+            "no_do2": spdo2 or None,
+            "tiket_split": tiket_split,
             "berat_bruto": float(bruto) if step_baru == 2 or ticket_type == "TBSLuar" else None,
             "berat_tara": float(tara) if step_baru == 2 or ticket_type == "Produk" else None,
             "berat_netto": float(tiket["netto"]) if step_baru == 2 else None,
@@ -497,6 +605,7 @@ def daftar_do(ticket_type):
             associate_id = int(id_assoc)
             hasil.append({
                 "no_do": str(no_do).strip(),
+                "contract_no": str(row.get("ContractNoEx") or "").strip(),
                 "associate_id": associate_id,
                 "associate_name": nama_by_id.get(associate_id, ""),
                 "produk": str(produk).strip(),
@@ -508,6 +617,49 @@ def daftar_do(ticket_type):
         return hasil
     finally:
         koneksi.close()
+
+def cari_pasangan_do2_ascend(ticket_type, no_do1):
+    """Cari satu DO outstanding lain dengan kontrak dan atribut yang sama."""
+    no_do1 = (no_do1 or "").strip().casefold()
+    daftar = daftar_do(ticket_type)
+
+    do1 = next(
+        (d for d in daftar if d["no_do"].strip().casefold() == no_do1),
+        None,
+    )
+    if not do1:
+        raise ValueError(
+            "DO pertama tidak ditemukan di daftar outstanding Ascend."
+        )
+
+    kontrak1 = do1.get("contract_no", "").strip().casefold()
+    if not kontrak1:
+        raise ValueError(
+            "Nomor referensi kontrak DO pertama kosong; pasangan DO belum bisa ditentukan."
+        )
+
+    kandidat = [
+        d for d in daftar
+        if d["no_do"].strip().casefold() != no_do1
+        and d.get("contract_no", "").strip().casefold() == kontrak1
+        and int(d["associate_id"]) == int(do1["associate_id"])
+        and d["produk"].strip().casefold() == do1["produk"].strip().casefold()
+        and d.get("mill_id") is not None
+        and do1.get("mill_id") is not None
+        and int(d["mill_id"]) == int(do1["mill_id"])
+        and float(d.get("sisa") or 0) > 0
+    ]
+
+    if not kandidat:
+        return None
+
+    if len(kandidat) > 1:
+        raise ValueError(
+            "Ada lebih dari satu DO outstanding yang cocok. "
+            "Pasangan belum dipilih agar alokasi tidak salah."
+        )
+
+    return kandidat[0]
 
 def daftar_associate(ticket_type):
     """Daftar Associate dari Ascend, beserta kode dan nama."""

@@ -24,8 +24,8 @@ PESAN_BATAL = "Pemuatan dibatalkan."
 
 # Pesan untuk pengguna saat pemuatan gagal. Rincian teknisnya tetap dicatat lengkap di log server.
 # Sengaja "ERP", bukan nama produknya, karena ERP-nya bisa berganti. Istilah teknis lain (database, linked server) tidak dipakai.
-PESAN_ERP = "Koneksi ke ERP terputus. Coba lagi nanti."
-PESAN_LOGIN_ERP = "Akses ke ERP ditolak. Hubungi tim IT."
+PESAN_ERP = "Koneksi ke Ascend terputus. Coba lagi nanti."
+PESAN_LOGIN_ERP = "Akses ke Ascend ditolak. Hubungi tim IT."
 PESAN_DATABASE = "Server laporan tidak bisa dihubungi. Coba lagi nanti."
 PESAN_AKSES = "Laporan ini belum bisa dibuka. Hubungi tim IT."
 PESAN_LAMA = "Terlalu lama memuat. Coba rentang tanggal lebih pendek."

@@ -51,7 +51,8 @@ def api_cari():
     if not query:
         return jsonify({"error": "Isi nama item yang dicari"}), 400
     if mesin.status()["keadaan"] != "SIAP":
-        return jsonify({"error": "Data item belum siap: " + (mesin.status()["pesan"] or "sedang dimuat")}), 503
+        gagal = mesin.status()["keadaan"] == "GAGAL"
+        return jsonify({"error": mesin.PESAN_GAGAL if gagal else "Data item sedang dimuat. Coba lagi sebentar."}), 503
     results, category = mesin.cari(query, company)
     hasil = []
     for r in results:

@@ -10,6 +10,8 @@ from utils import sesi_aktif, pengaturan
 from utils.login_guard import sisa_kunci, catat_gagal, catat_berhasil
 
 auth_bp = Blueprint('auth', __name__)
+# Username yang tidak ada tetap diperiksa terhadap hash ini, supaya lama jawaban login sama dan username terdaftar tidak bisa ditebak
+_HASH_PALSU = generate_password_hash("username-tidak-ada")
 
 PESAN_KELUAR = {
     "IDLE": "Anda keluar otomatis karena {idle} menit tidak ada aktivitas. Silakan login ulang.",
@@ -74,7 +76,8 @@ def login():
                                error=f"Terlalu banyak percobaan gagal. Coba lagi dalam {tunggu // 60 + 1} menit."), 429
 
     row = get_user_by_username(username)
-    if row is None or not check_password_hash(row.password, request.form.get("password", "")):
+    cocok = check_password_hash(row.password if row is not None else _HASH_PALSU, request.form.get("password", ""))
+    if row is None or not cocok:
         terkunci = catat_gagal(username, ip)
         log_keamanan("LOGIN_GAGAL", f"username={username}" + (" -> DIKUNCI" if terkunci else ""))
         return render_template("auth/login.html", info=None, error="Username atau password salah"), 401

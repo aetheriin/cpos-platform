@@ -13,6 +13,6 @@ LAPORAN = Laporan(
     bangun=lambda ds, n, mg, f: dashboard.bangun(ds.df, ds, f),
     detail=lambda ds, jenis, n, mg, f, cari, urut, arah, hal, uk: dashboard.detail(ds.df, jenis, ds, f, cari, urut, arah, hal, uk),
     filter_didukung=tuple(dashboard.DIM),
-    label_filter={"perusahaan": "Perusahaan", "status": "Status"},
+    label_filter=dashboard.LABEL_FILTER,
     awal_tahun=True,   # periode bawaan: 1 Januari tahun ini sampai hari ini
 )

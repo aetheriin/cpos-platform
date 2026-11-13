@@ -157,7 +157,7 @@ def bersihkan(raw):
     )
 
     out["po_date"] = _tanggal(out["po_date"])
-    out["buyer"] = out["buyer"].str.strip().str.lower().str.capitalize().replace("", "(kosong)")
+    out["buyer"] = out["buyer"].str.strip().str.split().str.join(" ").str.title().replace("", "(kosong)")
     # PO yang sama (nomor dan tanggal sama) pada satu baris PR hanya satu baris. Yang tersisa adalah split yang sebenarnya: PO berbeda.
     out = out.drop_duplicates(["line", "po_number", "po_date"]).reset_index(drop=True)
     catatan = dict(catatan, po_beda_perusahaan=salah, po_beda_perusahaan_contoh=contoh)

@@ -1,16 +1,14 @@
 from flask import Blueprint, request, jsonify, current_app
-from utils.hak_akses import lihat, MENU_OPERASI
+from utils.hak_akses import lihat, MENU_KENDARAAN, MENU_OPERASI, MENU_ORANG
 from utils.area import area_data, company_user
 from utils.db_admin import supplier_boleh
 from flask_login import login_required, current_user
 from utils.face_utils import (embedding_frontal, extract_embedding, extract_embedding_tunggal, embedding_to_binary,
                               cek_liveness, TANPA_TANTANGAN)
 from utils.plat_utils import normalisasi_plat
-from utils import pengaturan
+from utils import pengaturan, verifikasi_state as verif, db_ascend, db_ascend_split
 from utils.db_kontrak import get_do
 from utils.db_blacklist import supplier_diblacklist
-from utils import verifikasi_state as verif
-from utils import db_ascend
 from utils.db_organisasi import daftar_lokasi
 from utils.keamanan import id_pos
 from utils.upload_utils import simpan_upload, simpan_frames, hapus_file
@@ -278,12 +276,40 @@ def ascend_buat_tiket():
             return jsonify({"error": "Pilih Mill dari daftar Ascend."}), 400
 
     try:
+        do2_dipilih = db_ascend.cari_pasangan_do2_ascend(
+            ticket_type,
+            no_do,
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 409
+    
+    try:
         tiket = db_ascend.buat_tiket_kosong(
             ticket_type, produk, associate_id, vehicle_no,
             tanggal, no_do, mill_id,
         )
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
+
+    try:
+        db_ascend_split.simpan_pasangan_do2(
+            tiket["ticket_id"],
+            tiket["ticket_no"],
+            do2_dipilih["no_do"] if do2_dipilih else "",
+            int(current_user.id),
+        )
+    except Exception:
+        current_app.logger.exception(
+            "Tiket Ascend %s berhasil dibuat, tetapi rencana DO2 gagal disimpan.",
+            tiket["ticket_no"],
+        )
+        return jsonify({
+            "error": (
+                f"Tiket Ascend {tiket['ticket_no']} sudah dibuat, "
+                "tetapi status pasangan DO2 gagal disimpan. "
+                "Jangan buat ulang tiket ini; statusnya perlu diperiksa."
+            )
+        }), 503
 
     return jsonify({
         "message": "Tiket kosong berhasil dibuat di Ascend.",
@@ -294,6 +320,7 @@ def ascend_buat_tiket():
 # ===== DRIVER =====
 @security_bp.route("/api/driver/cari-by-nik", methods=["POST"])
 @login_required
+@lihat(*MENU_ORANG, *MENU_KENDARAAN)
 def driver_cari_nik():
     row = cari_driver_by_nik(request.form.get("nik", "").strip())
     if not row:

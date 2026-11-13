@@ -1064,6 +1064,7 @@ window.KAMUS_EN = {
 "Memeriksa...": "Checking...",
 "Memproses wajah...": "Processing face...",
 "Memproses...": "Processing...",
+"Caps Lock menyala": "Caps Lock is on",
 "Memuat data item & model (bisa 1 - 2 menit)...": "Loading item data & model (may take 1 - 2 minutes)...",
 "Memuat data...": "Loading data...",
 "Memuat...": "Loading...",
