@@ -7,7 +7,7 @@ JENIS_VALID = ("PEMBELIAN", "PENJUALAN", "PENIMBANGAN_SAJA")
 CARA_ANGKUT = ("PENGIRIM", "PENERIMA", "PIHAK_KETIGA")
 
 _SELECT = """SELECT o.DeliveryOrderID AS id_do, o.DONumber AS no_do, o.ContractID AS id_kontrak, k.ContractNumber AS no_kontrak, k.TransactionType AS jenis_transaksi, COALESCE(k.AscendCustomerID, k.SupplierID) AS id_customer,
-                    COALESCE(k.CustomerNameSnapshot, c.SupplierName) AS nama_customer, k.ProductID AS id_produk, COALESCE(k.ProductNameSnapshot, p.ProductName) AS nama_produk, k.ContractDate AS tanggal_kontrak,
+                    COALESCE(k.CustomerNameSnapshot, c.SupplierName) AS nama_customer, COALESCE(k.ProductNameSnapshot, p.ProductName) AS id_produk, COALESCE(k.ProductNameSnapshot, p.ProductName) AS nama_produk, k.ContractDate AS tanggal_kontrak,
                     k.ContractQty AS qty_kg, k.Price AS harga_per_kg, k.Description AS keterangan, k.PPN AS ppn, k.IncludePPN AS harga_termasuk_ppn, k.CompID AS id_company,
                     co.CompID AS kode_company, o.DODate AS tanggal_do, o.ExpiredDate AS berlaku_sampai, o.Active AS is_active, o.CreateDate AS created_at,
                     -- realisasi: total netto tiket DO ini (tanpa VOID)
