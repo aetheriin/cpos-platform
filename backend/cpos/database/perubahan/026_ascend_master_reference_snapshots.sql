@@ -101,6 +101,37 @@ ALTER TABLE dbo.Blacklist ADD CONSTRAINT CK_Blacklist_Target CHECK (
  (TableName='Supplier' AND (SupplierID IS NOT NULL OR AscendSupplierID IS NOT NULL OR AscendCustomerID IS NOT NULL OR AscendTransportID IS NOT NULL) AND UserID IS NULL AND IDVehicle IS NULL)
 );
 
+-- FK dan nullable legacy key untuk transaksi selain Contract/DO (persiapan refactor berikutnya).
+-- Tidak dijalankan otomatis saat aplikasi start; migration manual setelah code transaksi terkait siap.
+DECLARE @tbl SYSNAME, @constraint SYSNAME, @sql NVARCHAR(500);
+DECLARE fk_local CURSOR LOCAL FAST_FORWARD FOR
+ SELECT OBJECT_NAME(fk.parent_object_id), fk.name
+ FROM sys.foreign_keys fk
+ WHERE fk.parent_object_id IN (OBJECT_ID('dbo.VehicleContract'),OBJECT_ID('dbo.Invoice'),OBJECT_ID('dbo.WeightBridge'),OBJECT_ID('dbo.ProductPrice'),OBJECT_ID('dbo.FlowRule'))
+   AND fk.referenced_object_id IN (OBJECT_ID('dbo.Supplier'),OBJECT_ID('dbo.Product'));
+OPEN fk_local; FETCH NEXT FROM fk_local INTO @tbl,@constraint;
+WHILE @@FETCH_STATUS=0
+BEGIN
+ SET @sql=N'ALTER TABLE dbo.'+QUOTENAME(@tbl)+N' DROP CONSTRAINT '+QUOTENAME(@constraint)+N';';
+ EXEC sys.sp_executesql @sql;
+ FETCH NEXT FROM fk_local INTO @tbl,@constraint;
+END;
+CLOSE fk_local; DEALLOCATE fk_local;
+
+IF COL_LENGTH('dbo.VehicleContract','SupplierID') IS NOT NULL AND EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.VehicleContract') AND name='SupplierID' AND is_nullable=0)
+ ALTER TABLE dbo.VehicleContract ALTER COLUMN SupplierID INT NULL;
+IF COL_LENGTH('dbo.VehicleContract','ProductID') IS NOT NULL AND EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.VehicleContract') AND name='ProductID' AND is_nullable=0)
+ ALTER TABLE dbo.VehicleContract ALTER COLUMN ProductID INT NULL;
+IF COL_LENGTH('dbo.Invoice','SupplierID') IS NOT NULL AND EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.Invoice') AND name='SupplierID' AND is_nullable=0)
+ ALTER TABLE dbo.Invoice ALTER COLUMN SupplierID INT NULL;
+IF COL_LENGTH('dbo.WeightBridge','SupplierID') IS NOT NULL AND EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.WeightBridge') AND name='SupplierID' AND is_nullable=0)
+ ALTER TABLE dbo.WeightBridge ALTER COLUMN SupplierID INT NULL;
+IF COL_LENGTH('dbo.WeightBridge','ProductID') IS NOT NULL AND EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.WeightBridge') AND name='ProductID' AND is_nullable=0)
+ ALTER TABLE dbo.WeightBridge ALTER COLUMN ProductID INT NULL;
+IF COL_LENGTH('dbo.ProductPrice','ProductID') IS NOT NULL AND EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.ProductPrice') AND name='ProductID' AND is_nullable=0)
+ ALTER TABLE dbo.ProductPrice ALTER COLUMN ProductID INT NULL;
+-- FlowRule.ProductID sudah nullable sejak schema awal. TransportID Invoice/WeightBridge nullable.
+
 -- Snapshot hanya menyalin nama lama. Tidak menebak/memasangkan ID ke Ascend.
 UPDATE c
 SET CustomerNameSnapshot = COALESCE(c.CustomerNameSnapshot, s.SupplierName),
