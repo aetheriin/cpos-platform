@@ -47,9 +47,9 @@ WHERE o.type IN ('V','P','FN','IF','TF','TR')
 ORDER BY o.type_desc, [Schema], ObjectName;
 
 -- 4) Jumlah data master dan tabel terkait; angka ini tidak menentukan aman/tidaknya DROP.
-SELECT N'Supplier' AS TableName, COUNT_BIG(*) AS RowCount FROM dbo.Supplier
-UNION ALL SELECT N'Product', COUNT_BIG(*) FROM dbo.Product
-UNION ALL SELECT N'SupplierTypeDetails', COUNT_BIG(*) FROM dbo.SupplierTypeDetails
-UNION ALL SELECT N'SupplierType', COUNT_BIG(*) FROM dbo.SupplierType
-UNION ALL SELECT N'SupplierGroup', COUNT_BIG(*) FROM dbo.SupplierGroup
-UNION ALL SELECT N'SupplierCompany', COUNT_BIG(*) FROM dbo.SupplierCompany;
+DECLARE @sql nvarchar(max) = N'';
+SELECT @sql = @sql + CASE WHEN @sql = N'' THEN N'' ELSE N' UNION ALL ' END
+    + N'SELECT N''' + REPLACE(TableName,'''','''''') + N''' AS TableName, COUNT_BIG(*) AS RowCount FROM '
+    + QUOTENAME(OBJECT_SCHEMA_NAME(OBJECT_ID(N'dbo.' + TableName + N'))) + N'.' + QUOTENAME(TableName)
+FROM @Target WHERE OBJECT_ID(N'dbo.' + TableName, N'U') IS NOT NULL;
+IF @sql <> N'' EXEC sys.sp_executesql @sql;
