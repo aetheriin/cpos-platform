@@ -506,8 +506,14 @@ CREATE TABLE dbo.Contract (
     ContractID       INT IDENTITY(1,1) PRIMARY KEY,
     ContractNumber   VARCHAR(50) NOT NULL CONSTRAINT UX_Contract_No UNIQUE,
     TransactionType  VARCHAR(20) NOT NULL CONSTRAINT FK_Contract_WBType REFERENCES dbo.WeightBridgeType (WeightTypeCode),
-    SupplierID       INT NOT NULL CONSTRAINT FK_Contract_Supplier REFERENCES dbo.Supplier (SupplierID),   -- customer
-    ProductID        INT NOT NULL CONSTRAINT FK_Contract_Product REFERENCES dbo.Product (ProductID),
+    SupplierID       INT NULL, -- legacy customer ID
+    ProductID        INT NULL, -- legacy product ID
+    AscendCustomerID INT NULL,
+    CustomerNameSnapshot NVARCHAR(150) NULL,
+    CustomerCodeSnapshot NVARCHAR(100) NULL,
+    ProductNameSnapshot NVARCHAR(150) NULL,
+    AscendProductCode NVARCHAR(100) NULL,
+    ProductCodeSnapshot NVARCHAR(100) NULL,
     ContractDate     DATE NOT NULL CONSTRAINT DF_Contract_Date DEFAULT (CAST(GETDATE() AS DATE)),
     ContractQty      DECIMAL(14, 2) NULL,
     Price            DECIMAL(14, 2) NULL,
