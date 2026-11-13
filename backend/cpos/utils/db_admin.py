@@ -2,7 +2,7 @@ from functools import partial
 import pyodbc
 
 from utils.cache import cache_ttl
-from utils.db_utils import get_connection, get_semua_supplier, get_semua_produk, get_user_by_id, query as _query, ubah
+from utils.db_utils import get_connection, get_semua_produk, get_user_by_id, query as _query, ubah
 from utils import jenis_orang
 from utils.db_absensi import get_jadwal_kerja
 
@@ -127,82 +127,7 @@ def cabut_sesi(id_user):
     _ubah("UPDATE Users SET SessionVersion = SessionVersion + 1 WHERE UserID = ?", id_user)
     get_user_by_id.hapus()          # perubahan user / sesi langsung berlaku
 
-# ===== MASTER SUPPLIER & PRODUK =====
-def daftar_supplier():
-    rows = _query("""SELECT s.SupplierID AS id_supplier, s.SupplierCode AS kode_supplier, s.SupplierName AS nama_supplier, s.SupplierAddress AS alamat, s.Active AS is_active, s.CreateDate AS created_at,
-                            CAST(CASE WHEN s.BlacklistID IS NULL THEN 0 ELSE 1 END AS BIT) AS is_blacklisted,
-                            s.SupplierGroupID AS id_grup, g.NameGroup AS nama_grup, s.BankAccountDetailsID AS id_rekening,
-                            b.BankName + ' · ' + bd.BankAccountCode AS rekening,
-                            pc.TypeCode AS peran_customer, pa.TypeCode AS peran_angkutan
-                     FROM Supplier s
-                     LEFT JOIN SupplierGroup g ON g.SupplierGroupID = s.SupplierGroupID
-                     LEFT JOIN BankDetails bd ON bd.BankAccountDetailsID = s.BankAccountDetailsID
-                     LEFT JOIN Bank b ON b.BankAccountID = bd.BankAccountID
-                     LEFT JOIN SupplierTypeDetails pc ON pc.SupplierID = s.SupplierID AND pc.TypeCode = 'CUSTOMER'
-                     LEFT JOIN SupplierTypeDetails pa ON pa.SupplierID = s.SupplierID AND pa.TypeCode = 'PENGANGKUTAN'
-                     ORDER BY s.Active DESC, s.SupplierName""")
-    pt = company_supplier()
-    for r in rows:
-        r.update(is_customer=bool(r.pop("peran_customer")), is_angkutan=bool(r.pop("peran_angkutan")),
-                 company=list(pt.get(r["id_supplier"], ())))
-    return rows
-
-@cache_ttl(300)
-def company_supplier():
-    """{id_supplier: (id_company, ...)} (tabel mitra_company, migrasi 032). Supplier yang tidak ada di sini = semua PT."""
-    hasil = {}
-    try:
-        for r in _query("SELECT SupplierID AS id_supplier, CompID AS id_company FROM SupplierCompany ORDER BY CompID"):
-            hasil.setdefault(r["id_supplier"], []).append(r["id_company"])
-    except pyodbc.Error:
-        pass
-    return {k: tuple(v) for k, v in hasil.items()}
-
-def supplier_boleh(id_supplier, pt_user):
-    """Supplier berlaku untuk PT user. pt_user = None (kantor pusat: semua PT) atau frozenset id company."""
-    pt = company_supplier().get(id_supplier)
-    return not pt or pt_user is None or bool(set(pt) & set(pt_user))
-
-def kode_supplier_dipakai(kode, kecuali=None):
-    rows = _query("SELECT SupplierID AS id_supplier FROM Supplier WHERE SupplierCode = ?", kode)
-    return any(r["id_supplier"] != kecuali for r in rows)
-
-def simpan_supplier(id_supplier, kode, nama, peran, alamat=None, daftar_company=(), id_grup=None, id_rekening=None):
-    """peran: daftar dari PERAN_SUPPLIER (minimal satu). daftar_company kosong = berlaku di semua PT.
-    id_grup = SupplierGroup, id_rekening = BankDetails (opsional)."""
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        if id_supplier:
-            cursor.execute("""UPDATE Supplier SET SupplierCode = ?, SupplierName = ?, SupplierAddress = ?, SupplierGroupID = ?,
-                                     BankAccountDetailsID = ? WHERE SupplierID = ?""",
-                           kode, nama, alamat, id_grup, id_rekening, id_supplier)
-            if cursor.rowcount == 0:
-                raise ValueError("Data tidak ditemukan")
-        else:
-            cursor.execute("""SET NOCOUNT ON; INSERT INTO Supplier (SupplierCode, SupplierName, SupplierAddress, SupplierGroupID,
-                                                                  BankAccountDetailsID) VALUES (?, ?, ?, ?, ?);
-                              SELECT CAST(SCOPE_IDENTITY() AS INT)""", kode, nama, alamat, id_grup, id_rekening)
-            id_supplier = cursor.fetchone()[0]
-        cursor.execute("DELETE FROM SupplierTypeDetails WHERE SupplierID = ?", id_supplier)
-        for p in peran:
-            cursor.execute("INSERT INTO SupplierTypeDetails (SupplierID, TypeCode) VALUES (?, ?)", id_supplier, p)
-        cursor.execute("DELETE FROM SupplierCompany WHERE SupplierID = ?", id_supplier)
-        for id_c in sorted(set(daftar_company)):
-            cursor.execute("INSERT INTO SupplierCompany (SupplierID, CompID) VALUES (?, ?)", id_supplier, id_c)
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
-    get_semua_supplier.hapus()
-    company_supplier.hapus()
-
-def set_aktif_supplier(id_supplier, aktif):
-    _ubah("UPDATE Supplier SET Active = ? WHERE SupplierID = ?", 1 if aktif else 0, id_supplier)
-    get_semua_supplier.hapus()
-
+# ===== MASTER PRODUK =====
 def daftar_produk():
     return _query("""SELECT p.ProductID AS id_produk, p.ProductName AS nama_produk, p.Category AS kategori, p.Active AS is_active, p.FlowID AS id_alur, a.FlowName AS nama_alur,
                             1 AS ada_standar
