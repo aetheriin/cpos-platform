@@ -1,7 +1,8 @@
 """Kontrak & DO (menu Kontrak & DO, diisi HO). 1 kontrak = 1 produk = 1 DO; 1 DO boleh beberapa pengangkut
 (do_pengangkutan: kendaraan PENGIRIM / PENERIMA sendiri, atau PIHAK_KETIGA). Security cukup mengetik No DO di Form,
 jenis transaksi / customer / produk terisi dan pengangkutan dipilih dari daftar DO itu (migrasi 013)."""
-from utils.db_utils import get_connection, get_semua_supplier, query as _query
+from utils.db_utils import get_connection, query as _query
+from utils import db_ascend
 
 JENIS_VALID = ("PEMBELIAN", "PENJUALAN", "PENIMBANGAN_SAJA")
 CARA_ANGKUT = ("PENGIRIM", "PENERIMA", "PIHAK_KETIGA")
@@ -39,7 +40,7 @@ def _lengkapi_angkut(daftar):
     ids = list(per_do)
     for i in range(0, len(ids), 1000):
         bagian = ids[i:i + 1000]
-        rows = _query(f"""SELECT a.DeliveryOrderID AS id_do, a.TransportMode AS cara_angkut, a.TransportID AS id_pengangkutan, s.SupplierName AS nama_pengangkutan, a.DOQty AS qty_kg,
+        rows = _query(f"""SELECT a.DeliveryOrderID AS id_do, a.TransportMode AS cara_angkut, COALESCE(a.AscendTransportID, a.TransportID) AS id_pengangkutan, COALESCE(a.TransportNameSnapshot, s.SupplierName) AS nama_pengangkutan, a.DOQty AS qty_kg,
                                  a.PriceTransport AS ongkos_per_kg
                           FROM DOTransport a LEFT JOIN Supplier s ON s.SupplierID = a.TransportID
                           WHERE a.DeliveryOrderID IN ({','.join('?' * len(bagian))}) ORDER BY a.DOTransportID""", *bagian)
@@ -53,7 +54,7 @@ def _lengkapi_angkut(daftar):
 def daftar_do(cari="", batas=500):
     cari = f"%{cari.strip()}%"
     return _lengkapi_angkut(_query(f"""{_SELECT.replace('SELECT', f'SELECT TOP {int(batas)}', 1)}
-                      WHERE o.DONumber LIKE ? OR k.ContractNumber LIKE ? OR c.SupplierName LIKE ?
+                      WHERE o.DONumber LIKE ? OR k.ContractNumber LIKE ? OR COALESCE(k.CustomerNameSnapshot, c.SupplierName) LIKE ?
                       ORDER BY o.Active DESC, o.CreateDate DESC""", cari, cari, cari))
 
 
@@ -75,10 +76,10 @@ def no_kontrak_dipakai(no_kontrak, kecuali_do=None):
 
 
 def simpan_do(id_do, d, angkutan, user_id):
-    """Kontrak + DO + daftar pengangkutan dalam satu transaksi DB.
-    angkutan: [{"cara_angkut", "id_pengangkutan", "qty_kg"}] (minimal satu, tanpa duplikat)."""
-    kontrak = (d["no_kontrak"], d["jenis_transaksi"], d["id_customer"], d["id_produk"], d["tanggal_kontrak"],
-               d["qty_kg"], d["harga_per_kg"], d["keterangan"], int(d["ppn"]), int(d["harga_termasuk_ppn"]), d["id_company"])
+    """Simpan DO dengan referensi Ascend dan snapshot; ID master lokal dipertahankan NULL."""
+    kontrak = (d["no_kontrak"], d["jenis_transaksi"], None, None, d["tanggal_kontrak"],
+               d["qty_kg"], d["harga_per_kg"], d["keterangan"], int(d["ppn"]),
+               int(d["harga_termasuk_ppn"]), d["id_company"])
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -89,24 +90,29 @@ def simpan_do(id_do, d, angkutan, user_id):
                 raise ValueError("DO tidak ditemukan")
             cursor.execute("""UPDATE Contract SET ContractNumber = ?, TransactionType = ?, SupplierID = ?, ProductID = ?,
                               ContractDate = ?, ContractQty = ?, Price = ?, Description = ?, PPN = ?, IncludePPN = ?,
-                              CompID = ? WHERE ContractID = ?""",
-                           *kontrak, row.id_kontrak)
+                              CompID = ?, AscendCustomerID = ?, CustomerNameSnapshot = ?, ProductNameSnapshot = ?
+                              WHERE ContractID = ?""",
+                           *kontrak, d["ascend_customer_id"], d["customer_name"], d["product_name"], row.id_kontrak)
             cursor.execute("UPDATE DeliveryOrder SET DONumber = ?, DODate = ?, ExpiredDate = ? WHERE DeliveryOrderID = ?",
                            d["no_do"], d["tanggal_do"], d["berlaku_sampai"], id_do)
             cursor.execute("DELETE FROM DOTransport WHERE DeliveryOrderID = ?", id_do)
         else:
             cursor.execute("""SET NOCOUNT ON; INSERT INTO Contract (ContractNumber, TransactionType, SupplierID, ProductID, ContractDate,
-                              ContractQty, Price, Description, PPN, IncludePPN, CompID, CreateBy)
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?); SELECT CAST(SCOPE_IDENTITY() AS INT)""", *kontrak, user_id)
+                              ContractQty, Price, Description, PPN, IncludePPN, CompID, CreateBy,
+                              AscendCustomerID, CustomerNameSnapshot, ProductNameSnapshot)
+                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?); SELECT CAST(SCOPE_IDENTITY() AS INT)""",
+                           *kontrak, user_id, d["ascend_customer_id"], d["customer_name"], d["product_name"])
             id_kontrak = cursor.fetchone()[0]
             cursor.execute("""SET NOCOUNT ON; INSERT INTO DeliveryOrder (DONumber, ContractID, DODate, ExpiredDate, CreateBy)
                               VALUES (?, ?, ?, ?, ?); SELECT CAST(SCOPE_IDENTITY() AS INT)""",
                            d["no_do"], id_kontrak, d["tanggal_do"], d["berlaku_sampai"], user_id)
             id_do = cursor.fetchone()[0]
         for a in angkutan:
-            cursor.execute("""INSERT INTO DOTransport (DeliveryOrderID, TransportMode, TransportID, DOQty, PriceTransport)
-                              VALUES (?, ?, ?, ?, ?)""", id_do, a["cara_angkut"], a["id_pengangkutan"], a["qty_kg"],
-                           a.get("ongkos_per_kg"))
+            cursor.execute("""INSERT INTO DOTransport (DeliveryOrderID, TransportMode, TransportID, DOQty, PriceTransport,
+                              AscendTransportID, TransportNameSnapshot)
+                              VALUES (?, ?, NULL, ?, ?, ?, ?)""",
+                           id_do, a["cara_angkut"], a["qty_kg"], a.get("ongkos_per_kg"),
+                           a.get("ascend_transport_id"), a.get("transport_name"))
         conn.commit()
     finally:
         conn.close()
