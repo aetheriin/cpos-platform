@@ -45,6 +45,11 @@ Status: audit awal pada branch `feature/ascend-master-data-only`. Dokumen ini bu
 8. **Audit SQL dan uji**: static search, compile/syntax, tes integrasi pada DB salinan; validasi row counts, FK, histori, dan alur tiket.
 9. **Migrasi DROP final**: hanya setelah seluruh tahap di atas lulus; backup dan rollback script wajib. Jalankan oleh pemilik DB setelah uji.
 
+## Update 14 November 2026
+- Ditambahkan skrip audit read-only `backend/cpos/database/audit/027_audit_dependensi_master_lokal.sql` untuk memetakan FK, kolom kandidat ID, modul SQL yang menyebut Supplier/Product, dan jumlah baris tabel legacy (hanya tabel yang ada). Skrip tidak mengubah database.
+- Skrip audit dibuat defensif terhadap tabel legacy yang sudah tidak ada.
+- Commit audit SQL: `74fb8fe`; perbaikan guard tabel: `6cf236d`.
+
 ## Status saat ini
 - Commit dokumentasi audit: `fc9f4bb`.
 - Definisi SupplierCompany/SupplierTypeDetails di schema dirapikan: `b390288`.
