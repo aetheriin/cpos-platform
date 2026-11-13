@@ -117,10 +117,10 @@ function hapusBarisAngkut(el) {
 }
 
 function ubahCaraAngkut(sel) {
-    const nama = sel.closest('[data-baris-angkut]').querySelector('[name=angkut_nama]');
+    const pilih = sel.closest('[data-baris-angkut]').querySelector('[name=angkut_id]');
     const pihakKetiga = sel.value === 'PIHAK_KETIGA';
-    nama.classList.toggle('invisible', !pihakKetiga);
-    nama.required = pihakKetiga;
+    pilih.classList.toggle('invisible', !pihakKetiga);
+    pilih.required = pihakKetiga;
 }
 
 // Pembelian: pengirim = customer, penerima = PT sendiri; penjualan sebaliknya
