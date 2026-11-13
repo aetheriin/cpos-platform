@@ -12,7 +12,7 @@ Status: audit awal pada branch `feature/ascend-master-data-only`. Dokumen ini bu
 - Tidak menghapus tabel sebelum seluruh FK, query, API, UI, laporan, dan data historis selesai dipindahkan.
 - Semua perubahan hanya di branch fitur. Tidak merge ke main.
 
-## Dependensi yang ditemukan (audit awal)
+Update 14 November 2026: migration 029 menambah kode snapshot customer/produk/pengangkutan pada Contract/DOTransport (belum dijalankan). Ini additive dan tidak mengisi ID Ascend otomatis.\n\n## Dependensi yang ditemukan (audit awal)
 
 ### Kontrak / Delivery Order
 - `backend/cpos/utils/db_kontrak.py`: SELECT kontrak join Supplier/Product; DOTransport join Supplier; daftar mitra membaca SupplierTypeDetails; fungsi `id_pengangkutan_dari_nama` membuat Supplier lokal dan SupplierTypeDetails.
