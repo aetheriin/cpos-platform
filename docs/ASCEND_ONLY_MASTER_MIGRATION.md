@@ -60,3 +60,14 @@ Update 14 November 2026: migration 029 menambah kode snapshot customer/produk/pe
 - Belum ada perubahan database pengguna, belum menjalankan migration, dan belum ada tes integrasi pada SQL Server.
 
 Audit awal menunjukkan ketergantungan masih aktif pada Kontrak/DO, Blacklist, tiket, FlowRule, ProductPrice, dan standar mutu Lab. Karena itu, tabel Supplier/Product belum aman di-DROP pada tahap ini.
+
+
+## Implementasi Kontrak/DO — 14 November 2026
+
+- Form Kontrak/DO kini mengambil Customer dan daftar Pengangkutan dari fungsi master Ascend; Produk diambil dari DO outstanding Ascend (nama produk, karena sumber saat ini belum menyediakan ProductID master yang stabil di fungsi tersebut).
+- Pilihan pihak ketiga pada form menggunakan select ID pengangkutan Ascend; tidak lagi meminta nama bebas untuk membuat Supplier lokal.
+- Backend penyimpanan Kontrak/DO menyimpan `AscendCustomerID`, `CustomerNameSnapshot`, dan `ProductNameSnapshot`; kolom SupplierID/ProductID lokal diisi NULL untuk transaksi baru. DOTransport menyimpan `AscendTransportID` dan `TransportNameSnapshot`; TransportID lokal diisi NULL.
+- Query daftar DO menggunakan LEFT JOIN dan COALESCE snapshot/local agar data lama tetap terbaca.
+- Validasi penyimpanan DO mengecek blacklist berdasarkan identitas Ascend melalui fungsi baru `supplier_ascend_diblacklist`. Ini hanya memeriksa blacklist yang sudah mempunyai kolom AscendID; pengajuan blacklist supplier baru masih perlu migrasi UI/API tersendiri.
+- Form dan API memerlukan migration 026, 028, dan 029 sebelum deploy. Belum diuji terhadap SQL Server/Ascend runtime; jangan deploy ke server aktif sebelum test DB salinan.
+- Belum selesai: edit DO lama dengan pengangkut lokal yang belum punya AscendID perlu penanganan UI snapshot; modul blacklist supplier masih menerima target Supplier lokal; transaksi WeightBridge, VehicleContract, Invoice, ProductPrice, FlowRule, Lab/standar mutu, dan laporan masih perlu refactor sebelum master lokal dihapus.
