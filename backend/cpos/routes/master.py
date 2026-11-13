@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, request, jsonify, Response
 from flask_login import login_required, current_user
 
 from utils.hak_akses import lihat, MENU_KENDARAAN, MENU_MASTER
-from utils import db_master as db, db_admin, alur, log_aktivitas, kolom_wajib, db_referensi as ref, db_kurs
+from utils import db_master as db, db_admin, alur, log_aktivitas, kolom_wajib, db_referensi as ref, db_kurs, db_ascend
 from utils.plat_utils import normalisasi_plat
 from utils.galat_isian import GalatIsian, isi_galat
 from utils.hak_akses import izin, boleh, boleh_lihat, halaman as lihat_halaman
@@ -386,3 +386,37 @@ def kurs_impor():
         return jsonify({"baris": baris, "message": pesan})
     return _jalankan(aksi)
 
+
+
+# ===== MASTER ASCEND ONLY (read-only; tidak ada fallback ke tabel lokal) =====
+@master_bp.route("/api/master/ascend/customer")
+@login_required
+@lihat(*MENU_MASTER)
+def master_ascend_customer():
+    try:
+        return jsonify(db_ascend.daftar_master_customer())
+    except Exception:
+        return jsonify({"error": "Gagal mengambil Customer dari Ascend. Data lokal tidak digunakan sebagai fallback."}), 503
+
+
+@master_bp.route("/api/master/ascend/pengangkutan")
+@login_required
+@lihat(*MENU_MASTER)
+def master_ascend_pengangkutan():
+    try:
+        return jsonify(db_ascend.daftar_master_pengangkutan())
+    except Exception:
+        return jsonify({"error": "Gagal mengambil Pengangkutan dari Ascend. Data lokal tidak digunakan sebagai fallback."}), 503
+
+
+@master_bp.route("/api/master/ascend/produk")
+@login_required
+@lihat(*MENU_MASTER)
+def master_ascend_produk():
+    jenis = (request.args.get("jenis_tiket") or "Produk").strip()
+    try:
+        return jsonify(db_ascend.daftar_master_produk(jenis))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception:
+        return jsonify({"error": "Gagal mengambil Produk dari Ascend. Data lokal tidak digunakan sebagai fallback."}), 503
