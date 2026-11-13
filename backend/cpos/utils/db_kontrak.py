@@ -6,8 +6,8 @@ from utils.db_utils import get_connection, query as _query
 JENIS_VALID = ("PEMBELIAN", "PENJUALAN", "PENIMBANGAN_SAJA")
 CARA_ANGKUT = ("PENGIRIM", "PENERIMA", "PIHAK_KETIGA")
 
-_SELECT = """SELECT o.DeliveryOrderID AS id_do, o.DONumber AS no_do, o.ContractID AS id_kontrak, k.ContractNumber AS no_kontrak, k.TransactionType AS jenis_transaksi, k.SupplierID AS id_customer,
-                    c.SupplierName AS nama_customer, k.ProductID AS id_produk, p.ProductName AS nama_produk, k.ContractDate AS tanggal_kontrak,
+_SELECT = """SELECT o.DeliveryOrderID AS id_do, o.DONumber AS no_do, o.ContractID AS id_kontrak, k.ContractNumber AS no_kontrak, k.TransactionType AS jenis_transaksi, COALESCE(k.AscendCustomerID, k.SupplierID) AS id_customer,
+                    COALESCE(k.CustomerNameSnapshot, c.SupplierName) AS nama_customer, k.ProductID AS id_produk, COALESCE(k.ProductNameSnapshot, p.ProductName) AS nama_produk, k.ContractDate AS tanggal_kontrak,
                     k.ContractQty AS qty_kg, k.Price AS harga_per_kg, k.Description AS keterangan, k.PPN AS ppn, k.IncludePPN AS harga_termasuk_ppn, k.CompID AS id_company,
                     co.CompID AS kode_company, o.DODate AS tanggal_do, o.ExpiredDate AS berlaku_sampai, o.Active AS is_active, o.CreateDate AS created_at,
                     -- realisasi: total netto tiket DO ini (tanpa VOID)
@@ -16,8 +16,8 @@ _SELECT = """SELECT o.DeliveryOrderID AS id_do, o.DONumber AS no_do, o.ContractI
                      WHERE t.DeliveryOrderID = o.DeliveryOrderID AND t.StatusCode <> 'VOID') AS realisasi_kg
              FROM DeliveryOrder o
              JOIN Contract k ON k.ContractID = o.ContractID
-             JOIN Supplier c ON c.SupplierID = k.SupplierID
-             JOIN Product p ON p.ProductID = k.ProductID
+             LEFT JOIN Supplier c ON c.SupplierID = k.SupplierID
+             LEFT JOIN Product p ON p.ProductID = k.ProductID
              LEFT JOIN Company co ON co.CompID = k.CompID"""
 
 
