@@ -42,10 +42,6 @@ async function isiBeratInfoBar(noTiket, sumber = null) {
     ['infoBruto', 'infoTara', 'infoNetto'].forEach(
         id => document.getElementById(id).value = '-'
     );
-    ['infoStatusAscend', 'infoNoDO2', 'infoTiketDO2'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '-';
-    });
     if (!noTiket) return;
 
     const query = sumber === 'ASCEND' ? '?sumber=ASCEND' : '';
@@ -58,27 +54,6 @@ async function isiBeratInfoBar(noTiket, sumber = null) {
     document.getElementById('infoBruto').value = kg(tb.berat_bruto);
     document.getElementById('infoTara').value = kg(tb.berat_tara);
     document.getElementById('infoNetto').value = kg(tb.berat_netto);
-
-    const status = tb.pending_status;
-    const infoStatus = document.getElementById('infoStatusAscend');
-
-    if (infoStatus && sumber === 'ASCEND') {
-        if (status === 'MENUNGGU_DO2') {
-            infoStatus.value = 'Menunggu DO kedua';
-        } else if (status === 'SELESAI_SPLIT') {
-            infoStatus.value = 'Split selesai';
-        } else {
-            infoStatus.value = 'Aktif di Ascend';
-        }
-    }
-
-    const noDO2 = document.getElementById('infoNoDO2');
-    const tiketDO2 = document.getElementById('infoTiketDO2');
-
-    if (status === 'SELESAI_SPLIT') {
-        if (noDO2) noDO2.value = tb.no_do2 || '-';
-        if (tiketDO2) tiketDO2.value = tb.no_tiket_do2 || '-';
-    }
 }
 
 
