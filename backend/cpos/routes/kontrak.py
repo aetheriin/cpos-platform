@@ -10,7 +10,7 @@ from utils import db_ascend
 from utils.hak_akses import izin, boleh, halaman as lihat_halaman
 from utils.area import company_user
 from utils.db_organisasi import daftar_company
-from utils.db_blacklist import supplier_ascend_diblacklist
+from utils.db_blacklist import ascend_entity_diblacklist
 
 kontrak_bp = Blueprint("kontrak", __name__)
 
@@ -154,10 +154,15 @@ def do_simpan():
         if db.no_kontrak_dipakai(d["no_kontrak"], kecuali_do=id_do):
             raise ValueError(f"No Kontrak {d['no_kontrak']} sudah punya DO (1 kontrak = 1 DO)")
         angkutan = _angkutan_form(d["qty_kg"])
-        for ident in [d["ascend_customer_id"], *[x["ascend_transport_id"] for x in angkutan if x["ascend_transport_id"]]]:
-            nama_bl = supplier_ascend_diblacklist(ident)
-            if nama_bl:
-                raise ValueError(f"{nama_bl} sedang diblacklist. Kontrak / DO tidak bisa disimpan.")
+        nama_bl = ascend_entity_diblacklist("CUSTOMER", d["ascend_customer_id"])
+        if nama_bl:
+            raise ValueError(f"Customer {nama_bl} sedang diblacklist. Kontrak / DO tidak bisa disimpan.")
+        for angkut in angkutan:
+            aid = angkut.get("ascend_transport_id")
+            if aid:
+                nama_bl = ascend_entity_diblacklist("TRANSPORT", aid)
+                if nama_bl:
+                    raise ValueError(f"Pengangkutan {nama_bl} sedang diblacklist. Kontrak / DO tidak bisa disimpan.")
         db.simpan_do(id_do, d, angkutan, current_user.id)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400

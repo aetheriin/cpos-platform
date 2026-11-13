@@ -86,3 +86,9 @@ Audit awal menunjukkan ketergantungan masih aktif pada Kontrak/DO, Blacklist, ti
 - Schema fresh DOTransport memakai dua filtered unique index (`UX_DOTransport_Legacy`, `UX_DOTransport_Ascend`) supaya beberapa pengangkut pihak ketiga Ascend dapat disimpan dalam satu DO; migration 031 mengganti constraint unique lama. Jalankan 031 setelah 026, sebelum penggunaan DO baru Ascend di DB existing.
 
 - Migration 026 juga mengganti check constraint DOTransport agar mode PIHAK_KETIGA boleh memakai AscendTransportID (TransportID lokal NULL). Migration 031 mengganti unique constraint lama dengan filtered unique index dual identity; urutan existing DB: 026 → 028/029 → 031 (dan 030 hanya setelah modul transaksi lain siap).
+
+
+## Blacklist Ascend identity guard
+
+- Utility `ascend_entity_diblacklist(entity, id)` memeriksa kolom yang tepat (`AscendCustomerID`, `AscendSupplierID`, atau `AscendTransportID`). Ini mencegah ID Customer Ascend yang kebetulan sama dengan ID Supplier/Pengangkutan dianggap blacklist silang.
+- Penyimpanan pengajuan blacklist Ascend (approval, revoke, banner, UI) masih harus direfactor menyeluruh sebelum blacklist lokal ditinggalkan; utility ini baru dipakai oleh validasi Kontrak/DO customer dan pihak ketiga.

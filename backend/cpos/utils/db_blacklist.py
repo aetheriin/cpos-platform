@@ -373,3 +373,21 @@ def mitra_aktif(id_supplier):
     """Nama mitra aktif, atau None."""
     rows = _query_satu("SELECT SupplierName AS nama_supplier FROM Supplier WHERE SupplierID = ? AND Active = 1", id_supplier)
     return rows[0]["nama_supplier"] if rows else None
+
+def ascend_entity_diblacklist(entity, id_ascend):
+    """Nama target blacklist aktif berdasarkan tipe identitas Ascend yang tepat.
+
+    entity: CUSTOMER (AR_Customers), SUPPLIER atau TRANSPORT (AP_Suppliers).
+    Tidak mencocokkan ID lintas tabel karena ID Customer dan Supplier dapat overlap.
+    """
+    if not id_ascend:
+        return None
+    kolom = {"CUSTOMER": "AscendCustomerID", "SUPPLIER": "AscendSupplierID",
+             "TRANSPORT": "AscendTransportID"}.get(str(entity or "").upper())
+    if not kolom:
+        raise ValueError("Jenis identitas Ascend blacklist tidak valid")
+    rows = _query_satu(
+        f"SELECT TOP 1 COALESCE(SupplierNameSnapshot, CustomerNameSnapshot, TransportNameSnapshot) AS nama "
+        f"FROM Blacklist WHERE RevokeDate IS NULL AND {kolom} = ? "
+        "ORDER BY CreateDate DESC, BlacklistID DESC", int(id_ascend))
+    return rows[0]["nama"] if rows else None
