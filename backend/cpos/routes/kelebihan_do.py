@@ -1,10 +1,8 @@
-"""Menu Kelebihan DO + notifikasi lonceng. Hak: KELEBIHAN_DO tambah = krani (isi No. DO baru dari Ascend),
-ubah = KTU / HO (tetapkan / kembalikan). Diatur di Admin › Hak Akses."""
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
 
 from utils.hak_akses import lihat, MENU_OPERASI
-from utils import db_kelebihan_do as db, notifikasi, pengaturan
+from utils import (db_kelebihan_do as db, db_ascend, db_ascend_split, notifikasi, pengaturan,)
 from utils.hak_akses import izin, boleh, halaman as lihat_halaman
 from utils.area import area_data
 
@@ -17,8 +15,25 @@ kelebihan_do_bp = Blueprint("kelebihan_do", __name__)
 def halaman():
     return render_template("kelebihan_do/kelebihan_do.html", halaman="kelebihan_do",
                            boleh_ajukan=boleh(db.MENU, "tambah"), boleh_tetapkan=boleh(db.MENU, "ubah"),
-                           toleransi_kg=pengaturan.nilai("TOLERANSI_KELEBIHAN_DO"))
+                           boleh_monitor_split=boleh("KONTRAK_DO", "lihat"),toleransi_kg=pengaturan.nilai("TOLERANSI_KELEBIHAN_DO"))
 
+@kelebihan_do_bp.route("/api/kelebihan-do/ascend-split")
+@login_required
+@izin("KONTRAK_DO", "lihat")
+def daftar_ascend_split():
+    rows = db_ascend_split.daftar_monitor_split()
+
+    for row in rows:
+        row["tiket_split"] = []
+        row["no_do1"] = None
+
+        if row["status"] == "SELESAI_SPLIT":
+            hasil = db_ascend.baca_hasil_split_ascend(row["ticket_id"])
+            if hasil:
+                row["no_do1"] = hasil["no_do1"]
+                row["tiket_split"] = hasil["anak"]
+
+    return jsonify(rows)
 
 @kelebihan_do_bp.route("/api/kelebihan-do")
 @login_required

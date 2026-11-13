@@ -47,6 +47,28 @@
             </table>
         </div>
     </div>
+    
+    {% if boleh_monitor_split %}
+    <div class="section-box mt-5">
+        {{ section_header('daftar-ascend-split', 'Pemantauan Split Tiket Ascend') }}
+        <div class="section-body overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="table-header-row">
+                    <tr>
+                        <th class="table-cell">Waktu timbang</th>
+                        <th class="table-cell">Tiket induk</th>
+                        <th class="table-cell">DO1</th>
+                        <th class="table-cell">DO2</th>
+                        <th class="table-cell text-right">Berat timbang akhir</th>
+                        <th class="table-cell">Alokasi tiket Ascend</th>
+                        <th class="table-cell">Status / keterangan</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelAscendSplit" class="divide-y divide-slate-100"></tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 

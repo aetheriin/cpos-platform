@@ -275,3 +275,36 @@ def selesaikan_timbang_pending(ticket_id, no_do2=None):
         raise
     finally:
         koneksi.close()
+
+def daftar_monitor_split():
+    """Daftar timbang pending/split untuk pemantauan tim DO/kontrak."""
+    koneksi = get_connection()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute(
+            """
+            SELECT
+                TicketID AS ticket_id,
+                TicketNo AS ticket_no,
+                NoDO2 AS no_do2,
+                PendingFinalScaleKg AS berat_akhir,
+                PendingFinalAt AS waktu_timbang,
+                PendingStatus AS status,
+                PendingAttempts AS jumlah_percobaan,
+                PendingLastError AS pesan_error,
+                PendingCompletedAt AS waktu_selesai
+            FROM dbo.AscendTicketSplitPlan
+            WHERE PendingStatus IN (
+                'MENUNGGU_DO2',
+                'SELESAI_SPLIT',
+                'SELESAI_TANPA_SPLIT'
+            )
+            ORDER BY
+                COALESCE(PendingFinalAt, PendingCompletedAt) DESC,
+                TicketID DESC
+            """
+        )
+        kolom = [item[0] for item in cursor.description]
+        return [dict(zip(kolom, row)) for row in cursor.fetchall()]
+    finally:
+        koneksi.close()
