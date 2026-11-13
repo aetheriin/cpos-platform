@@ -334,17 +334,7 @@ CREATE TABLE dbo.Supplier (
     Active                BIT NOT NULL CONSTRAINT DF_Supplier_Active DEFAULT (1),
     CreateDate            DATETIME NOT NULL CONSTRAINT DF_Supplier_Create DEFAULT (GETDATE())
 );
--- Supplier hanya berlaku di PT tertentu; tanpa baris = semua PT
-CREATE TABLE dbo.SupplierCompany (
-    SupplierID  INT NOT NULL CONSTRAINT FK_SupplierComp_Supplier REFERENCES dbo.Supplier (SupplierID),
-    CompID      VARCHAR(5) NOT NULL CONSTRAINT FK_SupplierComp_Company REFERENCES dbo.Company (CompID),
-    CONSTRAINT PK_SupplierCompany PRIMARY KEY (SupplierID, CompID)
-);
-CREATE TABLE dbo.SupplierTypeDetails (
-    SupplierID  INT NOT NULL CONSTRAINT FK_SupTypeDet_Supplier REFERENCES dbo.Supplier (SupplierID),
-    TypeCode    VARCHAR(20) NOT NULL CONSTRAINT FK_SupTypeDet_Type REFERENCES dbo.SupplierType (TypeCode),
-    CONSTRAINT PK_SupplierTypeDetails PRIMARY KEY (SupplierID, TypeCode)
-);
+/* SupplierCompany dan SupplierTypeDetails dihapus: master mitra bersumber dari Ascend. */
 GO
 
 -- Alur tahap tiket (migrasi 012): urutan tahap per alur, dipakai produk & transaksi
