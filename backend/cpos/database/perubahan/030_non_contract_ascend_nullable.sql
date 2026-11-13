@@ -36,8 +36,7 @@ IF EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.WeightBridge'
  ALTER TABLE dbo.WeightBridge ALTER COLUMN SupplierID INT NULL;
 IF EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.WeightBridge') AND name='ProductID' AND is_nullable=0)
  ALTER TABLE dbo.WeightBridge ALTER COLUMN ProductID INT NULL;
-IF EXISTS(SELECT 1 FROM dbo.SchemaLog WHERE Script='database/perubahan/030_non_contract_ascend_nullable.sql')
- DELETE dbo.SchemaLog WHERE Script='database/perubahan/030_non_contract_ascend_nullable.sql';
-INSERT dbo.SchemaLog(Script,App) VALUES('database/perubahan/030_non_contract_ascend_nullable.sql','CPOS');
+IF NOT EXISTS(SELECT 1 FROM dbo.SchemaLog WHERE Script='database/perubahan/030_non_contract_ascend_nullable.sql')
+ INSERT dbo.SchemaLog(Script,App) VALUES('database/perubahan/030_non_contract_ascend_nullable.sql','CPOS');
 COMMIT;
 GO
