@@ -92,6 +92,15 @@ IF COL_LENGTH('dbo.ProductPrice', 'ProductNameSnapshot') IS NULL
 IF COL_LENGTH('dbo.FlowRule', 'ProductNameSnapshot') IS NULL
     ALTER TABLE dbo.FlowRule ADD ProductNameSnapshot NVARCHAR(150) NULL;
 
+-- Blacklist: izinkan entitas Ascend tanpa SupplierID lokal (constraint target lama).
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name='CK_Blacklist_Target' AND parent_object_id=OBJECT_ID('dbo.Blacklist'))
+    ALTER TABLE dbo.Blacklist DROP CONSTRAINT CK_Blacklist_Target;
+ALTER TABLE dbo.Blacklist ADD CONSTRAINT CK_Blacklist_Target CHECK (
+ (TableName='Users' AND UserID IS NOT NULL AND IDVehicle IS NULL AND SupplierID IS NULL) OR
+ (TableName='DetailVehicle' AND IDVehicle IS NOT NULL AND UserID IS NULL AND SupplierID IS NULL) OR
+ (TableName='Supplier' AND (SupplierID IS NOT NULL OR AscendSupplierID IS NOT NULL OR AscendCustomerID IS NOT NULL OR AscendTransportID IS NOT NULL) AND UserID IS NULL AND IDVehicle IS NULL)
+);
+
 -- Snapshot hanya menyalin nama lama. Tidak menebak/memasangkan ID ke Ascend.
 UPDATE c
 SET CustomerNameSnapshot = COALESCE(c.CustomerNameSnapshot, s.SupplierName),
