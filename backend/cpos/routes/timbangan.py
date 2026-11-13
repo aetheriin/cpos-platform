@@ -66,7 +66,66 @@ def timbang_data(no_tiket):
                 "berat_bruto": None,
                 "berat_tara": None,
                 "berat_netto": None,
+                "pending_status": None,
+                "tiket_split": [],
             })
+
+        try:
+            rencana = db_ascend_split.baca_status_timbang_pending(no_tiket)
+        except Exception:
+            logging.exception(
+                "Gagal membaca status pending tiket Ascend %s",
+                no_tiket,
+            )
+            return jsonify({
+                "error": "Status timbang tiket Ascend belum dapat dibaca."
+            }), 503
+
+        data["pending_status"] = rencana["status"] if rencana else None
+        data["pending_error"] = rencana["error"] if rencana else None
+        data["no_do2"] = None
+        data["no_tiket_do2"] = None
+        data["tiket_split"] = []
+
+        if rencana and rencana["status"] == "MENUNGGU_DO2":
+            berat_akhir = rencana["berat_akhir_pending"]
+            if berat_akhir is not None:
+                # Split pending hanya untuk tiket Produk:
+                # berat akhir yang disimpan adalah Bruto.
+                data["berat_bruto"] = berat_akhir
+                if data["berat_tara"] is not None:
+                    data["berat_netto"] = (
+                        berat_akhir - data["berat_tara"]
+                    )
+
+        elif rencana and rencana["status"] == "SELESAI_SPLIT":
+            try:
+                hasil_split = db_ascend.baca_hasil_split_ascend(
+                    rencana["ticket_id"]
+                )
+            except Exception:
+                logging.exception(
+                    "Gagal membaca hasil split tiket Ascend %s",
+                    no_tiket,
+                )
+                return jsonify({
+                    "error": "Hasil split tiket Ascend belum dapat dibaca."
+                }), 503
+
+            if hasil_split:
+                anak = hasil_split.get("anak", [])
+                data["tiket_split"] = anak
+                do2 = next(
+                    (
+                        t for t in anak
+                        if t["no_do"].strip().casefold()
+                        != hasil_split["no_do1"].strip().casefold()
+                    ),
+                    None,
+                )
+                if do2:
+                    data["no_do2"] = do2["no_do"]
+                    data["no_tiket_do2"] = do2["no_tiket"]
 
         return jsonify(data)
     row = get_data_timbangan(no_tiket)

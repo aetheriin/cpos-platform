@@ -141,6 +141,7 @@ def area_pusat():
         "SELECT a.CompAreaID FROM CompanyArea a JOIN Mill m ON m.MillID = a.MillID WHERE m.IsHeadOffice = 1"))
 
 
+@cache_ttl(8)      # sama dengan area_menu_user; dipanggil berkali-kali dalam satu request (tiap menu / laporan)
 def cakupan_user(id_user):
     """Ringkasan cakupan data bawaan dari dbo.fn_UserScopeInfo. None = user tidak ditemukan / nonaktif."""
     rows = _query("SELECT OwnAreaID, OwnCompID, IsHeadOffice, AllAreas FROM dbo.fn_UserScopeInfo(?)", id_user)
@@ -151,6 +152,18 @@ def cakupan_user(id_user):
 def area_menu_user(id_user, kode_menu):
     """id area dalam cakupan data aturan menu itu (dbo.fn_UserMenuScope), frozenset."""
     return frozenset(r["CompAreaID"] for r in _query("SELECT CompAreaID FROM dbo.fn_UserMenuScope(?, ?)", id_user, kode_menu))
+
+
+def area_menu_banyak(id_user, kode_menu):
+    """{kode menu: frozenset id area} untuk banyak menu sekaligus, satu query (dipakai /api/analytics/saya). Menu tanpa aturan tidak ada."""
+    kode = sorted(set(kode_menu))
+    if not kode:
+        return {}
+    hasil = {}
+    for r in _query(f"""SELECT m.MenuCode AS kode, s.CompAreaID FROM Menu m CROSS APPLY dbo.fn_UserMenuScope(?, m.MenuCode) s
+                        WHERE m.MenuCode IN ({', '.join('?' * len(kode))})""", id_user, *kode):
+        hasil.setdefault(r["kode"], set()).add(r["CompAreaID"])
+    return {k: frozenset(v) for k, v in hasil.items()}
 
 
 @cache_ttl(60)

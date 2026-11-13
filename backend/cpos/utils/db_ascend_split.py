@@ -69,6 +69,35 @@ def ambil_pasangan_do2(ticket_id):
     finally:
         koneksi.close()
 
+def baca_status_timbang_pending(ticket_no):
+    """Ambil status timbang tertunda dari rencana split di Main."""
+    koneksi = get_connection()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute(
+            """
+            SELECT TicketID, NoDO2, PendingFinalScaleKg,
+                   PendingStatus, PendingLastError
+            FROM dbo.AscendTicketSplitPlan
+            WHERE TicketNo = ?
+            """,
+            (ticket_no or "").strip(),
+        )
+        row = cursor.fetchone()
+        if not row:
+            return None
+
+        return {
+            "ticket_id": int(row[0]),
+            "no_do2": str(row[1] or "").strip(),
+            "berat_akhir_pending": (
+                float(row[2]) if row[2] is not None else None
+            ),
+            "status": str(row[3] or "").strip().upper(),
+            "error": str(row[4] or "").strip() or None,
+        }
+    finally:
+        koneksi.close()
 
 def hapus_pasangan_do2(ticket_id):
     """Hapus metadata pasangan setelah Ascend menyelesaikan split."""

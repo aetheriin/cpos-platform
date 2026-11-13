@@ -385,49 +385,71 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
 
         if step_baru == 2 and ticket_type == "Produk":
             no_do1 = str(nilai("SPDO", "") or "").strip()
-            daftar = daftar_do("Produk")
+            alasan_pending = None
 
-            do1 = next(
-                (
-                    d for d in daftar
-                    if d["no_do"].strip().casefold() == no_do1.casefold()
-                ),
-                None,
-            )
-            if not do1:
-                raise ValueError(
-                    "DO pertama tidak lagi tersedia sebagai DO outstanding Ascend."
+            try:
+                daftar = daftar_do("Produk")
+                do1 = next(
+                    (
+                        d for d in daftar
+                        if d["no_do"].strip().casefold() == no_do1.casefold()
+                    ),
+                    None,
                 )
 
-            netto_final = Decimal(str(tiket["netto"]))
-            sisa_do1 = Decimal(str(do1.get("sisa") or 0))
-
-            if netto_final > sisa_do1:
-                do2 = cari_pasangan_do2_ascend("Produk", no_do1)
-                if not do2:
-                    pending = db_ascend_split.simpan_timbang_akhir_pending(
-                        int(nilai("TicketID")),
-                        berat,
-                        now,
-                        int(operator),
-                        "Netto melewati sisa DO1; menunggu DO2 yang cocok.",
+                if not do1:
+                    alasan_pending = (
+                        "DO pertama tidak ditemukan sebagai DO outstanding; "
+                        "menunggu data DO Ascend dapat dipastikan."
                     )
+                else:
+                    netto_final = Decimal(str(tiket["netto"]))
+                    sisa_do1 = Decimal(str(do1.get("sisa") or 0))
 
-                    koneksi.rollback()
-                    return {
-                        "step": 2,
-                        "ticket_type": ticket_type,
-                        "ticket_id": int(nilai("TicketID")),
-                        "ticket_no": no_tiket,
-                        "pending_do2": True,
-                        "pending_status": pending["status"],
-                        "no_do2": None,
-                        "tiket_split": [],
-                        "berat_bruto": float(bruto),
-                        "berat_tara": float(tara),
-                        "berat_netto": float(bruto - tara),
-                    }
-                spdo2 = do2["no_do"]
+                    if netto_final > sisa_do1:
+                        try:
+                            do2 = cari_pasangan_do2_ascend("Produk", no_do1)
+                        except Exception as e:
+                            alasan_pending = (
+                                f"Pasangan DO2 belum dapat dipastikan: {e}"
+                            )
+                        else:
+                            if do2:
+                                spdo2 = do2["no_do"]
+                            else:
+                                alasan_pending = (
+                                    "Netto melewati sisa DO1; "
+                                    "menunggu DO2 yang cocok."
+                                )
+
+            except Exception as e:
+                alasan_pending = (
+                    f"Data DO Ascend belum dapat dipastikan: {e}"
+                )
+
+            if alasan_pending:
+                pending = db_ascend_split.simpan_timbang_akhir_pending(
+                    int(nilai("TicketID")),
+                    berat,
+                    now,
+                    int(operator),
+                    alasan_pending,
+                )
+
+                koneksi.rollback()
+                return {
+                    "step": 2,
+                    "ticket_type": ticket_type,
+                    "ticket_id": int(nilai("TicketID")),
+                    "ticket_no": no_tiket,
+                    "pending_do2": True,
+                    "pending_status": pending["status"],
+                    "no_do2": None,
+                    "tiket_split": [],
+                    "berat_bruto": float(bruto),
+                    "berat_tara": float(tara),
+                    "berat_netto": float(bruto - tara),
+                }
 
         # Ambil parameter prosedur Ascend; kirim nilai yang tersedia di baris tiket.
         cursor.execute(

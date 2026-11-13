@@ -11,7 +11,7 @@ import urllib.request
 
 from inti import konfigurasi
 
-CACHE_DETIK = 2
+CACHE_DETIK = 15     # logout / paksa keluar / ubah hak berlaku di Analytics paling lambat sekian detik
 _cache = {}            # nilai cookie -> (waktu, jawaban CPOS atau None)
 _kunci = threading.Lock()
 
