@@ -96,8 +96,8 @@ def simpan_do(id_do, d, angkutan, user_id):
         else:
             cursor.execute("""SET NOCOUNT ON; INSERT INTO Contract (ContractNumber, TransactionType, SupplierID, ProductID,
                 ContractDate, ContractQty, Price, Description, PPN, IncludePPN, CompID, CreateBy,
-                AscendCustomerID, CustomerNameSnapshot, ProductNameSnapshot)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?); SELECT CAST(SCOPE_IDENTITY() AS INT)""",
+                AscendCustomerID, CustomerNameSnapshot, CustomerCodeSnapshot, ProductNameSnapshot)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?); SELECT CAST(SCOPE_IDENTITY() AS INT)""",
                 *kontrak, user_id, d["ascend_customer_id"], d["customer_name"], d.get("customer_code"), d["product_name"])
             id_kontrak=cursor.fetchone()[0]
             cursor.execute("""SET NOCOUNT ON; INSERT INTO DeliveryOrder (DONumber, ContractID, DODate, ExpiredDate, CreateBy)
