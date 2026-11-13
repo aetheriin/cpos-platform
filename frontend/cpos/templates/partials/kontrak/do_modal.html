@@ -81,9 +81,7 @@
                 <button type="button" class="link-aksi text-blue-600 text-sm" data-on-click="tambahBarisAngkut"><i class="fa-solid fa-plus mr-1"></i> Tambah pengangkut</button>
             </div>
             <div id="daftarAngkutDO" class="col-span-3 space-y-2"></div>
-            <datalist id="daftarAngkutan">
-                {% for a in angkutan_list %}<option value="{{ a.nama_supplier }}">{% endfor %}
-            </datalist>
+>
         </div>
         <div class="px-6 pb-6 pt-3 flex justify-end gap-2">
             <button type="button" data-on-click="closeModal" data-arg="modalDO" class="btn-secondary">Batal</button>
@@ -99,8 +97,7 @@
             <option value="PENERIMA">Kendaraan penerima</option>
             <option value="PIHAK_KETIGA">Pihak ketiga</option>
         </select>
-        <input type="text" name="angkut_nama" maxlength="100" list="daftarAngkutan" placeholder="Nama perusahaan angkutan"
-               class="input-field col-span-3 invisible">
+        <select name="angkut_id" class="input-field col-span-3 invisible"><option value="">-- Pilih pengangkut Ascend --</option>{% for a in angkutan_list %}<option value="{{ a.id }}">{{ a.kode }} · {{ a.nama }}</option>{% endfor %}</select>
         <input type="number" name="angkut_qty" min="1" step="0.01" placeholder="Alokasi kg (opsional)" class="input-field col-span-3">
         <input type="number" name="angkut_ongkos" min="0.01" step="0.01" placeholder="Ongkos/kg (opsional)" class="input-field col-span-2">
         <button type="button" class="text-red-600 col-span-1" title="Hapus" data-on-click="hapusBarisAngkut" data-arg="$el"><i class="fa-solid fa-trash"></i></button>
