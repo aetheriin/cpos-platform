@@ -88,8 +88,8 @@ def simpan_do(id_do, d, angkutan, user_id):
             if row is None: raise ValueError("DO tidak ditemukan")
             cursor.execute("""UPDATE Contract SET ContractNumber=?, TransactionType=?, SupplierID=?, ProductID=?,
                 ContractDate=?, ContractQty=?, Price=?, Description=?, PPN=?, IncludePPN=?, CompID=?,
-                AscendCustomerID=?, CustomerNameSnapshot=?, ProductNameSnapshot=? WHERE ContractID=?""",
-                *kontrak, d["ascend_customer_id"], d["customer_name"], d["product_name"], row.id_kontrak)
+                AscendCustomerID=?, CustomerNameSnapshot=?, CustomerCodeSnapshot=?, ProductNameSnapshot=? WHERE ContractID=?""",
+                *kontrak, d["ascend_customer_id"], d["customer_name"], d.get("customer_code"), d["product_name"], row.id_kontrak)
             cursor.execute("UPDATE DeliveryOrder SET DONumber=?, DODate=?, ExpiredDate=? WHERE DeliveryOrderID=?",
                 d["no_do"], d["tanggal_do"], d["berlaku_sampai"], id_do)
             cursor.execute("DELETE FROM DOTransport WHERE DeliveryOrderID=?", id_do)
@@ -98,7 +98,7 @@ def simpan_do(id_do, d, angkutan, user_id):
                 ContractDate, ContractQty, Price, Description, PPN, IncludePPN, CompID, CreateBy,
                 AscendCustomerID, CustomerNameSnapshot, ProductNameSnapshot)
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?); SELECT CAST(SCOPE_IDENTITY() AS INT)""",
-                *kontrak, user_id, d["ascend_customer_id"], d["customer_name"], d["product_name"])
+                *kontrak, user_id, d["ascend_customer_id"], d["customer_name"], d.get("customer_code"), d["product_name"])
             id_kontrak=cursor.fetchone()[0]
             cursor.execute("""SET NOCOUNT ON; INSERT INTO DeliveryOrder (DONumber, ContractID, DODate, ExpiredDate, CreateBy)
                 VALUES (?,?,?,?,?); SELECT CAST(SCOPE_IDENTITY() AS INT)""",
