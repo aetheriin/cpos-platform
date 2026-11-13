@@ -101,6 +101,13 @@ ALTER TABLE dbo.Blacklist ADD CONSTRAINT CK_Blacklist_Target CHECK (
  (TableName='Supplier' AND (SupplierID IS NOT NULL OR AscendSupplierID IS NOT NULL OR AscendCustomerID IS NOT NULL OR AscendTransportID IS NOT NULL) AND UserID IS NULL AND IDVehicle IS NULL)
 );
 
+-- Constraint DOTransport mendukung third-party via Ascend ID.
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name='CK_DOTrans_ThirdParty' AND parent_object_id=OBJECT_ID('dbo.DOTransport'))
+ ALTER TABLE dbo.DOTransport DROP CONSTRAINT CK_DOTrans_ThirdParty;
+ALTER TABLE dbo.DOTransport ADD CONSTRAINT CK_DOTrans_ThirdParty CHECK (
+ (TransportMode='PIHAK_KETIGA' AND (TransportID IS NOT NULL OR AscendTransportID IS NOT NULL)) OR
+ (TransportMode<>'PIHAK_KETIGA' AND TransportID IS NULL AND AscendTransportID IS NULL)
+);
 -- Snapshot hanya menyalin nama lama. Tidak menebak/memasangkan ID ke Ascend.
 UPDATE c
 SET CustomerNameSnapshot = COALESCE(c.CustomerNameSnapshot, s.SupplierName),
