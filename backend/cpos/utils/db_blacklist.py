@@ -122,10 +122,7 @@ def cari_target(tipe, kata, batas=8):
                 SELECT TOP {int(batas)} s.SupplierID AS id_target, s.SupplierCode AS kode_supplier, s.SupplierName AS nama_supplier,
                        s.SupplierAddress AS alamat, s.Active AS is_active,
                        CAST(CASE WHEN s.BlacklistID IS NULL THEN 0 ELSE 1 END AS BIT) AS is_blacklisted,
-                       STUFF((SELECT ', ' + st.NameType FROM SupplierTypeDetails td JOIN SupplierType st ON st.TypeCode = td.TypeCode
-                              WHERE td.SupplierID = s.SupplierID FOR XML PATH('')), 1, 2, '') AS jenis,
-                       STUFF((SELECT ', ' + sc.CompID FROM SupplierCompany sc WHERE sc.SupplierID = s.SupplierID
-                              FOR XML PATH('')), 1, 2, '') AS company,
+                       (SELECT COUNT(*) FROM WeightBridge t WHERE t.SupplierID = s.SupplierID OR t.TransportID = s.SupplierID) AS jumlah_tiket,
                        (SELECT COUNT(*) FROM WeightBridge t WHERE (t.SupplierID = s.SupplierID OR t.TransportID = s.SupplierID)
                           AND t.TicketDate >= DATEADD(DAY, -90, GETDATE())) AS jumlah_tiket_90,
                        (SELECT MAX(t.TicketDate) FROM WeightBridge t
