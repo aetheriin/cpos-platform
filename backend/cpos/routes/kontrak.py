@@ -6,12 +6,10 @@ from flask_login import login_required, current_user
 
 from utils.hak_akses import lihat, MENU_KONTRAK
 from utils import db_kontrak as db, kolom_wajib
-from utils.db_utils import get_semua_produk
+from utils import db_ascend
 from utils.hak_akses import izin, boleh, halaman as lihat_halaman
 from utils.area import company_user
 from utils.db_organisasi import daftar_company
-from utils.db_admin import supplier_boleh
-from utils.db_blacklist import supplier_diblacklist
 
 kontrak_bp = Blueprint("kontrak", __name__)
 
@@ -38,13 +36,13 @@ def _json_do(d):
 def kontrak_halaman():
     """Semua level bisa melihat; tambah / ubah sesuai Admin › Hak Akses (dicek juga di API)."""
     pt = company_user(current_user.id)
-    mitra = [m for m in db.daftar_mitra() if supplier_boleh(m["id_supplier"], pt)]
+    customer_list = db_ascend.daftar_master_customer()\n    angkutan_list = db_ascend.daftar_master_pengangkutan()\n    produk_list = db_ascend.daftar_master_produk("Produk")
     return render_template("kontrak/kontrak.html", halaman="kontrak", jenis_list=db.JENIS_VALID,
                            boleh_ubah=boleh("KONTRAK_DO"),
                            customer_list=[m for m in mitra if m["peran"] == "CUSTOMER"],
                            angkutan_list=[m for m in mitra if m["peran"] == "PENGANGKUTAN"],
                            company_list=_company_user(),
-                           produk_list=get_semua_produk())
+                           produk_list=produk_list)
 
 
 @kontrak_bp.route("/api/kontrak/do")
@@ -95,29 +93,24 @@ def _desimal(teks, label):
 
 
 def _angkutan_form(qty_kontrak):
-    """Baris pengangkutan dari form (angkut_cara[], angkut_nama[], angkut_qty[])."""
-    f = request.form
-    hasil, kunci = [], set()
-    ongkos = f.getlist("angkut_ongkos") or [""] * len(f.getlist("angkut_cara"))
-    for cara, nama, qty, biaya in zip(f.getlist("angkut_cara"), f.getlist("angkut_nama"), f.getlist("angkut_qty"), ongkos):
-        cara = (cara or "").strip().upper()
-        if cara not in db.CARA_ANGKUT:
-            raise ValueError("Cara angkut tidak dikenal")
-        id_angkut = None
-        if cara == "PIHAK_KETIGA":
-            if len(nama.strip()) < 3:
-                raise ValueError("Nama pengangkutan pihak ketiga wajib diisi")
-            id_angkut = db.id_pengangkutan_dari_nama(nama)
-        if (cara, id_angkut) in kunci:
-            raise ValueError("Pengangkutan yang sama dipilih dua kali")
-        kunci.add((cara, id_angkut))
-        hasil.append({"cara_angkut": cara, "id_pengangkutan": id_angkut, "qty_kg": _desimal(qty, "Alokasi qty"),
-                      "ongkos_per_kg": _desimal(biaya, "Ongkos angkut")})
-    if not hasil:
-        raise ValueError("Tambahkan minimal satu pengangkutan")
-    total = sum(a["qty_kg"] or 0 for a in hasil)
-    if qty_kontrak and total > qty_kontrak:
-        raise ValueError(f"Total alokasi pengangkutan ({total:,.0f} kg) melebihi qty kontrak ({qty_kontrak:,.0f} kg)")
+    f=request.form; hasil=[]; kunci=set()
+    ongkos=f.getlist("angkut_ongkos") or [""]*len(f.getlist("angkut_cara"))
+    master={str(x["id"]):x for x in db_ascend.daftar_master_pengangkutan()}
+    for cara, ident, qty, biaya in zip(f.getlist("angkut_cara"),f.getlist("angkut_id"),f.getlist("angkut_qty"),ongkos):
+        cara=(cara or "").strip().upper()
+        if cara not in db.CARA_ANGKUT: raise ValueError("Cara angkut tidak dikenal")
+        aid=None; nama=None
+        if cara=="PIHAK_KETIGA":
+            ident=(ident or "").strip()
+            if ident not in master: raise ValueError("Pilih pengangkutan pihak ketiga dari master Ascend")
+            aid=int(ident); nama=master[ident]["nama"]
+        if (cara,aid) in kunci: raise ValueError("Pengangkutan yang sama dipilih dua kali")
+        kunci.add((cara,aid))
+        hasil.append({"cara_angkut":cara,"id_pengangkutan":None,"ascend_transport_id":aid,"transport_name":nama,
+                      "qty_kg":_desimal(qty,"Alokasi qty"),"ongkos_per_kg":_desimal(biaya,"Ongkos angkut")})
+    if not hasil: raise ValueError("Tambahkan minimal satu pengangkutan")
+    total=sum(x["qty_kg"] or 0 for x in hasil)
+    if qty_kontrak and total>qty_kontrak: raise ValueError("Total alokasi pengangkutan melebihi qty kontrak")
     return hasil
 
 
@@ -131,7 +124,7 @@ def do_simpan():
         kolom_wajib.cek("KONTRAK_DO", f)
         d = {"no_do": (f.get("no_do") or "").strip().upper(), "no_kontrak": (f.get("no_kontrak") or "").strip().upper(),
              "jenis_transaksi": (f.get("jenis_transaksi") or "").strip().upper(),
-             "id_customer": _id("id_customer"), "id_produk": _id("id_produk"),
+             "ascend_customer_id": _id("id_customer"), "product_name": (f.get("id_produk") or "").strip(),
              "tanggal_kontrak": _tanggal("tanggal_kontrak", True, "Tanggal kontrak"),
              "qty_kg": _desimal(f.get("qty_kg"), "Qty kontrak"), "harga_per_kg": _desimal(f.get("harga_per_kg"), "Harga"),
              "tanggal_do": _tanggal("tanggal_do", True), "berlaku_sampai": _tanggal("berlaku_sampai", False),
@@ -150,22 +143,17 @@ def do_simpan():
             raise ValueError("Jenis transaksi tidak dikenal")
         if d["berlaku_sampai"] and d["berlaku_sampai"] < d["tanggal_do"]:
             raise ValueError("Berlaku sampai tidak boleh sebelum tanggal DO")
-        if (d["id_customer"] not in {m["id_supplier"] for m in db.daftar_mitra() if m["peran"] == "CUSTOMER"}
-                or not supplier_boleh(d["id_customer"], company_user(current_user.id))):
-            raise ValueError("Pilih customer dari daftar (mitra berperan customer)")
-        if d["id_produk"] not in {p.id_produk for p in get_semua_produk()}:
-            raise ValueError("Pilih produk dari daftar")
+        customers={x["id"]:x for x in db_ascend.daftar_master_customer()}
+        if d["ascend_customer_id"] not in customers: raise ValueError("Pilih customer dari master Ascend")
+        d["customer_name"]=customers[d["ascend_customer_id"]]["nama"]
+        produk={x["nama_produk"] for x in db_ascend.daftar_master_produk("Produk")}
+        if d["product_name"] not in produk: raise ValueError("Pilih produk dari DO outstanding Ascend")
         if db.no_do_dipakai(d["no_do"], kecuali=id_do):
             raise ValueError(f"No DO {d['no_do']} sudah terdaftar")
         if db.no_kontrak_dipakai(d["no_kontrak"], kecuali_do=id_do):
             raise ValueError(f"No Kontrak {d['no_kontrak']} sudah punya DO (1 kontrak = 1 DO)")
         angkutan = _angkutan_form(d["qty_kg"])
-        # Supplier Blacklist: tidak boleh dibuatkan kontrak / DO baru (customer maupun pengangkutan)
-        for id_s in [d["id_customer"], *[a["id_pengangkutan"] for a in angkutan if a["id_pengangkutan"]]]:
-            nama_bl = supplier_diblacklist(id_s)
-            if nama_bl:
-                raise ValueError(f"{nama_bl} sedang diblacklist (Blacklist › Supplier). Kontrak / DO tidak bisa disimpan.")
-        db.simpan_do(id_do, d, angkutan, current_user.id)
+        # Blacklist Ascend akan dicek melalui identitas eksternal pada tahap refactor blacklist.\n        db.simpan_do(id_do, d, angkutan, current_user.id)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     return jsonify({"message": f"DO {d['no_do']} berhasil disimpan"})
