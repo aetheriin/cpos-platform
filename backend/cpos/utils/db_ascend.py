@@ -209,7 +209,84 @@ def cari_tiket_ascend_berdasarkan_no_tiket(no_tiket):
         }
     finally:
         koneksi.close()
+def daftar_tiket_ascend_aktif(ticket_ids):
+    """Ambil tiket Ascend aktif yang ID-nya sudah dibatasi oleh cakupan area CPOS."""
+    ticket_ids = sorted({int(ticket_id) for ticket_id in (ticket_ids or [])})
+    if not ticket_ids:
+        return []
 
+    hasil = []
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+
+        # Pecah agar jumlah parameter SQL tetap di bawah batas SQL Server.
+        for awal in range(0, len(ticket_ids), 900):
+            bagian = ticket_ids[awal:awal + 900]
+            tanda_tanya = ", ".join("?" for _ in bagian)
+
+            cursor.execute(
+                f"""
+                SELECT
+                    t.TicketNo AS no_tiket,
+                    t.VehicleNo AS no_plat,
+                    t.TicketType AS ticket_type,
+                    t.ProductName AS produk,
+                    COALESCE(t.DateTimeIn, t.[Date]) AS created_at,
+                    t.SPDO AS no_do,
+                    t.[Step] AS step,
+                    COALESCE(c.CustomerCode, s.SupplierCode) AS associate_code,
+                    COALESCE(c.CustomerName, s.SupplierName) AS associate_name
+                FROM dbo.PALM_Tickets t
+                LEFT JOIN dbo.AR_Customers c
+                    ON t.TicketType = 'Produk'
+                   AND c.CustomerID = t.AssociateID
+                LEFT JOIN dbo.AP_Suppliers s
+                    ON t.TicketType = 'TBSLuar'
+                   AND s.SupplierID = t.AssociateID
+                WHERE t.TicketID IN ({tanda_tanya})
+                  AND ISNULL(t.Void, 0) = 0
+                  AND ISNULL(t.Splitted, 0) = 0
+                  AND (ISNULL(t.[Step], 0) < 2 OR t.DateTimeOut IS NULL)
+                """,
+                *bagian,
+            )
+
+            for row in _baris_hasil(cursor):
+                ticket_type = str(row["ticket_type"] or "").strip()
+                step = int(row["step"] or 0)
+                nama_associate = " · ".join(
+                    bagian_nama for bagian_nama in (
+                        str(row["associate_code"] or "").strip(),
+                        str(row["associate_name"] or "").strip(),
+                    ) if bagian_nama
+                )
+
+                hasil.append({
+                    "no_tiket": str(row["no_tiket"] or "").strip(),
+                    "no_plat": str(row["no_plat"] or "").strip(),
+                    "supplier": nama_associate,
+                    "status_alur": (
+                        "SECURITY_REGISTER" if step == 0 else "TIMBANG_2"
+                    ),
+                    "jenis_transaksi": (
+                        "PENJUALAN" if ticket_type == "Produk"
+                        else "PEMBELIAN"
+                    ),
+                    "produk": str(row["produk"] or "").strip(),
+                    "kategori_produk": None,
+                    "created_at": row["created_at"],
+                    "id_alur": None,
+                    "no_do": str(row["no_do"] or "").strip(),
+                    "supir": "",
+                    "tahap_menunggu": None,
+                    "tahap": [],
+                })
+
+        return hasil
+    finally:
+        koneksi.close()
+        
 def baca_berat_tiket_ascend(no_tiket):
     """Baca berat Ascend sesuai tahap timbang tiket."""
     koneksi = _koneksi()

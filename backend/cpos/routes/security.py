@@ -34,9 +34,42 @@ security_bp = Blueprint('security', __name__)
 @login_required
 @lihat(*MENU_OPERASI)
 def list_tiket_aktif():
-    return jsonify([{**t, "created_at": t["created_at"].strftime("%Y-%m-%d %H:%M"),
-                     "alur_tahap": alur.tahap_alur(t.get("id_alur")) if t.get("id_alur") else []}
-                    for t in get_list_tiket_aktif(area_data(current_user.id))])
+    area = area_data(current_user.id)
+
+    tiket_lokal = get_list_tiket_aktif(area)
+    try:
+        ticket_ids = db_ascend_split.daftar_ticket_id_di_area(area)
+        tiket_ascend = db_ascend.daftar_tiket_ascend_aktif(ticket_ids)
+    except Exception:
+        current_app.logger.exception(
+            "Gagal memuat daftar tiket Ascend untuk area %s",
+            area,
+        )
+        return jsonify({
+            "error": "Daftar tiket Ascend belum dapat dimuat. Coba lagi."
+        }), 503
+
+    # Ascend menjadi sumber utama bila nomor tiket yang sama ada di kedua sumber.
+    gabungan = {t["no_tiket"]: dict(t) for t in tiket_lokal}
+    gabungan.update({t["no_tiket"]: dict(t) for t in tiket_ascend})
+
+    hasil = []
+    for tiket in gabungan.values():
+        dibuat = tiket.get("created_at")
+        tiket["created_at"] = (
+            dibuat.strftime("%Y-%m-%d %H:%M")
+            if hasattr(dibuat, "strftime")
+            else str(dibuat or "")
+        )
+        tiket["alur_tahap"] = (
+            alur.tahap_alur(tiket.get("id_alur"))
+            if tiket.get("id_alur")
+            else []
+        )
+        hasil.append(tiket)
+
+    hasil.sort(key=lambda t: t["created_at"], reverse=True)
+    return jsonify(hasil)
 
 @security_bp.route("/api/security/history-driver")
 @login_required

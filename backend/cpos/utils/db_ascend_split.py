@@ -308,3 +308,43 @@ def daftar_monitor_split():
         return [dict(zip(kolom, row)) for row in cursor.fetchall()]
     finally:
         koneksi.close()
+
+
+def daftar_ticket_id_di_area(id_area):
+    """ID tiket Ascend yang dibuat CPOS dalam cakupan area pengguna."""
+    koneksi = get_connection()
+    try:
+        cursor = koneksi.cursor()
+
+        if id_area is None:
+            cursor.execute(
+                """
+                SELECT TicketID
+                FROM dbo.AscendTicketSplitPlan
+                WHERE ISNULL(PendingStatus, '') <> 'MENUNGGU_DO2'
+                """
+            )
+        else:
+            area = (
+                tuple(id_area)
+                if isinstance(id_area, (tuple, list, set, frozenset))
+                else (int(id_area),)
+            )
+            if not area:
+                return []
+
+            tanda_tanya = ", ".join("?" for _ in area)
+            cursor.execute(
+                f"""
+                SELECT p.TicketID
+                FROM dbo.AscendTicketSplitPlan p
+                JOIN dbo.Users u ON u.UserID = p.CreatedBy
+                WHERE u.CompAreaID IN ({tanda_tanya})
+                  AND ISNULL(p.PendingStatus, '') <> 'MENUNGGU_DO2'
+                """,
+                *area,
+            )
+
+        return [int(row[0]) for row in cursor.fetchall()]
+    finally:
+        koneksi.close()

@@ -239,26 +239,20 @@ def api_plat_lookup():
                              ip_address=request.remote_addr)
 
     row = cari_transaksi_aktif(no_plat=no_plat)
-    if row:
-        if (
-            row.id_alur is not None
-            and row.id_alur == alur.id_alur_kode("POS_SAJA")
-        ):
-            return jsonify({
-                "error": (
-                    f"{no_plat} tercatat masuk lewat Pos Security "
-                    "(tanpa tiket timbang). Catat keluar di Logbook dulu."
-                )
-            }), 400
 
+    if (
+        row
+        and row.id_alur is not None
+        and row.id_alur == alur.id_alur_kode("POS_SAJA")
+    ):
         return jsonify({
             "error": (
-                f"Truk {no_plat} masih memiliki tiket lokal "
-                f"{row.no_tiket} yang belum selesai."
+                f"{no_plat} tercatat masuk lewat Pos Security "
+                "(tanpa tiket timbang). Catat keluar di Logbook dulu."
             )
-        }), 409
+        }), 400
 
-    # Tidak ada tiket lokal aktif; cari tiket Ascend yang masih berjalan.
+    # Cari Ascend lebih dulu agar tiket lokal aktif tidak menutupi tiket Ascend.
     try:
         tiket_ascend = db_ascend.cari_tiket_ascend_berdasarkan_plat(no_plat)
     except Exception:
@@ -269,6 +263,15 @@ def api_plat_lookup():
         return jsonify({
             "error": "Tiket Ascend belum dapat diperiksa. Coba lagi beberapa saat."
         }), 503
+
+    if row and tiket_ascend:
+        return jsonify({
+            "error": (
+                f"Plat {no_plat} memiliki tiket aktif lokal "
+                f"{row.no_tiket} dan tiket Ascend "
+                f"{tiket_ascend['no_tiket']}. Periksa konflik tiket sebelum melanjutkan."
+            )
+        }), 409
 
     if tiket_ascend:
         associate = " · ".join(
@@ -298,6 +301,14 @@ def api_plat_lookup():
             "driver": None,
             "kendaraan_blacklist": blacklist,
         }), 200
+
+    if row:
+        return jsonify({
+            "error": (
+                f"Truk {no_plat} masih memiliki tiket lokal "
+                f"{row.no_tiket} yang belum selesai."
+            )
+        }), 409
     # Belum ada tiket aktif: nomor tiket cuma "dipesan", belum di-INSERT
     riwayat = cari_riwayat_driver_by_plat(no_plat)
     driver_info = serialisasi_driver(riwayat)
