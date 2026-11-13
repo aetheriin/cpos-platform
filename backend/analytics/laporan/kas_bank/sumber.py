@@ -23,6 +23,7 @@ import pandas as pd
 
 from inti import konfigurasi
 from inti.db import get_connection
+from inti.nama import orang
 from inti.perusahaan import lokasi_perusahaan
 
 from . import ledger
@@ -286,6 +287,12 @@ def kurs_internet(kode, mulai, akhir, baca=None):
     return s.reindex(s.index.union(hari)).sort_index().ffill().reindex(hari)
 
 
+def _pembuat(s):
+    """Nama pembuat voucher dirapikan (spasi, huruf besar-kecil) supaya 'andre' dan 'ANDRE' jadi satu pilihan filter."""
+    t = _teks(s)
+    return t.where(t == KOSONG, orang(t))
+
+
 def _teks(s):
     t = s.astype("string").str.strip()
     return t.where(t.notna() & (t != ""), KOSONG).astype(str)
@@ -338,7 +345,7 @@ def bersihkan_mutasi(raw, masukan=None, erp=None, tahunan=None, internet=None):
         "mitra": _teks(raw["AssociateName"]),
         "nilai": angka("Amount"),
         "keterangan": _teks(raw["Remarks"]),
-        "pembuat": _teks(raw["VoucherCreateBy"]),
+        "pembuat": _pembuat(raw["VoucherCreateBy"]),
         "awal": raw["IsOB"].fillna(False).astype(bool),
         "periode": raw["__periode"],
         "urut": range(len(raw)),

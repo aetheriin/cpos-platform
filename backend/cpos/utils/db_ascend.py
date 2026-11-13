@@ -255,7 +255,55 @@ def baca_berat_tiket_ascend(no_tiket):
     finally:
         koneksi.close()
 
-def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator):
+def baca_hasil_split_ascend(ticket_id):
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute(
+            """
+            SELECT SPDO, [Step], DateTimeOut, Splitted, Void
+            FROM dbo.PALM_Tickets
+            WHERE TicketID = ?
+            """,
+            int(ticket_id),
+        )
+        induk = cursor.fetchone()
+        if not induk:
+            return None
+
+        cursor.execute(
+            """
+            SELECT TicketID, TicketNo, SPDO, Netto, [Step]
+            FROM dbo.PALM_Tickets
+            WHERE ParentTicketID = ?
+              AND ISNULL([Void], 0) = 0
+            ORDER BY TicketID
+            """,
+            int(ticket_id),
+        )
+        anak = [
+            {
+                "ticket_id": int(row[0]),
+                "no_tiket": str(row[1] or "").strip(),
+                "no_do": str(row[2] or "").strip(),
+                "berat_netto": float(row[3] or 0),
+                "step": int(row[4] or 0),
+            }
+            for row in cursor.fetchall()
+        ]
+
+        return {
+            "no_do1": str(induk[0] or "").strip(),
+            "step": int(induk[1] or 0),
+            "datetimeout": induk[2],
+            "splitted": bool(induk[3]),
+            "void": bool(induk[4]),
+            "anak": anak,
+        }
+    finally:
+        koneksi.close()
+
+def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
     """Simpan timbang ke Ascend melalui USP_PALM_Tickets_Update."""
     koneksi = _koneksi()
     try:
@@ -295,7 +343,7 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator):
 
         bruto = Decimal(str(nilai("Bruto", 0) or 0))
         tara = Decimal(str(nilai("Tara", 0) or 0))
-        now = datetime.now()
+        now = waktu_timbang or datetime.now()
         spdo2 = ""
 
         if step == 0:

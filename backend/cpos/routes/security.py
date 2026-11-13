@@ -274,14 +274,6 @@ def ascend_buat_tiket():
             return jsonify({"error": "Pilih Associate dari daftar Ascend."}), 400
         if not mill_valid:
             return jsonify({"error": "Pilih Mill dari daftar Ascend."}), 400
-
-    try:
-        do2_dipilih = db_ascend.cari_pasangan_do2_ascend(
-            ticket_type,
-            no_do,
-        )
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 409
     
     try:
         tiket = db_ascend.buat_tiket_kosong(
@@ -295,7 +287,7 @@ def ascend_buat_tiket():
         db_ascend_split.simpan_pasangan_do2(
             tiket["ticket_id"],
             tiket["ticket_no"],
-            do2_dipilih["no_do"] if do2_dipilih else "",
+            "",
             int(current_user.id),
         )
     except Exception:

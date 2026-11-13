@@ -6,6 +6,7 @@ from flask import Flask, g, jsonify, request, redirect, session
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 from extensions import STATIC_DIR, TEMPLATE_DIR, login_manager
+from utils.ascend_pending import mulai_worker_timbang_pending
 from utils.auth import User
 from utils.db_utils import get_user_by_id
 from utils.serial_reader import mulai_pembacaan_serial
@@ -109,7 +110,8 @@ def jalankan_layanan_latar():
     pindahkan_upload_lama()
     mulai_pembacaan_serial()
     mulai_pembersihan_berkala()
-    from utils import face_cache       # embedding wajah dimuat duluan supaya scan pertama tidak lebih lambat
+    mulai_worker_timbang_pending()       # embedding wajah dimuat duluan supaya scan pertama tidak lebih lambat
+    from utils import face_cache
     threading.Thread(target=face_cache.panaskan, daemon=True).start()
 
 

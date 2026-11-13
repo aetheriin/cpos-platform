@@ -3,15 +3,13 @@ from utils.db_utils import get_connection
 
 
 def simpan_pasangan_do2(ticket_id, ticket_no, no_do2, created_by=None):
-    """Simpan DO2 pasangan untuk TicketID Ascend."""
+    """Buat atau perbarui rencana pasangan DO2; DO2 boleh belum tersedia."""
     ticket_id = int(ticket_id)
     ticket_no = (ticket_no or "").strip()
     no_do2 = (no_do2 or "").strip().upper()
 
     if not ticket_no:
         raise ValueError("Nomor tiket Ascend wajib diisi.")
-    if not no_do2:
-        raise ValueError("DO kedua wajib dipilih.")
     if len(no_do2) > 50:
         raise ValueError("Nomor DO kedua maksimal 50 karakter.")
 
@@ -20,15 +18,31 @@ def simpan_pasangan_do2(ticket_id, ticket_no, no_do2, created_by=None):
         cursor = koneksi.cursor()
         cursor.execute(
             """
-            INSERT INTO dbo.AscendTicketSplitPlan
-                (TicketID, TicketNo, NoDO2, CreatedBy)
-            VALUES (?, ?, ?, ?)
+            UPDATE dbo.AscendTicketSplitPlan
+            SET TicketNo = ?,
+                NoDO2 = ?,
+                CreatedBy = COALESCE(?, CreatedBy)
+            WHERE TicketID = ?
             """,
-            ticket_id,
             ticket_no,
             no_do2,
             int(created_by) if created_by is not None else None,
+            ticket_id,
         )
+
+        if cursor.rowcount == 0:
+            cursor.execute(
+                """
+                INSERT INTO dbo.AscendTicketSplitPlan
+                    (TicketID, TicketNo, NoDO2, CreatedBy)
+                VALUES (?, ?, ?, ?)
+                """,
+                ticket_id,
+                ticket_no,
+                no_do2,
+                int(created_by) if created_by is not None else None,
+            )
+
         koneksi.commit()
     except Exception:
         koneksi.rollback()
@@ -147,6 +161,86 @@ def simpan_timbang_akhir_pending(
             "operator_id": int(operator_id),
             "status": "MENUNGGU_DO2",
         }
+    except Exception:
+        koneksi.rollback()
+        raise
+    finally:
+        koneksi.close()
+
+def daftar_timbang_akhir_pending():
+    koneksi = get_connection()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute(
+            """
+            SELECT TOP (100)
+                TicketID AS ticket_id,
+                TicketNo AS ticket_no,
+                PendingFinalScaleKg AS berat_akhir,
+                PendingFinalAt AS waktu_timbang,
+                PendingFinalBy AS operator_id
+            FROM dbo.AscendTicketSplitPlan
+            WHERE PendingStatus = 'MENUNGGU_DO2'
+              AND PendingFinalScaleKg IS NOT NULL
+            ORDER BY PendingFinalAt, TicketID
+            """
+        )
+        kolom = [item[0] for item in cursor.description]
+        return [dict(zip(kolom, row)) for row in cursor.fetchall()]
+    finally:
+        koneksi.close()
+
+
+def catat_percobaan_timbang_pending(ticket_id, alasan):
+    koneksi = get_connection()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute(
+            """
+            UPDATE dbo.AscendTicketSplitPlan
+            SET PendingAttempts = ISNULL(PendingAttempts, 0) + 1,
+                PendingLastError = ?
+            WHERE TicketID = ?
+              AND PendingStatus = 'MENUNGGU_DO2'
+            """,
+            str(alasan or "")[:1000],
+            int(ticket_id),
+        )
+        koneksi.commit()
+    except Exception:
+        koneksi.rollback()
+        raise
+    finally:
+        koneksi.close()
+
+
+def selesaikan_timbang_pending(ticket_id, no_do2=None):
+    no_do2 = (no_do2 or "").strip().upper()
+    status = "SELESAI_SPLIT" if no_do2 else "SELESAI_TANPA_SPLIT"
+
+    koneksi = get_connection()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute(
+            """
+            UPDATE dbo.AscendTicketSplitPlan
+            SET NoDO2 = CASE WHEN ? <> '' THEN ? ELSE NoDO2 END,
+                PendingStatus = ?,
+                PendingLastError = NULL,
+                PendingCompletedAt = SYSDATETIME()
+            WHERE TicketID = ?
+              AND PendingFinalScaleKg IS NOT NULL
+            """,
+            no_do2,
+            no_do2,
+            status,
+            int(ticket_id),
+        )
+        if cursor.rowcount != 1:
+            raise RuntimeError(
+                f"Status timbang tertunda TicketID {ticket_id} tidak berhasil diperbarui."
+            )
+        koneksi.commit()
     except Exception:
         koneksi.rollback()
         raise
