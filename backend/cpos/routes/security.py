@@ -13,11 +13,8 @@ from utils.db_organisasi import daftar_lokasi
 from utils.keamanan import id_pos
 from utils.upload_utils import simpan_upload, simpan_frames, hapus_file
 from utils.db_utils import (
-    cari_transaksi_aktif, buat_transaksi_full, get_history_driver,
-    get_driver_by_id, cari_driver_by_nik, cek_nik_ada, cari_wajah_mirip_driver,
-    insert_driver, update_driver_dengan_audit, get_kendaraan_by_plat, get_semua_supplier, get_semua_produk,
-    cari_riwayat_driver_by_plat, get_supir_kendaraan
-)
+    get_history_driver,get_driver_by_id, cari_driver_by_nik, cek_nik_ada, cari_wajah_mirip_driver,
+    insert_driver, update_driver_dengan_audit, get_kendaraan_by_plat, get_supir_kendaraan )
 from utils.serializers import serialisasi_driver
 from utils.audit_utils import catat_security_audit
 from utils.personel_utils import format_nama_personel, nik_valid
@@ -136,11 +133,7 @@ def security_supir_terakhir():
                 }
             })
 
-    # Jika belum ada supir yang terdaftar pada kendaraan, pakai riwayat tiket timbang.
-    row = cari_riwayat_driver_by_plat(no_plat)
-    return jsonify({
-        "driver": serialisasi_driver(row) if row else None
-    })
+    return jsonify({"driver": None})
 
 PRODUK_MANUAL_ASCEND = {
     "Produk": {
