@@ -555,7 +555,7 @@ CREATE TABLE dbo.DOTransport (
     PriceTransport   DECIMAL(14, 2) NULL,               -- ongkos angkut per kg
     CONSTRAINT CK_DOTrans_Mode CHECK (TransportMode IN ('PENGIRIM', 'PENERIMA', 'PIHAK_KETIGA')),
     CONSTRAINT CK_DOTrans_ThirdParty CHECK ((TransportMode = 'PIHAK_KETIGA' AND (TransportID IS NOT NULL OR AscendTransportID IS NOT NULL))
-                                            OR (TransportMode <> 'PIHAK_KETIGA' AND TransportID IS NULL AND AscendTransportID IS NULL)),
+                                            OR (TransportMode <> 'PIHAK_KETIGA' AND TransportID IS NULL AND AscendTransportID IS NULL))
 );
 CREATE UNIQUE INDEX UX_DOTransport_Legacy ON dbo.DOTransport (DeliveryOrderID, TransportMode, TransportID) WHERE AscendTransportID IS NULL;
 CREATE UNIQUE INDEX UX_DOTransport_Ascend ON dbo.DOTransport (DeliveryOrderID, TransportMode, AscendTransportID) WHERE AscendTransportID IS NOT NULL;
