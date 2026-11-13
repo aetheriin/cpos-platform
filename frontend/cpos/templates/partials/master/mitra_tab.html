@@ -1,7 +1,7 @@
 {% from "partials/layout/_macros.html" import section_header %}
 <div data-tab-content="mitra" class="hidden">
-    <div class="filter-bar"><p class="text-sm text-slate-500">Data read-only dari Ascend. Tidak ada supplier lokal CPOS.</p><div class="flex-1"></div>
-        <input type="text" id="cariMitra" placeholder="Cari kode / nama" class="input-field w-64" data-on-input="cariMitra" data-arg="$value">
+    <div class="filter-bar"><p class="text-sm text-slate-500">Read-only dari Ascend. Daftar ini tidak membaca atau mengubah master Supplier lokal CPOS.</p><div class="flex-1"></div>
+        <input type="text" id="cariMitra" placeholder="Cari ID, kode, atau nama Ascend" class="input-field w-64" data-on-input="cariMitra" data-arg="$value">
     </div>
     <div class="section-box">{{ section_header('master-customer-ascend', 'Customer Ascend') }}
         <div class="section-body overflow-x-auto"><table class="w-full text-left text-sm"><thead class="table-header-row"><tr><th class="table-cell">ID Ascend</th><th class="table-cell">Kode</th><th class="table-cell">Nama Customer</th></tr></thead>
