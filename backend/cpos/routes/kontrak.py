@@ -36,7 +36,9 @@ def _json_do(d):
 def kontrak_halaman():
     """Semua level bisa melihat; tambah / ubah sesuai Admin › Hak Akses (dicek juga di API)."""
     pt = company_user(current_user.id)
-    customer_list = db_ascend.daftar_master_customer()\n    angkutan_list = db_ascend.daftar_master_pengangkutan()\n    produk_list = db_ascend.daftar_master_produk("Produk")
+    customer_list = db_ascend.daftar_master_customer()
+    angkutan_list = db_ascend.daftar_master_pengangkutan()
+    produk_list = db_ascend.daftar_master_produk("Produk")
     return render_template("kontrak/kontrak.html", halaman="kontrak", jenis_list=db.JENIS_VALID,
                            boleh_ubah=boleh("KONTRAK_DO"),
                            customer_list=[m for m in mitra if m["peran"] == "CUSTOMER"],
