@@ -1108,10 +1108,23 @@ def daftar_master_pengangkutan():
 
 
 def daftar_master_produk(ticket_type):
-    """Produk unik dari DO outstanding Ascend sesuai jenis tiket."""
+    """Nama produk unik dari DO Outstanding Ascend sesuai jenis tiket.
+
+    Daftar ini mengikuti produk yang tersedia pada DO yang masih outstanding,
+    bukan tabel Product lokal CPOS. TBS tetap disediakan sebagai pilihan jenis
+    tiket TBS Luar meskipun belum ada DO outstanding yang mengembalikannya.
+    """
     if ticket_type not in ("Produk", "TBSLuar"):
         raise ValueError("Jenis tiket harus Produk atau TBS Luar.")
-    nama = sorted({str(row.get("produk") or "").strip() for row in daftar_do(ticket_type) if row.get("produk")})
-    if ticket_type == "TBSLuar" and "TBS" not in {x.upper() for x in nama}:
-        nama.append("TBS")
+
+    nama_per_kunci = {}
+    for row in daftar_do(ticket_type):
+        nama = str(row.get("produk") or "").strip()
+        if nama:
+            nama_per_kunci.setdefault(nama.casefold(), nama)
+
+    if ticket_type == "TBSLuar":
+        nama_per_kunci.setdefault("tbs", "TBS")
+
+    nama = sorted(nama_per_kunci.values(), key=lambda nilai: (nilai.casefold(), nilai))
     return [{"nama_produk": p, "jenis_tiket": ticket_type} for p in nama]
