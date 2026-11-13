@@ -153,7 +153,11 @@ def do_simpan():
         if db.no_kontrak_dipakai(d["no_kontrak"], kecuali_do=id_do):
             raise ValueError(f"No Kontrak {d['no_kontrak']} sudah punya DO (1 kontrak = 1 DO)")
         angkutan = _angkutan_form(d["qty_kg"])
-        # Blacklist Ascend akan dicek melalui identitas eksternal pada tahap refactor blacklist.\n        db.simpan_do(id_do, d, angkutan, current_user.id)
+        for ident in [d["ascend_customer_id"], *[x["ascend_transport_id"] for x in angkutan if x["ascend_transport_id"]]]:
+            nama_bl = supplier_ascend_diblacklist(ident)
+            if nama_bl:
+                raise ValueError(f"{nama_bl} sedang diblacklist. Kontrak / DO tidak bisa disimpan.")
+        db.simpan_do(id_do, d, angkutan, current_user.id)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     return jsonify({"message": f"DO {d['no_do']} berhasil disimpan"})
