@@ -1071,3 +1071,47 @@ def daftar_shipper_kendaraan(ticket_type, id_do=None, associate_id=None):
         return list(hasil.values())
     finally:
         koneksi.close()
+
+# ===== REFERENSI MASTER ASCEND (read-only) =====
+def daftar_master_customer():
+    """Customer Ascend untuk Data Master CPOS; sumber AR_Customers."""
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute("""
+            SELECT CustomerID, CustomerCode, CustomerName
+            FROM dbo.AR_Customers
+            ORDER BY CustomerName
+        """)
+        return [{"id": int(r[0]), "kode": str(r[1] or "").strip(), "nama": str(r[2] or "").strip(), "jenis": "Customer"}
+                for r in cursor.fetchall()]
+    finally:
+        koneksi.close()
+
+
+def daftar_master_pengangkutan():
+    """Pengangkutan Ascend yang benar-benar terhubung ke DO/vehicle."""
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute("""
+            SELECT DISTINCT s.SupplierID, s.SupplierCode, s.SupplierName
+            FROM dbo.AP_Suppliers s
+            WHERE EXISTS (SELECT 1 FROM dbo.PALM_DOTransport dot WHERE dot.ShipperID = s.SupplierID)
+               OR EXISTS (SELECT 1 FROM dbo.PALM_ExternalVehicles ev WHERE ev.SupplierID = s.SupplierID)
+            ORDER BY s.SupplierName
+        """)
+        return [{"id": int(r[0]), "kode": str(r[1] or "").strip(), "nama": str(r[2] or "").strip(), "jenis": "Pengangkutan"}
+                for r in cursor.fetchall()]
+    finally:
+        koneksi.close()
+
+
+def daftar_master_produk(ticket_type):
+    """Produk unik dari DO outstanding Ascend sesuai jenis tiket."""
+    if ticket_type not in ("Produk", "TBSLuar"):
+        raise ValueError("Jenis tiket harus Produk atau TBS Luar.")
+    nama = sorted({str(row.get("produk") or "").strip() for row in daftar_do(ticket_type) if row.get("produk")})
+    if ticket_type == "TBSLuar" and "TBS" not in {x.upper() for x in nama}:
+        nama.append("TBS")
+    return [{"nama_produk": p, "jenis_tiket": ticket_type} for p in nama]
