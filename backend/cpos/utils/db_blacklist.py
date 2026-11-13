@@ -22,10 +22,10 @@ def get_riwayat_blacklist(tipe=None, cari=None, batas=200, status="AKTIF", pt=No
                df.file_path AS file_surat_blacklist, COALESCE(dk.DocDate, CAST(b.CreateDate AS DATE)) AS tgl_blacklist,
                b.BlacklistDoc AS id_dokumen, b.CreateDate AS created_at, u.Nama AS oleh, lv.LevelDetCode AS role_oleh, ar.AreaName AS area_oleh,
                p.UserID AS id_personel, p.Nama AS nama_personel, k.NoVehicle AS no_plat, b.NoVehicle AS no_plat_terkait,
-               c.SupplierName AS customer_terkait, a.SupplierName AS pengangkutan_terkait,
+               COALESCE(c.SupplierName, b.CustomerNameSnapshot) AS customer_terkait, COALESCE(a.SupplierName, b.TransportNameSnapshot) AS pengangkutan_terkait,
                b.RevokeDate AS dicabut_at, b.RevokeReason AS alasan_cabut, uc.Nama AS dicabut_oleh, p.NoKTP AS nik, b.AliasName AS nama_alias, b.CategoryCode AS kategori,
                CASE b.TargetType WHEN 'KENDARAAN' THEN 'Kendaraan' WHEN 'SUPPLIER' THEN 'Supplier' ELSE CASE b.CategoryCode WHEN 'KARYAWAN' THEN N'Karyawan' WHEN 'DRIVER' THEN N'Supir' WHEN 'TAMU' THEN N'Tamu' END END AS nama_kategori,
-               sb.SupplierID AS id_supplier, sb.SupplierCode AS kode_supplier, sb.SupplierName AS nama_supplier,
+               COALESCE(sb.SupplierID, b.AscendSupplierID, b.AscendCustomerID, b.AscendTransportID) AS id_supplier, COALESCE(sb.SupplierCode, b.SupplierCodeSnapshot, b.CustomerCodeSnapshot, b.TransportCodeSnapshot) AS kode_supplier, COALESCE(sb.SupplierName, b.SupplierNameSnapshot, b.CustomerNameSnapshot, b.TransportNameSnapshot) AS nama_supplier,
                arb.AreaName AS lokasi_blacklist, cb.CompID AS company_blacklist,
                COALESCE(sp.waktu, sk.waktu) AS scan_terakhir, sca.AreaName AS lokasi_scan, csa.CompID AS company_scan,
                (SELECT TOP 1 pg.RequestID AS id_pengajuan FROM ApprovalRequest pg WHERE pg.RequestType = 'BLACKLIST_HAPUS' AND pg.Status = 'MENUNGGU'
@@ -70,8 +70,8 @@ def get_riwayat_blacklist(tipe=None, cari=None, batas=200, status="AKTIF", pt=No
         pola = f"%{cari}%"
         sql += """ AND (p.Nama LIKE ? OR p.NoKTP LIKE ?
                         OR k.NoVehicle LIKE ? OR dk.DocNumber LIKE ? OR b.AliasName LIKE ? OR b.NoVehicle LIKE ?
-                        OR sb.SupplierName LIKE ? OR sb.SupplierCode LIKE ?)"""
-        params += [pola] * 8
+                        OR sb.SupplierName LIKE ? OR sb.SupplierCode LIKE ? OR b.SupplierNameSnapshot LIKE ? OR b.CustomerNameSnapshot LIKE ? OR b.TransportNameSnapshot LIKE ? OR b.SupplierCodeSnapshot LIKE ? OR b.CustomerCodeSnapshot LIKE ? OR b.TransportCodeSnapshot LIKE ?)"""
+        params += [pola] * 14
     sql += " ORDER BY b.CreateDate DESC, b.BlacklistID DESC"
     conn = get_connection()
     cursor = conn.cursor()
@@ -315,9 +315,9 @@ def nama_target(tipe, id_target):
 
 def get_blacklist(id_blacklist):
     rows = _query_satu("""SELECT b.BlacklistID AS id_blacklist, b.TargetType AS tipe_entitas, b.UserID AS id_personel, b.IDVehicle AS id_kendaraan, b.RevokeDate AS dicabut_at,
-                                 COALESCE(p.Nama, k.NoVehicle, sb.SupplierName) AS nama, p.NoKTP AS nik, b.SupplierID AS id_supplier, b.AliasName AS nama_alias, b.CategoryCode AS kategori,
-                                 COALESCE(b.NoVehicle, k.NoVehicle) AS no_plat, c.SupplierName AS supplier,
-                                 a.SupplierName AS pengangkutan
+                                 COALESCE(p.Nama, k.NoVehicle, sb.SupplierName, b.SupplierNameSnapshot, b.CustomerNameSnapshot, b.TransportNameSnapshot) AS nama, p.NoKTP AS nik, COALESCE(b.SupplierID,b.AscendSupplierID,b.AscendCustomerID,b.AscendTransportID) AS id_supplier, b.AliasName AS nama_alias, b.CategoryCode AS kategori,
+                                 COALESCE(b.NoVehicle, k.NoVehicle) AS no_plat, COALESCE(c.SupplierName,b.CustomerNameSnapshot) AS supplier,
+                                 COALESCE(a.SupplierName,b.TransportNameSnapshot) AS pengangkutan
                           FROM Blacklist b LEFT JOIN Users p ON p.UserID = b.UserID
                           LEFT JOIN DetailVehicle k ON k.IDVehicle = b.IDVehicle
                           LEFT JOIN Supplier sb ON sb.SupplierID = b.SupplierID
