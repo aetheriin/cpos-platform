@@ -1,5 +1,9 @@
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
+CREATE UNIQUE INDEX UX_Blacklist_AscendCustomer_Active ON dbo.Blacklist(AscendCustomerID) WHERE RevokeDate IS NULL AND AscendCustomerID IS NOT NULL;
+CREATE UNIQUE INDEX UX_Blacklist_AscendSupplier_Active ON dbo.Blacklist(AscendSupplierID) WHERE RevokeDate IS NULL AND AscendSupplierID IS NOT NULL;
+CREATE UNIQUE INDEX UX_Blacklist_AscendTransport_Active ON dbo.Blacklist(AscendTransportID) WHERE RevokeDate IS NULL AND AscendTransportID IS NOT NULL;
+
 GO
 IF DB_ID('CPOS') IS NULL CREATE DATABASE CPOS;
 GO

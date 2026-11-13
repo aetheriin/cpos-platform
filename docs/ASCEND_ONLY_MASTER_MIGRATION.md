@@ -94,3 +94,5 @@ Audit awal menunjukkan ketergantungan masih aktif pada Kontrak/DO, Blacklist, ti
 - Penyimpanan pengajuan blacklist Ascend (approval, revoke, banner, UI) masih harus direfactor menyeluruh sebelum blacklist lokal ditinggalkan; utility ini baru dipakai oleh validasi Kontrak/DO customer dan pihak ketiga.
 
 - Riwayat blacklist dan detail pengajuan kini menampilkan nama/kode snapshot untuk supplier/customer/pengangkutan Ascend saat master lokal tidak tersedia. Pencarian blacklist juga mencakup snapshot nama dan kode.
+
+- Migration 032 menambahkan unique filtered index untuk satu blacklist aktif per ID Customer/Supplier/Pengangkutan Ascend. Migration memeriksa duplikasi dan THROW (tidak menghapus data) bila ada konflik.
