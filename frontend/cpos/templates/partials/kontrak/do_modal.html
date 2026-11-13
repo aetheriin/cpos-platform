@@ -26,14 +26,14 @@
                 <label class="field-label" for="doCustomer">Customer</label>
                 <select id="doCustomer" name="id_customer" required class="input-field" data-on-change="labelCaraAngkut">
                     <option value="">-- Pilih --</option>
-                    {% for c in customer_list %}<option value="{{ c.id_supplier }}">{{ c.nama_supplier }}</option>{% endfor %}
+                    {% for c in customer_list %}<option value="{{ c.id }}">{{ c.kode }} · {{ c.nama }}</option>{% endfor %}
                 </select>
             </div>
             <div>
                 <label class="field-label" for="doProduk">Produk</label>
                 <select id="doProduk" name="id_produk" required class="input-field">
                     <option value="">-- Pilih --</option>
-                    {% for p in produk_list %}<option value="{{ p.id_produk }}">{{ p.nama_produk }}</option>{% endfor %}
+                    {% for p in produk_list %}<option value="{{ p.nama_produk }}">{{ p.nama_produk }}</option>{% endfor %}
                 </select>
             </div>
             <div class="grid grid-cols-2 gap-2">
