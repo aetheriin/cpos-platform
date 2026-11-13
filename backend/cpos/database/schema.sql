@@ -383,7 +383,9 @@ CREATE TABLE dbo.Product (
 -- Harga per produk per tanggal (disiapkan untuk keuangan; belum ada layar). Void, bukan dihapus
 CREATE TABLE dbo.ProductPrice (
     ProductPriceID  BIGINT IDENTITY(1,1) PRIMARY KEY,
-    ProductID       INT NOT NULL CONSTRAINT FK_ProductPrice_Product REFERENCES dbo.Product (ProductID),
+    ProductID       INT NULL, -- legacy
+    ProductNameSnapshot NVARCHAR(150) NULL,
+    AscendProductCode NVARCHAR(100) NULL,
     CompID          VARCHAR(5) NULL CONSTRAINT FK_ProductPrice_Company REFERENCES dbo.Company (CompID),  -- NULL = semua perusahaan
     PriceDate       DATE NOT NULL,
     Price           DECIMAL(14, 2) NOT NULL,
@@ -461,8 +463,11 @@ CREATE TABLE dbo.VehicleContract (
     VehicleContractID  INT IDENTITY(1,1) PRIMARY KEY,
     ContractNumber     VARCHAR(50) NULL,
     IDVehicle          INT NOT NULL CONSTRAINT FK_VC_Vehicle REFERENCES dbo.DetailVehicle (IDVehicle),
-    SupplierID         INT NOT NULL CONSTRAINT FK_VC_Supplier REFERENCES dbo.Supplier (SupplierID),
-    ProductID          INT NULL CONSTRAINT FK_VC_Product REFERENCES dbo.Product (ProductID),
+    SupplierID         INT NULL, -- legacy
+    ProductID          INT NULL, -- legacy
+    AscendSupplierID INT NULL,
+    SupplierNameSnapshot NVARCHAR(150) NULL,
+    ProductNameSnapshot NVARCHAR(150) NULL,
     TransactionType    VARCHAR(20) NULL,
     StartDate          DATE NOT NULL,
     EndDate            DATE NULL,
@@ -536,7 +541,10 @@ CREATE TABLE dbo.DOTransport (
     DOTransportID    INT IDENTITY(1,1) PRIMARY KEY,
     DeliveryOrderID  INT NOT NULL CONSTRAINT FK_DOTrans_DO REFERENCES dbo.DeliveryOrder (DeliveryOrderID),
     TransportMode    VARCHAR(15) NOT NULL,
-    TransportID      INT NULL CONSTRAINT FK_DOTrans_Supplier REFERENCES dbo.Supplier (SupplierID),
+    TransportID      INT NULL, -- legacy SupplierID
+    AscendTransportID INT NULL,
+    TransportNameSnapshot NVARCHAR(150) NULL,
+    TransportCodeSnapshot NVARCHAR(100) NULL,
     DOQty            DECIMAL(14, 2) NULL,               -- alokasi (opsional), total <= Contract.ContractQty
     PriceTransport   DECIMAL(14, 2) NULL,               -- ongkos angkut per kg
     CONSTRAINT CK_DOTrans_Mode CHECK (TransportMode IN ('PENGIRIM', 'PENERIMA', 'PIHAK_KETIGA')),
@@ -551,8 +559,12 @@ CREATE TABLE dbo.Invoice (
     InvoiceNumber    VARCHAR(100) NOT NULL CONSTRAINT UX_Invoice_No UNIQUE,
     InvoiceDate      DATE NOT NULL,
     DeliveryOrderID  INT NOT NULL CONSTRAINT FK_Invoice_DO REFERENCES dbo.DeliveryOrder (DeliveryOrderID),
-    SupplierID       INT NOT NULL CONSTRAINT FK_Invoice_Supplier REFERENCES dbo.Supplier (SupplierID),
-    TransportID      INT NULL CONSTRAINT FK_Invoice_Transport REFERENCES dbo.Supplier (SupplierID),
+    SupplierID       INT NULL, -- legacy
+    TransportID      INT NULL, -- legacy
+    AscendSupplierID INT NULL,
+    SupplierNameSnapshot NVARCHAR(150) NULL,
+    AscendTransportID INT NULL,
+    TransportNameSnapshot NVARCHAR(150) NULL,
     PriceTransport   DECIMAL(14, 2) NULL,
     DOQty            DECIMAL(14, 2) NULL,
     DOShipped        DECIMAL(14, 2) NULL,
@@ -675,7 +687,9 @@ GO
 CREATE TABLE dbo.FlowRule (
     FlowRuleID  INT IDENTITY(1,1) PRIMARY KEY,
     CompAreaID  BIGINT NOT NULL CONSTRAINT FK_FlowRule_Area REFERENCES dbo.CompanyArea (CompAreaID),
-    ProductID   INT NULL CONSTRAINT FK_FlowRule_Product REFERENCES dbo.Product (ProductID),
+    ProductID   INT NULL, -- legacy
+    ProductNameSnapshot NVARCHAR(150) NULL,
+    AscendProductCode NVARCHAR(100) NULL,
     FlowID      INT NOT NULL CONSTRAINT FK_FlowRule_Flow REFERENCES dbo.Flow (FlowID),
     Active      BIT NOT NULL CONSTRAINT DF_FlowRule_Active DEFAULT (1),
     CreateBy    BIGINT NULL CONSTRAINT FK_FlowRule_User REFERENCES dbo.Users (UserID),
@@ -847,12 +861,18 @@ CREATE TABLE dbo.Blacklist (
     NewValue       NVARCHAR(MAX) NULL CONSTRAINT CK_Blacklist_New CHECK (NewValue IS NULL OR ISJSON(NewValue) = 1),
     UserID         BIGINT NULL CONSTRAINT FK_Blacklist_User REFERENCES dbo.Users (UserID),
     IDVehicle      INT NULL CONSTRAINT FK_Blacklist_Vehicle REFERENCES dbo.DetailVehicle (IDVehicle),
-    SupplierID     INT NULL CONSTRAINT FK_Blacklist_Supplier REFERENCES dbo.Supplier (SupplierID),
+    SupplierID     INT NULL, -- legacy
+    AscendSupplierID INT NULL,
+    SupplierNameSnapshot NVARCHAR(150) NULL,
+    AscendCustomerID INT NULL,
+    CustomerNameSnapshot NVARCHAR(150) NULL,
+    AscendTransportID INT NULL,
+    TransportNameSnapshot NVARCHAR(150) NULL,
     Reason         VARCHAR(500) NOT NULL,
     CreateBy       BIGINT NOT NULL CONSTRAINT FK_Blacklist_CreateBy REFERENCES dbo.Users (UserID),
     NoVehicle      VARCHAR(15) NULL,                  -- plat saat itu (supir / tamu)
-    CustomerID     INT NULL CONSTRAINT FK_Blacklist_Customer REFERENCES dbo.Supplier (SupplierID),
-    TransportID    INT NULL CONSTRAINT FK_Blacklist_Transport REFERENCES dbo.Supplier (SupplierID),
+    CustomerID     INT NULL, -- legacy
+    TransportID    INT NULL, -- legacy
     RevokeDate     DATETIME NULL,
     RevokeBy       BIGINT NULL CONSTRAINT FK_Blacklist_RevokeBy REFERENCES dbo.Users (UserID),
     RevokeReason   NVARCHAR(500) NULL,
@@ -862,7 +882,7 @@ CREATE TABLE dbo.Blacklist (
     CONSTRAINT CK_Blacklist_Target CHECK (
         (TableName = 'Users'         AND UserID IS NOT NULL AND IDVehicle IS NULL AND SupplierID IS NULL) OR
         (TableName = 'DetailVehicle' AND IDVehicle IS NOT NULL AND UserID IS NULL AND SupplierID IS NULL) OR
-        (TableName = 'Supplier'      AND SupplierID IS NOT NULL AND UserID IS NULL AND IDVehicle IS NULL))
+        (TableName = 'Supplier'      AND (SupplierID IS NOT NULL OR AscendSupplierID IS NOT NULL OR AscendCustomerID IS NOT NULL OR AscendTransportID IS NOT NULL) AND UserID IS NULL AND IDVehicle IS NULL))
 );
 CREATE INDEX IX_Blacklist_User    ON dbo.Blacklist (UserID)    WHERE UserID IS NOT NULL;
 CREATE INDEX IX_Blacklist_Vehicle ON dbo.Blacklist (IDVehicle) WHERE IDVehicle IS NOT NULL;
