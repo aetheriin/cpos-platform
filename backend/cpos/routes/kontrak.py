@@ -10,6 +10,7 @@ from utils import db_ascend
 from utils.hak_akses import izin, boleh, halaman as lihat_halaman
 from utils.area import company_user
 from utils.db_organisasi import daftar_company
+from utils.db_blacklist import supplier_ascend_diblacklist
 
 kontrak_bp = Blueprint("kontrak", __name__)
 
