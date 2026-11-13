@@ -8,9 +8,9 @@
 {% block info_bar_script %}{% endblock %}
 
 {% block tab_header %}
-    {{ judul_halaman('Data Master', 'Supir, kendaraan, supplier, produk, mata uang, bank & kurs', 'fa-database') }}
+    {{ judul_halaman('Data Master', 'Supir, kendaraan, customer, pengangkutan, produk, mata uang, bank & kurs', 'fa-database') }}
     {{ tab_header(tab_lihat([('personel', 'Supir', 'MASTER_DRIVER'), ('kendaraan', 'Kendaraan', 'MASTER_KENDARAAN'),
-                            ('mitra', 'Supplier', 'MASTER_MITRA'), ('produk', 'Produk', 'MASTER_PRODUK'),
+                            ('mitra', 'Customer & Pengangkutan', 'MASTER_MITRA'), ('produk', 'Produk Ascend', 'MASTER_PRODUK'),
                             ('keuangan', 'Mata Uang & Bank', 'MASTER_KEUANGAN'), ('kurs', 'Kurs Mata Uang', 'MASTER_KURS')]), 'hidden') }}
 {% endblock %}
 
@@ -26,7 +26,6 @@
 {% block modals %}
     {% if boleh_ubah %}{% include "partials/face_recognition/personel_modals.html" %}{% endif %}
     {% if boleh_kendaraan %}{% include "partials/master/kendaraan_modal.html" %}{% endif %}
-    {% if hak.mitra.tambah or hak.mitra.ubah or hak.produk.tambah or hak.produk.ubah %}{% include "partials/master/mitra_produk_modals.html" %}{% endif %}
     {% include "partials/master/referensi_modal.html" %}
     {% if hak.kurs.tambah %}{% include "partials/master/kurs_modal.html" %}{% endif %}
 {% endblock %}
