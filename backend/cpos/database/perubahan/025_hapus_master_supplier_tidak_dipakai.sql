@@ -1,8 +1,8 @@
 /* Hapus master klasifikasi/relasi perusahaan Supplier yang tidak lagi dipakai.
-   Supplier tetap dipertahankan sebagai referensi internal transaksi & blacklist.
-   Jalankan setelah backup database CPOS. */
+   Supplier tetap dipertahankan sementara sebagai referensi internal transaksi & blacklist.
+   Target database mengikuti database bisnis CPOS saat ini, yaitu Main. Jalankan setelah backup database Main. */
 SET NOCOUNT ON;
-USE [CPOS];
+USE [Main];
 GO
 
 /* SupplierGroup hanya dipakai oleh kolom Supplier.SupplierGroupID */
