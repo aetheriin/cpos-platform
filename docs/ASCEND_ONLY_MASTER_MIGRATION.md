@@ -71,3 +71,12 @@ Audit awal menunjukkan ketergantungan masih aktif pada Kontrak/DO, Blacklist, ti
 - Validasi penyimpanan DO mengecek blacklist berdasarkan identitas Ascend melalui fungsi baru `supplier_ascend_diblacklist`. Ini hanya memeriksa blacklist yang sudah mempunyai kolom AscendID; pengajuan blacklist supplier baru masih perlu migrasi UI/API tersendiri.
 - Form dan API memerlukan migration 026, 028, dan 029 sebelum deploy. Belum diuji terhadap SQL Server/Ascend runtime; jangan deploy ke server aktif sebelum test DB salinan.
 - Belum selesai: edit DO lama dengan pengangkut lokal yang belum punya AscendID perlu penanganan UI snapshot; modul blacklist supplier masih menerima target Supplier lokal; transaksi WeightBridge, VehicleContract, Invoice, ProductPrice, FlowRule, Lab/standar mutu, dan laporan masih perlu refactor sebelum master lokal dihapus.
+
+
+## Schema & migration groundwork — 14 November 2026 (lanjutan)
+
+- `backend/cpos/database/schema.sql` diperbarui untuk schema fresh: kolom referensi Supplier/Product pada Contract, DOTransport, VehicleContract, Invoice, WeightBridge, ProductPrice, FlowRule menjadi nullable legacy; kolom Ascend ID dan snapshot tersedia. Blacklist mendukung entitas supplier/customer/transport Ascend tanpa SupplierID lokal. Constraint DOTransport mengizinkan pihak ketiga dengan AscendTransportID.
+- Migration 026 tetap additive untuk snapshot (tidak melepas FK transaksi). Ditambahkan CustomerCodeSnapshot, Product/Transport code snapshots, AscendProductCode, dan constraint Blacklist Target yang menerima ID Ascend.
+- Migration 030 dibuat untuk pelepasan FK Supplier/Product serta nullable legacy ID pada VehicleContract, Invoice, WeightBridge, ProductPrice/FlowRule. **JANGAN jalankan 030 sebelum seluruh code modul terkait menggunakan Ascend ID/snapshot**; saat ini belum siap deployment.
+- Migration 028/029 khusus Contract/DO. 026/028/029/030 belum dijalankan pada database.
+- Risiko yang masih harus dibereskan: schema fresh vs migration existing harus diuji di database clone; schema.sql tidak otomatis mengubah DB existing; constraint unik DOTransport perlu review saat TransportID NULL; implementasi blacklist CRUD harus mengisi Ascend ID/snapshot; WeightBridge dan Invoice/VehicleContract/ProductPrice/FlowRule belum sepenuhnya refactor.
