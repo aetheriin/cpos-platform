@@ -84,3 +84,5 @@ Audit awal menunjukkan ketergantungan masih aktif pada Kontrak/DO, Blacklist, ti
 - Risiko yang masih harus dibereskan: schema fresh vs migration existing harus diuji di database clone; schema.sql tidak otomatis mengubah DB existing; constraint unik DOTransport perlu review saat TransportID NULL; implementasi blacklist CRUD harus mengisi Ascend ID/snapshot; WeightBridge dan Invoice/VehicleContract/ProductPrice/FlowRule belum sepenuhnya refactor.
 
 - Schema fresh DOTransport memakai dua filtered unique index (`UX_DOTransport_Legacy`, `UX_DOTransport_Ascend`) supaya beberapa pengangkut pihak ketiga Ascend dapat disimpan dalam satu DO; migration 031 mengganti constraint unique lama. Jalankan 031 setelah 026, sebelum penggunaan DO baru Ascend di DB existing.
+
+- Migration 026 juga mengganti check constraint DOTransport agar mode PIHAK_KETIGA boleh memakai AscendTransportID (TransportID lokal NULL). Migration 031 mengganti unique constraint lama dengan filtered unique index dual identity; urutan existing DB: 026 → 028/029 → 031 (dan 030 hanya setelah modul transaksi lain siap).
