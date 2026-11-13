@@ -104,7 +104,7 @@ function tambahBarisAngkut(a) {
     const isi = a && a.cara_angkut ? a : { cara_angkut: 'PIHAK_KETIGA' };
     const baris = document.getElementById('tplBarisAngkut').content.firstElementChild.cloneNode(true);
     baris.querySelector('[name=angkut_cara]').value = isi.cara_angkut;
-    baris.querySelector('[name=angkut_nama]').value = isi.nama_pengangkutan || '';
+    baris.querySelector('[name=angkut_id]').value = isi.id_pengangkutan || isi.ascend_transport_id || '';
     baris.querySelector('[name=angkut_qty]').value = isi.qty_kg ?? '';
     baris.querySelector('[name=angkut_ongkos]').value = isi.ongkos_per_kg ?? '';
     document.getElementById('daftarAngkutDO').appendChild(baris);
