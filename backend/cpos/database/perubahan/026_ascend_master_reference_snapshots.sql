@@ -21,6 +21,14 @@ GO
 
 BEGIN TRANSACTION;
 
+-- Customer/Supplier/Product code snapshots + Ascend product code.
+IF COL_LENGTH('dbo.Contract', 'CustomerCodeSnapshot') IS NULL ALTER TABLE dbo.Contract ADD CustomerCodeSnapshot NVARCHAR(100) NULL;
+IF COL_LENGTH('dbo.Contract', 'AscendProductCode') IS NULL ALTER TABLE dbo.Contract ADD AscendProductCode NVARCHAR(100) NULL;
+IF COL_LENGTH('dbo.Contract', 'ProductCodeSnapshot') IS NULL ALTER TABLE dbo.Contract ADD ProductCodeSnapshot NVARCHAR(100) NULL;
+IF COL_LENGTH('dbo.DOTransport', 'TransportCodeSnapshot') IS NULL ALTER TABLE dbo.DOTransport ADD TransportCodeSnapshot NVARCHAR(100) NULL;
+IF COL_LENGTH('dbo.ProductPrice', 'AscendProductCode') IS NULL ALTER TABLE dbo.ProductPrice ADD AscendProductCode NVARCHAR(100) NULL;
+IF COL_LENGTH('dbo.FlowRule', 'AscendProductCode') IS NULL ALTER TABLE dbo.FlowRule ADD AscendProductCode NVARCHAR(100) NULL;
+
 -- Kontrak/DO
 IF COL_LENGTH('dbo.Contract', 'AscendCustomerID') IS NULL
     ALTER TABLE dbo.Contract ADD AscendCustomerID INT NULL;
