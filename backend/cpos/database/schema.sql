@@ -322,27 +322,12 @@ CREATE TABLE dbo.BankDetails (
     Active                BIT NOT NULL CONSTRAINT DF_BankDet_Active DEFAULT (1)
 );
 GO
--- Jenis mitra (Customer, Pengangkutan); satu supplier boleh lebih dari satu jenis (SupplierTypeDetails)
-CREATE TABLE dbo.SupplierType (
-    SupplierTypeID  INT IDENTITY(1,1) PRIMARY KEY,
-    TypeCode        VARCHAR(20)   NOT NULL CONSTRAINT UX_SupplierType_Code UNIQUE,
-    NameType        NVARCHAR(255) NOT NULL,
-    Description     NVARCHAR(255) NULL,
-    Active          BIT NOT NULL CONSTRAINT DF_SupplierType_Active DEFAULT (1)
-);
-CREATE TABLE dbo.SupplierGroup (
-    SupplierGroupID  INT IDENTITY(1,1) PRIMARY KEY,
-    NameGroup        NVARCHAR(255) NOT NULL,
-    Description      NVARCHAR(255) NULL,
-    Active           BIT NOT NULL CONSTRAINT DF_SupplierGroup_Active DEFAULT (1)
-);
--- Supplier = mitra (customer / pengangkutan). BlacklistID: disiapkan untuk Supplier Blacklist
+-- Supplier lokal = referensi relasional transaksi/blacklist; master identitas berasal dari Ascend.
 CREATE TABLE dbo.Supplier (
     SupplierID            INT IDENTITY(1,1) PRIMARY KEY,
     SupplierCode          VARCHAR(20)   NOT NULL CONSTRAINT UX_Supplier_Code UNIQUE,
     SupplierName          VARCHAR(100)  NOT NULL,
     SupplierAddress       NVARCHAR(255) NULL,
-    SupplierGroupID       INT NULL CONSTRAINT FK_Supplier_Group REFERENCES dbo.SupplierGroup (SupplierGroupID),
     BankAccountDetailsID  BIGINT NULL CONSTRAINT FK_Supplier_BankDet REFERENCES dbo.BankDetails (BankAccountDetailsID),
     BlacklistID           BIGINT NULL,
     Description           NVARCHAR(255) NULL,
@@ -1466,7 +1451,6 @@ INSERT INTO dbo.VehicleType (VehicleTypeCode, NameType) VALUES
     ('TRUK', N'Truk'), ('DUMP_TRUK', N'Dump Truk'), ('TANGKI', N'Truk Tangki'), ('PICKUP', N'Pick-up'), ('LAINNYA', N'Lainnya');
 INSERT INTO dbo.Currency (CurrencyCode, CurrencyName, CurrencyRate) VALUES
     ('IDR', N'Rupiah Indonesia', 1), ('USD', N'U.S. Dollar', NULL), ('MYR', N'Ringgit Malaysia', NULL), ('EUR', N'Euro', NULL);
-INSERT INTO dbo.SupplierType (TypeCode, NameType) VALUES ('CUSTOMER', N'Customer / Supplier'), ('PENGANGKUTAN', N'Pengangkutan');
 INSERT INTO dbo.ProductType (ProductTypeCode, ProductTypeName) VALUES ('TBS', N'TBS'), ('PRODUK_PKS', N'Produk PKS');
 -- Alur tahap (migrasi 012; unit timbang dihapus di migrasi 041)
 INSERT INTO dbo.FlowStage (StageCode, StageName, SortOrder) VALUES
