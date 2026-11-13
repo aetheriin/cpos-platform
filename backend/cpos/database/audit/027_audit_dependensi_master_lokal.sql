@@ -55,30 +55,25 @@ FROM @Target WHERE OBJECT_ID(N'dbo.' + TableName, N'U') IS NOT NULL;
 IF @sql <> N'' EXEC sys.sp_executesql @sql;
 
 -- 5) Snapshot kosong pada transaksi historis (sebelum migrasi 026).
-SELECT N'Contract.CustomerNameSnapshot' AS CheckName, COUNT_BIG(*) AS RowsMissing
-FROM dbo.Contract WHERE CustomerNameSnapshot IS NULL AND SupplierID IS NOT NULL
-UNION ALL SELECT N'Contract.ProductNameSnapshot', COUNT_BIG(*)
-FROM dbo.Contract WHERE ProductNameSnapshot IS NULL AND ProductID IS NOT NULL
-UNION ALL SELECT N'DOTransport.TransportNameSnapshot', COUNT_BIG(*)
-FROM dbo.DOTransport WHERE TransportNameSnapshot IS NULL AND TransportID IS NOT NULL
-UNION ALL SELECT N'VehicleContract.SupplierNameSnapshot', COUNT_BIG(*)
-FROM dbo.VehicleContract WHERE SupplierNameSnapshot IS NULL AND SupplierID IS NOT NULL
-UNION ALL SELECT N'VehicleContract.ProductNameSnapshot', COUNT_BIG(*)
-FROM dbo.VehicleContract WHERE ProductNameSnapshot IS NULL AND ProductID IS NOT NULL
-UNION ALL SELECT N'Invoice.SupplierNameSnapshot', COUNT_BIG(*)
-FROM dbo.Invoice WHERE SupplierNameSnapshot IS NULL AND SupplierID IS NOT NULL
-UNION ALL SELECT N'Invoice.TransportNameSnapshot', COUNT_BIG(*)
-FROM dbo.Invoice WHERE TransportNameSnapshot IS NULL AND TransportID IS NOT NULL
-UNION ALL SELECT N'WeightBridge.CustomerNameSnapshot', COUNT_BIG(*)
-FROM dbo.WeightBridge WHERE CustomerNameSnapshot IS NULL AND SupplierID IS NOT NULL
-UNION ALL SELECT N'WeightBridge.ProductNameSnapshot', COUNT_BIG(*)
-FROM dbo.WeightBridge WHERE ProductNameSnapshot IS NULL AND ProductID IS NOT NULL
-UNION ALL SELECT N'WeightBridge.TransportNameSnapshot', COUNT_BIG(*)
-FROM dbo.WeightBridge WHERE TransportNameSnapshot IS NULL AND TransportID IS NOT NULL
-UNION ALL SELECT N'ProductPrice.ProductNameSnapshot', COUNT_BIG(*)
-FROM dbo.ProductPrice WHERE ProductNameSnapshot IS NULL AND ProductID IS NOT NULL
-UNION ALL SELECT N'FlowRule.ProductNameSnapshot', COUNT_BIG(*)
-FROM dbo.FlowRule WHERE ProductNameSnapshot IS NULL AND ProductID IS NOT NULL;
+IF OBJECT_ID('dbo.Contract','U') IS NOT NULL AND COL_LENGTH('dbo.Contract','CustomerNameSnapshot') IS NOT NULL
+ SELECT N'Contract.CustomerNameSnapshot' AS CheckName, COUNT_BIG(*) AS RowsMissing FROM dbo.Contract WHERE CustomerNameSnapshot IS NULL AND SupplierID IS NOT NULL
+ UNION ALL SELECT N'Contract.ProductNameSnapshot', COUNT_BIG(*) FROM dbo.Contract WHERE ProductNameSnapshot IS NULL AND ProductID IS NOT NULL;
+IF OBJECT_ID('dbo.DOTransport','U') IS NOT NULL AND COL_LENGTH('dbo.DOTransport','TransportNameSnapshot') IS NOT NULL
+ SELECT N'DOTransport.TransportNameSnapshot' AS CheckName, COUNT_BIG(*) AS RowsMissing FROM dbo.DOTransport WHERE TransportNameSnapshot IS NULL AND TransportID IS NOT NULL;
+IF OBJECT_ID('dbo.VehicleContract','U') IS NOT NULL AND COL_LENGTH('dbo.VehicleContract','SupplierNameSnapshot') IS NOT NULL
+ SELECT N'VehicleContract.SupplierNameSnapshot' AS CheckName, COUNT_BIG(*) AS RowsMissing FROM dbo.VehicleContract WHERE SupplierNameSnapshot IS NULL AND SupplierID IS NOT NULL
+ UNION ALL SELECT N'VehicleContract.ProductNameSnapshot', COUNT_BIG(*) FROM dbo.VehicleContract WHERE ProductNameSnapshot IS NULL AND ProductID IS NOT NULL;
+IF OBJECT_ID('dbo.Invoice','U') IS NOT NULL AND COL_LENGTH('dbo.Invoice','SupplierNameSnapshot') IS NOT NULL
+ SELECT N'Invoice.SupplierNameSnapshot' AS CheckName, COUNT_BIG(*) AS RowsMissing FROM dbo.Invoice WHERE SupplierNameSnapshot IS NULL AND SupplierID IS NOT NULL
+ UNION ALL SELECT N'Invoice.TransportNameSnapshot', COUNT_BIG(*) FROM dbo.Invoice WHERE TransportNameSnapshot IS NULL AND TransportID IS NOT NULL;
+IF OBJECT_ID('dbo.WeightBridge','U') IS NOT NULL AND COL_LENGTH('dbo.WeightBridge','CustomerNameSnapshot') IS NOT NULL
+ SELECT N'WeightBridge.CustomerNameSnapshot' AS CheckName, COUNT_BIG(*) AS RowsMissing FROM dbo.WeightBridge WHERE CustomerNameSnapshot IS NULL AND SupplierID IS NOT NULL
+ UNION ALL SELECT N'WeightBridge.ProductNameSnapshot', COUNT_BIG(*) FROM dbo.WeightBridge WHERE ProductNameSnapshot IS NULL AND ProductID IS NOT NULL
+ UNION ALL SELECT N'WeightBridge.TransportNameSnapshot', COUNT_BIG(*) FROM dbo.WeightBridge WHERE TransportNameSnapshot IS NULL AND TransportID IS NOT NULL;
+IF OBJECT_ID('dbo.ProductPrice','U') IS NOT NULL AND COL_LENGTH('dbo.ProductPrice','ProductNameSnapshot') IS NOT NULL
+ SELECT N'ProductPrice.ProductNameSnapshot' AS CheckName, COUNT_BIG(*) AS RowsMissing FROM dbo.ProductPrice WHERE ProductNameSnapshot IS NULL AND ProductID IS NOT NULL;
+IF OBJECT_ID('dbo.FlowRule','U') IS NOT NULL AND COL_LENGTH('dbo.FlowRule','ProductNameSnapshot') IS NOT NULL
+ SELECT N'FlowRule.ProductNameSnapshot' AS CheckName, COUNT_BIG(*) AS RowsMissing FROM dbo.FlowRule WHERE ProductNameSnapshot IS NULL AND ProductID IS NOT NULL;
 
 -- 6) Legacy key wajib masih terisi (harus 0 sebelum migrasi nullable/FK dilepas).
 SELECT N'Contract.SupplierID NOT NULL' AS CheckName, COUNT_BIG(*) AS RowsBlocking
