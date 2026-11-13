@@ -145,7 +145,8 @@ def do_simpan():
             raise ValueError("Berlaku sampai tidak boleh sebelum tanggal DO")
         customers={x["id"]:x for x in db_ascend.daftar_master_customer()}
         if d["ascend_customer_id"] not in customers: raise ValueError("Pilih customer dari master Ascend")
-        d["customer_name"]=customers[d["ascend_customer_id"]]["nama"]\n        d["customer_code"]=customers[d["ascend_customer_id"]]["kode"]
+        d["customer_name"]=customers[d["ascend_customer_id"]]["nama"]
+        d["customer_code"]=customers[d["ascend_customer_id"]]["kode"]
         produk={x["nama_produk"] for x in db_ascend.daftar_master_produk("Produk")}
         if d["product_name"] not in produk: raise ValueError("Pilih produk dari DO outstanding Ascend")
         if db.no_do_dipakai(d["no_do"], kecuali=id_do):
