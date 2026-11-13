@@ -174,6 +174,17 @@ def supplier_diblacklist(id_supplier):
     rows = _query_satu("SELECT SupplierName AS nama FROM Supplier WHERE SupplierID = ? AND BlacklistID IS NOT NULL", id_supplier)
     return rows[0]["nama"] if rows else None
 
+def supplier_ascend_diblacklist(id_ascend):
+    """Nama entitas Ascend bila blacklist aktif menyimpan ID eksternal tersebut."""
+    if not id_ascend:
+        return None
+    rows = _query_satu("""SELECT TOP 1 COALESCE(SupplierNameSnapshot, CustomerNameSnapshot, TransportNameSnapshot) AS nama
+                          FROM Blacklist
+                          WHERE RevokeDate IS NULL AND
+                           (AscendSupplierID = ? OR AscendCustomerID = ? OR AscendTransportID = ?)
+                          ORDER BY CreateDate DESC""", int(id_ascend), int(id_ascend), int(id_ascend))
+    return rows[0]["nama"] if rows else None
+
 def info_kendaraan(id_kendaraan):
     """Plat, supplier / pengangkutan / produk transaksi terakhir kendaraan (pengajuan blacklist kendaraan)."""
     rows = _query_satu("""SELECT k.NoVehicle AS no_plat, s.SupplierName AS customer_terakhir, a.SupplierName AS pengangkutan_terakhir,
