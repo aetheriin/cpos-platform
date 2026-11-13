@@ -12,7 +12,7 @@ from utils.db_utils import (
 from utils.serializers import serialisasi_tiket
 from utils.hak_akses import izin
 from utils.db_jembatan import jembatan_dipilih
-from utils import alur, db_kelebihan_do, log_aktivitas
+from utils import alur, db_kelebihan_do, log_aktivitas, db_ascend
 from utils.db_master import cek_kapasitas
 
 timbangan_bp = Blueprint('timbangan', __name__)
@@ -39,6 +39,26 @@ def timbang_reset():
 @timbangan_bp.route("/api/timbang/data/<no_tiket>")
 @login_required
 def timbang_data(no_tiket):
+    if request.args.get("sumber", "").upper() == "ASCEND":
+        try:
+            data = db_ascend.baca_berat_tiket_ascend(no_tiket)
+        except Exception:
+            logging.exception(
+                "Gagal membaca berat tiket Ascend %s",
+                no_tiket,
+            )
+            return jsonify({
+                "error": "Berat tiket Ascend belum dapat dibaca."
+            }), 503
+
+        if not data:
+            return jsonify({
+                "berat_bruto": None,
+                "berat_tara": None,
+                "berat_netto": None,
+            })
+
+        return jsonify(data)
     row = get_data_timbangan(no_tiket)
     if not row:
         return jsonify({"berat_bruto": None, "berat_tara": None, "berat_netto": None,
@@ -55,6 +75,32 @@ def _netto_akhir(row):
 @timbangan_bp.route("/api/timbang/scan-qr", methods=["POST"])
 @login_required
 def timbang_scan_qr():
+    try:
+        tiket_ascend = db_ascend.cari_tiket_ascend_berdasarkan_no_tiket(
+            request.form.get("no_tiket", "").strip()
+        )
+    except Exception:
+        logging.getLogger("weighbridge").exception(
+            "Gagal mencari tiket Ascend lewat scan QR"
+        )
+        return jsonify({
+            "error": "Tiket Ascend belum dapat diperiksa. Coba lagi."
+        }), 503
+
+    if tiket_ascend:
+        return jsonify({
+            "status": "ADA_TIKET",
+            "sumber": "ASCEND",
+            "no_tiket": tiket_ascend["no_tiket"],
+            "no_plat": tiket_ascend["no_plat"],
+            "no_do": tiket_ascend["no_do"],
+            "supplier": tiket_ascend["associate"],
+            "produk": tiket_ascend["produk"],
+            "ticket_type": tiket_ascend["ticket_type"],
+            "jenis_transaksi": tiket_ascend["jenis_transaksi"],
+            "id_supplier": None,
+            "driver": None,
+        }), 200
     row = cari_transaksi_aktif(no_tiket=request.form.get("no_tiket", "").strip())
     if not row:
         return jsonify({"error": "Tiket tidak ditemukan atau sudah selesai"}), 404
@@ -103,6 +149,43 @@ def timbang_simpan():
         return jsonify({"error": f"Berat {status['berat']:g} kg di bawah minimum {jembatan['berat_min_kg']:g} kg "
                                  f"(timbangan kosong / truk belum naik penuh)"}), 400
 
+    if request.form.get("sumber", "").upper() == "ASCEND":
+        try:
+            hasil = db_ascend.simpan_berat_tiket_ascend(
+                no_tiket,
+                status["berat"],
+                str(current_user.id),
+            )
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 409
+        except Exception:
+            logging.getLogger("weighbridge").exception(
+                "Gagal menyimpan timbang Ascend untuk tiket %s",
+                no_tiket,
+            )
+            return jsonify({
+                "error": (
+                    "Berat gagal disimpan ke Ascend. "
+                    "Periksa status tiket sebelum mencoba lagi."
+                )
+            }), 503
+
+        wajib_kembali_nol(jembatan["id_jembatan"])
+
+        if hasil["step"] == 1:
+            label = "Tara" if hasil["ticket_type"] == "Produk" else "Bruto"
+            pesan = f"Timbang pertama ({label}) tersimpan di Ascend."
+        else:
+            pesan = (
+                f"Timbang terakhir tersimpan di Ascend. "
+                f"Netto: {hasil['berat_netto']:,.0f} kg."
+            )
+
+        return jsonify({
+            "message": pesan,
+            "peringatan": [],
+            "kelebihan_do": None,
+        }), 200
     trx = cari_transaksi_aktif(no_tiket=no_tiket)
     data_lama = get_data_timbangan(no_tiket)
     if trx is None or data_lama is None:

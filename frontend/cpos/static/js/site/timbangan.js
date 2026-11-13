@@ -1,7 +1,7 @@
 let idSupplierAktif = null;
 let noTiketAktif = null;
 let jenisAktif = null;
-
+let sumberTiketAktif = null;
 // Label di atas angka berat: berat yang dikunci akan disimpan sebagai apa (aturan server: Pembelian & Penimbangan
 // saja ke-1 = bruto, ke-2 = tara; Penjualan kebalikannya). data = hasil /api/timbang/data, null = belum ada tiket.
 function aturLabelBerat(data) {
@@ -22,6 +22,7 @@ function aturLabelBerat(data) {
 window.addEventListener('platLookup', (e) => {
     const data = e.detail;
     if (data.status === 'ADA_TIKET') {
+        sumberTiketAktif = data.sumber || null;
         noTiketAktif = data.no_tiket;
         idSupplierAktif = data.id_supplier;
         jenisAktif = data.jenis_transaksi;
@@ -31,6 +32,7 @@ window.addEventListener('platLookup', (e) => {
         muatHistorySupplier(data.id_supplier);
         muatDataTimbanganTersimpan(data.no_tiket);
     } else {
+        sumberTiketAktif = null;
         noTiketAktif = null;
         idSupplierAktif = null;
         jenisAktif = null;
@@ -75,7 +77,7 @@ window.addEventListener('tabChange', e => {
 
 async function simpanHasilTimbangan(btn) {
     if (!noTiketAktif) { Notif.peringatan('Silakan pilih plat atau tiket pada kolom di atas'); return; }
-    const data = await denganTombol(btn, () => kirimForm('/api/timbang/simpan', { no_tiket: noTiketAktif }));
+    const data = await denganTombol(btn, () => kirimForm('/api/timbang/simpan', {no_tiket: noTiketAktif,sumber: sumberTiketAktif}));
     if (tampilkanHasil(data)) muatDataTimbanganTersimpan(noTiketAktif);
     (data.peringatan || []).forEach(p => Notif.peringatan(p));      // kapasitas jenis kendaraan (tidak menahan)
     const lebih = data.kelebihan_do;
@@ -90,7 +92,10 @@ async function simpanHasilTimbangan(btn) {
 }
 
 async function muatDataTimbanganTersimpan(noTiket) {
-    const data = await ambilJson(`/api/timbang/data/${encodeURIComponent(noTiket)}`);
+    const query = sumberTiketAktif === 'ASCEND' ? '?sumber=ASCEND' : '';
+    const data = await ambilJson(
+        `/api/timbang/data/${encodeURIComponent(noTiket)}${query}`
+    );
     if (data.error) { Notif.gagal(data.error); return; }
     const kgTeks = v => v == null ? '-' : Number(v).toLocaleString('id-ID');
     document.getElementById('tbBruto').textContent = kgTeks(data.berat_bruto);

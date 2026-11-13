@@ -3,7 +3,7 @@ Alamat RTSP memuat password kamera: ke browser hanya dikirim dalam bentuk tersam
 import re
 
 from utils.cache import cache_ttl
-from utils.db_utils import get_connection, _rows_to_dicts
+from utils.db_utils import query as _query, ubah as _ubah
 
 FACING = {"MASUK": "Menghadap kendaraan masuk", "KELUAR": "Menghadap kendaraan keluar"}
 VIEW_POSITION = {
@@ -13,28 +13,6 @@ VIEW_POSITION = {
     "KIRI": "Samping kiri",
     "ATAS": "Atas",
 }
-
-
-def _query(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        return _rows_to_dicts(cursor)
-    finally:
-        conn.close()
-
-
-def _ubah(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        n = cursor.rowcount
-        conn.commit()
-        return n
-    finally:
-        conn.close()
 
 
 def tutup_sandi(url):

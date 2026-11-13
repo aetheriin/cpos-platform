@@ -1,30 +1,12 @@
 """Jembatan timbang per area (Admin › Perangkat / Kios) dan penimbangan per tiket (migrasi 011)."""
+from functools import partial
 from utils.cache import cache_ttl
-from utils.db_utils import get_connection, _rows_to_dicts
+from utils.db_utils import query as _query, ubah
 
 COOKIE_JEMBATAN = "jembatan_timbang"
 
 
-def _query(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        return _rows_to_dicts(cursor)
-    finally:
-        conn.close()
-
-
-def _ubah(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        if cursor.rowcount == 0:
-            raise ValueError("Jembatan timbang tidak ditemukan")
-        conn.commit()
-    finally:
-        conn.close()
+_ubah = partial(ubah, pesan_kosong="Jembatan timbang tidak ditemukan")
 
 
 PROFIL = ("mode", "data_bits", "parity", "stop_bits", "format_data", "pola", "faktor", "toleransi_kg", "durasi_stabil",

@@ -38,7 +38,7 @@ from routes.pos import pos_bp
 from routes.analytics import analytics_bp
 from modules.rekapin import rekapin_bp
 from modules.item_request import item_request_bp
-from modules.item_dashboard.dashboarditem import item_dashboard_bp
+from modules.item_dashboard import item_dashboard_bp
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"),
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")

@@ -232,6 +232,36 @@ def _rows_to_dicts(cursor):
     columns = [c[0] for c in cursor.description]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
+
+def query(sql, *params):
+    """Jalankan SELECT / EXEC, kembalikan result set pertama yang berkolom sebagai list dict ([] bila tidak ada)."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, *params)
+        while cursor.description is None:
+            if not cursor.nextset():
+                return []
+        return _rows_to_dicts(cursor)
+    finally:
+        conn.close()
+
+
+def ubah(sql, *params, pesan_kosong=None):
+    """Jalankan INSERT / UPDATE / DELETE lalu commit; kembalikan jumlah baris yang kena.
+    pesan_kosong: ValueError dengan pesan itu (tanpa commit) bila tidak ada baris yang kena."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, *params)
+        n = cursor.rowcount
+        if n == 0 and pesan_kosong:
+            raise ValueError(pesan_kosong)
+        conn.commit()
+        return n
+    finally:
+        conn.close()
+
 # ----- Truk <-> Supir (tabel kendaraan_driver) -----
 
 def get_supir_kendaraan(id_kendaraan):

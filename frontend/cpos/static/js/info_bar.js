@@ -37,12 +37,19 @@ document.addEventListener('DOMContentLoaded', aturInfoBarPerTab);
 
 // Bruto / Tara / Netto tiket untuk info bar Security (sumber sama dengan tab Timbangan); tanpa tiket atau belum ditimbang = '-'
 let noTiketBerat = null;
-async function isiBeratInfoBar(noTiket) {
+async function isiBeratInfoBar(noTiket, sumber = null) {
     noTiketBerat = noTiket;
-    ['infoBruto', 'infoTara', 'infoNetto'].forEach(id => document.getElementById(id).value = '-');
+    ['infoBruto', 'infoTara', 'infoNetto'].forEach(
+        id => document.getElementById(id).value = '-'
+    );
     if (!noTiket) return;
-    const tb = await ambilJson(`/api/timbang/data/${encodeURIComponent(noTiket)}`);
-    if (tb.error || noTiketBerat !== noTiket) return;          // jawaban lama: plat sudah ganti
+
+    const query = sumber === 'ASCEND' ? '?sumber=ASCEND' : '';
+    const tb = await ambilJson(
+        `/api/timbang/data/${encodeURIComponent(noTiket)}${query}`
+    );
+
+    if (tb.error || noTiketBerat !== noTiket) return;
     const kg = v => v == null ? '-' : Number(v).toLocaleString('id-ID');
     document.getElementById('infoBruto').value = kg(tb.berat_bruto);
     document.getElementById('infoTara').value = kg(tb.berat_tara);
@@ -135,9 +142,8 @@ function terapkanHasilLookup(data) {
     tandaiBlacklistInfoBar([data.kendaraan_blacklist && 'Kendaraan', supirBlacklist && 'Supir'].filter(Boolean));
     tampilkanFotoDriver(data.driver ? data.driver.foto_path : null);
     isiBeratInfoBar(
-        data.status === 'ADA_TIKET' && data.sumber !== 'ASCEND'
-            ? data.no_tiket
-            : null
+        data.status === 'ADA_TIKET' ? data.no_tiket : null,
+        data.sumber
     );
 
     window.dispatchEvent(new CustomEvent('platLookup', { detail: data }));

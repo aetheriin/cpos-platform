@@ -1,7 +1,7 @@
 """Kontrak & DO (menu Kontrak & DO, diisi HO). 1 kontrak = 1 produk = 1 DO; 1 DO boleh beberapa pengangkut
 (do_pengangkutan: kendaraan PENGIRIM / PENERIMA sendiri, atau PIHAK_KETIGA). Security cukup mengetik No DO di Form,
 jenis transaksi / customer / produk terisi dan pengangkutan dipilih dari daftar DO itu (migrasi 013)."""
-from utils.db_utils import get_connection, _rows_to_dicts, get_semua_supplier
+from utils.db_utils import get_connection, get_semua_supplier, query as _query
 
 JENIS_VALID = ("PEMBELIAN", "PENJUALAN", "PENIMBANGAN_SAJA")
 CARA_ANGKUT = ("PENGIRIM", "PENERIMA", "PIHAK_KETIGA")
@@ -19,16 +19,6 @@ _SELECT = """SELECT o.DeliveryOrderID AS id_do, o.DONumber AS no_do, o.ContractI
              JOIN Supplier c ON c.SupplierID = k.SupplierID
              JOIN Product p ON p.ProductID = k.ProductID
              LEFT JOIN Company co ON co.CompID = k.CompID"""
-
-
-def _query(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        return _rows_to_dicts(cursor)
-    finally:
-        conn.close()
 
 
 def label_angkut(cara, jenis, nama_customer, nama_pengangkutan=None):

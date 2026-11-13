@@ -6,7 +6,7 @@ from utils.area import company_user
 from utils.cache import cache_ttl
 from utils.db_aktivitas import area_akun
 from utils.db_organisasi import company_area
-from utils.db_utils import get_connection, _rows_to_dicts
+from utils.db_utils import get_connection, _rows_to_dicts, query as _query
 from utils import jenis_orang
 
 JENIS = {
@@ -44,16 +44,6 @@ def pelaksana(jenis, saat_ditolak=None):
             _SAAT_DITOLAK[jenis] = saat_ditolak
         return fn
     return daftar
-
-
-def _query(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        return _rows_to_dicts(cursor)
-    finally:
-        conn.close()
 
 
 # ===== Alur berjenjang (migrasi 043) =====

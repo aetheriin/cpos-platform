@@ -3,7 +3,6 @@ Setujui / Tolak / Selesai untuk aksi). Cakupan perusahaan & area mengikuti user 
 from concurrent.futures import ThreadPoolExecutor
 import time
 from datetime import date, datetime, timedelta
-from calendar import monthrange
 import json
 
 import pyodbc
@@ -12,25 +11,9 @@ from flask_login import login_required, current_user
 
 from modules.rekapin import rekapin_bp, db
 from modules.rekapin import laporan_tbs, pramuat_tbs
-from utils import harga_sumber
-from utils import persetujuan
-from routes.dashboard import BATAS
-from utils.area import company_user
-from utils.db_organisasi import daftar_area, daftar_company
-from utils.db_dashboard import simpan_harga_banyak
+from utils import harga, persetujuan
+from utils.area import company_site
 from utils.hak_akses import izin, boleh, halaman as lihat_halaman, remah_menu
-
-def _company_rekap(user_id):
-    """Perusahaan untuk RekapIn (harga, laporan TBS): semua perusahaan aktif di Admin › Organisasi dalam cakupan user,
-    kecuali perusahaan yang areanya hanya kantor pusat (HO). Kodenya = CompName di Main.dbo.Company (ERP)."""
-    pt = company_user(user_id)
-    area = {}
-    for a in daftar_area():
-        if a["is_active"]:
-            area.setdefault(a["id_company"], []).append(a)
-    hanya_pusat = {c for c, isi in area.items() if all(a["is_pusat"] for a in isi)}
-    return [{"id_company": c["id_company"], "nama": c["nama"]} for c in daftar_company()
-            if c["is_active"] and c["id_company"] not in hanya_pusat and (pt is None or c["id_company"] in pt)]
 
 
 def _halaman(template, kode, **isi):
@@ -55,18 +38,18 @@ def _angka_id(teks):
 @login_required
 @lihat_halaman("RK_DASHBOARD")
 def dashboard():
-    company = _company_rekap(current_user.id)
+    company = company_site(current_user.id)
     kode = [c["id_company"] for c in company]
-    harga = db.daftar_harga(kode, batas=200)
+    daftar = harga.daftar(kode, batas=200)
     terbaru = {}
-    for h in harga:
+    for h in daftar:
         terbaru.setdefault(h["id_company"], h)
-    tren = db.tren_harga(kode)
+    tren = harga.tren(kode)
     hari = [date.today() - timedelta(days=i) for i in range(6, -1, -1)]
     seri = {c: {"cpo": [tren.get(c, {}).get(t, (None, None))[0] for t in hari],
                 "kernel": [tren.get(c, {}).get(t, (None, None))[1] for t in hari]} for c in tren}
     ringkas = db.ringkas_request(current_user.id)
-    return _halaman("dashboard", "RK_DASHBOARD", company=company, harga=harga[:6], jumlah_harga=len(harga),
+    return _halaman("dashboard", "RK_DASHBOARD", company=company, harga=daftar[:6], jumlah_harga=len(daftar),
                     terbaru=[(c, terbaru[c["id_company"]]) for c in company if c["id_company"] in terbaru],
                     hari=hari, seri=seri, ringkas=ringkas,
                     menunggu=db.daftar_request(current_user.id, "Pending")[:5],
@@ -292,28 +275,28 @@ def api_request_setujui_terpilih():
     return jsonify({"message": f"{n} persetujuan diproses"})
 
 
-# ===== Harga CPO & Kernel (dbo.DailyPrice atau tabel luar Main.dbo.HARGA: utils/harga_sumber) =====
+# ===== Harga CPO & Kernel (utils/harga.py, sama dengan Isi Harga di Dashboard) =====
 @rekapin_bp.route("/harga")
 @login_required
 @lihat_halaman("RK_HARGA")
 def halaman_harga():
-    return _halaman("harga", "RK_HARGA", company=_company_rekap(current_user.id),
+    return _halaman("harga", "RK_HARGA", company=company_site(current_user.id),
                     hak={a: boleh("RK_HARGA", a) for a in ("tambah", "ubah", "hapus")})
 
 
 @rekapin_bp.route("/api/harga")
 @login_required
 @izin("RK_HARGA", "lihat")
-@harga_sumber.tangani_galat
+@harga.tangani_galat
 def api_harga():
-    kode = [c["id_company"] for c in _company_rekap(current_user.id)]
+    kode = [c["id_company"] for c in company_site(current_user.id)]
     tanggal = request.args.get("tanggal") or ""
     try:
         tanggal = date.fromisoformat(tanggal) if tanggal else ""
     except ValueError:
         return jsonify({"error": "Tanggal tidak valid"}), 400
     batas = 1 if request.args.get("terakhir") == "1" else 500
-    rows = db.daftar_harga(kode, (request.args.get("company") or "").upper(), tanggal, batas=batas)
+    rows = harga.daftar(kode, (request.args.get("company") or "").upper(), tanggal, batas=batas)
     for r in rows:
         r["tanggal"] = r["tanggal"].isoformat()
         for k in ("harga_cpo", "harga_kernel", "oer_cpo", "biaya_olah", "qty_rsi"):
@@ -323,7 +306,7 @@ def api_harga():
 
 
 def _company_boleh(kode):
-    if kode not in {c["id_company"] for c in _company_rekap(current_user.id)}:
+    if kode not in {c["id_company"] for c in company_site(current_user.id)}:
         raise ValueError("Perusahaan tidak valid")
     return kode
 
@@ -331,7 +314,7 @@ def _company_boleh(kode):
 @rekapin_bp.route("/api/harga/simpan-batch", methods=["POST"])
 @login_required
 @izin("RK_HARGA", "tambah", "ubah")
-@harga_sumber.tangani_galat
+@harga.tangani_galat
 def api_harga_simpan():
     try:
         rows = json.loads(request.form.get("items") or "")
@@ -340,7 +323,7 @@ def api_harga_simpan():
     if not isinstance(rows, list) or not rows:
         return jsonify({"error": "Daftar harga sementara masih kosong"}), 400
 
-    companies = {c["id_company"].upper() for c in _company_rekap(current_user.id)}
+    companies = {c["id_company"].upper() for c in company_site(current_user.id)}
     items = []
     pasangan = set()
     try:
@@ -350,53 +333,36 @@ def api_harga_simpan():
             id_company = str(row.get("company") or "").strip().upper()
             if id_company not in companies:
                 raise ValueError("Perusahaan tidak valid")
-            tanggal = date.fromisoformat(str(row.get("tanggal") or ""))
-            if tanggal > date.today():
-                raise ValueError("Tanggal tidak boleh setelah hari ini")
-            key = (id_company, tanggal)
-            if key in pasangan:
+            tanggal = harga.tanggal(row.get("tanggal"))
+            if (id_company, tanggal) in pasangan:
                 raise ValueError(f"Perusahaan {id_company} dan tanggal {tanggal:%d-%m-%Y} tercatat lebih dari sekali")
-            pasangan.add(key)
-
-            nilai = []
-            for k in ("harga_cpo", "harga_kernel", "oer_cpo", "biaya_olah"):
-                value = row.get(k)
-                if isinstance(value, bool) or value is None or str(value).strip() == "":
-                    raise ValueError("Semua nilai harga wajib diisi")
-                number = float(str(value).replace(",", "."))
-                if not BATAS[k][0] <= number <= BATAS[k][1]:
-                    raise ValueError(f"Nilai {k} tidak valid")
-                nilai.append(number)
-
-            raw_qty = row.get("qty_rsi")
-            qty_rsi = None if raw_qty is None or str(raw_qty).strip() == "" else float(str(raw_qty).replace(",", "."))
-            if qty_rsi is not None and not 0 <= qty_rsi <= 1_000_000_000:
-                raise ValueError("Qty RSI tidak valid")
-            items.append((id_company, tanggal, nilai, qty_rsi))
-    except (TypeError, ValueError) as e:
-        return jsonify({"error": str(e) or "Tanggal atau nilai harga tidak valid"}), 400
+            pasangan.add((id_company, tanggal))
+            items.append((id_company, tanggal, [harga.angka(row.get(k), k) for k in harga.KOLOM],
+                          harga.angka(row.get("qty_rsi"), "qty_rsi", wajib=False)))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
 
     for id_company, tanggal, _, _ in items:
-        ada = db.harga_ada(id_company, tanggal)
+        ada = harga.ada(id_company, tanggal)
         if not boleh("RK_HARGA", "ubah" if ada else "tambah"):
             return jsonify({"error": f"Harga {id_company} {tanggal:%d-%m-%Y} sudah ada; Anda tidak punya hak mengubahnya" if ada
                             else f"Anda tidak punya hak menambah harga untuk {id_company}"}), 403
 
-    simpan_harga_banyak(items, current_user.id)
+    harga.simpan(items)
     return jsonify({"message": f"{len(items)} harga berhasil disimpan ke daftar harga"})
 
 
 @rekapin_bp.route("/api/harga/hapus", methods=["POST"])
 @login_required
 @izin("RK_HARGA", "hapus")
-@harga_sumber.tangani_galat
+@harga.tangani_galat
 def api_harga_hapus():
     try:
         id_company = _company_boleh((request.form.get("company") or "").strip().upper())
         tanggal = date.fromisoformat(request.form.get("tanggal", ""))
     except ValueError:
         return jsonify({"error": "Data harga tidak valid"}), 400
-    return _jalankan(lambda: db.hapus_harga(id_company, tanggal), f"Harga {id_company} {tanggal:%d-%m-%Y} dihapus")
+    return _jalankan(lambda: harga.hapus(id_company, tanggal),f"Harga {id_company} {tanggal:%d-%m-%Y} dihapus")
 
 
 # ===== Kategori Request =====
@@ -488,7 +454,7 @@ def _tbs_semua_perusahaan(jenis, lap, kode, tanggal, paksa=False):
 @lihat_halaman(lambda r: laporan_tbs.LAPORAN[r.view_args["jenis"]]["menu"])
 def laporan(jenis):
     lap = laporan_tbs.LAPORAN[jenis]
-    company = _company_rekap(current_user.id)
+    company = company_site(current_user.id)
     kode = [c["id_company"] for c in company]
     pilih = (request.args.get("company") or "").strip().upper() or pramuat_tbs.company_bawaan(kode)
     paksa_muat_ulang = request.args.get("muat_ulang") == "1"

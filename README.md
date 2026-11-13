@@ -85,7 +85,7 @@ Satu file untuk semua aplikasi, dan cukup berisi yang berbeda dari bawaan. Dafta
 | `SECRET_KEY`, `HASH_SECRET_KEY` | kunci CPOS (pindah PC: salin dari PC lama, harus sama) |
 | `DB_SERVER`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | database utama; dipakai CPOS, Deteksi, Analytics, dan modul RekapIn / Item Request |
 | `ANALYTICS_DB_USER`, `ANALYTICS_DB_PASSWORD` | akun database khusus Analytics (mis. `pythonReport`); kosong = sama dengan `DB_USER` |
-| `HARGA_TABEL` | harga CPO & Kernel dari tabel RekapIn, mis. `Main.dbo.HARGA` (kosong = `dbo.DailyPrice` CPOS) |
+| `HARGA_TABEL` | tabel harga CPO & Kernel untuk Dashboard dan RekapIn (bawaan `Main.dbo.HARGA`) |
 | `PORT` (5000) | port web CPOS; Analytics memeriksa login ke `http://127.0.0.1:<PORT>` |
 | `DETEKTOR_PORT` (8000) | port internal Deteksi Plat |
 | `FOLDER_FOTO` | folder foto plat (kosong = `backend\deteksi\foto_bukti`) |

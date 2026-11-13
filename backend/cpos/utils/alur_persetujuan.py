@@ -1,19 +1,10 @@
 from utils import hak_akses, jenis_orang
-from utils.db_utils import get_connection, _rows_to_dicts
+from utils.db_utils import get_connection, query as _query
 from utils.persetujuan import AKSI, GRUP_JENIS, JENIS, MENU_JENIS  
 
 KATEGORI_KENDARAAN = ("KENDARAAN", "Kendaraan")
 KATEGORI_SUPPLIER = ("SUPPLIER", "Supplier")
 MAKS_TAHAP = 10
-
-def _query(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        return _rows_to_dicts(cursor)
-    finally:
-        conn.close()
 
 def daftar_kategori():
     """Pilihan jenis target: jenis orang + Kendaraan + Supplier."""

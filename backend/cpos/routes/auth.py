@@ -38,11 +38,11 @@ def _pramuat_laporan(user):
     dibuka hasilnya sudah ada. Tidak pernah menggagalkan login."""
     try:
         from modules.rekapin import laporan_tbs, pramuat_tbs
-        from modules.rekapin.routes import _company_rekap
+        from utils.area import company_site
         from utils.hak_akses import boleh
         jenis = [j for j, lap in laporan_tbs.LAPORAN.items() if boleh(lap["menu"], "lihat", user=user)]
         if jenis:
-            pramuat_tbs.mulai(jenis, [c["id_company"] for c in _company_rekap(user.id)])
+            pramuat_tbs.mulai(jenis, [c["id_company"] for c in company_site(user.id)])
     except Exception:  # noqa: BLE001
         current_app.logger.exception("Pramuat laporan TBS gagal dimulai")
 

@@ -1,4 +1,4 @@
-// ===== REKAPIN: Harga CPO & Kernel (dbo.DailyPrice atau Main.dbo.HARGA, /rekapin/api/harga*) =====
+// ===== REKAPIN: Harga CPO & Kernel (utils/harga.py, /rekapin/api/harga*) =====
 let dataHarga = [];
 let hargaSementara = [];
 const KOLOM_HARGA = ['harga_cpo', 'harga_kernel', 'oer_cpo', 'biaya_olah', 'qty_rsi'];

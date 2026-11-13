@@ -11,7 +11,7 @@ import threading
 import time
 
 from utils.cache import cache_ttl
-from utils.db_utils import get_connection, _rows_to_dicts
+from utils.db_utils import get_connection, _rows_to_dicts, ubah
 
 POLA_ID_POS = re.compile(r"^[A-Z0-9_-]{2,30}$")
 
@@ -124,13 +124,5 @@ def set_aktif(id_pos, aktif):
 
 
 def _ubah(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        if cursor.rowcount == 0:
-            raise ValueError("Perangkat tidak ditemukan")
-        conn.commit()
-    finally:
-        conn.close()
+    ubah(sql, *params, pesan_kosong="Perangkat tidak ditemukan")
     hapus_cache()

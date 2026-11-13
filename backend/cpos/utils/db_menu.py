@@ -1,15 +1,6 @@
-from utils.db_utils import get_connection, _rows_to_dicts
+from utils.db_utils import get_connection, query as _query
 
 APLIKASI = ("CPOS", "ANALYTICS", "REKAPIN")
-
-def _query(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        return _rows_to_dicts(cursor)
-    finally:
-        conn.close()
 
 def daftar_menu():
     """Semua menu (termasuk nonaktif) urut seperti sidebar: [{id_menu, kode, nama, url, ikon, level, aplikasi, id_induk,

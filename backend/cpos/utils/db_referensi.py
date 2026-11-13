@@ -1,9 +1,10 @@
 """Data Master › tabel referensi sederhana (satu pola untuk semua): Mata Uang, Bank, Rekening, Jenis & Grup Supplier,
 Jenis Produk, Harga Produk, Kurs Mata Uang. Tiap jenis = satu tabel; kolom, validasi, pilihan, dan hak menunya dari REF di bawah.
 Kunci JSON memakai nama Indonesia (kunci field), kolom database memakai nama ERD."""
+from functools import partial
 from datetime import date
 
-from utils.db_utils import get_connection, _rows_to_dicts
+from utils.db_utils import get_connection, query as _query, ubah
 
 
 def F(kolom, kunci, label, tipe="teks", wajib=False, maks=None, unik=False, pilihan=None, kunci_tetap=False, positif=False):
@@ -81,16 +82,6 @@ PILIHAN = {
     "rekening": """SELECT d.BankAccountDetailsID AS id, b.BankName + ' · ' + d.BankAccountCode + ISNULL(' · ' + d.BankName, '') AS label
                    FROM BankDetails d JOIN Bank b ON b.BankAccountID = d.BankAccountID WHERE d.Active = 1 ORDER BY b.BankName""",
 }
-
-
-def _query(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        return _rows_to_dicts(cursor)
-    finally:
-        conn.close()
 
 
 def info(jenis):
@@ -223,13 +214,4 @@ def batalkan(jenis, id_baris, user_id):
           user_id, id_baris)
 
 
-def _ubah(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        if cursor.rowcount == 0:
-            raise ValueError("Data tidak ditemukan atau sudah diproses")
-        conn.commit()
-    finally:
-        conn.close()
+_ubah = partial(ubah, pesan_kosong="Data tidak ditemukan atau sudah diproses")

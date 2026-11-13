@@ -1,36 +1,13 @@
-"""RekapIn: data request operator & kategori (schema rekap), harga harian (dbo.DailyPrice), tiket timbang (Ascend / CPOS).
+"""RekapIn: data request operator & kategori (schema rekap), tiket timbang (Ascend / CPOS). Harga harian di utils/harga.py.
 
 "Operator" = orang yang melakukan kesalahan: karyawan mana pun dalam cakupan data menu Request Operator (dbo.fn_UserMenuScope),
 jadi aturan sama dengan halaman CPOS lain. Persetujuan request memakai Alur Persetujuan CPOS (jenis REKAP_*)."""
 import json
 from datetime import date, timedelta
 
-from utils import harga_sumber
-from utils.db_utils import get_connection, _rows_to_dicts
+from utils.db_utils import get_connection, query as _query, ubah as _ubah
 
 STATUS = ("Pending", "Approved", "Rejected", "Done")
-
-
-def _query(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        return _rows_to_dicts(cursor) if cursor.description else []
-    finally:
-        conn.close()
-
-
-def _ubah(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        n = cursor.rowcount
-        conn.commit()
-        return n
-    finally:
-        conn.close()
 
 
 # ===== Kategori kesalahan =====
@@ -222,55 +199,6 @@ def ringkas_request(id_user, hanya_operator=None):
     for r in _query(f"""SELECT r.Status, COUNT(*) AS n FROM dbo.OperatorRequest r JOIN Users o ON o.UserID = r.OperatorID
                         WHERE {syarat} GROUP BY r.Status""", id_user, *([hanya_operator] * 2 if hanya_operator else [])):
         hasil[r["Status"]] = r["n"]
-    return hasil
-
-
-# ===== Harga harian (dbo.DailyPrice, atau Main.dbo.HARGA bila diatur di .env: utils/harga_sumber; sama dengan Dashboard CPOS) =====
-def daftar_harga(companies, id_company="", tanggal="", batas=500):
-    """companies: daftar CompID yang boleh dilihat (None = semua)."""
-    if harga_sumber.aktif():
-        return harga_sumber.daftar(companies, id_company, tanggal, batas=batas)
-    syarat, args = [], []
-    if companies is not None:
-        if not companies:
-            return []
-        syarat.append(f"h.CompID IN ({', '.join('?' * len(companies))})")
-        args += sorted(companies)
-    if id_company:
-        syarat.append("h.CompID = ?")
-        args.append(id_company)
-    if tanggal:
-        syarat.append("h.PriceDate = ?")
-        args.append(tanggal)
-    return _query(f"""SELECT TOP {int(batas)} h.CompID AS id_company, c.CompName AS perusahaan, h.PriceDate AS tanggal,
-                             h.CPOPrice AS harga_cpo, h.KernelPrice AS harga_kernel, h.OERCPO AS oer_cpo,
-                             h.ProcessingCost AS biaya_olah, h.RSIQty AS qty_rsi, u.Nama AS oleh, h.UpdateDate AS diubah
-                      FROM DailyPrice h JOIN Company c ON c.CompID = h.CompID LEFT JOIN Users u ON u.UserID = h.UpdateBy
-                      {('WHERE ' + ' AND '.join(syarat)) if syarat else ''}
-                      ORDER BY h.PriceDate DESC, h.CompID""", *args)
-
-
-def harga_ada(id_company, tanggal):
-    if harga_sumber.aktif():
-        return harga_sumber.ada(id_company, tanggal)
-    return bool(_query("SELECT 1 AS x FROM DailyPrice WHERE CompID = ? AND PriceDate = ?", id_company, tanggal))
-
-
-def hapus_harga(id_company, tanggal):
-    if harga_sumber.aktif():
-        return harga_sumber.hapus(id_company, tanggal)
-    if not _ubah("DELETE FROM DailyPrice WHERE CompID = ? AND PriceDate = ?", id_company, tanggal):
-        raise ValueError("Data harga tidak ditemukan")
-
-
-def tren_harga(companies, hari=7):
-    """Harga CPO & kernel per perusahaan, hari terakhir: {id_company: {tanggal: (cpo, kernel)}}"""
-    rows = daftar_harga(companies, batas=1000)
-    batas = date.today() - timedelta(days=hari - 1)
-    hasil = {}
-    for r in rows:
-        if r["tanggal"] >= batas:
-            hasil.setdefault(r["id_company"], {})[r["tanggal"]] = (float(r["harga_cpo"]), float(r["harga_kernel"]))
     return hasil
 
 

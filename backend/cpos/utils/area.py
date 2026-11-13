@@ -1,5 +1,5 @@
 from flask import g, has_request_context
-from utils.db_organisasi import area_menu_user, area_per_company, cakupan_user, company_area
+from utils.db_organisasi import area_menu_user, area_per_company, cakupan_user, company_area, daftar_area, daftar_company
 
 def _kode_aktif():
     return getattr(g, "kode_menu", None) if has_request_context() else None
@@ -33,6 +33,21 @@ def company_user(user_id, kode_menu=None):
         return None
     peta = company_area()
     return frozenset(peta.get(a) for a in (area if isinstance(area, tuple) else (area,)) if peta.get(a))
+
+def company_site(user_id, harus_ada_site=False):
+    """PT aktif dalam cakupan user, selain PT yang areanya hanya kantor pusat: [{id_company, nama}].
+    Untuk harga dan laporan Pembelian TBS (kodenya = CompName di Main.dbo.Company ERP). harus_ada_site=True: hanya PT yang
+    punya site aktif (form Isi Harga di Dashboard); tanpa itu PT yang belum punya area juga ikut (mis. ORI, RCM di ERP)."""
+    pt = company_user(user_id)
+    area, site = set(), set()
+    for a in daftar_area():
+        if a["is_active"]:
+            area.add(a["id_company"])
+            if not a["is_pusat"]:
+                site.add(a["id_company"])
+    return [{"id_company": c["id_company"], "nama": c["nama"]} for c in daftar_company()
+            if c["is_active"] and (pt is None or c["id_company"] in pt)
+            and (c["id_company"] in site or (not harus_ada_site and c["id_company"] not in area))]
 
 def company_menu(user_id, kode_menu):
     """Untuk aplikasi lain (Analytics): PT dalam cakupan menu itu, None = semua PT."""

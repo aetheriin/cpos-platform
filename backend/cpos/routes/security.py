@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from utils.hak_akses import lihat, MENU_OPERASI
 from utils.area import area_data, company_user
 from utils.db_admin import supplier_boleh
@@ -201,6 +201,36 @@ def ascend_buat_tiket():
 
     associate_id = int(teks_associate)
     mill_id = int(teks_mill)
+
+    # Jangan buat tiket Ascend jika truk masih punya tiket lokal berjalan.
+    tiket_lokal = cari_transaksi_aktif(no_plat=vehicle_no)
+    if tiket_lokal:
+        return jsonify({
+            "error": (
+                f"Truk {vehicle_no} masih memiliki tiket lokal "
+                f"{tiket_lokal.no_tiket} yang belum selesai."
+            )
+        }), 409
+
+    # Tiket kosong dan tiket yang belum selesai di Ascend juga memblokir tiket baru.
+    try:
+        tiket_aktif = db_ascend.cari_tiket_ascend_berdasarkan_plat(vehicle_no)
+    except Exception:
+        current_app.logger.exception(
+            "Gagal memeriksa tiket Ascend untuk plat %s",
+            vehicle_no,
+        )
+        return jsonify({
+            "error": "Status tiket Ascend belum dapat diperiksa. Coba lagi."
+        }), 503
+
+    if tiket_aktif:
+        return jsonify({
+            "error": (
+                f"Truk {vehicle_no} masih memiliki tiket Ascend "
+                f"{tiket_aktif['no_tiket']} yang belum selesai."
+            )
+        }), 409
 
     daftar_ascend = db_ascend.daftar_do(ticket_type)
 

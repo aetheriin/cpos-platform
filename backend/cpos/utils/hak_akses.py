@@ -8,29 +8,13 @@ from flask_login import current_user
 from utils.cache import cache_ttl
 
 CACHE_HAK_DETIK = 8
-from utils.db_utils import get_connection, _rows_to_dicts
+from utils.db_utils import get_connection, query as _query
 
 AKSI = ("tambah", "ubah", "hapus")
 ID_AKSI = {"lihat": 1, "tambah": 2, "ubah": 3, "hapus": 0, "setujui": 5, "tolak": 6, "selesai": 7}
 NAMA_AKSI = {v: k for k, v in ID_AKSI.items()}
 AKSI_SEMUA = ("lihat", "tambah", "ubah", "hapus", "setujui", "tolak", "selesai")
 AKSI_OPSI = AKSI_SEMUA[1:]
-
-
-def _query(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-
-        # Lewati result set tanpa kolom sampai menemukan hasil berupa baris.
-        while cursor.description is None:
-            if not cursor.nextset():
-                return []
-
-        return _rows_to_dicts(cursor)
-    finally:
-        conn.close()
 
 
 def _kosong():

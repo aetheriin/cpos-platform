@@ -8,7 +8,7 @@ $lokal = Join-Path $env:LOCALAPPDATA 'cpos-platform'
 $log = Join-Path $lokal 'log'
 $PortAnalytics = 8001
 $PortDeteksi = 8000
-$JalankanDeteksi = $true
+$JalankanDeteksi = $false
 New-Item -ItemType Directory -Force $log | Out-Null
 $Host.UI.RawUI.WindowTitle = 'CPOS Platform'
 

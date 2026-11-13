@@ -1,19 +1,9 @@
 from utils.cache import cache_ttl
-from utils.db_utils import get_connection, _rows_to_dicts
+from utils.db_utils import get_connection, _rows_to_dicts, query as _query, ubah
 
 INSPEKSI = ("SORTASI", "LAB")
 NAMA_TAHAP = {"SECURITY": "Security", "TIMBANG_1": "timbang masuk", "SORTASI": "sortasi", "LAB": "hasil lab (Diterima)",
               "TIMBANG_2": "timbang keluar", "SECURITY_KELUAR": "Security keluar"}
-
-
-def _query(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        return _rows_to_dicts(cursor)
-    finally:
-        conn.close()
 
 
 @cache_ttl(60)
@@ -213,15 +203,7 @@ def daftar_alur():
 
 
 def _ubah(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        if cursor.rowcount == 0:
-            raise ValueError("Data tidak ditemukan")
-        conn.commit()
-    finally:
-        conn.close()
+    ubah(sql, *params, pesan_kosong="Data tidak ditemukan")
     hapus_cache()
 
 

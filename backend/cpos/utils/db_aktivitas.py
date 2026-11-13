@@ -4,20 +4,11 @@ from datetime import date, datetime, timedelta
 from utils import jenis_orang
 from utils.area_filter import sql_area
 from utils.cache import cache_ttl
-from utils.db_utils import get_connection, _rows_to_dicts
+from utils.db_utils import get_connection, query as _query
 from utils.plat_utils import normalisasi_plat
 
 BERHASIL, TIDAK_DIKENALI, DITOLAK = "WAJAH_BERHASIL", "WAJAH_TIDAK_DIKENALI", "WAJAH_DITOLAK"
 STATUS = (BERHASIL, TIDAK_DIKENALI, DITOLAK)
-
-def _query(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        return _rows_to_dicts(cursor)
-    finally:
-        conn.close()
 
 @cache_ttl(300)
 def id_status():

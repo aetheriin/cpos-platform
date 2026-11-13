@@ -1,6 +1,6 @@
 import logging
 from datetime import date, datetime, timedelta
-from utils.db_utils import get_connection, _rows_to_dicts
+from utils.db_utils import get_connection, query as _query
 
 log = logging.getLogger(__name__)
 
@@ -72,15 +72,6 @@ def _notifikasi(kolom, nilai, id_area, sumber):
         notifikasi.buat("BLACKLIST", judul, isi, tautan, id_area, id_level=id_level, id_company=company_area().get(id_area))
     if not penerima:            # belum ada jabatan dengan hak Setujui: ke semua yang punya hak di menu Blacklist
         notifikasi.buat("BLACKLIST", judul, isi, tautan, id_area)
-
-def _query(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        return _rows_to_dicts(cursor)
-    finally:
-        conn.close()
 
 # ===== Halaman Log Validasi =====
 def log_hari(tanggal, id_area):

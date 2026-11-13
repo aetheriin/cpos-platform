@@ -1,15 +1,5 @@
 """Pencarian global (header › Cari / Ctrl+K): tiket, DO / kontrak, personel, kendaraan; admin: akun."""
-from utils.db_utils import get_connection, _rows_to_dicts, _filter_area
-
-def _query(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        return _rows_to_dicts(cursor)
-    finally:
-        conn.close()
-
+from utils.db_utils import _filter_area, query as _query
 
 def _pola(kata):
     """'bk 8492' cocok dengan 'BK 8492 XA'; % dan _ dari user tidak dianggap wildcard."""

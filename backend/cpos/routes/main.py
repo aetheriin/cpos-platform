@@ -239,13 +239,26 @@ def api_plat_lookup():
                              ip_address=request.remote_addr)
 
     row = cari_transaksi_aktif(no_plat=no_plat)
-    if row and row.id_alur is not None and row.id_alur == alur.id_alur_kode("POS_SAJA"):
-        return jsonify({"error": f"{no_plat} tercatat masuk lewat Pos Security (tanpa tiket timbang). "
-                                 "Catat keluar di Logbook dulu."}), 400
     if row:
-        return jsonify({**serialisasi_tiket(row), "kendaraan_blacklist": blacklist}), 200
+        if (
+            row.id_alur is not None
+            and row.id_alur == alur.id_alur_kode("POS_SAJA")
+        ):
+            return jsonify({
+                "error": (
+                    f"{no_plat} tercatat masuk lewat Pos Security "
+                    "(tanpa tiket timbang). Catat keluar di Logbook dulu."
+                )
+            }), 400
 
-    # Tiket aktif CPOS tidak ditemukan; periksa tiket kosong yang dibuat di Ascend.
+        return jsonify({
+            "error": (
+                f"Truk {no_plat} masih memiliki tiket lokal "
+                f"{row.no_tiket} yang belum selesai."
+            )
+        }), 409
+
+    # Tidak ada tiket lokal aktif; cari tiket Ascend yang masih berjalan.
     try:
         tiket_ascend = db_ascend.cari_tiket_ascend_berdasarkan_plat(no_plat)
     except Exception:
@@ -303,8 +316,7 @@ def api_plat_lookup():
 
     return jsonify({
         "status": "DRAFT",
-        "no_plat": no_plat,
-        "no_tiket_reserved": generate_no_tiket(no_plat),
+        "no_plat": no_plat, 
         "no_stnk": (kendaraan.no_stnk if kendaraan and kendaraan.no_stnk else None)
                    or (riwayat.no_stnk if riwayat else None),
         "driver": driver_info,             # supir transaksi terakhir

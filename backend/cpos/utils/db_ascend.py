@@ -1,35 +1,62 @@
 """Koneksi dan operasi tiket Ascend (database AS_WB_YBS)."""
 import pyodbc
 
-from config import DB_CONFIG
+from datetime import datetime
+from decimal import Decimal
+from utils.koneksi_lain import connection_string
 
 
 def _koneksi():
-    """Gunakan server dan kredensial CPOS, tetapi arahkan ke database Ascend."""
-    bagian = [
-        f"DRIVER={DB_CONFIG['driver']}",
-        f"SERVER={DB_CONFIG['server']}",
-        "DATABASE=AS_WB_YBS",
-    ]
-
-    if DB_CONFIG["user"]:
-        password = (DB_CONFIG["password"] or "").replace("}", "}}")
-        bagian.extend([
-            f"UID={DB_CONFIG['user']}",
-            f"PWD={{{password}}}",
-        ])
-    else:
-        bagian.append("Trusted_Connection=yes")
-
-    bagian.extend([
-        f"TrustServerCertificate={DB_CONFIG['trust_server_certificate']}",
-        "APP=CPOS;",
-    ])
-
-    koneksi = pyodbc.connect(";".join(bagian), timeout=10)
+    """Server dan kredensial CPOS (DB_*), database AS_WB_YBS. ASCEND_SERVER / _DB / _USER / _PASSWORD di .env bila berbeda."""
+    koneksi = pyodbc.connect(connection_string("ASCEND", "CPOS", db_bawaan="AS_WB_YBS"), timeout=10)
     koneksi.timeout = 30
     return koneksi
 
+def _kunci_dan_cari_tiket_aktif(cursor, vehicle_no):
+    """Kunci proses per plat, lalu cari tiket Ascend yang belum selesai."""
+    plat_normal = "".join(
+        karakter
+        for karakter in vehicle_no.upper().strip()
+        if karakter not in " .-"
+    )
+    if not plat_normal:
+        raise ValueError("Nomor kendaraan wajib diisi.")
+
+    resource = f"CPOS_TIKET_ASCEND:{plat_normal}"
+
+    cursor.execute(
+        """
+        DECLARE @hasil INT;
+        EXEC @hasil = sys.sp_getapplock
+            @Resource = ?,
+            @LockMode = 'Exclusive',
+            @LockOwner = 'Transaction',
+            @LockTimeout = 10000;
+        SELECT @hasil;
+        """,
+        resource,
+    )
+    hasil_kunci = cursor.fetchone()[0]
+
+    if hasil_kunci < 0:
+        raise RuntimeError(
+            "Tidak bisa mengunci pemeriksaan tiket untuk kendaraan ini. Coba lagi."
+        )
+
+    cursor.execute(
+        """
+        SELECT TOP (1) TicketNo
+        FROM dbo.PALM_Tickets WITH (UPDLOCK, HOLDLOCK)
+        WHERE REPLACE(REPLACE(REPLACE(UPPER(LTRIM(RTRIM(VehicleNo))), ' ', ''), '-', ''), '.', '')
+            = ?
+          AND ISNULL([Void], 0) = 0
+          AND ISNULL([Splitted], 0) = 0
+          AND (ISNULL([Step], 0) < 2 OR DateTimeOut IS NULL)
+        ORDER BY TicketID ASC
+        """,
+        plat_normal,
+    )
+    return cursor.fetchone()
 
 def _baris_hasil(cursor):
     """Lewati result set tanpa kolom, lalu ubah result set pertama menjadi daftar dict."""
@@ -59,7 +86,10 @@ def cari_tiket_ascend_berdasarkan_plat(no_plat):
             FROM dbo.PALM_Tickets
             WHERE REPLACE(REPLACE(REPLACE(UPPER(LTRIM(RTRIM(VehicleNo))), ' ', ''), '-', ''), '.', '')
                 = REPLACE(REPLACE(REPLACE(UPPER(?), ' ', ''), '-', ''), '.', '')
-            ORDER BY TicketID DESC
+            AND ISNULL([Void], 0) = 0
+            AND ISNULL([Splitted], 0) = 0
+            AND (ISNULL([Step], 0) < 2 OR DateTimeOut IS NULL)
+            ORDER BY TicketID ASC
             """,
             no_plat,
         )
@@ -107,6 +137,267 @@ def cari_tiket_ascend_berdasarkan_plat(no_plat):
             "no_do": str(row[6] or "").strip(),
             "mill_id": int(row[7]) if row[7] is not None else None,
         }
+    finally:
+        koneksi.close()
+
+def cari_tiket_ascend_berdasarkan_no_tiket(no_tiket):
+    """Cari tiket Ascend yang masih berjalan berdasarkan nomor tiket."""
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute(
+            """
+            SELECT TOP (1)
+                TicketNo, TicketType, ProductName, AssociateID,
+                VehicleNo, [Date], SPDO, MILLID
+            FROM dbo.PALM_Tickets
+            WHERE TicketNo = ?
+              AND ISNULL([Void], 0) = 0
+              AND ISNULL([Splitted], 0) = 0
+              AND (ISNULL([Step], 0) < 2 OR DateTimeOut IS NULL)
+            ORDER BY TicketID DESC
+            """,
+            no_tiket,
+        )
+        row = cursor.fetchone()
+        if not row:
+            return None
+
+        associate_code = ""
+        associate_name = ""
+
+        if row[1] == "Produk":
+            cursor.execute(
+                """
+                SELECT CustomerCode, CustomerName
+                FROM dbo.AR_Customers
+                WHERE CustomerID = ?
+                """,
+                row[3],
+            )
+        elif row[1] == "TBSLuar":
+            cursor.execute(
+                """
+                SELECT SupplierCode, SupplierName
+                FROM dbo.AP_Suppliers
+                WHERE SupplierID = ?
+                """,
+                row[3],
+            )
+
+        associate = cursor.fetchone()
+        if associate:
+            associate_code = str(associate[0] or "").strip()
+            associate_name = str(associate[1] or "").strip()
+
+        return {
+            "no_tiket": str(row[0] or "").strip(),
+            "ticket_type": str(row[1] or "").strip(),
+            "produk": str(row[2] or "").strip(),
+            "associate_id": int(row[3]) if row[3] is not None else None,
+            "associate": " · ".join(
+                bagian for bagian in (associate_code, associate_name) if bagian
+            ),
+            "no_plat": str(row[4] or "").strip(),
+            "tanggal": row[5].isoformat() if row[5] else None,
+            "no_do": str(row[6] or "").strip(),
+            "mill_id": int(row[7]) if row[7] is not None else None,
+            "jenis_transaksi": (
+                "PENJUALAN" if row[1] == "Produk" else "PEMBELIAN"
+            ),
+        }
+    finally:
+        koneksi.close()
+
+def baca_berat_tiket_ascend(no_tiket):
+    """Baca berat Ascend sesuai tahap timbang tiket."""
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute(
+            """
+            SELECT TOP (1) Bruto, Tara, Netto, TicketType, [Step]
+            FROM dbo.PALM_Tickets
+            WHERE TicketNo = ?
+              AND ISNULL([Void], 0) = 0
+              AND ISNULL([Splitted], 0) = 0
+            ORDER BY TicketID DESC
+            """,
+            no_tiket,
+        )
+        row = cursor.fetchone()
+
+        if not row:
+            return None
+
+        bruto, tara, netto, ticket_type, step = row
+        step = int(step or 0)
+
+        # Tiket kosong: nilai 0 di database belum berarti sudah timbang.
+        if step <= 0:
+            bruto = tara = netto = None
+        elif step == 1:
+            # Produk/penjualan: timbang pertama adalah Tara.
+            if ticket_type == "Produk":
+                bruto = None
+                netto = None
+            # TBS Luar/penerimaan: timbang pertama adalah Bruto.
+            else:
+                tara = None
+                netto = None
+
+        return {
+            "berat_bruto": float(bruto) if bruto is not None else None,
+            "berat_tara": float(tara) if tara is not None else None,
+            "berat_netto": float(netto) if netto is not None else None,
+        }
+    finally:
+        koneksi.close()
+
+def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator):
+    """Simpan timbang ke Ascend melalui USP_PALM_Tickets_Update."""
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+
+        # Kunci baris sampai transaksi selesai agar timbang tidak tersimpan ganda.
+        cursor.execute(
+            """
+            SELECT TOP (1) *
+            FROM dbo.PALM_Tickets WITH (UPDLOCK, HOLDLOCK)
+            WHERE TicketNo = ?
+              AND ISNULL([Void], 0) = 0
+              AND ISNULL([Splitted], 0) = 0
+              AND (ISNULL([Step], 0) < 2 OR DateTimeOut IS NULL)
+            ORDER BY TicketID DESC
+            """,
+            no_tiket,
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError("Tiket Ascend tidak ditemukan atau sudah selesai.")
+
+        kolom = [item[0] for item in cursor.description]
+        tiket = {nama.casefold(): row[i] for i, nama in enumerate(kolom)}
+
+        def nilai(nama, default=None):
+            return tiket.get(nama.casefold(), default)
+
+        step = int(nilai("Step", 0) or 0)
+        ticket_type = str(nilai("TicketType", "") or "").strip()
+        berat = Decimal(str(berat_kg))
+
+        if berat <= 0:
+            raise ValueError("Berat timbang harus lebih dari 0 kg.")
+        if step not in (0, 1):
+            raise ValueError("Tiket ini tidak berada pada tahap timbang yang bisa disimpan.")
+
+        bruto = Decimal(str(nilai("Bruto", 0) or 0))
+        tara = Decimal(str(nilai("Tara", 0) or 0))
+        now = datetime.now()
+
+        if step == 0:
+            if ticket_type == "Produk":
+                tara = berat
+                tiket["taradatetime"] = now
+                tiket["taraby"] = str(operator)[:50]
+            elif ticket_type == "TBSLuar":
+                bruto = berat
+                tiket["brutoby"] = str(operator)[:50]
+            else:
+                raise ValueError(f"Jenis tiket {ticket_type!r} belum didukung.")
+
+            step_baru = 1
+            date_time_out = nilai("DateTimeOut")
+
+        else:  # Step 1: simpan timbang terakhir
+            if ticket_type == "Produk":
+                bruto = berat
+                tiket["brutoby"] = str(operator)[:50]
+            elif ticket_type == "TBSLuar":
+                tara = berat
+                tiket["taradatetime"] = now
+                tiket["taraby"] = str(operator)[:50]
+            else:
+                raise ValueError(f"Jenis tiket {ticket_type!r} belum didukung.")
+
+            if bruto <= tara:
+                raise ValueError("Bruto harus lebih besar daripada Tara.")
+
+            step_baru = 2
+            date_time_out = now
+            tiket["netto"] = bruto - tara
+
+        tiket["bruto"] = bruto
+        tiket["tara"] = tara
+        tiket["step"] = step_baru
+        tiket["datetimeout"] = date_time_out
+
+        # Ambil parameter prosedur Ascend; kirim nilai yang tersedia di baris tiket.
+        cursor.execute(
+            """
+            SELECT name
+            FROM sys.parameters
+            WHERE object_id = OBJECT_ID('dbo.USP_PALM_Tickets_Update')
+              AND parameter_id > 0
+            ORDER BY parameter_id
+            """
+        )
+        nama_parameter = [row[0] for row in cursor.fetchall()]
+
+        wajib = {
+            "ticketid", "ticketno", "tickettype", "date", "datetimein",
+            "estateid", "vehicleno", "referenceno", "associateid",
+            "productname", "bruto", "tara", "deduction", "netto",
+            "checkedby", "operator", "printcount", "step",
+            "owncar", "allocated", "external",
+        }
+
+        parameter_terisi = []
+        nilai_parameter = []
+        tidak_tersedia = []
+
+        for nama in nama_parameter:
+            kunci = nama.lstrip("@").casefold()
+
+            if kunci == "operator":
+                isi = str(operator)[:50]
+            elif kunci == "loginname":
+                isi = str(operator)[:30]
+            elif kunci in tiket:
+                isi = tiket[kunci]
+            else:
+                if kunci in wajib:
+                    tidak_tersedia.append(nama)
+                continue
+
+            parameter_terisi.append(nama)
+            nilai_parameter.append(isi)
+
+        if tidak_tersedia:
+            raise RuntimeError(
+                "Kolom tiket tidak cukup untuk mengisi parameter wajib Ascend: "
+                + ", ".join(tidak_tersedia)
+            )
+
+        sql = (
+            "EXEC dbo.USP_PALM_Tickets_Update "
+            + ", ".join(f"{nama} = ?" for nama in parameter_terisi)
+        )
+        cursor.execute(sql, *nilai_parameter)
+        koneksi.commit()
+
+        return {
+            "step": step_baru,
+            "ticket_type": ticket_type,
+            "berat_bruto": float(bruto) if step_baru == 2 or ticket_type == "TBSLuar" else None,
+            "berat_tara": float(tara) if step_baru == 2 or ticket_type == "Produk" else None,
+            "berat_netto": float(tiket["netto"]) if step_baru == 2 else None,
+        }
+
+    except Exception:
+        koneksi.rollback()
+        raise
     finally:
         koneksi.close()
 
@@ -255,6 +546,12 @@ def buat_tiket_kosong(ticket_type, produk, associate_id, vehicle_no,
     koneksi = _koneksi()
     try:
         cursor = koneksi.cursor()
+        tiket_aktif = _kunci_dan_cari_tiket_aktif(cursor, vehicle_no)
+        if tiket_aktif:
+            raise ValueError(
+                f"Truk {vehicle_no} masih memiliki tiket Ascend "
+                f"{str(tiket_aktif[0]).strip()} yang belum selesai."
+            )
         cursor.execute(
             """
             DECLARE @NewTicketID INT;

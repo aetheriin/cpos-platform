@@ -659,7 +659,7 @@ window.KAMUS_EN = {
 "Harga CPO": "CPO Price",
 "Harga CPO & Kernel": "CPO & Kernel Prices",
 "Harga CPO (Rp/kg)": "CPO Price (Rp/kg)",
-"Harga CPO, kernel, OER, biaya olah & TBS": "CPO, kernel, OER, processing cost & FFB prices",
+"Harga CPO, kernel, OER & biaya olah": "CPO & kernel prices, OER & processing cost",
 "Harga Kernel": "Kernel Price",
 "Harga Kernel (Rp/kg)": "Kernel Price (Rp/kg)",
 "Harga Produk": "Product Price",

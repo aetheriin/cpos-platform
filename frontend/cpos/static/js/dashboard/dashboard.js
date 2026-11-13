@@ -6,7 +6,6 @@ const UKURAN = [
     { kunci: 'harga_kernel', judul: 'Harga Kernel', satuan: 'Rp/kg', desimal: 0, warna: '#4f46e5', ket: 'vs penetapan sebelumnya' },
     { kunci: 'oer_cpo', judul: 'OER CPO', satuan: 'Rendemen %', desimal: 2, warna: '#059669', ket: 'target ekstraksi pabrik' },
     { kunci: 'biaya_olah', judul: 'Biaya Olah', satuan: 'Rp/kg TBS', desimal: 0, warna: '#0284c7', ket: 'standar biaya proses mill' },
-    { kunci: 'harga_tbs', judul: 'Harga TBS', satuan: 'Rp/kg', desimal: 0, warna: '#d97706', ket: 'harga beli TBS (Harga Produk)' },
 ];
 // Widget yang tampil di dashboard ini (Menu.Widgets, katalog di routes/dashboard.py WIDGET): harga, riwayat, arus, security
 const WIDGET = new Set((document.getElementById('dataDashboard')?.dataset.widget || '').split(',').filter(Boolean));
@@ -149,13 +148,13 @@ function tampilkanTabelHarga() {
     const tbody = document.getElementById('tabelHarga');
     if (!tbody) return;
     const bolehUbah = tbody.dataset.bolehUbah === '1';
-    tbody.innerHTML = [...dataHarga].filter(r => r.ada_harian).reverse().map(r => `<tr class="hover:bg-slate-50">
+    tbody.innerHTML = [...dataHarga].reverse().map(r => `<tr class="hover:bg-slate-50">
         <td class="table-cell whitespace-nowrap">${escapeHtml(r.tanggal)}</td>
         ${UKURAN.map(u => `<td class="table-cell text-right">${angka(r[u.kunci], u.desimal)}</td>`).join('')}
         <td class="table-cell text-right">${angka(r.qty_rsi, 0)}</td>
         <td class="table-cell">${escapeHtml(r.oleh || '-')}</td>
         ${bolehUbah ? `<td class="table-cell text-right"><button type="button" class="link-aksi text-blue-600" data-on-click="bukaIsiHarga" data-arg="${escapeHtml(r.tanggal)}">Ubah</button></td>` : ''}
-    </tr>`).join('') || barisKosong(bolehUbah ? 9 : 8, 'Belum ada data harga');
+    </tr>`).join('') || barisKosong(bolehUbah ? 8 : 7,'Belum ada data harga');
 }
 
 async function bukaIsiHarga(tanggal) {

@@ -2,7 +2,7 @@
 CPOS hanya menampilkan; tidak ada penulisan di sini.
 Area: kamera deteksi didaftarkan per area (Admin › Perangkat › Kamera Deteksi Plat); riwayat mengikuti area kameranya (lewat nama kamera)."""
 from utils.area_filter import sql_area
-from utils.db_utils import get_connection, _rows_to_dicts
+from utils.db_utils import query as _query
 
 MENU = "MON_PLAT"
 
@@ -17,16 +17,6 @@ _DARI = _KAMERA + """
              LEFT JOIN dbo.DetailVehicle v ON v.IDVehicle = r.IDVehicle
              LEFT JOIN dbo.VehicleType t ON t.VehicleTypeID = v.VehicleType
              LEFT JOIN dbo.UserC u ON u.IDVehicle = r.IDVehicle AND u.Active = 1"""
-
-
-def _query(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        return _rows_to_dicts(cursor)
-    finally:
-        conn.close()
 
 
 def _cakupan(id_area, area_pilih):

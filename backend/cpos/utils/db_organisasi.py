@@ -1,29 +1,11 @@
 """Admin › Organisasi (ERD Ladder Desk): Company (kode = CompID), CompanyArea (area milik perusahaan, bertipe Mill),
 Mill (tipe area), Department + DepartmentDetails (departemen yang ada di sebuah area). Dipakai akun dan perangkat kiosk."""
+from functools import partial
 from utils.cache import cache_ttl
-from utils.db_utils import get_connection, _rows_to_dicts
+from utils.db_utils import get_connection, query as _query, ubah
 
 
-def _query(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        return _rows_to_dicts(cursor)
-    finally:
-        conn.close()
-
-
-def _ubah(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        if cursor.rowcount == 0:
-            raise ValueError("Data tidak ditemukan")
-        conn.commit()
-    finally:
-        conn.close()
+_ubah = partial(ubah, pesan_kosong="Data tidak ditemukan")
 
 
 def _ganti_kode(cursor, tabel, kolom, lama, baru, kolom_unik=None):

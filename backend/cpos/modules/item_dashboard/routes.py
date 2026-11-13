@@ -1,20 +1,19 @@
-"""Analytical dashboard untuk analisis kategori item dari database Main."""
+"""Halaman & API Item Category Dashboard. Hak: menu AN_ITEM_CATEGORY (Lihat) di Admin › Hak Akses."""
 import logging
 import math
 from datetime import date, datetime
 from decimal import Decimal
 
 import pyodbc
-from flask import Blueprint, jsonify, render_template
+from flask import jsonify, render_template
 from flask_login import login_required
 
+from modules.item_dashboard import item_dashboard_bp
 from modules.item_request.mesin import get_connection
 from utils.hak_akses import halaman as lihat_halaman, izin, remah_menu
 
 log = logging.getLogger(__name__)
 KODE = "AN_ITEM_CATEGORY"
-
-item_dashboard_bp = Blueprint("item_dashboard", __name__, url_prefix="/item-dashboard")   # template & static: frontend\cpos\...\item_dashboard
 
 
 def _nilai_json(nilai):

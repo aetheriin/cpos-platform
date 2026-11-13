@@ -1,41 +1,15 @@
-"""Dashboard: harga CPO, harga kernel, OER CPO, biaya olah, qty RSI per perusahaan per tanggal (diisi HO)."""
-from utils import harga_sumber
+"""Dashboard: katalog widget, arus penimbangan, ringkasan security. Data harga di utils/harga.py."""
 from utils.db_utils import get_connection, _rows_to_dicts
-
-KOLOM = ("harga_cpo", "harga_kernel", "oer_cpo", "biaya_olah")
 
 # Widget yang sudah dibuat di kode (templates/dashboard/widget/<nama>.html + dashboard.js + API datanya); harus sama dengan
 # tabel Widget. Widget di tabel yang belum ada di sini diabaikan saat tampil.
 WIDGET = {
-    "harga": "Harga CPO, kernel, OER, biaya olah & TBS",
+    "harga": "Harga CPO, kernel, OER & biaya olah",
     "riwayat": "Riwayat harga",
     "arus": "Arus penimbangan & status jembatan timbang hari ini",
     "security": "Truk masuk & di dalam area, tamu, blacklist terdeteksi hari ini",
 }
 WIDGET_HARGA = {"harga", "riwayat"}       # widget yang memakai tombol Isi Harga (aksi Ubah menu dashboard)
-
-
-def riwayat_harga(id_user, id_company, hari=30):
-    """Data widget harga dari dbo.sp_DashboardHarga (sama dengan aplikasi lain): harga harian + harga TBS per tanggal,
-    hanya perusahaan dalam cakupan user. Harga harian di tabel luar (Main.dbo.HARGA, utils/harga_sumber): harga TBS tetap
-    dari prosedur, harga harian dari tabel itu."""
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("EXEC dbo.sp_DashboardHarga @UserID = ?, @CompID = ?, @Days = ?", id_user, id_company, int(hari))
-        rows = _rows_to_dicts(cursor) if cursor.description else []
-    finally:
-        conn.close()
-    if not harga_sumber.aktif():
-        return rows
-    from datetime import date, timedelta
-    dari = date.today() - timedelta(days=int(hari) - 1)
-    tbs = {r["PriceDate"]: r["TBSPrice"] for r in rows if r["TBSPrice"] is not None}
-    harian = {r["tanggal"]: r for r in harga_sumber.daftar([id_company], dari=dari, batas=1000)}
-    return [{"PriceDate": t, "CPOPrice": harian.get(t, {}).get("harga_cpo"), "KernelPrice": harian.get(t, {}).get("harga_kernel"),
-             "OERCPO": harian.get(t, {}).get("oer_cpo"), "ProcessingCost": harian.get(t, {}).get("biaya_olah"),
-             "RSIQty": harian.get(t, {}).get("qty_rsi"), "TBSPrice": tbs.get(t), "UpdateByName": None, "HasDaily": t in harian}
-            for t in sorted(set(tbs) | set(harian))]
 
 
 def ringkas_security(id_area):
@@ -56,49 +30,6 @@ def ringkas_security(id_area):
         conn.close()
     return {"masuk": lb["masuk_hari_ini"], "di_dalam": len(lb["dalam"]), "keluar": len(lb["keluar"]), "tamu": tamu,
             "blacklist": blacklist, "dalam": lb["dalam"]}
-
-
-def simpan_harga(id_company, tanggal, nilai, qty_rsi, user_id):
-    """Satu baris per perusahaan per tanggal: yang sudah ada diperbarui."""
-    if harga_sumber.aktif():
-        return harga_sumber.simpan(id_company, tanggal, nilai, qty_rsi)
-    conn = get_connection()
-    try:
-        conn.cursor().execute("""
-            MERGE DailyPrice AS t USING (SELECT ? AS CompID, ? AS PriceDate) AS s
-                ON t.CompID = s.CompID AND t.PriceDate = s.PriceDate
-            WHEN MATCHED THEN UPDATE SET CPOPrice = ?, KernelPrice = ?, OERCPO = ?, ProcessingCost = ?, RSIQty = ?,
-                                         UpdateBy = ?, UpdateDate = GETDATE()
-            WHEN NOT MATCHED THEN INSERT (CompID, PriceDate, CPOPrice, KernelPrice, OERCPO, ProcessingCost, RSIQty, UpdateBy)
-                                  VALUES (s.CompID, s.PriceDate, ?, ?, ?, ?, ?, ?);""",
-            id_company, tanggal, *nilai, qty_rsi, user_id, *nilai, qty_rsi, user_id)
-        conn.commit()
-    finally:
-        conn.close()
-
-
-def simpan_harga_banyak(items, user_id):
-    """Simpan beberapa harga dalam satu transaksi. items berisi (CompID, tanggal, nilai, qty_rsi)."""
-    if harga_sumber.aktif():
-        return harga_sumber.simpan_banyak(items)
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        for id_company, tanggal, nilai, qty_rsi in items:
-            cursor.execute("""
-                MERGE DailyPrice AS t USING (SELECT ? AS CompID, ? AS PriceDate) AS s
-                    ON t.CompID = s.CompID AND t.PriceDate = s.PriceDate
-                WHEN MATCHED THEN UPDATE SET CPOPrice = ?, KernelPrice = ?, OERCPO = ?, ProcessingCost = ?, RSIQty = ?,
-                                             UpdateBy = ?, UpdateDate = GETDATE()
-                WHEN NOT MATCHED THEN INSERT (CompID, PriceDate, CPOPrice, KernelPrice, OERCPO, ProcessingCost, RSIQty, UpdateBy)
-                                      VALUES (s.CompID, s.PriceDate, ?, ?, ?, ?, ?, ?);""",
-                id_company, tanggal, *nilai, qty_rsi, user_id, *nilai, qty_rsi, user_id)
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
 
 
 def arus_hari_ini(id_area=None):

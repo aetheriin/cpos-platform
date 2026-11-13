@@ -1,30 +1,25 @@
 """Dashboard per peran tersusun dari widget (Menu.Widgets); HO mengisi harga."""
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from functools import wraps
 
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
 
-from utils import harga_sumber
-from utils.area import area_data, company_user
+from utils import harga
+from utils.area import area_data, company_site
 from utils.area_filter import area_cocok
-from utils.db_dashboard import WIDGET, WIDGET_HARGA, riwayat_harga, simpan_harga, arus_hari_ini, ringkas_security
+from utils.db_dashboard import WIDGET, WIDGET_HARGA, arus_hari_ini, ringkas_security
 from utils.db_jembatan import daftar_jembatan
-from utils.db_organisasi import daftar_area, daftar_company
+from utils.db_organisasi import daftar_area
 from utils.serial_reader import baca_status
 from utils.hak_akses import izin, boleh, halaman as lihat_halaman, widget_user
 
 dashboard_bp = Blueprint("dashboard", __name__)
-BATAS = {"harga_cpo": (0, 1_000_000), "harga_kernel": (0, 1_000_000), "oer_cpo": (0, 100), "biaya_olah": (0, 1_000_000)}
 
 
 def _company_harga(user_id):
-    """Perusahaan yang harganya boleh dilihat / diisi user: yang punya area operasional (bukan kantor pusat)
-    dan termasuk cakupan user. [{id_company, nama}] urut nama."""
-    pt = company_user(user_id)
-    operasional = {a["id_company"] for a in daftar_area() if a["is_active"] and not a["is_pusat"]}
-    return [{"id_company": c["id_company"], "nama": c["nama"]} for c in daftar_company()
-            if c["is_active"] and c["id_company"] in operasional and (pt is None or c["id_company"] in pt)]
+    """Perusahaan yang harganya boleh dilihat / diisi di Dashboard: yang punya site (utils/area.company_site)."""
+    return company_site(user_id, harus_ada_site=True)
 
 
 def _company_dipilih(user_id, kode):
@@ -69,20 +64,20 @@ def dashboard_halaman():
         area_list = []
         area_saya = next((a["label"] for a in daftar_area() if a["id_comp_area"] == id_area), "")
     widget = _widget_saya()
-    harga = WIDGET_HARGA & set(widget)
+    ada_harga = WIDGET_HARGA & set(widget)
     return render_template("dashboard/dashboard.html", halaman="dashboard", kode_aktif="DASHBOARD", widget=widget,
                            judul="Dashboard", keterangan=" · ".join(WIDGET[w] for w in widget),
-                           boleh_ubah=bool(harga) and boleh("DASHBOARD", "ubah"),
-                           company_harga=_company_harga(current_user.id) if harga else [],
+                           boleh_ubah=bool(ada_harga) and boleh("DASHBOARD", "ubah"),
+                           company_harga=_company_harga(current_user.id) if ada_harga else [],
                            is_pusat=id_area is None or isinstance(id_area, tuple), area_list=area_list, area_saya=area_saya)
 
 
 @dashboard_bp.route("/api/dashboard/harga")
 @login_required
 @izin_widget("harga", "riwayat")
-@harga_sumber.tangani_galat
+@harga.tangani_galat
 def dashboard_harga():
-    """?company=<kode> (kosong = perusahaan pertama yang boleh dilihat)."""
+    """?company=<kode> (kosong = perusahaan pertama yang boleh dilihat). Urut tanggal lama ke baru."""
     hari = min(max(request.args.get("hari", 30, type=int), 7), 365)
     try:
         id_company = _company_dipilih(current_user.id, (request.args.get("company") or "").strip().upper())
@@ -90,59 +85,39 @@ def dashboard_harga():
         return jsonify({"error": str(e)}), 400
     if id_company is None:
         return jsonify([])
-    return jsonify([{"tanggal": r["PriceDate"].strftime("%Y-%m-%d"), "harga_cpo": _angka(r["CPOPrice"]),
-                     "harga_kernel": _angka(r["KernelPrice"]), "oer_cpo": _angka(r["OERCPO"]),
-                     "biaya_olah": _angka(r["ProcessingCost"]), "qty_rsi": _angka(r["RSIQty"]),
-                     "harga_tbs": _angka(r["TBSPrice"]), "oleh": r["UpdateByName"], "ada_harian": bool(r["HasDaily"])}
-                    for r in riwayat_harga(current_user.id, id_company, hari)])
+    rows = harga.daftar([id_company], dari=date.today() - timedelta(days=hari - 1), batas=1000)
+    return jsonify([{"tanggal": r["tanggal"].isoformat(), **{k: _angka(r[k]) for k in (*harga.KOLOM, "qty_rsi")}, "oleh": r["oleh"]}
+                    for r in reversed(rows)])
 
 
 @dashboard_bp.route("/api/dashboard/harga/simpan", methods=["POST"])
 @login_required
 @izin_widget("harga", "riwayat")
 @izin("DASHBOARD", "ubah")
-@harga_sumber.tangani_galat
+@harga.tangani_galat
 def dashboard_harga_simpan():
-    try:
-        tanggal = date.fromisoformat(request.form.get("tanggal", ""))
-        teks_rsi = (request.form.get("qty_rsi") or "").strip().replace(",", ".")
-        qty_rsi = float(teks_rsi) if teks_rsi else None
-        if qty_rsi is not None and not 0 <= qty_rsi <= 1_000_000_000:
-            raise ValueError
-        nilai_umum = {}
-        for k in ("harga_cpo", "harga_kernel", "biaya_olah"):
-            v = float(request.form.get(k, "").replace(",", "."))
-            if not BATAS[k][0] <= v <= BATAS[k][1]:
-                raise ValueError
-            nilai_umum[k] = v
-    except ValueError:
-        return jsonify({"error": "Tanggal, harga CPO, kernel, dan biaya olah wajib diisi angka yang wajar; Qty RSI harus valid jika diisi"}), 400
-    if tanggal > date.today():
-        return jsonify({"error": "Tanggal tidak boleh setelah hari ini"}), 400
-
+    """Harga CPO, kernel, biaya olah & qty RSI sama untuk semua PT; OER per PT (kolom oer_cpo_<pt>), PT yang diisi saja."""
+    f = request.form
     perusahaan = {c["id_company"].upper() for c in _company_harga(current_user.id)}
-    oer_perusahaan = {"YBS": "oer_cpo_ybs", "SUN": "oer_cpo_sun", "SJN": "oer_cpo_sjn"}
-    target = []
     try:
-        for id_company, kolom in oer_perusahaan.items():
-            teks_oer = (request.form.get(kolom) or "").strip().replace(",", ".")
-            if not teks_oer:
+        tanggal = harga.tanggal(f.get("tanggal"))
+        umum = {k: harga.angka(f.get(k), k) for k in ("harga_cpo", "harga_kernel", "biaya_olah")}
+        qty_rsi = harga.angka(f.get("qty_rsi"), "qty_rsi", wajib=False)
+        target = []
+        for id_company in ("YBS", "SUN", "SJN"):
+            oer = harga.angka(f.get(f"oer_cpo_{id_company.lower()}"), "oer_cpo", wajib=False)
+            if oer is None:
                 continue
             if id_company not in perusahaan:
                 return jsonify({"error": f"Anda tidak memiliki cakupan perusahaan {id_company}"}), 403
-            oer = float(teks_oer)
-            if not BATAS["oer_cpo"][0] <= oer <= BATAS["oer_cpo"][1]:
-                raise ValueError
-            target.append((id_company, oer))
-    except ValueError:
-        return jsonify({"error": "OER CPO tiap perusahaan harus berisi angka antara 0 dan 100"}), 400
+            target.append((id_company, tanggal, [umum["harga_cpo"], umum["harga_kernel"], oer, umum["biaya_olah"]], qty_rsi))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     if not target:
         return jsonify({"error": "Isi minimal satu OER CPO perusahaan"}), 400
 
-    for id_company, oer in target:
-        nilai = [nilai_umum["harga_cpo"], nilai_umum["harga_kernel"], oer, nilai_umum["biaya_olah"]]
-        simpan_harga(id_company, tanggal, nilai, qty_rsi, current_user.id)
-    perusahaan_disimpan = ", ".join(id_company for id_company, _ in target)
+    harga.simpan(target)
+    perusahaan_disimpan = ", ".join(t[0] for t in target)
     return jsonify({"message": f"Harga {tanggal:%d-%m-%Y} berhasil disimpan untuk {perusahaan_disimpan}"})
 
 

@@ -1,32 +1,15 @@
+from functools import partial
 import pyodbc
 
 from utils.cache import cache_ttl
-from utils.db_utils import get_connection, _rows_to_dicts, get_semua_supplier, get_semua_produk, get_user_by_id
+from utils.db_utils import get_connection, get_semua_supplier, get_semua_produk, get_user_by_id, query as _query, ubah
 from utils import jenis_orang
 from utils.db_absensi import get_jadwal_kerja
 
 PERAN_SUPPLIER = ("CUSTOMER", "PENGANGKUTAN")    # satu mitra boleh keduanya (tabel mitra_peran)
 KATEGORI_PRODUK = ("TBS", "PRODUK_PKS")
 
-def _query(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        return _rows_to_dicts(cursor)
-    finally:
-        conn.close()
-
-def _ubah(sql, *params, pesan_kosong="Data tidak ditemukan"):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        if cursor.rowcount == 0:
-            raise ValueError(pesan_kosong)
-        conn.commit()
-    finally:
-        conn.close()
+_ubah = partial(ubah, pesan_kosong="Data tidak ditemukan")
 
 _SELECT_USER = """SELECT u.UserID AS id_user, u.UserName AS username, u.Nama AS nama, u.UserLevelID AS id_level,
                          ld.LevelDetCode AS role, ld.LevelDetName AS nama_level, lv.IsAdmin AS is_admin, ld.LevelID AS id_jabatan,

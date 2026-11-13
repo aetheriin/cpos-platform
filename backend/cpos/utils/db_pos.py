@@ -6,7 +6,7 @@ Kendaraan dari Pos Security memakai alur POS_SAJA: selesai saat dicatat keluar.
 from datetime import datetime, timedelta
 
 from utils.area_filter import sql_area
-from utils.db_utils import get_connection, _rows_to_dicts, AREA_TIKET
+from utils.db_utils import get_connection, AREA_TIKET, query as _query
 
 DI_DALAM = "t.ExitDate IS NULL AND t.StatusCode <> 'VOID'"
 
@@ -22,16 +22,6 @@ _DARI = """FROM WeightBridge t
            LEFT JOIN Users um ON um.UserID = t.CreateBy
            LEFT JOIN Users uk ON uk.UserID = t.ExitBy
            LEFT JOIN Flow a ON a.FlowID = t.FlowID"""
-
-
-def _query(sql, *params):
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(sql, *params)
-        return _rows_to_dicts(cursor)
-    finally:
-        conn.close()
 
 
 def logbook(id_area, tanggal):
