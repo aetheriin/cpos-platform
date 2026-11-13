@@ -631,33 +631,6 @@ async function simpanEditIdentitas(btn) {
     tutupModalUpdate();
 }
 
-// ===== SUBMIT CREATE TICKET =====
-async function submitCreateTiket(btn) {
-    const idDriver = document.getElementById('driverIdDriver').value;
-    if (!idDriver) { Notif.peringatan('Silakan scan wajah atau pilih supir terlebih dahulu'); return; }
-    const kenaBlacklist = ['kendaraan', 'supir'].filter(j => blacklistForm[j]).map(j => blacklistForm[j].siapa);
-    if (kenaBlacklist.length && !await Dialog.konfirmasi({
-        judul: 'Masuk daftar blacklist', teksYa: 'Tetap buat tiket', teksBatal: 'Batal', bahaya: true,
-        pesan: `${kenaBlacklist.join(' dan ')} masuk daftar blacklist. Tetap buat tiket? Tercatat di Log Audit.` })) return;
-
-    const formData = new FormData();
-    ['no_tiket:formNoTiket', 'no_plat:formNoPlat', 'no_stnk:formNoStnk', 'no_do:formNoDo',
-     'jenis_transaksi:formJenisTransaksi', 'id_supplier:formSupplier', 'id_produk:formProduk']
-        .forEach(p => { const [k, id] = p.split(':'); formData.append(k, document.getElementById(id).value.trim()); });
-    formData.append('id_driver', idDriver);
-    if (saranDriver) formData.append('id_driver_saran', saranDriver.id_driver);   // beda supir -> OVERRIDE_DRIVER
-
-    const data = await denganTombol(btn, () => kirimForm('/api/security/buat-tiket', formData), 'Membuat tiket...');
-    perbaruiTombolSubmit();                  // kembalikan status aktif/nonaktif tombol Submit
-    if (!data.no_tiket) { Notif.gagal(data.error || 'Tiket gagal dibuat'); return; }
-
-    Notif.sukses(data.message);
-    lookupPlat(document.getElementById('formNoPlat').value);  // base bar jadi ADA_TIKET lengkap
-    const cetak = await Dialog.konfirmasi({ judul: 'Tiket berhasil dibuat', teksYa: 'Cetak QR', teksBatal: 'Nanti',
-        pesan: `No. tiket ${data.no_tiket}. Cetak QR tiket sekarang?` });
-    if (cetak) bukaHalamanCetak(data.no_tiket);
-}
-
 // ===== TAMPILAN DRIVER (Section 2) =====
 function tandaiBorderDriver(warna) {   // 'biru' | 'hijau' | null
     const box = document.getElementById('fotoDriverBox');

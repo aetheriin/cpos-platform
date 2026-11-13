@@ -222,16 +222,6 @@ def ascend_buat_tiket():
     associate_id = int(teks_associate)
     mill_id = int(teks_mill)
 
-    # Jangan buat tiket Ascend jika truk masih punya tiket lokal berjalan.
-    tiket_lokal = cari_transaksi_aktif(no_plat=vehicle_no)
-    if tiket_lokal:
-        return jsonify({
-            "error": (
-                f"Truk {vehicle_no} masih memiliki tiket lokal "
-                f"{tiket_lokal.no_tiket} yang belum selesai."
-            )
-        }), 409
-
     # Tiket kosong dan tiket yang belum selesai di Ascend juga memblokir tiket baru.
     try:
         tiket_aktif = db_ascend.cari_tiket_ascend_berdasarkan_plat(vehicle_no)
