@@ -1,7 +1,6 @@
 import { memo } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { angka } from '../lib/data'
-import { Kosong } from '../komponen/Keadaan'
 import { namaHariSingkat, tglPanjang } from '../laporan/tiket_penjualan/periode'
 
 const satu = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
@@ -23,19 +22,19 @@ function IsiTooltip({ active, payload, satuan }) {
     <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs shadow-md">
       <p className="font-medium text-slate-900">{judul}</p>
       <p className="mt-0.5 tabular-nums text-slate-700">
-        {tonPenuh(d.netto)} · {angka.format(d.rit)} pengiriman
+        {tonPenuh(d.netto)} dalam {angka.format(d.rit)} pengiriman
       </p>
     </div>
   )
 }
 
 // Berat keluar per jam (satu hari) atau per tanggal (satu minggu atau bulan). Klik batang untuk memfilter jam atau tanggal itu.
-function SebaranWaktu({ satuan, data, terpilih, onPilih, warna = '#0369a1' }) {
-  if (data.every((d) => d.rit === 0)) return <Kosong teks="Tidak ada tiket untuk filter ini" />
+function SebaranWaktu({ satuan, data, terpilih, onPilih, warna = '#0369a1', tinggi = 'h-64', kosong }) {
+  if (data.every((d) => d.rit === 0)) return kosong
   const baris = data.map((d) => ({ ...d, label: label(satuan, d.kunci, data.length), ton: d.netto / 1000 }))
   const adaPilihan = terpilih.length > 0
   return (
-    <div className="h-64 w-full">
+    <div className={`${tinggi} w-full`}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={baris} margin={{ top: data.length <= BATAS_LABEL ? 22 : 10, right: 8, bottom: 0, left: 0 }} barCategoryGap="18%">
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />

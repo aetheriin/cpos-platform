@@ -7,7 +7,7 @@ from datetime import date, datetime
 
 import pandas as pd
 
-from inti import konfigurasi
+from inti import ekspor, konfigurasi
 from inti.banding import bagi, jendela_sebelumnya
 from inti.filter import FilterTidakValid, daftar, kanonik, saring, tgl
 from inti.tabel import periksa, susun
@@ -22,7 +22,7 @@ FILTER = [
 DIM = {kunci: kolom for kunci, _, kolom, _ in FILTER}
 FILTER_TANPA_BANDING = ("tanggal",)
 KOLOM_CARI = ["tiket", "pembeli", "produk", "pengangkut", "kendaraan", "supir", "no_do", "kontrak", "comp"]
-# Urutan kolom sama dengan ekspor Excel tiket timbangan di Ascend, ditambah Split dan Perusahaan.
+# Excel: urutan kolom sama dengan ekspor tiket timbangan di Ascend, ditambah Split dan Perusahaan.
 KOLOM_TIKET = [
     ("tgl", "Tanggal", "tanggal"), ("jam_masuk", "Jam Masuk", "teks"), ("jam_keluar", "Jam Keluar", "teks"), ("pembeli", "Nama Pembeli", "teks"),
     ("no_do", "Nomor DO", "teks"), ("produk", "Produk", "teks"), ("pengangkut", "Nama Pengangkutan", "teks"), ("tiket", "No. Tiket", "teks"),
@@ -36,8 +36,12 @@ KOLOM_PENGANGKUT = [
     ("produk", "Produk", "teks"), ("pembeli", "Jumlah Pembeli", "angka"), ("kendaraan", "Jumlah Truk", "angka"), ("hari_kirim", "Jumlah Hari Kirim", "angka"),
     ("terakhir", "Kirim Terakhir", "tanggal"),
 ]
+# Layar: kolom yang paling sering dicari (tiket, produk, pengangkut, pembeli, berat) di depan, supaya tidak perlu menggulir ke samping.
+_URUT_LAYAR = ["tgl", "tiket", "produk", "pengangkut", "pembeli", "kendaraan", "supir", "netto", "jam_masuk", "jam_keluar", "no_do", "kontrak",
+               "bruto", "tara", "potongan", "netto_sumber", "ffa", "air", "kotoran", "dobi", "split", "comp"]
+KOLOM_TIKET_LAYAR = sorted(KOLOM_TIKET, key=lambda k: _URUT_LAYAR.index(k[0]))
 JENIS_DETAIL = {"tiket": "Per tiket", "pengangkut": "Per pengangkut"}
-TANPA_NAMA = "(tanpa nama pengangkutan)"
+TANPA_NAMA = "Tanpa nama pengangkutan"
 
 _cache = {}   # id(df) -> (df, kini, pilihan)
 
@@ -155,7 +159,8 @@ def _per_pengangkut(d):
 
 def detail(df, jenis, ds, filt=None, cari=None, urut=None, arah=None, halaman=1, ukuran=50):
     """'tiket': satu baris per tiket (jumlah netto sama dengan kartu Total Netto). 'pengangkut': satu baris per nama pengangkutan."""
-    kolom = KOLOM_TIKET if jenis == "tiket" else KOLOM_PENGANGKUT
+    ke_excel = ukuran >= ekspor.MAKS_BARIS   # dipanggil Export Excel (api.py), bukan halaman tabel di layar
+    kolom = (KOLOM_TIKET if ke_excel else KOLOM_TIKET_LAYAR) if jenis == "tiket" else KOLOM_PENGANGKUT
     periksa(jenis, JENIS_DETAIL, urut, kolom, arah)
     kini, pilihan = _siapkan(df)
     dari, sampai = _rentang(ds)
@@ -163,5 +168,14 @@ def detail(df, jenis, ds, filt=None, cari=None, urut=None, arah=None, halaman=1,
     if jenis == "tiket":
         hasil = susun(d.reset_index(drop=True), kolom, KOLOM_CARI, cari, urut, arah, "tgl", "desc", halaman, ukuran, pembanding="tiket")
     else:
-        hasil = susun(_per_pengangkut(d), kolom, ["pengangkut", "produk"], cari, urut, arah, "netto", "desc", halaman, ukuran)
+        # Baris tanpa nama pengangkutan selalu paling bawah, apa pun urutannya
+        t = _per_pengangkut(d)
+        urut_pakai = urut or "netto"
+        arah_pakai = arah or ("desc" if urut is None else "asc")
+        kunci = t[urut_pakai].fillna("").astype(str).str.lower() if dict((k, tp) for k, _, tp in kolom)[urut_pakai] == "teks" else t[urut_pakai]
+        t = (t.assign(_k=kunci).sort_values("_k", ascending=arah_pakai == "asc", kind="stable", na_position="last")
+             .assign(_bawah=lambda x: x["pengangkut"] == TANPA_NAMA).sort_values("_bawah", kind="stable").reset_index(drop=True))
+        t["_urutan"] = range(len(t))
+        hasil = susun(t, kolom, ["pengangkut", "produk"], cari, None, None, "_urutan", "asc", halaman, ukuran)
+        hasil.update(urut=urut_pakai, arah=arah_pakai)
     return {"jenis": jenis, "judul": JENIS_DETAIL[jenis], "periode": {"mulai": tgl(dari), "akhir": tgl(sampai)}, **hasil}

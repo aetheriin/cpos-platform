@@ -4,6 +4,7 @@ import SebaranWaktu from '../../grafik/SebaranWaktu'
 import { ton } from '../../grafik/tbs'
 import { angka, bandingKpi, rentangTgl, tambahDariEvent, ubahPilihan } from '../../lib/data'
 import { chipDaftar, useDashboard } from '../../lib/filter'
+import { useTataLetak } from '../../lib/tampilan'
 import FilterMulti from '../../komponen/FilterMulti'
 import { GridKartu, Kartu, KartuGrafik, KisiGrafik, Petak } from '../../komponen/Kartu'
 import KepalaLaporan from '../../komponen/KepalaLaporan'
@@ -52,6 +53,7 @@ export default function DashboardTiketPenjualan({ dataId, onDataHilang }) {
   const b = data?.banding
   const sebaran = data?.sebaran
   const harian = sebaran?.satuan === 'jam'
+  const padat = useTataLetak(LAPORAN)[0] === 'padat'
 
   return (
     <div className="flex items-start gap-4">
@@ -74,12 +76,12 @@ export default function DashboardTiketPenjualan({ dataId, onDataHilang }) {
             </GridKartu>
 
             <KisiGrafik>
-              <Petak panjang="md:col-span-5" padat="lg:col-span-6">
+              <Petak padat="lg:col-span-6">
                 <KartuGrafik judul="Peringkat Produk" petunjuk="Urut dari yang paling berat. Persen terhadap total berat bersih periode ini.">
                   <BatangTonase data={data.per_produk.data} lainnya={data.per_produk.lainnya} satuanLain="produk" persen terpilih={terpilih('produk')} onPilih={pilih.produk} />
                 </KartuGrafik>
               </Petak>
-              <Petak panjang="md:col-span-5" padat="lg:col-span-6">
+              <Petak padat="lg:col-span-6">
                 <KartuGrafik judul="Peringkat Pengangkut" petunjuk="Menurut nama pengangkutan di tiket timbangan.">
                   <BatangTonase data={data.per_pengangkut.data} lainnya={data.per_pengangkut.lainnya} satuanLain="pengangkut" warna="#0f766e"
                     terpilih={terpilih('pengangkut')} onPilih={pilih.pengangkut} kosong="Tidak ada nama pengangkutan untuk filter ini" />
@@ -90,7 +92,7 @@ export default function DashboardTiketPenjualan({ dataId, onDataHilang }) {
                   judul={harian ? 'Berat Keluar per Jam (ton)' : 'Berat Keluar per Hari (ton)'}
                   petunjuk={harian ? 'Menurut jam truk keluar dari timbangan. Klik batang untuk memfilter jam itu.' : 'Klik batang untuk memfilter tanggal itu.'}
                 >
-                  <SebaranWaktu satuan={sebaran.satuan} data={sebaran.data} terpilih={terpilih(harian ? 'jam' : 'tanggal')} onPilih={harian ? pilih.jam : pilih.tanggal} />
+                  <SebaranWaktu tinggi={padat ? 'h-52' : 'h-72'} satuan={sebaran.satuan} data={sebaran.data} terpilih={terpilih(harian ? 'jam' : 'tanggal')} onPilih={harian ? pilih.jam : pilih.tanggal} />
                 </KartuGrafik>
               </Petak>
             </KisiGrafik>

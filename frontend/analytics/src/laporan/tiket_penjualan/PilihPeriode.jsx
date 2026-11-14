@@ -1,4 +1,5 @@
 import Select from '../../komponen/Select'
+import { rentangTgl } from '../../lib/data'
 import { IkonPanahKanan } from '../../komponen/Ikon'
 import { MODE, daftarPeriode, geser, judulPeriode, kunciPeriode, rentangData, tglPendek } from './periode'
 
@@ -22,7 +23,7 @@ function TombolGeser({ arah, mati, judul, onKlik }) {
 
 // Pilih jenis periode (harian, mingguan, bulanan), lalu hari, minggu, atau bulannya. Tombol panah pindah ke periode sebelum atau sesudahnya.
 // batas: data yang dimuat { mulai, akhir }; periode di luar batas tidak bisa dipilih (pakai Ganti periode di bar atas).
-export default function PilihPeriode({ mode, acuan, batas, onUbah, sampaiJam = null }) {
+export default function PilihPeriode({ mode, acuan, batas, onUbah, pembanding = null }) {
   const pilih = (m, a) => onUbah(m, a)
   const sebelum = geser(mode, acuan, -1)
   const sesudah = geser(mode, acuan, 1)
@@ -33,8 +34,13 @@ export default function PilihPeriode({ mode, acuan, batas, onUbah, sampaiJam = n
 
   let catatan = null
   if (r?.terpotong) {
-    if (r.sampai === batas.akhir && mode !== 'hari') catatan = `${kapital(satuan)} berjalan, data sampai ${tglPendek(batas.akhir)}`
-    else if (r.dari === batas.mulai) catatan = `Data yang dimuat mulai ${tglPendek(batas.mulai)}`
+    if (r.sampai === batas.akhir && mode !== 'hari') catatan = `${kapital(satuan)} ini belum selesai, data sampai ${tglPendek(batas.akhir)}.`
+    else if (r.dari === batas.mulai) catatan = `Data yang tersedia mulai ${tglPendek(batas.mulai)}.`
+  }
+  let banding = 'Tidak ada data pembanding untuk periode ini.'
+  if (pembanding) {
+    banding = `Dibandingkan dengan ${rentangTgl(pembanding.mulai, pembanding.akhir)}`
+    banding += pembanding.sampai_jam ? ` sampai pukul ${pembanding.sampai_jam}.59, sama dengan jam sekarang.` : '.'
   }
 
   return (
@@ -59,7 +65,7 @@ export default function PilihPeriode({ mode, acuan, batas, onUbah, sampaiJam = n
 
       <div className="flex min-w-0 items-center gap-2">
         <TombolGeser arah={-1} mati={!adaSebelum} onKlik={() => pilih(mode, sebelum)}
-          judul={adaSebelum ? `${kapital(satuan)} sebelumnya` : `Data yang dimuat mulai ${tglPendek(batas.mulai)}. Pakai Ganti periode untuk tanggal sebelumnya.`} />
+          judul={adaSebelum ? `${kapital(satuan)} sebelumnya` : `Data yang tersedia mulai ${tglPendek(batas.mulai)}. Untuk tanggal sebelumnya, klik Ganti periode di bagian atas.`} />
         {mode === 'hari' ? (
           <input
             type="date"
@@ -88,13 +94,11 @@ export default function PilihPeriode({ mode, acuan, batas, onUbah, sampaiJam = n
           judul={adaSesudah ? `${kapital(satuan)} sesudahnya` : 'Belum ada data sesudahnya'} />
       </div>
 
-      <div className="min-w-0">
-        <p className="text-base font-semibold text-slate-900">{judulPeriode(mode, acuan)}</p>
-        {(catatan || sampaiJam) && (
-          <p className="text-xs text-slate-500">
-            {kapital([catatan, sampaiJam && `pembanding dihitung sampai pukul ${sampaiJam}.59`].filter(Boolean).join(', '))}
-          </p>
-        )}
+      {/* Daftar minggu dan bulan sudah menuliskan periodenya; tanggal hanya ditulis lengkap dengan nama harinya */}
+      <div className="min-w-0 text-sm leading-snug">
+        {mode === 'hari' && <p className="font-medium text-slate-900">{judulPeriode(mode, acuan)}</p>}
+        {catatan && <p className="text-xs text-slate-600">{catatan}</p>}
+        <p className="text-xs text-slate-600">{banding}</p>
       </div>
     </section>
   )

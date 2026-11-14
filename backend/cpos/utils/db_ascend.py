@@ -177,6 +177,93 @@ def daftar_produk_master_ascend():
     finally:
         koneksi.close()
 
+def simpan_produk_master_ascend(
+    product_id,
+    product_name,
+    state,
+    description,
+    req_do,
+    initial_code,
+    prod_flags,
+    qe_ratio,
+):
+    product_id = int(product_id or 0)
+    koneksi = _koneksi()
+
+    try:
+        cursor = koneksi.cursor()
+
+        if product_id:
+            cursor.execute(
+                """
+                SELECT SalesAccountID, OAAccountID
+                FROM dbo.PALM_Products
+                WHERE ProductID = ?
+                """,
+                product_id,
+            )
+            akun = cursor.fetchone()
+            if not akun:
+                raise ValueError("Produk Ascend tidak ditemukan.")
+            sales_account_id = int(akun[0] or 0)
+            oa_account_id = int(akun[1] or 0)
+        else:
+            sales_account_id = 0
+            oa_account_id = 0
+
+        cursor.execute(
+            """
+            SELECT TOP (1) ProductID
+            FROM dbo.PALM_Products
+            WHERE ProductName = ?
+              AND ProductID <> ?
+            """,
+            product_name,
+            product_id,
+        )
+        if cursor.fetchone():
+            raise ValueError(f"Produk {product_name} sudah ada di Ascend.")
+
+        cursor.execute(
+            """
+            DECLARE @hasil INT;
+            EXEC @hasil = dbo.USP_PALM_Products_Update
+                @ProductID = ?,
+                @ProductName = ?,
+                @SalesAccountID = ?,
+                @OAAccountID = ?,
+                @State = ?,
+                @ProductDescription = ?,
+                @ReqDO = ?,
+                @PInitialCode = ?,
+                @ProdFlags = ?,
+                @QERatio = ?;
+            SELECT @hasil AS product_id;
+            """,
+            product_id,
+            product_name,
+            sales_account_id,
+            oa_account_id,
+            state,
+            description,
+            1 if req_do else 0,
+            initial_code,
+            prod_flags,
+            Decimal(str(qe_ratio)),
+        )
+
+        hasil = _baris_hasil(cursor)
+        if not hasil or int(hasil[0]["product_id"] or 0) <= 0:
+            raise ValueError("Ascend tidak berhasil menyimpan produk.")
+
+        koneksi.commit()
+        return int(hasil[0]["product_id"])
+    except Exception:
+        koneksi.rollback()
+        raise
+    finally:
+        koneksi.close()
+
 def cari_tiket_ascend_berdasarkan_plat(no_plat):
     """Cari tiket Ascend terbaru berdasarkan nomor plat."""
     koneksi = _koneksi()

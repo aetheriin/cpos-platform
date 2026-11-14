@@ -25,8 +25,7 @@ def master_halaman():
                            driver_list=db.daftar_driver_aktif(), jenis_sim_list=daftar_jenis_sim(),
                            kategori_list=list(daftar_kategori().values()),
                            jenis_kendaraan_list=db.daftar_jenis_kendaraan(),
-                           company_list=[c for c in daftar_company() if c["is_active"]],
-
+                           company_list=[c for c in daftar_company() if c["is_active"]])
 
 @master_bp.route("/api/master/kendaraan")
 @login_required
@@ -127,7 +126,59 @@ def mitra_daftar():
 def produk_daftar():
     return jsonify(db_ascend.daftar_produk_master_ascend())
 
+@master_bp.route("/api/master/produk/simpan", methods=["POST"])
+@login_required
+@izin("MASTER_PRODUK", "tambah", "ubah")
+def produk_simpan():
+    def aksi():
+        teks_id = (request.form.get("id_produk") or "").strip()
+        if teks_id and not teks_id.isdigit():
+            raise ValueError("ID produk tidak valid.")
 
+        id_produk = int(teks_id) if teks_id else None
+        if not boleh("MASTER_PRODUK", "ubah" if id_produk else "tambah"):
+            return jsonify({
+                "error": "Level Anda tidak memiliki akses untuk tindakan ini"
+            }), 403
+
+        nama = _teks("nama_produk", "Nama produk", maks=30)
+        state = (request.form.get("state") or "Liquid").strip()
+        deskripsi = (request.form.get("deskripsi") or "").strip()
+        kode_awal = (request.form.get("kode_awal") or "").strip()
+        prod_flags = (request.form.get("prod_flags") or "").strip()
+
+        if not state or len(state) > 10:
+            raise ValueError("State wajib diisi dan maksimal 10 karakter.")
+        if len(deskripsi) > 100:
+            raise ValueError("Deskripsi maksimal 100 karakter.")
+        if len(kode_awal) > 10:
+            raise ValueError("Kode awal maksimal 10 karakter.")
+        if len(prod_flags) > 100:
+            raise ValueError("Flags maksimal 100 karakter.")
+
+        qe_ratio = _angka_opsional("qe_ratio", "Rasio QE", 1000000)
+        if qe_ratio is None:
+            qe_ratio = 1
+
+        id_baru = db_ascend.simpan_produk_master_ascend(
+            id_produk,
+            nama,
+            state,
+            deskripsi,
+            request.form.get("req_do") in ("1", "true", "on"),
+            kode_awal,
+            prod_flags,
+            qe_ratio,
+        )
+
+        _catat(
+            "PRODUK_UBAH" if id_produk else "PRODUK_TAMBAH",
+            id_baru,
+            nama,
+        )
+        return jsonify({"message": f"Produk {nama} berhasil disimpan."})
+
+    return _jalankan(aksi)
 
 # ===== JENIS KENDARAAN (kapasitas, migrasi 032) =====
 @master_bp.route("/api/master/jenis-kendaraan")
