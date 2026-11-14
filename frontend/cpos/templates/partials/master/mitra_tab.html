@@ -1,7 +1,7 @@
 {% from "partials/layout/_macros.html" import section_header %}
 <div data-tab-content="mitra" class="hidden">
     <div class="filter-bar">
-        <p class="text-sm text-slate-500">Satu supplier boleh berperan sebagai customer dan/atau pengangkutan.</p>
+        <p class="text-sm text-slate-500">Data Supplier dan tipe Supplier berasal dari Ascend</p>
         <div class="flex-1"></div>
         <div class="relative">
             <input type="text" id="cariMitra" placeholder="Cari kode / nama" class="input-field pl-9 w-64" data-on-input="cariMitra" data-arg="$value">
@@ -18,6 +18,10 @@
                         <th class="table-cell">Dibuat</th>
                     </tr>
                 </thead>
+                <tbody id="tabelMitra"
+                    data-per-halaman="20"
+                    class="divide-y divide-slate-100">
+                </tbody>
             </table>
         </div>
     </div>

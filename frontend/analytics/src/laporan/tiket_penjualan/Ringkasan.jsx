@@ -49,7 +49,7 @@ export default function Ringkasan({ kpi, banding }) {
         <AngkaUtama judul="Total berat bersih" nilai={satu.format(kpi.netto / 1000)} satuan="ton">
           <Perubahan kini={kpi.netto} lalu={lalu?.netto} periode={periode} />
         </AngkaUtama>
-        <AngkaUtama judul="Jumlah pengiriman" nilai={angka.format(kpi.rit)} satuan="truk" keterangan="Satu truk keluar dengan satu tiket timbang">
+        <AngkaUtama judul="Jumlah pengiriman" nilai={angka.format(kpi.rit)} satuan="truk">
           <Perubahan kini={kpi.rit} lalu={lalu?.rit} periode={periode} />
         </AngkaUtama>
       </div>

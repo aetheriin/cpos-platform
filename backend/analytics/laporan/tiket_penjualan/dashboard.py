@@ -141,6 +141,7 @@ def bangun(df, ds, filt=None):
         "filter": [{"kunci": kunci, "nama": nama, "panel": panel} for kunci, nama, _, panel in FILTER],
         "per_produk": U.peringkat(tanpa("produk"), "produk", n, filt["produk"]),
         "per_pengangkut": U.peringkat(tanpa("pengangkut"), "pengangkut", n, filt["pengangkut"]),
+        "per_pembeli": U.peringkat(tanpa("pembeli"), "pembeli", n, filt["pembeli"]),
         "sebaran": sebaran,
         "jumlah": {"tiket": k["rit"], "pengangkut": int(d["pengangkut"].nunique())},
         "pilihan": pilihan,

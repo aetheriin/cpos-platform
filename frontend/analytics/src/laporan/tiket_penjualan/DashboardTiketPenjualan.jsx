@@ -1,27 +1,55 @@
 import { useMemo, useState } from 'react'
 import BatangTonase from '../../grafik/BatangTonase'
 import SebaranWaktu from '../../grafik/SebaranWaktu'
-import { ton } from '../../grafik/tbs'
-import { angka, bandingKpi, rentangTgl, tambahDariEvent, ubahPilihan } from '../../lib/data'
+import { rentangTgl, tambahDariEvent, ubahPilihan } from '../../lib/data'
 import { chipDaftar, useDashboard } from '../../lib/filter'
 import { useTataLetak } from '../../lib/tampilan'
 import FilterMulti from '../../komponen/FilterMulti'
-import { GridKartu, Kartu, KartuGrafik, KisiGrafik, Petak } from '../../komponen/Kartu'
+import { KartuGrafik, KisiGrafik, Petak } from '../../komponen/Kartu'
 import KepalaLaporan from '../../komponen/KepalaLaporan'
 import { MemuatLaporan } from '../../komponen/Keadaan'
 import PanelFilter from '../../komponen/PanelFilter'
 import TabelDetail from '../../komponen/TabelDetail'
 import PilihPeriode from './PilihPeriode'
-import { batasData, rentangData, tglPanjang } from './periode'
+import Ringkasan from './Ringkasan'
+import { batasData, geser, judulPeriode, rentangData, tglPanjang } from './periode'
 
 const LAPORAN = 'tiket_penjualan'
 const FILTER_AWAL = {}
 const KOSONG = []
+const WARNA = '#0369a1'
 const TAB = [
-  { kunci: 'tiket', nama: 'Per tiket', ket: (h) => `Tiket ${rentangTgl(h.periode.mulai, h.periode.akhir)}. Kolom sama dengan ekspor tiket timbangan Ascend, ditambah Split dan Perusahaan.` },
-  { kunci: 'pengangkut', nama: 'Per pengangkut', ket: () => 'Total per nama pengangkutan pada periode yang sama.' },
+  {
+    kunci: 'tiket',
+    nama: 'Per tiket',
+    ket: (h) => `Satu baris untuk satu tiket timbang, ${rentangTgl(h.periode.mulai, h.periode.akhir)}.`,
+  },
+  { kunci: 'pengangkut', nama: 'Per pengangkut', ket: (h) => `Satu baris untuk satu pengangkut, berisi jumlah pengiriman dan total beratnya, ${rentangTgl(h.periode.mulai, h.periode.akhir)}.` },
 ]
-const kg = (x) => (x == null ? '–' : `${angka.format(Math.round(x))} kg`)
+
+// Grafik tanpa data: satu baris pendek, tidak memenuhi kartu.
+const KosongKecil = ({ teks }) => <p className="py-3 text-sm text-slate-500">{teks}</p>
+
+// Keadaan kosong: menyebut sebabnya dan memberi jalan keluar.
+function Kosong({ teks, adaFilter, onLepas, onSebelumnya }) {
+  return (
+    <div className="flex flex-col items-center gap-3 py-8 text-center">
+      <p className="max-w-sm text-sm text-slate-700">{teks}</p>
+      <div className="flex flex-wrap justify-center gap-2">
+        {adaFilter && (
+          <button type="button" onClick={onLepas} className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">
+            Hapus semua filter
+          </button>
+        )}
+        {onSebelumnya && (
+          <button type="button" onClick={onSebelumnya} className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">
+            Lihat periode sebelumnya
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export default function DashboardTiketPenjualan({ dataId, onDataHilang }) {
   const { data, galat, memuat, filter, setFilter, ubah, terpilih, lepas, panel, setPanel, togglePanel } = useDashboard(LAPORAN, dataId, FILTER_AWAL, onDataHilang)
@@ -29,8 +57,9 @@ export default function DashboardTiketPenjualan({ dataId, onDataHilang }) {
   const [periode, setPeriode] = useState({ mode: 'bulan', acuan: null })
   const batas = data ? batasData(data.dataset) : null
   const acuan = periode.acuan ?? data?.periode.akhir ?? null
+  const padat = useTataLetak(LAPORAN)[0] === 'padat'
 
-  // Ganti periode: rentang dikirim ke server, filter tanggal dan jam dari grafik dilepas karena menunjuk periode lama
+  // Ganti periode: rentang dikirim ke server, pilihan tanggal dan jam dari grafik dilepas karena menunjuk periode lama
   const ubahPeriode = (mode, a) => {
     const r = rentangData(mode, a, batas)
     if (!r) return
@@ -40,64 +69,77 @@ export default function DashboardTiketPenjualan({ dataId, onDataHilang }) {
 
   const pilih = useMemo(() => {
     const dari = (jenis) => (nilai, e) => setFilter((f) => ({ ...f, [jenis]: ubahPilihan(f[jenis] ?? [], nilai, tambahDariEvent(e)) }))
-    return { produk: dari('produk'), pengangkut: dari('pengangkut'), tanggal: dari('tanggal'), jam: dari('jam') }
+    return { produk: dari('produk'), pengangkut: dari('pengangkut'), pembeli: dari('pembeli'), tanggal: dari('tanggal'), jam: dari('jam') }
   }, [setFilter])
 
   const daftarFilter = data?.filter ?? KOSONG
-  const tampil = (kunci, nilai) => (kunci === 'tanggal' ? tglPanjang(nilai, { hari: true }) : kunci === 'jam' ? `${nilai}.00–${nilai}.59` : nilai)
+  const tampil = (kunci, nilai) => (kunci === 'tanggal' ? tglPanjang(nilai, { hari: true }) : kunci === 'jam' ? `pukul ${nilai}.00–${nilai}.59` : nilai)
   const aktif = chipDaftar(daftarFilter, terpilih, tampil)
-  // Reset melepas semua pilihan, periode tetap
+  // Hapus filter melepas semua pilihan; periode tetap
   const reset = () => setFilter((f) => ({ dari: f.dari, sampai: f.sampai }))
 
   const kpi = data?.kpi
-  const b = data?.banding
   const sebaran = data?.sebaran
-  const harian = sebaran?.satuan === 'jam'
-  const padat = useTataLetak(LAPORAN)[0] === 'padat'
+  const harian = periode.mode === 'hari'
+  const namaPeriode = acuan ? judulPeriode(periode.mode, acuan) : ''
+  const sebelumnya = acuan && batas && rentangData(periode.mode, geser(periode.mode, acuan, -1), batas) ? () => ubahPeriode(periode.mode, geser(periode.mode, acuan, -1)) : null
+  const kosongBesar = (teks) => <Kosong teks={teks} adaFilter={aktif.length > 0} onLepas={reset} onSebelumnya={aktif.length > 0 ? null : sebelumnya} />
 
   return (
     <div className="flex items-start gap-4">
       <div className="min-w-0 flex-1 space-y-4">
-        <KepalaLaporan judul="Tiket Penjualan" data={data} aktif={aktif} onLepas={lepas} onReset={reset} panelTerbuka={panel} onTogglePanel={togglePanel} />
+        {/* data tidak diteruskan: periode dan pembandingnya sudah ditulis di bar periode, jadi tidak ditulis dua kali */}
+        <KepalaLaporan judul="Tiket Penjualan" data={null} aktif={aktif} onLepas={lepas} onReset={reset} panelTerbuka={panel} onTogglePanel={togglePanel} />
 
-        {data && acuan && <PilihPeriode mode={periode.mode} acuan={acuan} batas={batas} onUbah={ubahPeriode} sampaiJam={data.banding?.sampai_jam ?? null} />}
+        {data && acuan && <PilihPeriode mode={periode.mode} acuan={acuan} batas={batas} onUbah={ubahPeriode} pembanding={data.banding} />}
 
-        {galat && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Laporan tidak bisa ditampilkan: {galat.message}</div>}
+        {galat && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Halaman belum bisa ditampilkan: {galat.message}</div>}
         {!data && !galat && <MemuatLaporan teks="Memuat tiket penjualan..." />}
 
-        {data && (
+        {data && kpi.rit === 0 && (
+          <section className="rounded-xl border border-slate-200 bg-white">
+            {kosongBesar(aktif.length > 0 ? `Tidak ada tiket penjualan ${namaPeriode} yang cocok dengan filter yang dipilih.` : `Tidak ada tiket penjualan ${namaPeriode}.`)}
+          </section>
+        )}
+
+        {data && kpi.rit > 0 && (
           <div className={memuat ? 'space-y-4 opacity-60 transition-opacity' : 'space-y-4 transition-opacity'}>
-            <GridKartu kolom={5}>
-              <Kartu judul="Total Berat Bersih" nilai={ton(kpi.netto)} info="berat bersih (netto) semua produk yang keluar pada periode ini" banding={bandingKpi(kpi.netto, b, (k) => k.netto)} />
-              <Kartu judul="Jumlah Pengiriman" nilai={angka.format(kpi.rit)} info="satu truk keluar dengan satu tiket timbang dihitung satu pengiriman" banding={bandingKpi(kpi.rit, b, (k) => k.rit)} />
-              <Kartu judul="Rata-rata Muatan per Truk" nilai={kg(kpi.per_rit)} info="total berat bersih dibagi jumlah pengiriman" banding={bandingKpi(kpi.per_rit, b, (k) => k.per_rit)} />
-              <Kartu judul="Jumlah Pengangkut" nilai={angka.format(kpi.pengangkut)} info="perusahaan pengangkutan yang mengirim pada periode ini" banding={bandingKpi(kpi.pengangkut, b, (k) => k.pengangkut)} />
-              <Kartu judul="Jumlah Pembeli" nilai={angka.format(kpi.pembeli)} info="pembeli yang menerima kiriman pada periode ini" banding={bandingKpi(kpi.pembeli, b, (k) => k.pembeli)} />
-            </GridKartu>
+            <Ringkasan kpi={kpi} banding={data.banding} />
 
             <KisiGrafik>
+              {/* Tanpa nama pengangkutan sama sekali: kartu tidak ditampilkan, ringkasan sudah menulis 0 pengangkut */}
+              {data.per_pengangkut.data.length > 0 && (
               <Petak padat="lg:col-span-6">
-                <KartuGrafik judul="Peringkat Produk" petunjuk="Urut dari yang paling berat. Persen terhadap total berat bersih periode ini.">
-                  <BatangTonase data={data.per_produk.data} lainnya={data.per_produk.lainnya} satuanLain="produk" persen terpilih={terpilih('produk')} onPilih={pilih.produk} />
+                <KartuGrafik judul="Pengangkut terbesar">
+                  <BatangTonase data={data.per_pengangkut.data} lainnya={data.per_pengangkut.lainnya} satuanLain="pengangkut" warna={WARNA}
+                    terpilih={terpilih('pengangkut')} onPilih={pilih.pengangkut} kosong={<KosongKecil teks="Belum ada nama pengangkutan di tiket." />} />
                 </KartuGrafik>
               </Petak>
+              )}
               <Petak padat="lg:col-span-6">
-                <KartuGrafik judul="Peringkat Pengangkut" petunjuk="Menurut nama pengangkutan di tiket timbangan.">
-                  <BatangTonase data={data.per_pengangkut.data} lainnya={data.per_pengangkut.lainnya} satuanLain="pengangkut" warna="#0f766e"
-                    terpilih={terpilih('pengangkut')} onPilih={pilih.pengangkut} kosong="Tidak ada nama pengangkutan untuk filter ini" />
+                <KartuGrafik judul="Pembeli terbesar">
+                  <BatangTonase data={data.per_pembeli.data} lainnya={data.per_pembeli.lainnya} satuanLain="pembeli" persen warna={WARNA}
+                    terpilih={terpilih('pembeli')} onPilih={pilih.pembeli} kosong={<KosongKecil teks="Belum ada nama pembeli di tiket." />} />
                 </KartuGrafik>
               </Petak>
-              <Petak>
-                <KartuGrafik
-                  judul={harian ? 'Berat Keluar per Jam (ton)' : 'Berat Keluar per Hari (ton)'}
-                  petunjuk={harian ? 'Menurut jam truk keluar dari timbangan. Klik batang untuk memfilter jam itu.' : 'Klik batang untuk memfilter tanggal itu.'}
-                >
-                  <SebaranWaktu tinggi={padat ? 'h-52' : 'h-72'} satuan={sebaran.satuan} data={sebaran.data} terpilih={terpilih(harian ? 'jam' : 'tanggal')} onPilih={harian ? pilih.jam : pilih.tanggal} />
+              <Petak padat={harian ? 'lg:col-span-6' : 'lg:col-span-5'}>
+                <KartuGrafik judul="Produk">
+                  <BatangTonase data={data.per_produk.data} lainnya={data.per_produk.lainnya} satuanLain="produk" persen warna={WARNA}
+                    terpilih={terpilih('produk')} onPilih={pilih.produk} kosong={<KosongKecil teks="Tidak ada produk." />} />
                 </KartuGrafik>
               </Petak>
+              {/* Harian tidak memakai grafik per jam: truk sehari terlalu sedikit untuk membentuk pola */}
+              {!harian && (
+                <Petak padat="lg:col-span-7">
+                  <KartuGrafik judul="Berat keluar per hari (ton)">
+                    <SebaranWaktu tinggi={padat ? 'h-52' : 'h-72'} satuan={sebaran.satuan} data={sebaran.data} warna={WARNA}
+                      terpilih={terpilih('tanggal')} onPilih={pilih.tanggal} kosong={<KosongKecil teks="Tidak ada tiket." />} />
+                  </KartuGrafik>
+                </Petak>
+              )}
             </KisiGrafik>
 
-            <TabelDetail laporanId={LAPORAN} dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB} onDataHilang={onDataHilang} />
+            <TabelDetail judul="Daftar tiket" laporanId={LAPORAN} dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB} onDataHilang={onDataHilang} />
           </div>
         )}
       </div>

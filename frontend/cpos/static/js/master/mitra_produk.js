@@ -69,12 +69,13 @@ async function muatProduk() {
         return;
     }
 
+    daftarProduk = data;
+
     tbody.innerHTML = data.map(p => `
         <tr class="hover:bg-slate-50">
             <td class="table-cell">${escapeHtml(p.nama_produk || '-')}</td>
             <td class="table-cell">${escapeHtml(p.state || '-')}</td>
             <td class="table-cell">${escapeHtml(p.deskripsi || '-')}</td>
-            <td class="table-cell">${p.req_do ? 'Ya' : 'Tidak'}</td>
             <td class="table-cell">${escapeHtml(p.kode_awal || '-')}</td>
             <td class="table-cell">${escapeHtml(p.prod_flags || '-')}</td>
             <td class="table-cell text-right">${
@@ -82,6 +83,50 @@ async function muatProduk() {
                     ? '-'
                     : Number(p.qe_ratio).toLocaleString('id-ID')
             }</td>
+            <td class="table-cell text-right">
+                ${bolehUbah('tabelProduk') ? `
+                    <button type="button"
+                            class="link-aksi text-blue-600"
+                            data-on-click="bukaProduk"
+                            data-arg="${p.id_produk}">
+                        Ubah
+                    </button>` : ''}
+            </td>
         </tr>`
     ).join('') || barisKosong(7, 'Belum ada produk Ascend');
 }
+
+function bukaProduk(id) {
+    const form = document.getElementById('formProduk');
+    const p = id == null
+        ? null
+        : daftarProduk.find(x => Number(x.id_produk) === Number(id));
+
+    form.reset();
+    isiForm(form, p || {
+        id_produk: '',
+        state: 'Liquid',
+        deskripsi: '',
+        kode_awal: '',
+        prod_flags: '',
+        qe_ratio: 1,
+        req_do: false,
+    });
+
+    const perluDo = form.querySelector('[name="req_do"]');
+    if (perluDo) perluDo.checked = Boolean(p?.req_do);
+
+    document.getElementById('judulModalProduk').textContent =
+        p ? 'Ubah Produk Ascend' : 'Tambah Produk Ascend';
+
+    openModal('modalProduk');
+    document.getElementById('prodNama').focus();
+}
+
+document.getElementById('formProduk')?.addEventListener('submit', e => {
+    e.preventDefault();
+    kirimFormAdmin(e.target, '/api/master/produk/simpan', {
+        modal: 'modalProduk',
+        setelahnya: muatProduk,
+    });
+});

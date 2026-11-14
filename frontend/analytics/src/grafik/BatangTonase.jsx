@@ -3,7 +3,9 @@ import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Too
 import { angka } from '../lib/data'
 
 const satu = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+const NBSP = String.fromCharCode(160) // spasi yang tidak memisah angka dan satuannya ke baris lain
 const HURUF_PER_BARIS = 24
+const TINGGI_BARIS = 32 // px; sama untuk semua peringkat supaya dua grafik berdampingan sejajar, dan cukup untuk nama dua baris
 const LEBAR_NAMA = 180 // px
 
 // Nama dipecah per kata menjadi paling banyak dua baris, supaya nama pengangkut yang panjang tetap terbaca utuh tanpa diarahkan kursor.
@@ -54,10 +56,9 @@ function BatangTonase({ data, terpilih, onPilih, warna = '#0369a1', persen = fal
   if (data.length === 0) return kosong
   const baris = data.map((d) => ({ ...d, ton: d.netto / 1000 }))
   const adaPilihan = terpilih.length > 0
-  const tinggiBaris = baris.some((d) => d.nama.length > HURUF_PER_BARIS) ? 34 : 26
   return (
     <div>
-      <div className="w-full" style={{ height: baris.length * tinggiBaris + 8 }}>
+      <div className="w-full" style={{ height: baris.length * TINGGI_BARIS + 8 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={baris} layout="vertical" margin={{ top: 0, right: 76, bottom: 0, left: 0 }} barCategoryGap="24%">
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
@@ -68,14 +69,14 @@ function BatangTonase({ data, terpilih, onPilih, warna = '#0369a1', persen = fal
               {baris.map((d) => (
                 <Cell key={d.nama} fill={warna} fillOpacity={adaPilihan && !terpilih.includes(d.nama) ? 0.25 : 0.9} />
               ))}
-              <LabelList dataKey="ton" position="right" fontSize={11} fill="#334155" formatter={(v) => `${satu.format(v)} ton`} />
+              <LabelList dataKey="ton" position="right" fontSize={11} fill="#334155" formatter={(v) => `${satu.format(v)}${NBSP}ton`} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
       {lainnya && (
         <p className="mt-2 text-xs text-slate-600">
-          Masih ada {angka.format(lainnya.jumlah)} {satuanLain} lain dengan total {satu.format(lainnya.netto / 1000)} ton. Cari namanya lewat tombol Filter.
+          +{angka.format(lainnya.jumlah)} {satuanLain} lain, {satu.format(lainnya.netto / 1000)} ton
         </p>
       )}
     </div>
