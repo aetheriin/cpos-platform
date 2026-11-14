@@ -68,6 +68,115 @@ def _baris_hasil(cursor):
     nama_kolom = [kolom[0] for kolom in cursor.description]
     return [dict(zip(nama_kolom, baris)) for baris in cursor.fetchall()]
 
+def daftar_supplier_master_ascend():
+    """Daftar supplier Ascend beserta tipe supplier."""
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute(
+            """
+            SELECT
+                s.SupplierID AS id_supplier,
+                s.SupplierCode AS kode_supplier,
+                s.SupplierName AS nama_supplier,
+                s.AddressLine1 AS alamat1,
+                s.AddressLine2 AS alamat2,
+                s.SupplierTypeID AS id_jenis_supplier,
+                st.SupplierTypeCode AS kode_jenis_supplier,
+                st.SupplierTypeDescription AS jenis_supplier,
+                s.Disabled AS disabled,
+                s.IsTransport AS is_transport,
+                s.IsExpedition AS is_expedition,
+                s.PalmFFBSupplier AS supplier_tbs,
+                s.DefaultTicketType AS default_ticket_type,
+                s.CreateDate AS created_at
+            FROM dbo.AP_Suppliers AS s
+            LEFT JOIN dbo.AP_SupplierTypes AS st
+                ON st.SupplierTypeID = s.SupplierTypeID
+            ORDER BY
+                CASE WHEN ISNULL(s.Disabled, 0) = 0 THEN 0 ELSE 1 END,
+                s.SupplierName
+            """
+        )
+
+        hasil = []
+        for row in _baris_hasil(cursor):
+            dibuat = row.get("created_at")
+
+            hasil.append({
+                "id_supplier": int(row["id_supplier"]),
+                "kode_supplier": str(row.get("kode_supplier") or "").strip(),
+                "nama_supplier": str(row.get("nama_supplier") or "").strip(),
+                "alamat": " ".join(
+                    str(bagian).strip()
+                    for bagian in (row.get("alamat1"), row.get("alamat2"))
+                    if bagian and str(bagian).strip()
+                ),
+                "id_jenis_supplier": row.get("id_jenis_supplier"),
+                "kode_jenis_supplier": str(
+                    row.get("kode_jenis_supplier") or ""
+                ).strip(),
+                "jenis_supplier": str(
+                    row.get("jenis_supplier") or ""
+                ).strip(),
+                "is_active": not bool(row.get("disabled")),
+                "is_transport": bool(row.get("is_transport")),
+                "is_expedition": bool(row.get("is_expedition")),
+                "supplier_tbs": bool(row.get("supplier_tbs")),
+                "default_ticket_type": str(
+                    row.get("default_ticket_type") or ""
+                ).strip(),
+                "created_at": dibuat.isoformat()[:10] if dibuat else None,
+            })
+
+        return hasil
+    finally:
+        koneksi.close()
+
+def daftar_produk_master_ascend():
+    """Daftar produk dari master Ascend."""
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute("EXEC dbo.USP_PALM_Products_QueryAll")
+
+        hasil = []
+        for row in _baris_hasil(cursor):
+            hasil.append({
+                "id_produk": int(row["ProductID"]),
+                "nama_produk": str(row.get("ProductName") or "").strip(),
+                "nama_tampil": str(row.get("VisibleName") or "").strip(),
+                "state": str(row.get("State") or "").strip(),
+                "deskripsi": str(
+                    row.get("ProductDescription") or ""
+                ).strip(),
+                "req_do": bool(row.get("ReqDO")),
+                "kode_awal": str(row.get("PInitialCode") or "").strip(),
+                "prod_flags": str(row.get("ProdFlags") or "").strip(),
+                "qe_ratio": (
+                    float(row["QERatio"])
+                    if row.get("QERatio") is not None else None
+                ),
+                "sales_account_id": int(row.get("SalesAccountID") or 0),
+                "oa_account_id": int(row.get("OAAccountID") or 0),
+                "inbound_extra": (
+                    float(row["InboundExtra"])
+                    if row.get("InboundExtra") is not None else None
+                ),
+                "outbound_extra": (
+                    float(row["OutboundExtra"])
+                    if row.get("OutboundExtra") is not None else None
+                ),
+                "inbound_extra_h": (
+                    float(row["InboundExtraH"])
+                    if row.get("InboundExtraH") is not None else None
+                ),
+            })
+
+        return hasil
+    finally:
+        koneksi.close()
+
 def cari_tiket_ascend_berdasarkan_plat(no_plat):
     """Cari tiket Ascend terbaru berdasarkan nomor plat."""
     koneksi = _koneksi()

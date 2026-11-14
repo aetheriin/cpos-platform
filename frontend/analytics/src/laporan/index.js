@@ -13,6 +13,7 @@ import LaporanPurchaseOrder from './purchase_order/LaporanPurchaseOrder'
 import LaporanPurchaseRequest from './purchase_request/LaporanPurchaseRequest'
 import DashboardTbs from './tbs/DashboardTbs'
 import DashboardTbsMingguan from './tbs_mingguan/DashboardTbsMingguan'
+import DashboardTiketPenjualan from './tiket_penjualan/DashboardTiketPenjualan'
 
 export const DASHBOARD = {
   pr_po: DashboardPrPo,
@@ -22,6 +23,7 @@ export const DASHBOARD = {
   penilaian_pvr: DashboardPvrKpi,
   penilaian_pv: DashboardPvKpi,
   palm_weighbridge: DashboardPalm,
+  tiket_penjualan: DashboardTiketPenjualan,
   penerimaan_tbs: DashboardTbs,
   tbs_mingguan: DashboardTbsMingguan,
   cash_flow: DashboardKasBank,

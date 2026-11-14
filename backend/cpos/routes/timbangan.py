@@ -34,9 +34,6 @@ def timbang_reset():
 @timbangan_bp.route("/api/timbang/data/<no_tiket>")
 @login_required
 @lihat(*MENU_OPERASI)
-@timbangan_bp.route("/api/timbang/data/<no_tiket>")
-@login_required
-@lihat(*MENU_OPERASI)
 def timbang_data(no_tiket):
     try:
         data = db_ascend.baca_berat_tiket_ascend(no_tiket)
@@ -112,7 +109,7 @@ def timbang_scan_qr():
         }), 200
     return jsonify({
         "error": "Tiket Ascend tidak ditemukan atau sudah selesai."
-    }), 404
+    }), 404 
 
 HARI_HISTORY_MAKS = 30
 

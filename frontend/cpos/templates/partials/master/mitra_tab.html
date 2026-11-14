@@ -1,4 +1,3 @@
-{% from "partials/master/_referensi.html" import kotak_referensi %}
 {% from "partials/layout/_macros.html" import section_header %}
 <div data-tab-content="mitra" class="hidden">
     <div class="filter-bar">
@@ -8,23 +7,18 @@
             <input type="text" id="cariMitra" placeholder="Cari kode / nama" class="input-field pl-9 w-64" data-on-input="cariMitra" data-arg="$value">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
         </div>
-        {% if hak.mitra.tambah %}
-        <button type="button" class="btn-primary" data-on-click="bukaMitra"><i class="fa-solid fa-plus mr-1"></i> Tambah Supplier</button>
-        {% endif %}
     </div>
     <div class="section-box">
         {{ section_header('master-mitra', 'Daftar Supplier') }}
         <div id="body-master-mitra" class="section-body overflow-x-auto">
             <table class="w-full text-left text-sm">
                 <thead class="table-header-row">
-                    <tr><th class="table-cell">Kode</th><th class="table-cell">Nama</th><th class="table-cell">Peran</th>
-                        <th class="table-cell">Perusahaan</th><th class="table-cell">Status</th><th class="table-cell">Dibuat</th><th class="table-cell text-right">Aksi</th></tr>
+                    <tr><th class="table-cell">Kode</th><th class="table-cell">Nama</th><th class="table-cell">Tipe Supplier</th>
+                        <th class="table-cell">Jenis Operasi</th><th class="table-cell">Default Tipe Tiket</th><th class="table-cell">Status</th>
+                        <th class="table-cell">Dibuat</th>
+                    </tr>
                 </thead>
-                <tbody data-per-halaman="20" data-boleh-ubah="{{ 1 if hak.mitra.ubah else 0 }}" id="tabelMitra"
-                       data-company='{{ company_list | map(attribute="kode") | list | tojson }}' data-company-id='{{ company_list | map(attribute="id_company") | list | tojson }}' class="divide-y divide-slate-100"></tbody>
             </table>
         </div>
     </div>
-    {{ kotak_referensi('grup_supplier', 'Grup Supplier', 'Pengelompokan supplier (mis. harga per grup). Dipilih di form Supplier.') }}
-    {{ kotak_referensi('jenis_supplier', 'Jenis Supplier', 'Kode jenis dipakai aturan aplikasi; hanya nama & keterangan yang bisa diubah.', tertutup=true) }}
 </div>

@@ -43,7 +43,10 @@ def _muat_data():
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("EXEC dbo.top_item_category_analysis")
+        cursor.execute(
+            "EXEC dbo.top_item_category_analysis "
+            "@Company='ALL', @DateFrom=NULL, @DateTo=NULL, @TopN=10, @Gabung=0"
+        )
         hasil = []
         while True:
             if cursor.description is not None:

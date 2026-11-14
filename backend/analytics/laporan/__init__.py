@@ -19,5 +19,6 @@ from .purchase_order import LAPORAN as _purchase_order
 from .purchase_request import LAPORAN as _purchase_request
 from .tbs import LAPORAN as _tbs
 from .tbs_mingguan import LAPORAN as _tbs_mingguan
+from .tiket_penjualan import LAPORAN as _tiket_penjualan
 
-SEMUA = {l.id: l for l in (_pr_po, _po_pi, _po_amt, _pi_gt, _penilaian_pvr, _penilaian_pv, _palm, _tbs_mingguan, _tbs, _purchase_request, _purchase_order, _pi_pvr, _outstanding, _kas_bank)}
+SEMUA = {l.id: l for l in (_pr_po, _po_pi, _po_amt, _pi_gt, _penilaian_pvr, _penilaian_pv, _palm, _tiket_penjualan, _tbs_mingguan, _tbs, _purchase_request, _purchase_order, _pi_pvr, _outstanding, _kas_bank)}

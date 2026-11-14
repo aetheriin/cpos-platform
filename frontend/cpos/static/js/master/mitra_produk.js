@@ -11,25 +11,48 @@ document.addEventListener('DOMContentLoaded', () => {
 async function muatMitra() {
     const data = await ambilJson('/api/master/mitra');
     const tbody = document.getElementById('tabelMitra');
-    if (data.error) { tbody.innerHTML = barisGagal(7, data.error); return; }
+
+    if (data.error) {
+        tbody.innerHTML = barisGagal(7, data.error);
+        return;
+    }
+
     daftarMitra = data;
-    const kodePt = JSON.parse(tbody.dataset.company || '[]'), idPt = JSON.parse(tbody.dataset.companyId || '[]');
-    const labelPt = ids => ids.length ? ids.map(id => kodePt[idPt.indexOf(id)]).filter(Boolean).join(', ') : 'Semua';
-    tbody.innerHTML = data.map(s => `
-        <tr class="hover:bg-slate-50${s.is_active ? '' : ' text-slate-400'}" data-cari="${escapeHtml(`${s.kode_supplier} ${s.nama_supplier}`.toLowerCase())}">
-            <td class="table-cell font-mono">${escapeHtml(s.kode_supplier)}</td>
-            <td class="table-cell">${escapeHtml(s.nama_supplier)}${s.is_blacklisted ? ` ${badge('BLACKLIST', WARNA_BADGE.merah)}` : ''}${s.alamat ? `<span class="block text-[11px] text-slate-500">${escapeHtml(s.alamat)}</span>` : ''}${s.nama_grup || s.rekening
-                ? `<span class="block text-[11px] text-slate-500">${[s.nama_grup && `Grup ${s.nama_grup}`, s.rekening].filter(Boolean).map(escapeHtml).join(' · ')}</span>` : ''}</td>
-            <td class="table-cell space-x-1">${s.is_customer ? badge('Customer', WARNA_BADGE.biru) : ''}${s.is_angkutan ? badge('Pengangkutan', WARNA_BADGE.oranye) : ''}</td>
-            <td class="table-cell">${escapeHtml(labelPt(s.company))}</td>
-            <td class="table-cell">${badgeAktif(s.is_active)}</td>
-            <td class="table-cell">${escapeHtml(s.created_at || '-')}</td>
-            <td class="table-cell text-right whitespace-nowrap space-x-3">${bolehUbah('tabelMitra') ? `
-                <button type="button" class="link-aksi text-blue-600" data-on-click="bukaMitra" data-arg="${s.id_supplier}">Ubah</button>
-                <button type="button" class="link-aksi ${s.is_active ? 'text-red-600' : 'text-emerald-600'}" data-on-click="ubahAktifMitra"
-                    data-arg="${s.id_supplier}">${s.is_active ? 'Nonaktifkan' : 'Aktifkan'}</button>` : ''}
-            </td>
-        </tr>`).join('') || barisKosong(7, 'Belum ada supplier', aksiKosong('bukaMitra', 'Tambah Supplier'));
+
+    tbody.innerHTML = data.map(s => {
+        const operasi = [
+            s.is_transport && badge('Transport', WARNA_BADGE.oranye),
+            s.is_expedition && badge('Ekspedisi', WARNA_BADGE.biru),
+            s.supplier_tbs && badge('Supplier TBS', WARNA_BADGE.hijau),
+        ].filter(Boolean).join(' ') || '-';
+
+        const tipe = [
+            s.kode_jenis_supplier,
+            s.jenis_supplier,
+        ].filter(Boolean).join(' · ') || '-';
+
+        return `
+            <tr class="hover:bg-slate-50${s.is_active ? '' : ' text-slate-400'}"
+                data-cari="${escapeHtml(
+                    `${s.kode_supplier} ${s.nama_supplier} ${tipe}`.toLowerCase()
+                )}">
+                <td class="table-cell font-mono">
+                    ${escapeHtml(s.kode_supplier)}
+                </td>
+                <td class="table-cell">
+                    ${escapeHtml(s.nama_supplier)}
+                    ${s.alamat
+                        ? `<span class="block text-[11px] text-slate-500">${escapeHtml(s.alamat)}</span>`
+                        : ''}
+                </td>
+                <td class="table-cell">${escapeHtml(tipe)}</td>
+                <td class="table-cell">${operasi}</td>
+                <td class="table-cell">${escapeHtml(s.default_ticket_type || '-')}</td>
+                <td class="table-cell">${badgeAktif(s.is_active)}</td>
+                <td class="table-cell">${escapeHtml(s.created_at || '-')}</td>
+            </tr>`;
+    }).join('') || barisKosong(7, 'Belum ada Supplier Ascend');
+
     saringBaris('tabelMitra', document.getElementById('cariMitra').value);
 }
 
@@ -37,72 +60,28 @@ function cariMitra(teks) {
     saringBaris('tabelMitra', teks);
 }
 
-function bukaMitra(id) {
-    const form = document.getElementById('formMitra');
-    const s = daftarMitra.find(x => x.id_supplier === id);
-    form.reset();
-    const { company, ...isi } = s || {};
-    isiForm(form, s ? { ...isi, alamat: s.alamat || '', id_grup: s.id_grup ?? '', id_rekening: s.id_rekening ?? '' }
-                    : { id_supplier: '', is_customer: true, id_grup: '', id_rekening: '' });
-    form.querySelectorAll('[name=company]').forEach(c => { c.checked = (company || []).includes(c.value); });
-    document.getElementById('judulModalMitra').textContent = s ? 'Ubah Supplier' : 'Tambah Supplier';
-    openModal('modalMitra');
-    document.getElementById('mitraKode').focus();
-}
-
-document.getElementById('formMitra')?.addEventListener('submit', e => {
-    e.preventDefault();
-    kirimFormAdmin(e.target, '/api/master/mitra/simpan', { modal: 'modalMitra', setelahnya: muatMitra });
-});
-
-function ubahAktifMitra(id) {
-    const s = daftarMitra.find(x => x.id_supplier === id);
-    konfirmasiAktif({
-        url: `/api/master/mitra/${id}/aktif`, aktif: !s.is_active, nama: s.nama_supplier, jenis: 'supplier',
-        pesanNonaktif: 'Tidak muncul lagi di pilihan formulir pendaftaran tiket.', setelahnya: muatMitra,
-    });
-}
-
 async function muatProduk() {
     const data = await ambilJson('/api/master/produk');
     const tbody = document.getElementById('tabelProduk');
-    if (data.error) { tbody.innerHTML = barisGagal(6, data.error); return; }
-    daftarProduk = data;
+
+    if (data.error) {
+        tbody.innerHTML = barisGagal(7, data.error);
+        return;
+    }
+
     tbody.innerHTML = data.map(p => `
-        <tr class="hover:bg-slate-50${p.is_active ? '' : ' text-slate-400'}">
-            <td class="table-cell">${escapeHtml(p.nama_produk)}</td>
-            <td class="table-cell">${badge(labelKode(p.kategori), p.kategori === 'TBS' ? WARNA_BADGE.hijau : WARNA_BADGE.biru)}</td>
-            <td class="table-cell">${escapeHtml(p.nama_alur || '-')}</td>
-            <td class="table-cell">${p.kategori === 'TBS' ? '<span class="text-slate-400">-</span>'
-                : (p.ada_standar ? badge('Sudah diatur', WARNA_BADGE.hijau) : badge('Belum diatur', WARNA_BADGE.oranye))}</td>
-            <td class="table-cell">${badgeAktif(p.is_active)}</td>
-            <td class="table-cell text-right whitespace-nowrap space-x-3">${bolehUbah('tabelProduk') ? `
-                <button type="button" class="link-aksi text-blue-600" data-on-click="bukaProduk" data-arg="${p.id_produk}">Ubah</button>
-                <button type="button" class="link-aksi ${p.is_active ? 'text-red-600' : 'text-emerald-600'}" data-on-click="ubahAktifProduk"
-                    data-arg="${p.id_produk}">${p.is_active ? 'Nonaktifkan' : 'Aktifkan'}</button>` : ''}
-            </td>
-        </tr>`).join('') || barisKosong(6, 'Belum ada produk', aksiKosong('bukaProduk', 'Tambah Produk'));
-}
-
-function bukaProduk(id) {
-    const form = document.getElementById('formProduk');
-    const p = daftarProduk.find(x => x.id_produk === id);
-    form.reset();
-    isiForm(form, p || { id_produk: '' });
-    document.getElementById('judulModalProduk').textContent = p ? 'Ubah Produk' : 'Tambah Produk';
-    openModal('modalProduk');
-    document.getElementById('prodNama').focus();
-}
-
-document.getElementById('formProduk')?.addEventListener('submit', e => {
-    e.preventDefault();
-    kirimFormAdmin(e.target, '/api/master/produk/simpan', { modal: 'modalProduk', setelahnya: muatProduk });
-});
-
-function ubahAktifProduk(id) {
-    const p = daftarProduk.find(x => x.id_produk === id);
-    konfirmasiAktif({
-        url: `/api/master/produk/${id}/aktif`, aktif: !p.is_active, nama: p.nama_produk, jenis: 'produk',
-        pesanNonaktif: 'Tidak muncul lagi di pilihan formulir pendaftaran tiket.', setelahnya: muatProduk,
-    });
+        <tr class="hover:bg-slate-50">
+            <td class="table-cell">${escapeHtml(p.nama_produk || '-')}</td>
+            <td class="table-cell">${escapeHtml(p.state || '-')}</td>
+            <td class="table-cell">${escapeHtml(p.deskripsi || '-')}</td>
+            <td class="table-cell">${p.req_do ? 'Ya' : 'Tidak'}</td>
+            <td class="table-cell">${escapeHtml(p.kode_awal || '-')}</td>
+            <td class="table-cell">${escapeHtml(p.prod_flags || '-')}</td>
+            <td class="table-cell text-right">${
+                p.qe_ratio == null
+                    ? '-'
+                    : Number(p.qe_ratio).toLocaleString('id-ID')
+            }</td>
+        </tr>`
+    ).join('') || barisKosong(7, 'Belum ada produk Ascend');
 }

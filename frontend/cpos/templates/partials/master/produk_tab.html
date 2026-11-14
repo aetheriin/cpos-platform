@@ -1,25 +1,20 @@
-{% from "partials/master/_referensi.html" import kotak_referensi %}
 {% from "partials/layout/_macros.html" import section_header %}
 <div data-tab-content="produk" class="hidden">
     <div class="filter-bar">
         <p class="text-sm text-slate-500">Alur menentukan tahap tiket (Sortasi untuk TBS, Laboratorium untuk produk PKS).</p>
         <div class="flex-1"></div>
-        {% if hak.produk.tambah %}
-        <button type="button" class="btn-primary" data-on-click="bukaProduk"><i class="fa-solid fa-plus mr-1"></i> Tambah Produk</button>
-        {% endif %}
     </div>
     <div class="section-box">
         {{ section_header('master-produk', 'Daftar Produk') }}
         <div id="body-master-produk" class="section-body overflow-x-auto">
             <table class="w-full text-left text-sm">
                 <thead class="table-header-row">
-                    <tr><th class="table-cell">Nama Produk</th><th class="table-cell">Kategori</th><th class="table-cell">Alur</th><th class="table-cell">Standar Mutu</th>
-                        <th class="table-cell">Status</th><th class="table-cell text-right">Aksi</th></tr>
+                    <tr><th class="table-cell">Nama Produk</th><th class="table-cell">State</th><th class="table-cell">Deskripsi</th><th class="table-cell">Standar Mutu</th>
+                        <th class="table-cell">Perlu DO</th><th class="table-cell text-right">Kode Awal</th></tr><th class="table-cell text-right">Flags</th></tr>
+                        <th class="table-cell text-right">QE Ratio</th></tr>
                 </thead>
                 <tbody data-per-halaman="20" data-boleh-ubah="{{ 1 if hak.produk.ubah else 0 }}" id="tabelProduk" class="divide-y divide-slate-100"></tbody>
             </table>
         </div>
     </div>
-    {{ kotak_referensi('harga_produk', 'Harga Produk', 'Riwayat harga per tanggal. Salah input: Batalkan lalu input ulang (riwayat tetap tersimpan).') }}
-    {{ kotak_referensi('jenis_produk', 'Jenis Produk', 'Kode jenis (TBS / PRODUK_PKS) dipakai aturan aplikasi; hanya nama & keterangan yang bisa diubah.', tertutup=true) }}
 </div>

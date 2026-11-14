@@ -158,6 +158,13 @@ TBS_MINGGUAN_TARGET_TON = angka("TBS_MINGGUAN_TARGET_TON", 4000)           # tar
 TBS_MINGGUAN_BATAS_SD = float(teks("TBS_MINGGUAN_BATAS_SD", "1.5"))       # di luar rata-rata ± sekian SD: atensi
 TBS_MINGGUAN_MIN_MINGGU = angka("TBS_MINGGUAN_MIN_MINGGU", 3)              # kurang dari ini minggu lengkap: tanpa atensi
 
+# ---------- Tiket Penjualan: tiket timbang produk keluar beserta nama pengangkutnya ----------
+SP_TIKET_PENJUALAN = nama_sp("SP_TIKET_PENJUALAN", "dbo.TIKET_PENJUALAN")   # @CompID, @Mulai, @Akhir; SQL di database/tiket_penjualan_sp.sql
+SUMBER_TIKET_PENJUALAN = teks("TIKET_PENJUALAN_SUMBER", SUMBER_LAPORAN)
+TIKET_PENJUALAN_HARI = angka("TIKET_PENJUALAN_HARI", 62)          # periode bawaan: sekian hari terakhir (bulan ini dan bulan lalu)
+TIKET_PENJUALAN_HARI_LALU = angka("TIKET_PENJUALAN_HARI_LALU", 31)  # ikut diambil sebelum periode, untuk pembanding bulan pertama
+TIKET_PENJUALAN_TOP = angka("TIKET_PENJUALAN_TOP", 10)             # baris peringkat produk dan pengangkut
+
 
 def _simulasi(teks_env):
     hasil = []

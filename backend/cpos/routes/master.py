@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, request, jsonify, Response
 from flask_login import login_required, current_user
 
 from utils.hak_akses import lihat, MENU_KENDARAAN, MENU_MASTER
-from utils import db_master as db, db_admin, alur, log_aktivitas, kolom_wajib, db_referensi as ref, db_kurs
+from utils import db_master as db, db_admin, alur, log_aktivitas, kolom_wajib, db_referensi as ref, db_kurs, db_ascend
 from utils.plat_utils import normalisasi_plat
 from utils.galat_isian import GalatIsian, isi_galat
 from utils.hak_akses import izin, boleh, boleh_lihat, halaman as lihat_halaman
@@ -22,12 +22,10 @@ def master_halaman():
     return render_template("master/master.html", halaman="master", kategori_tetap="DRIVER",
                            boleh_ubah=boleh("MASTER_DRIVER"), boleh_kendaraan=boleh("MASTER_KENDARAAN"),
                            hak={k: {a: boleh(f"MASTER_{k.upper()}", a) for a in ("tambah", "ubah")} for k in ("mitra", "produk", "keuangan", "kurs")},
-                           grup_supplier_list=ref.opsi("grup_supplier"), rekening_list=ref.opsi("rekening"),
                            driver_list=db.daftar_driver_aktif(), jenis_sim_list=daftar_jenis_sim(),
                            kategori_list=list(daftar_kategori().values()),
                            jenis_kendaraan_list=db.daftar_jenis_kendaraan(),
                            company_list=[c for c in daftar_company() if c["is_active"]],
-                           alur_list=alur.daftar_alur(), kategori_produk=db_admin.KATEGORI_PRODUK)
 
 
 @master_bp.route("/api/master/kendaraan")
@@ -120,97 +118,15 @@ def _catat(aksi, target, detail=None):
 @login_required
 @lihat(*MENU_MASTER)
 def mitra_daftar():
-    return jsonify([{**s, "created_at": s["created_at"].strftime("%Y-%m-%d") if s["created_at"] else None}
-                    for s in db_admin.daftar_supplier()])
-
-
-@master_bp.route("/api/master/mitra/simpan", methods=["POST"])
-@login_required
-@izin('MASTER_MITRA', 'tambah', 'ubah')
-def mitra_simpan():
-    def aksi():
-        id_supplier = int(request.form.get("id_supplier") or 0) or None
-        if not boleh("MASTER_MITRA", "ubah" if id_supplier else "tambah"):
-            return jsonify({"error": "Level Anda tidak memiliki akses untuk tindakan ini"}), 403
-        kode, nama = _teks("kode_supplier", "Kode", maks=20).upper(), _teks("nama_supplier", "Nama")
-        peran = [p for p, f in zip(db_admin.PERAN_SUPPLIER, ("is_customer", "is_angkutan")) if request.form.get(f)]
-        if not peran:
-            raise ValueError("Pilih minimal satu peran: customer / pengangkutan")
-        if db_admin.kode_supplier_dipakai(kode, kecuali=id_supplier):
-            raise ValueError(f"Kode {kode} sudah dipakai")
-        kolom_wajib.cek("SUPPLIER", request.form)
-        alamat = (request.form.get("alamat") or "").strip() or None
-        if alamat and len(alamat) > 255:
-            raise ValueError("Alamat maksimal 255 karakter")
-        semua = {c["id_company"] for c in daftar_company()}
-        pt = {v.strip().upper() for v in request.form.getlist("company") if v.strip()}
-        if pt - semua:
-            raise ValueError("Pilih perusahaan dari daftar")
-        id_grup, id_rekening = (_pilih_opsional(k, ref.opsi(sumber), label) for k, sumber, label in
-                                (("id_grup", "grup_supplier", "grup supplier"), ("id_rekening", "rekening", "rekening")))
-        db_admin.simpan_supplier(id_supplier, kode, nama, peran, alamat, pt, id_grup, id_rekening)
-        _catat("MITRA_UBAH" if id_supplier else "MITRA_TAMBAH", kode, nama)
-        return jsonify({"message": f"Supplier {nama} berhasil disimpan."})
-    return _jalankan(aksi)
-
-
-def _pilih_opsional(nama, opsi, label):
-    """id pilihan opsional dari form; kosong = None. ValueError bila tidak ada di daftar."""
-    teks = (request.form.get(nama) or "").strip()
-    if not teks:
-        return None
-    if not teks.isdigit() or int(teks) not in {o["id"] for o in opsi}:
-        raise ValueError(f"Pilih {label} dari daftar")
-    return int(teks)
-
-
-@master_bp.route("/api/master/mitra/<int:id_supplier>/aktif", methods=["POST"])
-@login_required
-@izin('MASTER_MITRA', 'ubah')
-def mitra_aktif(id_supplier):
-    aktif = request.form.get("aktif") in ("1", "true")
-    db_admin.set_aktif_supplier(id_supplier, aktif)
-    _catat("MITRA_AKTIF" if aktif else "MITRA_NONAKTIF", id_supplier)
-    return jsonify({"message": "Supplier berhasil " + ("diaktifkan." if aktif else "dinonaktifkan.")})
+    return jsonify(db_ascend.daftar_supplier_master_ascend())
 
 
 @master_bp.route("/api/master/produk")
 @login_required
 @lihat(*MENU_MASTER)
 def produk_daftar():
-    return jsonify(db_admin.daftar_produk())
+    return jsonify(db_ascend.daftar_produk_master_ascend())
 
-
-@master_bp.route("/api/master/produk/simpan", methods=["POST"])
-@login_required
-@izin('MASTER_PRODUK', 'tambah', 'ubah')
-def produk_simpan():
-    def aksi():
-        id_produk = int(request.form.get("id_produk") or 0) or None
-        if not boleh("MASTER_PRODUK", "ubah" if id_produk else "tambah"):
-            return jsonify({"error": "Level Anda tidak memiliki akses untuk tindakan ini"}), 403
-        nama, kategori = _teks("nama_produk", "Nama produk"), _teks("kategori", "Kategori").upper()
-        if kategori not in db_admin.KATEGORI_PRODUK:
-            raise ValueError("Kategori tidak dikenal")
-        if db_admin.nama_produk_dipakai(nama, kecuali=id_produk):
-            raise ValueError(f"Produk {nama} sudah ada")
-        teks_alur = (request.form.get("id_alur") or "").strip()
-        if not teks_alur.isdigit() or int(teks_alur) not in {a["id_alur"] for a in alur.daftar_alur()}:
-            raise ValueError("Pilih alur dari daftar")
-        db_admin.simpan_produk(id_produk, nama, kategori, int(teks_alur))
-        _catat("PRODUK_UBAH" if id_produk else "PRODUK_TAMBAH", nama, kategori)
-        return jsonify({"message": f"Produk {nama} berhasil disimpan"})
-    return _jalankan(aksi)
-
-
-@master_bp.route("/api/master/produk/<int:id_produk>/aktif", methods=["POST"])
-@login_required
-@izin('MASTER_PRODUK', 'ubah')
-def produk_aktif(id_produk):
-    aktif = request.form.get("aktif") in ("1", "true")
-    db_admin.set_aktif_produk(id_produk, aktif)
-    _catat("PRODUK_AKTIF" if aktif else "PRODUK_NONAKTIF", id_produk)
-    return jsonify({"message": "Produk berhasil " + ("diaktifkan" if aktif else "dinonaktifkan")})
 
 
 # ===== JENIS KENDARAAN (kapasitas, migrasi 032) =====

@@ -8,6 +8,7 @@
         error: document.getElementById('errorItemDashboard'),
         charts: document.getElementById('grafikSetItemDashboard'),
         dataset: document.getElementById('pilihHasilItemDashboard'),
+        company: document.getElementById('filterPerusahaanItem'),
         category: document.getElementById('filterKategoriItem'),
         search: document.getElementById('cariItemDashboard'),
         head: document.getElementById('headTabelItemDashboard'),
@@ -20,6 +21,8 @@
         toast: document.getElementById('popupWaktuItemDashboard'),
         toastMessage: document.getElementById('pesanWaktuItemDashboard'),
         toastClose: document.getElementById('tutupPopupWaktuItemDashboard'),
+        loading: document.getElementById('popupMemuatItemDashboard'),
+        loadingTime: document.getElementById('waktuMemuatItemDashboard'),
     };
 
     let datasets = [];
@@ -28,7 +31,10 @@
     let rows = [];
     let page = 1;
     let categoryKey = null;
+    let companyKey = null;
+    const chartCompanySelections = {};
     let toastTimeout = null;
+    let loadingInterval = null;
 
     const normalized = value => String(value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -41,7 +47,9 @@
 
     function selectColumns() {
         const categoryNames = new Set(['category', 'kategori', 'categoryname', 'namakategori', 'itemcategory']);
+        const companyNames = new Set(['company', 'companyname', 'comp', 'compid', 'companycode', 'kodeperusahaan', 'perusahaan']);
         categoryKey = columns.find(column => categoryNames.has(normalized(column))) || null;
+        companyKey = columns.find(column => companyNames.has(normalized(column))) || null;
     }
 
     function chooseColumn(dataset, preferredNames, numeric = false) {
@@ -49,8 +57,10 @@
             const isNumeric = dataset.baris.some(row => numberOf(row[column]) !== null);
             return numeric ? isNumeric : !isNumeric;
         });
-        const byName = candidates.find(column => preferredNames.some(name => normalized(column).includes(name)));
-        if (byName) return byName;
+        for (const name of preferredNames) {
+            const byName = candidates.find(column => normalized(column).includes(name));
+            if (byName) return byName;
+        }
         if (!numeric) return candidates[0] || null;
         return candidates.find(column => !/(^id|id$|code|kode|nomor|no$)/.test(normalized(column)))
             || candidates[0]
@@ -58,6 +68,8 @@
     }
 
     function renderCharts() {
+        const companyNames = ['company', 'companyname', 'comp', 'compid', 'companycode', 'kodeperusahaan', 'perusahaan'];
+        const itemCodeNames = ['itemcode', 'kodeitem', 'itemno', 'sku', 'code'];
         const labelNames = [
             ['itemname', 'namaitem', 'itemcode', 'kodeitem', 'description', 'deskripsi', 'item', 'nama', 'sku'],
             ['itemname', 'namaitem', 'itemcode', 'kodeitem', 'description', 'deskripsi', 'item', 'nama', 'sku'],
@@ -77,10 +89,25 @@
 
         elements.charts.innerHTML = datasets.map((dataset, index) => {
             const labelKey = chooseColumn(dataset, labelNames[index] || ['name', 'nama', 'item', 'category', 'kategori']);
+            const companyKey = chooseColumn(dataset, companyNames);
+            const itemCodeKey = chooseColumn(dataset, itemCodeNames);
             const metricKey = chooseColumn(dataset, metricNames[index] || ['total', 'count', 'jumlah', 'value', 'cost'], true);
+            const companies = companyKey
+                ? [...new Set(dataset.baris.map(row => String(row[companyKey] ?? '')).filter(Boolean))]
+                    .sort((a, b) => a.localeCompare(b, 'id'))
+                : [];
+            if (!companies.includes(chartCompanySelections[index])) chartCompanySelections[index] = '';
+            const selectedCompany = chartCompanySelections[index];
+            const companyRows = selectedCompany
+                ? dataset.baris.filter(row => String(row[companyKey] ?? '') === selectedCompany)
+                : dataset.baris;
             const points = metricKey
-                ? dataset.baris.map((row, rowIndex) => ({
-                    label: String(labelKey ? row[labelKey] ?? '(Kosong)' : `Baris ${rowIndex + 1}`),
+                ? companyRows.map((row, rowIndex) => ({
+                    label: [
+                        companyKey ? row[companyKey] : null,
+                        itemCodeKey ? row[itemCodeKey] : null,
+                        labelKey ? row[labelKey] : null,
+                    ].filter(value => value != null && String(value).trim()).join(' · ') || `Baris ${rowIndex + 1}`,
                     value: numberOf(row[metricKey]),
                 })).filter(point => point.value !== null)
                     .sort((a, b) => b.value - a.value)
@@ -100,24 +127,60 @@
                         <div class="h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-blue-600" style="width:${width}%"></div></div>
                     </div>`;
                 }).join('')}</div>`;
-            } else if (!dataset.baris.length) {
+            } else if (!companyRows.length) {
                 chartBody = '<p class="py-6 text-center text-sm text-slate-500">Tidak ada data untuk ditampilkan.</p>';
             }
             return `<article class="section-box p-4">
-                <h2 class="font-bold text-slate-800">${escapeHtml(title)}</h2>
-                <p class="mb-4 mt-1 text-xs text-slate-500">${formatNumber(dataset.baris.length)} baris${metricKey ? ` · ${escapeHtml(labelOf(metricKey))}` : ''}</p>
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                    <h2 class="font-bold text-slate-800">${escapeHtml(title)}</h2>
+                    ${companies.length ? `<select class="input-field py-1.5 text-xs" data-chart-company="${index}" aria-label="Filter perusahaan ${escapeHtml(title)}">
+                        <option value="">All company</option>
+                        ${companies.map(company => `<option value="${escapeHtml(company)}" ${company === selectedCompany ? 'selected' : ''}>${escapeHtml(company)}</option>`).join('')}
+                    </select>` : ''}
+                </div>
+                <p class="mb-4 mt-1 text-xs text-slate-500">${formatNumber(companyRows.length)} baris${metricKey ? ` · ${escapeHtml(labelOf(metricKey))}` : ''}</p>
                 ${chartBody}
             </article>`;
         }).join('');
     }
 
-    function filteredRows() {
+    function filteredRows(sourceRows = rows) {
+        const company = elements.company.value;
         const category = elements.category.value;
         const search = elements.search.value.trim().toLocaleLowerCase('id-ID');
-        return rows.filter(row => {
+        return sourceRows.filter(row => {
+            if (company && companyKey && String(row[companyKey] ?? '') !== company) return false;
             if (category && categoryValue(row) !== category) return false;
             return !search || columns.some(column => String(row[column] ?? '').toLocaleLowerCase('id-ID').includes(search));
         });
+    }
+
+    function rankAllRows() {
+        if (elements.company.value || !rows.length) return rows;
+        const metricNames = [
+            ['totalstok', 'stok', 'qty'],
+            ['jumlahpo', 'doccount', 'count'],
+            ['jumlahdokumenpemakaian', 'doccount', 'pemakaian'],
+            ['jumlahpo', 'doccount', 'count'],
+            ['totalcost', 'cost', 'nilai'],
+            ['totalcost', 'cost', 'nilai'],
+        ];
+        const metricKey = chooseColumn(datasets[activeDataset], metricNames[activeDataset] || ['total', 'count', 'jumlah'], true);
+        const countNames = activeDataset === 2 ? ['jumlahdokumenpemakaian', 'doccount'] : ['jumlahpo', 'doccount'];
+        const countKey = [1, 2, 3].includes(activeDataset)
+            ? columns.find(column => countNames.includes(normalized(column)))
+            : null;
+        const lineKey = [1, 2, 3].includes(activeDataset)
+            ? columns.find(column => ['linecount', 'barispo', 'baris'].includes(normalized(column)))
+            : null;
+        const rankKey = columns.find(column => ['ranking', 'rank', 'peringkat'].includes(normalized(column)));
+        const ranked = [...rows].sort((a, b) =>
+            (numberOf(b[metricKey]) ?? 0) - (numberOf(a[metricKey]) ?? 0)
+            || (countKey ? (numberOf(b[countKey]) ?? 0) - (numberOf(a[countKey]) ?? 0) : 0)
+            || (lineKey ? (numberOf(b[lineKey]) ?? 0) - (numberOf(a[lineKey]) ?? 0) : 0)
+        );
+        const topTen = ranked.slice(0, 10);
+        return rankKey ? topTen.map((row, index) => ({ ...row, [rankKey]: index + 1 })) : topTen;
     }
 
     function renderTable(data) {
@@ -140,7 +203,7 @@
     }
 
     function render() {
-        renderTable(filteredRows());
+        renderTable(filteredRows(rankAllRows()));
     }
 
     function populateCategoryFilter() {
@@ -155,12 +218,26 @@
             .map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('');
     }
 
+    function populateCompanyFilter() {
+        elements.company.innerHTML = '<option value="">All company</option>';
+        if (!companyKey) {
+            elements.company.disabled = true;
+            return;
+        }
+        elements.company.disabled = false;
+        const companies = [...new Set(rows.map(row => String(row[companyKey] ?? '')).filter(Boolean))]
+            .sort((a, b) => a.localeCompare(b, 'id'));
+        elements.company.innerHTML += companies
+            .map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('');
+    }
+
     function selectDataset() {
         activeDataset = Number(elements.dataset.value) || 0;
         const dataset = datasets[activeDataset];
         columns = dataset?.kolom || [];
         rows = dataset?.baris || [];
         selectColumns();
+        populateCompanyFilter();
         populateCategoryFilter();
         elements.search.value = '';
         page = 1;
@@ -184,6 +261,13 @@
         const mulai = performance.now();
         let pesanSelesai = 'Data analisis item berhasil dimuat.';
         let statusSelesai = '';
+        elements.loading.classList.remove('hidden');
+        elements.loading.classList.add('flex');
+        elements.loadingTime.textContent = '0 detik';
+        clearInterval(loadingInterval);
+        loadingInterval = setInterval(() => {
+            elements.loadingTime.textContent = `${Math.floor((performance.now() - mulai) / 1000)} detik`;
+        }, 1000);
         elements.refresh.disabled = true;
         elements.status.textContent = 'Memuat data analisis item…';
         elements.error.classList.add('hidden');
@@ -208,6 +292,10 @@
             elements.error.classList.remove('hidden');
         } finally {
             const durasi = formatDuration(performance.now() - mulai);
+            clearInterval(loadingInterval);
+            loadingInterval = null;
+            elements.loading.classList.add('hidden');
+            elements.loading.classList.remove('flex');
             elements.status.textContent = `${statusSelesai} · ${durasi}`;
             showDuration(`${pesanSelesai} Waktu loading: ${durasi}.`);
             elements.refresh.disabled = false;
@@ -215,6 +303,13 @@
     }
 
     elements.dataset.addEventListener('change', selectDataset);
+    elements.company.addEventListener('change', () => { page = 1; render(); });
+    elements.charts.addEventListener('change', event => {
+        const select = event.target.closest('[data-chart-company]');
+        if (!select) return;
+        chartCompanySelections[Number(select.dataset.chartCompany)] = select.value;
+        renderCharts();
+    });
     elements.category.addEventListener('change', () => { page = 1; render(); });
     elements.search.addEventListener('input', () => { page = 1; render(); });
     elements.previous.addEventListener('click', () => { page -= 1; render(); });

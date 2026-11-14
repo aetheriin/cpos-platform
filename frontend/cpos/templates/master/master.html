@@ -26,7 +26,6 @@
 {% block modals %}
     {% if boleh_ubah %}{% include "partials/face_recognition/personel_modals.html" %}{% endif %}
     {% if boleh_kendaraan %}{% include "partials/master/kendaraan_modal.html" %}{% endif %}
-    {% if hak.mitra.tambah or hak.mitra.ubah or hak.produk.tambah or hak.produk.ubah %}{% include "partials/master/mitra_produk_modals.html" %}{% endif %}
     {% include "partials/master/referensi_modal.html" %}
     {% if hak.kurs.tambah %}{% include "partials/master/kurs_modal.html" %}{% endif %}
 {% endblock %}

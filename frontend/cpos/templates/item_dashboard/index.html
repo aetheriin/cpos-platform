@@ -18,33 +18,43 @@
     <div id="errorItemDashboard" class="hidden mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert"></div>
     <section id="grafikSetItemDashboard" class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 mb-4" aria-label="Grafik hasil analisis"></section>
     <section class="section-box overflow-hidden">
-            <div class="p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h2 class="font-bold text-slate-800">Data Analisis Item</h2>
-                    <p id="infoTabelItemDashboard" class="text-xs text-slate-500 mt-1"></p>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <select id="pilihHasilItemDashboard" class="input-field py-1.5" aria-label="Pilih hasil analisis"></select>
-                    <select id="filterKategoriItem" class="input-field py-1.5" aria-label="Filter kategori">
-                        <option value="">Semua kategori</option>
-                    </select>
-                    <input id="cariItemDashboard" type="search" class="input-field py-1.5" placeholder="Cari data…" aria-label="Cari data item">
-                </div>
+        <div class="p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <h2 class="font-bold text-slate-800">Data Analisis Item</h2>
+                <p id="infoTabelItemDashboard" class="text-xs text-slate-500 mt-1"></p>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead id="headTabelItemDashboard" class="table-header-row"></thead>
-                    <tbody id="bodyTabelItemDashboard" class="divide-y divide-slate-100"></tbody>
-                </table>
+            <div class="flex flex-wrap gap-2">
+                <select id="pilihHasilItemDashboard" class="input-field py-1.5" aria-label="Pilih hasil analisis"></select>
+                <select id="filterPerusahaanItem" class="input-field py-1.5" aria-label="Filter perusahaan">
+                    <option value="">Semua perusahaan</option>
+                </select>
+                <select id="filterKategoriItem" class="input-field py-1.5" aria-label="Filter kategori">
+                    <option value="">Semua kategori</option>
+                </select>
+                <input id="cariItemDashboard" type="search" class="input-field py-1.5" placeholder="Cari data…" aria-label="Cari data item">
             </div>
-            <div class="p-3 border-t border-slate-100 flex items-center justify-between gap-3 text-xs text-slate-500">
-                <span id="halamanTabelItemDashboard"></span>
-                <div class="flex gap-2">
-                    <button id="sebelumItemDashboard" type="button" class="btn-secondary btn-sm">Sebelumnya</button>
-                    <button id="sesudahItemDashboard" type="button" class="btn-secondary btn-sm">Berikutnya</button>
-                </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead id="headTabelItemDashboard" class="table-header-row"></thead>
+                <tbody id="bodyTabelItemDashboard" class="divide-y divide-slate-100"></tbody>
+            </table>
+        </div>
+        <div class="p-3 border-t border-slate-100 flex items-center justify-between gap-3 text-xs text-slate-500">
+            <span id="halamanTabelItemDashboard"></span>
+            <div class="flex gap-2">
+                <button id="sebelumItemDashboard" type="button" class="btn-secondary btn-sm">Sebelumnya</button>
+                <button id="sesudahItemDashboard" type="button" class="btn-secondary btn-sm">Berikutnya</button>
             </div>
+        </div>
     </section>
+    <div id="popupMemuatItemDashboard" class="hidden fixed inset-0 z-50 items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="judulMemuatItemDashboard">
+        <div class="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 text-center shadow-xl">
+            <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" aria-hidden="true"></div>
+            <h2 id="judulMemuatItemDashboard" class="mt-4 font-semibold text-slate-800">Sedang memuat data item</h2>
+            <p id="waktuMemuatItemDashboard" class="mt-1 text-sm text-slate-600" role="status" aria-live="polite">0 detik</p>
+        </div>
+    </div>
     <div id="popupWaktuItemDashboard" class="hidden fixed bottom-5 right-5 z-50 max-w-sm rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-lg" role="status" aria-live="polite">
         <div class="flex items-start justify-between gap-4">
             <p id="pesanWaktuItemDashboard" class="text-sm text-slate-700"></p>
@@ -55,5 +65,5 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script defer src="{{ url_for('static', filename='item_dashboard/dashboard.js', v='20261113') }}"></script>
+<script defer src="{{ url_for('static', filename='item_dashboard/dashboard.js', v='20261114') }}"></script>
 {% endblock %}
