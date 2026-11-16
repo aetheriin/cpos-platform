@@ -1,18 +1,9 @@
-"""Laporan Cash Flow: mutasi rekening bank harian dan jasa giro, dengan query langsung ke database ERP tiap perusahaan.
+"""Laporan Cash Flow: mutasi rekening bank harian dan jasa giro, per perusahaan langsung dari database ERP.
 
-Mutasi lewat SP KAS_BANK (ledger.py, aturan sama dengan ledger bank ERP), satu panggilan per perusahaan, bersamaan. Saldo awal pada
-1 Januari tahun periode dihitung terpisah (@Bagian SALDO) setiap kali dimuat, jadi transaksi mundur tanggal langsung ikut. Giro juga per perusahaan (ledger.ambil_giro, aturan sama dengan SP_GET_GIROTRANSACTION). Daftar rekening, perusahaan, dan akun
-giro dari tabel TABEL_KAS_* di database Main.
-
-Saldo dihitung ulang di sini dari baris "Beginning Balance" di awal periode ditambah mutasi berurutan tanggal: kolom AmtBalance dari SP
-mengikuti urutan baris SP, yang untuk beberapa rekening tidak berurutan tanggal.
-Rekening USD tidak dikonversi oleh SP (ExchangeRate selalu 1), jadi dikonversi di sini. Urutan kurs: kurs voucher ERP (FI_ARAP;
-hari tanpa voucher memakai kurs voucher terdekat, sebelum atau sesudah, sampai KAS_KURS_ERP_HARI hari; perusahaan itu dulu lalu perusahaan lain), lalu kurs transaksi yang diinput
-di CPOS (TABEL_KAS_KURS_INPUT, Data Master › Kurs Mata Uang: kurs terakhir yang berlaku pada tanggal transaksi, kurs perusahaan itu lebih dulu dari
-kurs untuk semua perusahaan), lalu kurs tahunan TABEL_KAS_KURS (exc_rate: COMPID, CURRENCYID, YR, RATE; kode CURRENCYID dibaca dari
-CO_Currency perusahaan pertama), lalu kurs harian internet (KAS_KURS_INTERNET, ECB; hari libur memakai kurs hari kerja sebelumnya). Semua nilai jadi rupiah; nilai asli di nilai_asli, kurs dan sumbernya di kurs dan sumber_kurs. Rekening yang tetap
-tanpa kurs ditandai tanpa_kurs dan tidak ikut dijumlahkan; kursnya diisi di CPOS.
-"""
+Mutasi dari SP KAS_BANK (ledger.py); saldo awal 1 Januari dihitung ulang tiap muat, jadi transaksi mundur tanggal ikut terhitung.
+Saldo berjalan dihitung di sini dari "Beginning Balance" + mutasi urut tanggal, karena AmtBalance dari SP tidak selalu urut tanggal.
+Rekening valas dikonversi di sini (SP selalu ExchangeRate 1). Urutan kurs: voucher ERP (hari terdekat, maks KAS_KURS_ERP_HARI hari),
+input CPOS (TABEL_KAS_KURS_INPUT), kurs tahunan exc_rate, lalu kurs internet ECB. Rekening tanpa kurs ditandai tanpa_kurs dan tidak dijumlahkan."""
 import bisect
 import json
 import logging

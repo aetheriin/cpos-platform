@@ -1,11 +1,7 @@
-"""Pemetaan kategori item dari stored procedure ke kategori baru, dibaca dari tabel TABEL_KATEGORI (bawaan dbo.MappingCategory:
-id, CompID, Company, OldCategory, Category) di database data.
+"""Pemetaan kategori item dari SP ke kategori baru, dari tabel TABEL_KATEGORI (bawaan dbo.MappingCategory) di database data.
 
-Hanya perusahaan yang punya baris di tabel itu yang dipetakan; perusahaan lain memakai kategori apa adanya. Tabel dibaca setiap kali data
-laporan dimuat, jadi perubahan di tabel berlaku pada pemuatan berikutnya tanpa mengubah kode. Nama yang persis sama (abaikan spasi dan huruf
-besar-kecil) dicocokkan dulu, lalu yang mirip dengan ambang kemiripan teks 0,8. Yang tidak ketemu pasangannya menjadi kosong. Hasil yang mirip
-dan yang tidak cocok dilaporkan di catatan pemuatan supaya bisa dicek dan ditambahkan ke tabel.
-"""
+Hanya perusahaan yang punya baris di tabel itu yang dipetakan; tabel dibaca tiap muat, jadi perubahan berlaku tanpa ubah kode.
+Cocokkan nama persis dulu (abaikan spasi dan huruf besar), lalu yang mirip (ambang 0,8); yang tidak cocok jadi kosong dan dicatat."""
 import difflib
 import logging
 import re

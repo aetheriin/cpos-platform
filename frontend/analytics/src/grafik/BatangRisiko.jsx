@@ -7,7 +7,7 @@ import { Kosong } from '../komponen/Keadaan'
 // Tinggi mengikuti kartu (h-full) agar sejajar dengan grafik di sebelahnya. Klik baris untuk memfilter indikator.
 function BatangRisiko({ data, terpilih, onPilih }) {
   if (data.length === 0 || data.every((d) => d.jumlah === 0)) {
-    return <Kosong teks="Tidak ada transaksi untuk filter ini" />
+    return <Kosong teks="Tidak ada transaksi pada periode dan filter ini" />
   }
   const maks = Math.max(...data.map((d) => d.jumlah))
   return (

@@ -53,7 +53,8 @@ export function Petak({ panjang = 'md:col-span-10', padat = 'lg:col-span-12', ch
 // Padat: kolom dihitung dari lebar supaya kartu terbagi rata per baris (10 kartu jadi 5 + 5, bukan 6 + 4). Kartu dihitung dari DOM
 // karena satu komponen (mis. KartuKecepatan) bisa menghasilkan beberapa kartu.
 const LEBAR_MIN_KARTU = 150 // px
-export function GridKartu({ children, kolom = 5 }) {
+// lebarMin: lebar terkecil satu kartu (px); naikkan untuk angka panjang seperti rupiah penuh supaya tidak terpotong.
+export function GridKartu({ children, kolom = 5, lebarMin = LEBAR_MIN_KARTU }) {
   const padat = useTataLetak()[0] === 'padat'
   const kisi = useRef(null)
   const [kolomPadat, setKolomPadat] = useState(null)
@@ -62,7 +63,7 @@ export function GridKartu({ children, kolom = 5 }) {
     const el = kisi.current
     const hitung = () => {
       const n = el.children.length
-      const muat = Math.max(1, Math.floor((el.clientWidth + 12) / (LEBAR_MIN_KARTU + 12)))
+      const muat = Math.max(1, Math.floor((el.clientWidth + 12) / (lebarMin + 12)))
       const baris = Math.ceil(n / muat)
       setKolomPadat(Math.ceil(n / baris))
     }
@@ -70,11 +71,11 @@ export function GridKartu({ children, kolom = 5 }) {
     const ro = new ResizeObserver(hitung)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [padat, children])
+  }, [padat, children, lebarMin])
   const kolomKisi =
     padat && kolomPadat
       ? `repeat(${kolomPadat}, minmax(0, 1fr))`
-      : `repeat(auto-fit, minmax(max(9.5rem, calc((100% - ${(kolom - 1) * 0.75}rem) / ${kolom})), 1fr))`
+      : `repeat(auto-fit, minmax(max(${lebarMin}px, calc((100% - ${(kolom - 1) * 0.75}rem) / ${kolom})), 1fr))`
   return (
     <section>
       <div ref={kisi} className="grid gap-3" style={{ gridTemplateColumns: kolomKisi }}>

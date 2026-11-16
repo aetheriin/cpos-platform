@@ -1,13 +1,7 @@
-"""Panggilan SP Kas & Bank (KAS_BANK_SP, mis. Main.dbo.KAS_BANK; SQL-nya di backend/analytics/database/kas_bank_sp.sql).
+"""Panggilan SP Kas & Bank (KAS_BANK_SP; SQL di backend/analytics/database/kas_bank_sp.sql).
 
-SP itu menjalankan aturan ledger bank ERP (USP_FI_BankAccounts_QueryHistory, @ForLedger = 1: sumber transaksi dari SH_BankCalculations,
-penyesuaian biaya bank, nama lawan transaksi, keterangan) SEKALI per perusahaan untuk semua rekening yang diminta, bukan sekali per rekening
-seperti SP_GET_BANKDAILYDETAILS. Satu panggilan per perusahaan; pengurutan, saldo berjalan, dan kurs dihitung di Python (sumber.py).
-
-Bagian berat ledger ERP adalah saldo awal: semua sumber transaksi dibaca sejak awal riwayat. Karena itu dipisah: saldo_awal() (@Bagian SALDO)
-menghitung saldo per rekening pada satu tanggal patokan (1 Januari) setiap kali dimuat, lalu ambil_perusahaan()
-(@Bagian MUTASI) hanya membaca transaksi sejak tanggal patokan itu, yang cepat.
-"""
+SP menjalankan aturan ledger bank ERP (USP_FI_BankAccounts_QueryHistory) sekali per perusahaan untuk semua rekening, bukan per rekening.
+Saldo awal yang berat dipisah: saldo_awal() (@Bagian SALDO) per 1 Januari, lalu ambil_perusahaan() (@Bagian MUTASI) hanya sejak tanggal itu."""
 import pandas as pd
 
 from inti import konfigurasi

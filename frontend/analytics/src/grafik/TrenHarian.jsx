@@ -3,6 +3,8 @@ import { Bar, CartesianGrid, Cell, ComposedChart, Legend, Line, ResponsiveContai
 import { angka, lintasTahun, persen, tgl, tglLengkap } from '../lib/data'
 import { redup, warnaRisiko } from './risiko'
 import { Kosong } from '../komponen/Keadaan'
+import { LEGENDA } from './legenda'
+import { ANIMASI, DURASI_ANIMASI } from './animasi'
 
 function Petunjuk({ active, payload }) {
   const d = active && payload?.[0]?.payload
@@ -30,19 +32,19 @@ function TrenHarian({ data, indikator, terpilih, onPilih }) {
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={baris} margin={{ top: 8, right: 4, bottom: 4, left: 0 }}>
           <CartesianGrid yAxisId="n" strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-          <XAxis dataKey="label" tickLine={false} axisLine={{ stroke: '#cbd5e1' }} tick={{ fontSize: 10, fill: '#475569' }} minTickGap={6} />
+          <XAxis dataKey="label" tickLine={false} axisLine={{ stroke: '#cbd5e1' }} tick={{ fontSize: 11, fill: '#475569' }} minTickGap={6} />
           <YAxis yAxisId="n" width={44} allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#475569' }} tickFormatter={(v) => angka.format(v)} />
           <YAxis yAxisId="p" orientation="right" width={40} domain={[0, 1]} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#475569' }} tickFormatter={(v) => `${Math.round(v * 100)}%`} />
           <Tooltip content={<Petunjuk />} cursor={{ fill: 'rgba(15,23,42,0.05)' }} />
-          <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: 11 }} />
+          <Legend {...LEGENDA} />
           {warning.map((i) => (
-            <Bar key={i.kunci} yAxisId="n" dataKey={i.kunci} name={i.nama} stackId="w" fill={warnaRisiko(i.kunci)} isAnimationActive={false} className="cursor-pointer" onClick={(_, idx, e) => onPilih(baris[idx].hari, e)}>
+            <Bar key={i.kunci} yAxisId="n" dataKey={i.kunci} name={i.nama} stackId="w" fill={warnaRisiko(i.kunci)} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} className="cursor-pointer" onClick={(_, idx, e) => onPilih(baris[idx].hari, e)}>
               {baris.map((d) => (
                 <Cell key={d.hari} fillOpacity={redup(terpilih, d.hari)} />
               ))}
             </Bar>
           ))}
-          <Line yAxisId="p" dataKey="porsi" name="% berisiko" type="monotone" stroke="#0f172a" strokeWidth={1.5} dot={false} className="tinta-grafik" isAnimationActive={false} />
+          <Line yAxisId="p" dataKey="porsi" name="% berisiko" type="monotone" stroke="#0f172a" strokeWidth={1.5} dot={false} className="tinta-grafik" isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

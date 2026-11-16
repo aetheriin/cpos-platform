@@ -126,6 +126,12 @@ def mitra_daftar():
 def produk_daftar():
     return jsonify(db_ascend.daftar_produk_master_ascend())
 
+@master_bp.route("/api/master/produk/tbs-luar")
+@login_required
+@lihat(*MENU_MASTER)
+def produk_tbs_luar_daftar():
+    return jsonify(db_ascend.daftar_produk_tbs_luar_ascend())
+
 @master_bp.route("/api/master/produk/simpan", methods=["POST"])
 @login_required
 @izin("MASTER_PRODUK", "tambah", "ubah")

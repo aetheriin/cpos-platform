@@ -2,6 +2,8 @@ import { memo } from 'react'
 import { CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { warna } from '../lib/data'
 import { labelBulan } from './pigt'
+import { LEGENDA } from './legenda'
+import { ANIMASI, DURASI_ANIMASI } from './animasi'
 
 const skor = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 })
 
@@ -23,7 +25,7 @@ function Petunjuk({ active, payload, label }) {
 // Grafik "PVR PENILAIAN" di Excel: skor (jumlah bobot) per bulan, satu garis per pembuat. Klik nama di legenda untuk melihat satu orang saja.
 // Klik bulan di grafik untuk memfilter kartu, grafik Bobot, dan tabel ke bulan itu (Ctrl untuk menambah bulan); bulan terpilih diberi pita.
 function TrenPenilaian({ data, voucher = 'PVR', onPilih, terpilihBulan = [], onPilihBulan }) {
-  if (data.bulan.length === 0) return <div className="py-10 text-center text-sm text-slate-500">Belum ada {voucher} untuk filter ini</div>
+  if (data.bulan.length === 0) return <div className="py-10 text-center text-sm text-slate-500">Belum ada {voucher} pada periode dan filter ini</div>
   // Bulan tanpa PVR dibiarkan kosong (garis terputus), seperti sel kosong di pivot Excel
   const baris = data.bulan.map((b, i) => Object.fromEntries([['bulan', b], ['label', labelBulan(b)], ...data.pembuat.map((p, j) => [p, data.nilai[i][j] || null])]))
   const klik = (s, e) => {
@@ -31,7 +33,7 @@ function TrenPenilaian({ data, voucher = 'PVR', onPilih, terpilihBulan = [], onP
     if (b && onPilihBulan) onPilihBulan(b, e)
   }
   return (
-    <div className="h-80 w-full">
+    <div className="h-full min-h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={baris} margin={{ top: 8, right: 16, bottom: 4, left: 0 }} onClick={klik} className={onPilihBulan ? 'cursor-pointer' : undefined}>
           {baris.filter((r) => terpilihBulan.includes(r.bulan)).map((r) => (
@@ -42,9 +44,9 @@ function TrenPenilaian({ data, voucher = 'PVR', onPilih, terpilihBulan = [], onP
           <YAxis width={44} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#475569' }} tickFormatter={(v) => skor.format(v)}
             label={{ value: 'Bobot', angle: -90, position: 'insideLeft', offset: 10, style: { fontSize: 11, fill: '#64748b' } }} />
           <Tooltip content={<Petunjuk />} />
-          <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: 12, cursor: 'pointer' }} onClick={(e) => onPilih(e.value)} />
+          <Legend {...LEGENDA} wrapperStyle={{ ...LEGENDA.wrapperStyle, cursor: 'pointer' }} onClick={(e) => onPilih(e.value)} />
           {data.pembuat.map((p, i) => (
-            <Line key={p} type="linear" dataKey={p} name={p} stroke={warna(i)} strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={false} />
+            <Line key={p} type="linear" dataKey={p} name={p} stroke={warna(i)} strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} />
           ))}
         </LineChart>
       </ResponsiveContainer>

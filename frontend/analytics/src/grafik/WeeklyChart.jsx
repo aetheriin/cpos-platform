@@ -2,6 +2,8 @@ import TickMinggu from './TickMinggu'
 import { GARIS_PR_PO, WARNA } from './warna'
 import { angka, barisMinggu, BATAS_PADAT, jedaLabel } from '../lib/data'
 import { Bar, CartesianGrid, Cell, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { LEGENDA } from './legenda'
+import { ANIMASI, DURASI_ANIMASI } from './animasi'
 
 // Titik pada garis. Memakai nama prop 'warna' karena Recharts menimpa prop 'fill'.
 function Titik({ cx, cy, payload, warna, terpilih, onPilih }) {
@@ -27,7 +29,7 @@ export default function WeeklyChart({ data, minggu, onPilihMinggu, garis = GARIS
   const opasitas = (indeks) => (minggu != null && minggu !== indeks ? 0.3 : 1)
 
   return (
-    <div className="h-80 w-full">
+    <div className="h-full min-h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={baris} margin={{ top: 8, right: 12, bottom: 4, left: 0 }} barGap={0} barCategoryGap="25%">
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
@@ -51,21 +53,21 @@ export default function WeeklyChart({ data, minggu, onPilihMinggu, garis = GARIS
             labelFormatter={(_, p) => p?.[0]?.payload?.lengkap ?? ''}
             cursor={{ fill: 'rgba(14,165,233,0.08)' }}
           />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Legend {...LEGENDA} />
 
-          <Bar dataKey="outstanding_awal" name="Outstanding awal" fill={WARNA.awal} radius={[3, 3, 0, 0]} className="cursor-pointer" onClick={(_, i) => onPilihMinggu(i)}>
+          <Bar isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} dataKey="outstanding_awal" name="Outstanding awal" fill={WARNA.awal} radius={[3, 3, 0, 0]} className="cursor-pointer" onClick={(_, i) => onPilihMinggu(i)}>
             {baris.map((d) => (
               <Cell key={d.indeks} fillOpacity={opasitas(d.indeks)} />
             ))}
           </Bar>
-          <Bar dataKey="outstanding_akhir" name="Outstanding akhir" fill={WARNA.akhir} radius={[3, 3, 0, 0]} className="cursor-pointer" onClick={(_, i) => onPilihMinggu(i)}>
+          <Bar isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} dataKey="outstanding_akhir" name="Outstanding akhir" fill={WARNA.akhir} radius={[3, 3, 0, 0]} className="cursor-pointer" onClick={(_, i) => onPilihMinggu(i)}>
             {baris.map((d) => (
               <Cell key={d.indeks} fillOpacity={opasitas(d.indeks)} />
             ))}
           </Bar>
 
           {garis.map((g) => (
-            <Line
+            <Line isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI}
               key={g.kunci}
               type="linear"
               dataKey={g.kunci}

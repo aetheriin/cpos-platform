@@ -1,6 +1,7 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { angka, itemDonat, potong } from '../lib/data'
 import { Kosong } from '../komponen/Keadaan'
+import { ANIMASI, DURASI_ANIMASI } from './animasi'
 
 const persen = (x) => `${(x * 100).toFixed(0)}%`
 
@@ -8,7 +9,7 @@ export default function DonatKategori({ daftar, terpilih = [], onPilih, satuan }
   const { item, total } = itemDonat(daftar, 5, terpilih)
 
   if (total === 0) {
-    return <Kosong teks="Tidak ada data untuk filter ini" />
+    return <Kosong teks="Tidak ada data pada periode dan filter ini" />
   }
 
   const redup = (d) => terpilih.length > 0 && !d.lainnya && !terpilih.includes(d.kategori)
@@ -34,7 +35,7 @@ export default function DonatKategori({ daftar, terpilih = [], onPilih, satuan }
               outerRadius="90%"
               paddingAngle={2}
               stroke="none"
-              isAnimationActive={false}
+              isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI}
               className="cursor-pointer"
               onClick={(_, i, e) => klik(item[i], e)}
             >

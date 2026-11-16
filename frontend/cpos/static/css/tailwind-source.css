@@ -378,6 +378,8 @@ input.uppercase::placeholder { text-transform: none; }
   #areaCetakTabel th, #areaCetakTabel td { border: 1px solid #cbd5e1; padding: 3pt 5pt; text-align: left; vertical-align: top; }
   #areaCetakTabel th { background: #e2e8f0; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   #areaCetakTabel .kanan { text-align: right; font-variant-numeric: tabular-nums; }
+  #areaCetakTabel .atensi-naik { background: #d1fae5; color: #047857; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #areaCetakTabel .atensi-turun { background: #fee2e2; color: #b91c1c; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 
 /* ===================== MODE GELAP (html.dark, static/js/tema.js; tombol di topbar) =====================

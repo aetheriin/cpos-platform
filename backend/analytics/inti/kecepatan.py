@@ -1,14 +1,7 @@
-"""Kecepatan penyelesaian untuk PR atau PO yang DIBUAT pada sebuah periode (minggu terpilih, atau seluruh minggu yang tampil).
+"""Kecepatan penyelesaian PR atau PO yang DIBUAT pada sebuah periode.
 
-Tiap laporan menyiapkan tabel g (lihat penyelesaian() di ukuran.py laporannya), satu baris per PR/PO yang Open atau sudah Completed:
-    awal     tanggal awal (PR dibuat / tanggal dokumen PO), sama dengan jam yang dipakai kolom Aging dari SP
-    selesai  tanggal selesai (PO terakhir / PI terakhir); kosong kalau belum selesai
-    lama     hari dari awal sampai selesai; kosong kalau belum selesai
-
-Dua ukuran, keduanya untuk yang DIBUAT pada periode:
-- rata_rata: rata-rata lama yang sudah selesai (kapan pun selesainya, sampai hari ini).
-- selesai_periode: berapa persen yang selesai di dalam periode itu juga.
-"""
+Masukan g (dari penyelesaian() tiap laporan): awal (tanggal dibuat, sama dengan Aging), selesai (PO/PI terakhir, kosong kalau belum),
+lama (hari awal sampai selesai). rata_rata = rata-rata lama yang sudah selesai; selesai_periode = persen yang selesai di periode itu juga."""
 import pandas as pd
 
 

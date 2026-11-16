@@ -1,7 +1,8 @@
 // ===== DATA MASTER > MITRA & PRODUK =====
 let daftarMitra = [];
-const bolehUbah = id => document.getElementById(id).dataset.bolehUbah === '1';
 let daftarProduk = [];
+let jenisProdukMaster = 'Produk';
+const bolehUbah = id => document.getElementById(id).dataset.bolehUbah === '1';
 
 document.addEventListener('DOMContentLoaded', () => {
     muatMitra();
@@ -61,15 +62,50 @@ function cariMitra(teks) {
 }
 
 async function muatProduk() {
-    const data = await ambilJson('/api/master/produk');
+    const isTbsLuar = jenisProdukMaster === 'TBSLuar';
+    const url = isTbsLuar
+        ? '/api/master/produk/tbs-luar'
+        : '/api/master/produk';
+
+    const data = await ambilJson(url);
     const tbody = document.getElementById('tabelProduk');
+    const header = document.getElementById('headerProduk');
 
     if (data.error) {
-        tbody.innerHTML = barisGagal(7, data.error);
+        tbody.innerHTML = barisGagal(isTbsLuar ? 3 : 7, data.error);
+        return;
+    }
+
+    if (isTbsLuar) {
+        header.innerHTML = `
+            <th class="table-cell">Nama Produk</th>
+            <th class="table-cell text-right">Jumlah Tiket</th>
+            <th class="table-cell">Terakhir Dipakai</th>
+        `;
+
+        tbody.innerHTML = data.map(p => `
+            <tr class="hover:bg-slate-50">
+                <td class="table-cell">${escapeHtml(p.nama_produk || '-')}</td>
+                <td class="table-cell text-right">
+                    ${Number(p.jumlah_tiket || 0).toLocaleString('id-ID')}
+                </td>
+                <td class="table-cell">${escapeHtml(p.terakhir_dipakai || '-')}</td>
+            </tr>
+        `).join('') || barisKosong(3, 'Belum ada produk pada tiket TBS Luar');
+
         return;
     }
 
     daftarProduk = data;
+    header.innerHTML = `
+        <th class="table-cell">Nama Produk</th>
+        <th class="table-cell">State</th>
+        <th class="table-cell">Deskripsi</th>
+        <th class="table-cell">Kode Awal</th>
+        <th class="table-cell">Flags</th>
+        <th class="table-cell text-right">QE Ratio</th>
+        <th class="table-cell text-right">Aksi</th>
+    `;
 
     tbody.innerHTML = data.map(p => `
         <tr class="hover:bg-slate-50">
@@ -85,15 +121,31 @@ async function muatProduk() {
             }</td>
             <td class="table-cell text-right">
                 ${bolehUbah('tabelProduk') ? `
-                    <button type="button"
-                            class="link-aksi text-blue-600"
-                            data-on-click="bukaProduk"
-                            data-arg="${p.id_produk}">
+                    <button type="button" class="link-aksi text-blue-600"
+                            data-on-click="bukaProduk" data-arg="${p.id_produk}">
                         Ubah
                     </button>` : ''}
             </td>
-        </tr>`
-    ).join('') || barisKosong(7, 'Belum ada produk Ascend');
+        </tr>
+    `).join('') || barisKosong(7, 'Belum ada produk Ascend');
+}
+
+function pilihJenisProdukMaster(jenis) {
+    jenisProdukMaster = jenis === 'TBSLuar' ? 'TBSLuar' : 'Produk';
+
+    const isTbsLuar = jenisProdukMaster === 'TBSLuar';
+    document.getElementById('filterProdukMaster')
+        ?.classList.toggle('btn-primary', !isTbsLuar);
+    document.getElementById('filterProdukMaster')
+        ?.classList.toggle('btn-secondary', isTbsLuar);
+    document.getElementById('filterTbsLuarMaster')
+        ?.classList.toggle('btn-primary', isTbsLuar);
+    document.getElementById('filterTbsLuarMaster')
+        ?.classList.toggle('btn-secondary', !isTbsLuar);
+    document.getElementById('btnTambahProdukAscend')
+        ?.classList.toggle('hidden', isTbsLuar);
+
+    muatProduk();
 }
 
 function bukaProduk(id) {

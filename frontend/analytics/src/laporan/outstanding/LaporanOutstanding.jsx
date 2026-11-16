@@ -24,6 +24,8 @@ const TAB_PIUTANG = [
   { kunci: 'piutang', nama: 'Per dokumen', ket: () => 'Invoice dan nota yang belum dibayar customer. Yang paling lama di atas.' },
   { kunci: 'customer', nama: 'Per customer', ket: () => 'Sisa piutang per customer. Yang terbesar di atas.' },
 ]
+// PR outstanding disembunyikan dulu atas permintaan pengguna (14 Nov 2026). Ubah ke true untuk menampilkannya lagi.
+const TAMPIL_PR = false
 const TAB_PR = [{ kunci: 'pr', nama: 'Per item', ket: () => 'Item PR berstatus Open yang belum seluruhnya dibuatkan PO. Yang paling lama di atas.' }]
 const TAB_PO = [{ kunci: 'po', nama: 'Per item', ket: () => 'Item PO berstatus Open yang belum seluruhnya diterima. Yang paling lama di atas.' }]
 
@@ -97,9 +99,9 @@ export default function LaporanOutstanding({ dataId, onDataHilang }) {
                   catatan={k.customer_teratas ? `terbesar ${rupiah(k.customer_teratas_nilai)}` : ''}
                   info={k.customer_teratas ? `customer dengan sisa terbesar: ${k.customer_teratas}` : 'tidak ada'} />
               </Kelompok>
-              <Kelompok judul="Pengadaan" kolom={2}>
-                <Kartu judul="PR outstanding" nilai={`${angka.format(k.pr_dok)} PR`} catatan={catatanPengadaan(k.pr_item, k.pr_lama)}
-                  info={k.pr_umur_maks == null ? 'tidak ada' : `PR yang belum seluruhnya dibuatkan PO. Paling lama ${angka.format(k.pr_umur_maks)} hari`} />
+              <Kelompok judul="Pengadaan" kolom={TAMPIL_PR ? 2 : 1}>
+                {TAMPIL_PR && <Kartu judul="PR outstanding" nilai={`${angka.format(k.pr_dok)} PR`} catatan={catatanPengadaan(k.pr_item, k.pr_lama)}
+                  info={k.pr_umur_maks == null ? 'tidak ada' : `PR yang belum seluruhnya dibuatkan PO. Paling lama ${angka.format(k.pr_umur_maks)} hari`} />}
                 <Kartu judul="PO outstanding" nilai={`${angka.format(k.po_dok)} PO`} catatan={catatanPengadaan(k.po_item, k.po_lama)}
                   info={k.po_umur_maks == null ? 'tidak ada' : `PO yang barangnya belum seluruhnya diterima. Paling lama ${angka.format(k.po_umur_maks)} hari`} />
               </Kelompok>
@@ -109,7 +111,7 @@ export default function LaporanOutstanding({ dataId, onDataHilang }) {
             )}
             <TabelDetail judul="Hutang" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_HUTANG} onDataHilang={onDataHilang} />
             <TabelDetail judul="Piutang" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_PIUTANG} onDataHilang={onDataHilang} />
-            <TabelDetail judul="PR outstanding" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_PR} onDataHilang={onDataHilang} />
+            {TAMPIL_PR && <TabelDetail judul="PR outstanding" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_PR} onDataHilang={onDataHilang} />}
             <TabelDetail judul="PO outstanding" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_PO} onDataHilang={onDataHilang} />
           </div>
         )}

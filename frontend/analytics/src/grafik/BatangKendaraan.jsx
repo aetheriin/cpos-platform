@@ -4,6 +4,7 @@ import TickKlik from './TickKlik'
 import { WARNA_TARA_BERAT, WARNA_TARA_RINGAN, redup } from './risiko'
 import { angka } from '../lib/data'
 import { Kosong } from '../komponen/Keadaan'
+import { ANIMASI, DURASI_ANIMASI } from './animasi'
 
 const angka2 = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 })
 
@@ -23,7 +24,7 @@ function Petunjuk({ active, payload }) {
 }
 
 function BatangKendaraan({ data, terpilih, onPilih }) {
-  if (data.length === 0) return <Kosong teks="Tidak ada transaksi untuk filter ini" />
+  if (data.length === 0) return <Kosong teks="Tidak ada transaksi pada periode dan filter ini" />
   return (
     <div>
       <div className="h-64 w-full">
@@ -34,7 +35,7 @@ function BatangKendaraan({ data, terpilih, onPilih }) {
             <YAxis width={52} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#475569' }} tickFormatter={(v) => angka.format(v)} />
             <ReferenceLine y={0} stroke="#94a3b8" />
             <Tooltip content={<Petunjuk />} cursor={{ fill: 'rgba(15,23,42,0.05)' }} />
-            <Bar dataKey="rata" name="Rata-rata selisih tara" radius={[3, 3, 0, 0]} isAnimationActive={false} className="cursor-pointer" onClick={(_, i, e) => onPilih(data[i].kendaraan, e)}>
+            <Bar dataKey="rata" name="Rata-rata selisih tara" radius={[3, 3, 0, 0]} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} className="cursor-pointer" onClick={(_, i, e) => onPilih(data[i].kendaraan, e)}>
               {data.map((d) => (
                 <Cell key={d.kendaraan} fill={d.rata < 0 ? WARNA_TARA_RINGAN : WARNA_TARA_BERAT} fillOpacity={redup(terpilih, d.kendaraan)} />
               ))}

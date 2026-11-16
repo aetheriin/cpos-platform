@@ -1,10 +1,8 @@
 """Rumus Pembelian TBS Mingguan.
 
-Atensi (disepakati dengan pengguna): hanya untuk minggu dinilai, yaitu minggu lengkap (7 hari) terakhir, per business group, atas tonase
-kg. MEAN dan SD = rata-rata dan simpangan baku sampel tonase minggu-minggu lengkap sebelumnya; grup yang tidak mengirim dalam satu minggu
-dihitung 0 kg. Selisih = minggu dinilai - MEAN. NAIK kalau selisih > batas x SD, TURUN kalau < -batas x SD. Kurang dari
-TBS_MINGGUAN_MIN_MINGGU minggu lengkap: tanpa atensi. Minggu yang belum lengkap (minggu berjalan, atau minggu pertama yang terpotong
-periode) tetap ditampilkan tetapi tidak dihitung."""
+Atensi hanya untuk minggu lengkap terakhir, per business group, atas tonase. MEAN dan SD dari minggu-minggu lengkap sebelumnya
+(grup yang tidak kirim dihitung 0 kg). NAIK kalau selisih > batas x SD, TURUN kalau < -batas x SD.
+Kurang dari TBS_MINGGUAN_MIN_MINGGU minggu lengkap: tanpa atensi. Minggu belum lengkap ditampilkan tapi tidak dihitung."""
 import pandas as pd
 
 from inti import konfigurasi

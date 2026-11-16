@@ -1,12 +1,7 @@
-"""Laporan PV KPI: skor kasir pembuat PV menurut kategori (Check Number) dan bobotnya, sama dengan Excel Penilaian PV.
+"""Laporan PV KPI: skor kasir pembuat PV per kategori (Check Number) dan bobotnya, sama dengan Excel Penilaian PV.
 
-Aturan hitung dan pembersihan sama dengan PVR KPI (laporan.penilaian_pvr.sumber); yang beda hanya sumber datanya (PV hutang, FI_ARAP
-IsAR = 0) dan tabel bobot (Bobot_PV). Satu baris per item PV, ditambah item lain-lain dan potongan PPh.
-
-Data mentah dari SP PENILAIAN_PV_SP (Main.dbo.PENILAIAN_PV, SQL-nya di backend/database/penilaian_pv_sp.sql), dipanggil per perusahaan
-bersamaan. Di sini: nomor dokumen (ItemRef), label dan tanda potongan PPh, nama supplier, Check Number kosong diisi dari histori supplier,
-kategori, bobot, dan item pertama per PV.
-"""
+Aturan sama dengan PVR KPI (laporan.penilaian_pvr.sumber); bedanya sumber (PV hutang, FI_ARAP IsAR = 0) dan tabel bobot (Bobot_PV).
+Data dari SP PENILAIAN_PV_SP per perusahaan; Check Number kosong diisi dari histori supplier."""
 from datetime import date
 
 import pandas as pd

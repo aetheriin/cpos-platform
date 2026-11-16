@@ -13,6 +13,7 @@ LAPORAN = {
     "monthly": {"judul": "Pembelian TBS - Monthly", "menu": "RK_TBS_MONTHLY", "prosedur": "dbo.tbsdetailmonthly", "periode": "range"},
 }
 TBS_WEEKLY_TARGET = 4000
+TBS_WEEKLY_TARGET_BY_COMPANY = {"YBS": 7400}
 
 
 def _report_row_value(row: dict[str, Any], *names: str) -> Any:
@@ -137,6 +138,14 @@ def daily_report_table(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
     }
 
 
+def _weekly_is_rsi_agen(row: dict[str, Any]) -> bool:
+    return (
+        str(_report_row_value(row, "KATEGORI") or "").strip().upper() == "AGEN"
+        and str(_report_row_value(row, "JENIS_KEBUN") or "").strip().upper() == "AGEN BINA"
+        and str(_report_row_value(row, "GROUP") or "").strip().upper() == "PT. RIAU SAWIT INDAH"
+    )
+
+
 def weekly_report_table(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
     if not rows or _report_row_value(rows[0], "PERIODE") is None:
         return None
@@ -155,25 +164,29 @@ def weekly_report_table(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
         if period is None:
             continue
         identity = (
-            _report_row_value(row, "JENIS_KEBUN"),
+            "RSI" if _weekly_is_rsi_agen(row) else _report_row_value(row, "JENIS_KEBUN"),
             _report_row_value(row, "GROUP"),
-            _report_row_value(row, "KATEGORI"),
+            "Kebun" if _weekly_is_rsi_agen(row) else _report_row_value(row, "KATEGORI"),
         )
         if identity not in identities:
             identities[identity] = []
             identity_order.append(identity)
         identities[identity].append(row)
 
-    identity_headers = ["NO", "JENIS KEBUN", "GRUP", "KATEGORI"]
+    identity_order.sort(key=lambda identity: (
+        _weekly_category_order(identity[2]),
+        str(identity[0] or "").casefold(),
+        str(identity[1] or "").casefold(),
+    ))
+    identity_headers = ["NO", "KATEGORI", "JENIS KEBUN", "GRUP"]
     statistic_headers = ["STD DEV", "MEAN", "DIFFERENCE"]
-    headers = identity_headers + periods[:-1] + statistic_headers + [periods[-1], "ATTENSI"]
+    headers = identity_headers + periods + ["ATTENSI"]
     detail_rows: list[dict[str, Any]] = []
     for number, identity in enumerate(identity_order, start=1):
         source_rows = identities[identity]
-        row_by_period = {
-            str(_report_row_value(source, "PERIODE")): source
-            for source in source_rows
-        }
+        rows_by_period: dict[str, list[dict[str, Any]]] = {}
+        for source in source_rows:
+            rows_by_period.setdefault(str(_report_row_value(source, "PERIODE")), []).append(source)
         evaluated_rows = [
             source for source in source_rows
             if any(_report_row_value(source, field) is not None
@@ -186,26 +199,30 @@ def weekly_report_table(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
         )
         values: dict[str, Any] = {
             "NO": number,
+            "KATEGORI": identity[2] or "—",
             "JENIS KEBUN": identity[0] or "—",
             "GRUP": identity[1] or "—",
-            "KATEGORI": identity[2] or "—",
         }
-        for period in periods[:-1]:
-            values[period] = _report_row_value(row_by_period.get(period, {}), "TONASE_KG")
-        for field in statistic_headers:
-            values[field] = _report_row_value(stats_source, field)
-        values[periods[-1]] = _report_row_value(row_by_period.get(periods[-1], {}), "TONASE_KG")
+        gabungkan_rsi = (
+            str(identity[0] or "").strip().upper() == "RSI"
+            and str(identity[1] or "").strip().upper() == "PT. RIAU SAWIT INDAH"
+            and str(identity[2] or "").strip().upper() == "KEBUN"
+        )
+        for period in periods:
+            sumber_periode = rows_by_period.get(period, [])
+            tonase = [_report_row_value(source, "TONASE_KG") for source in sumber_periode]
+            if gabungkan_rsi and len(sumber_periode) > 1 and any(value is not None for value in tonase):
+                values[period] = sum(_report_number(value) for value in tonase if value is not None)
+            else:
+                values[period] = _report_row_value(sumber_periode[-1], "TONASE_KG") if sumber_periode else None
         values["ATTENSI"] = _report_row_value(stats_source, "ATTENSI")
         values["_row_type"] = "detail"
         values["_percent_columns"] = ()
         detail_rows.append(values)
 
-    stat_start = len(identity_headers) + len(periods[:-1])
     group_headers = [
         {"label": "INFORMASI SUPPLIER", "colspan": len(identity_headers)},
-        {"label": "PERIODE TONASE", "colspan": len(periods[:-1])},
-        {"label": "STATISTIK", "colspan": len(statistic_headers)},
-        {"label": periods[-1], "colspan": 1},
+        {"label": "PERIODE TONASE", "colspan": len(periods)},
         {"label": "ATTENSI", "colspan": 1},
     ]
     group_headers = [group for group in group_headers if group["colspan"]]
@@ -215,8 +232,18 @@ def weekly_report_table(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
         "rows": detail_rows,
         "kind": "weekly",
         "group_headers": group_headers,
-        "stat_start": stat_start,
     }
+
+
+def _weekly_category_order(category: Any) -> int:
+    teks = str(category or "").strip().upper()
+    if teks.startswith("KEBUN"):
+        return 0
+    if teks.startswith("AGEN"):
+        return 1
+    if teks.startswith("BRONDOLAN"):
+        return 2
+    return 3
 
 
 def monthly_report_tables(
@@ -415,7 +442,7 @@ def web_date_format(value: Any) -> str:
 
 
 
-def weekly_report_summary(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def weekly_report_summary(rows: list[dict[str, Any]], company: str | None = None) -> list[dict[str, Any]]:
     if not rows:
         return []
     first_row = rows[0]
@@ -459,15 +486,40 @@ def weekly_report_summary(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         period: float(by_period[period][fields["BRONDOLAN_TOTAL_TON"]] or 0)
         for period in period_labels
     }
+    tonase_agen_rsi: dict[str, float] = {}
+    for row in rows:
+        if _weekly_is_rsi_agen(row):
+            period = _report_row_value(row, "PERIODE")
+            tonase = _report_row_value(row, "TONASE")
+            if period is not None and tonase is not None:
+                tonase_agen_rsi[str(period)] = tonase_agen_rsi.get(str(period), 0) + _report_number(tonase)
+    for period, tonase in tonase_agen_rsi.items():
+        if period in agents:
+            agents[period] -= tonase
+            kebun[period] += tonase
+    company_key = (company or "").strip().upper()
+    fallback_target = TBS_WEEKLY_TARGET_BY_COMPANY.get(company_key, TBS_WEEKLY_TARGET)
+    targets = {}
+    for period in period_labels:
+        target = next(
+            (
+                _report_row_value(row, "TARGET", "TARGET_TON", "TARGET_TONASE", "TARGET_MINGGU")
+                for row in rows
+                if str(_report_row_value(row, "PERIODE")) == period
+                and _report_row_value(row, "TARGET", "TARGET_TON", "TARGET_TONASE", "TARGET_MINGGU") is not None
+            ),
+            None,
+        )
+        targets[period] = _report_number(target) if target is not None else fallback_target
     values_by_metric: list[tuple[str, dict[str, float]]] = [
         ("TOTAL", totals),
-        ("TARGET", {period: TBS_WEEKLY_TARGET for period in period_labels}),
+        ("TARGET", targets),
         ("PENCAPAIAN %", {
-            period: total / TBS_WEEKLY_TARGET * 100
+            period: total / targets[period] * 100 if targets[period] else 0
             for period, total in totals.items()
         }),
         ("KEKURANGAN%", {
-            period: total / TBS_WEEKLY_TARGET * 100 - 100
+            period: total / targets[period] * 100 - 100 if targets[period] else 0
             for period, total in totals.items()
         }),
         ("AGEN TOTAL", agents),
@@ -504,12 +556,12 @@ def _tandai_kolom_angka(tabel: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return tabel
 
 
-def susun_tabel(jenis: str, hasil: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+def susun_tabel(jenis: str, hasil: list[list[dict[str, Any]]], company: str | None = None) -> list[dict[str, Any]]:
     """Result set prosedur -> daftar tabel yang ditampilkan (sama dengan render_tbs_report RekapIn)."""
-    return _tandai_kolom_angka(_susun_tabel(jenis, hasil))
+    return _tandai_kolom_angka(_susun_tabel(jenis, hasil, company))
 
 
-def _susun_tabel(jenis: str, hasil: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+def _susun_tabel(jenis: str, hasil: list[list[dict[str, Any]]], company: str | None = None) -> list[dict[str, Any]]:
     terisi = [rows for rows in hasil if rows]
     if not terisi:
         return []
@@ -523,7 +575,7 @@ def _susun_tabel(jenis: str, hasil: list[list[dict[str, Any]]]) -> list[dict[str
         mingguan = weekly_report_table(utama)
         if mingguan:
             tabel.append(mingguan)
-            ringkas = weekly_report_summary(utama)
+            ringkas = weekly_report_summary(utama, company)
             if ringkas:
                 kolom = list(ringkas[0])
                 tabel.append({

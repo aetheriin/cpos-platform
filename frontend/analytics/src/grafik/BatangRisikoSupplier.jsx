@@ -5,6 +5,8 @@ import TickKlik from './TickKlik'
 import { warnaRisiko } from './risiko'
 import { angka } from '../lib/data'
 import { Kosong } from '../komponen/Keadaan'
+import { LEGENDA } from './legenda'
+import { ANIMASI, DURASI_ANIMASI } from './animasi'
 
 function Petunjuk({ active, payload, indikator }) {
   const d = active && payload?.[0]?.payload
@@ -31,7 +33,7 @@ function Petunjuk({ active, payload, indikator }) {
 function BatangRisikoSupplier({ risiko_supplier: rs, indikator, terpilih, risikoTerpilih, onPilih, onPilihRisiko, onPilihSupplier, label = 'supplier' }) {
   const [mode, setMode] = useState('jumlah')
   const [ref, lebar] = useLebar()
-  if (rs.data.length === 0) return <Kosong teks="Tidak ada transaksi untuk filter ini" />
+  if (rs.data.length === 0) return <Kosong teks="Tidak ada transaksi pada periode dan filter ini" />
   const persenMode = mode === 'persen'
   const data = persenMode ? rs.data_persen : rs.data
   const lebarLabel = Math.round(Math.min(230, Math.max(96, (lebar || 600) * 0.38)))
@@ -47,7 +49,7 @@ function BatangRisikoSupplier({ risiko_supplier: rs, indikator, terpilih, risiko
         ))}
       </div>
       {data.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-500">Tidak ada {label} dengan minimal {angka.format(rs.min_transaksi)} transaksi untuk filter ini.</p>
+        <p className="py-8 text-center text-sm text-slate-500">Tidak ada {label} dengan minimal {angka.format(rs.min_transaksi)} transaksi pada periode dan filter ini</p>
       ) : (
       <div className="w-full" style={{ height: data.length * 26 + 60 }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -57,14 +59,13 @@ function BatangRisikoSupplier({ risiko_supplier: rs, indikator, terpilih, risiko
             <YAxis type="category" dataKey="supplier" width={lebarLabel} interval={0} tickLine={false} axisLine={false} tick={<TickKlik onPilih={onPilihSupplier} terpilih={terpilih} maks={Math.floor(lebarLabel / 6.3)} />} />
             <Tooltip content={<Petunjuk indikator={indikator} />} cursor={{ fill: 'rgba(15,23,42,0.05)' }} />
             <Legend
-              verticalAlign="top"
-              height={30}
-              wrapperStyle={{ fontSize: 11, cursor: 'pointer' }}
+              {...LEGENDA}
+              wrapperStyle={{ ...LEGENDA.wrapperStyle, cursor: 'pointer' }}
               onClick={(item, _, e) => onPilihRisiko(item.value, e)}
               formatter={(nama) => <span style={{ opacity: risikoTerpilih.length > 0 && !risikoTerpilih.includes(nama) ? 0.4 : 1 }}>{nama}</span>}
             />
             {indikator.map((i) => (
-              <Bar key={i.kunci} dataKey={i.kunci} name={i.nama} stackId="risiko" fill={warnaRisiko(i.kunci)} barSize={14} isAnimationActive={false} className="cursor-pointer" onClick={(_, idx, e) => onPilih(data[idx].supplier, i.nama, e)}>
+              <Bar key={i.kunci} dataKey={i.kunci} name={i.nama} stackId="risiko" fill={warnaRisiko(i.kunci)} barSize={14} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} className="cursor-pointer" onClick={(_, idx, e) => onPilih(data[idx].supplier, i.nama, e)}>
                 {data.map((d) => (
                   <Cell key={d.supplier} fillOpacity={opasitas(d.supplier, i.nama)} />
                 ))}

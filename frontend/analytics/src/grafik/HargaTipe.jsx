@@ -39,7 +39,7 @@ function Garis({ harga, warna }) {
 // Satu baris per tipe: nama, garis harga harian, harga terakhir, dan perubahan sejak hari pertama jendela. Klik baris untuk memfilter tipe.
 // Harga naik ditandai merah karena biaya pembelian bertambah.
 function HargaTipe({ data, mulai, akhir, terpilih, onPilih }) {
-  if (data.data.length === 0) return <Kosong teks="Tidak ada pembelian untuk filter ini" />
+  if (data.data.length === 0) return <Kosong teks="Tidak ada pembelian pada periode dan filter ini" />
   return (
     <div>
       <div className="mb-1 grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)_auto] gap-x-3 text-xs text-slate-500 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)_auto]">

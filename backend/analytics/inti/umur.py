@@ -3,7 +3,7 @@ Dipakai dashboard PR & PO dan PO & PI (kategori_umur) serta laporan Reports (kel
 Purchase Orders, Purchase Invoice."""
 import pandas as pd
 
-KELOMPOK_UMUR = [("Tepat Waktu(0-8 Hari)", 8), ("Perlu Perhatian(9-15 Hari)", 15), ("Telat(16-30 Hari)", 30), ("Perlu Tindakan(>30 Hari)", None)]
+KELOMPOK_UMUR = [("Tepat Waktu (0–8 hari)", 8), ("Perlu Perhatian (9–15 hari)", 15), ("Telat (16–30 hari)", 30), ("Perlu Tindakan (>30 hari)", None)]
 URUTAN_KELOMPOK_UMUR = [label for label, _ in KELOMPOK_UMUR]
 
 

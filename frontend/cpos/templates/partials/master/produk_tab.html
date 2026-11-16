@@ -6,19 +6,43 @@
             Data produk dibaca dari Ascend. Jenis tiket Produk dan TBS Luar tetap dipilih di alur tiket.
         </p>
         <div class="flex-1"></div>
+        <div class="flex gap-2">
+            <button type="button" id="filterProdukMaster"
+                    class="btn-primary"
+                    data-on-click="pilihJenisProdukMaster" data-arg="Produk">
+                Produk
+            </button>
+            <button type="button" id="filterTbsLuarMaster"
+                    class="btn-secondary"
+                    data-on-click="pilihJenisProdukMaster" data-arg="TBSLuar">
+                TBS Luar
+            </button>
+        </div>
         {% if hak.produk.tambah %}
-        <button type="button" class="btn-primary" data-on-click="bukaProduk">
+        <button type="button" id="btnTambahProdukAscend"
+                class="btn-primary" data-on-click="bukaProduk">
             <i class="fa-solid fa-plus mr-1"></i> Tambah Produk
         </button>
         {% endif %}
     </div>
 
     <div class="section-box">
-        {{ section_header('master-produk', 'Daftar Produk') }}
+        {% call section_header('master-produk', 'Daftar Produk') %}
+            <div class="ml-auto w-48" data-henti-klik>
+                <select
+                    id="jenisProdukMaster"
+                    class="input-field"
+                    data-on-change="pilihJenisProdukMaster"
+                    data-arg="$value">
+                    <option value="Produk">Produk</option>
+                    <option value="TBSLuar">TBS Luar</option>
+                </select>
+            </div>
+        {% endcall %}
         <div id="body-master-produk" class="section-body overflow-x-auto">
             <table class="w-full text-left text-sm">
                 <thead class="table-header-row">
-                    <tr>
+                    <tr id="headerProduk">
                         <th class="table-cell">Nama Produk</th>
                         <th class="table-cell">State</th>
                         <th class="table-cell">Deskripsi</th>

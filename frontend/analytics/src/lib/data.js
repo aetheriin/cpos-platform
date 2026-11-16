@@ -28,9 +28,7 @@ export function potong(teks, maks) {
 }
 
 // Warna ditentukan urutan item di daftar pilihan, bukan oleh filter, supaya tidak bergeser.
-// Palet seri (perusahaan, pembuat, kategori): keluarga biru, teal, dan slate dengan satu aksen hangat (amber), dibedakan lewat terang-gelap,
-// bukan lewat banyak warna yang jauh berbeda. Merah dan hijau disimpan untuk arti (risiko, naik/turun).
-// Semua cukup gelap untuk garis tipis di latar putih (kontras minimal sekitar 3:1).
+// Palet seri (perusahaan, pembuat, kategori); aturannya di grafik/warna.js.
 export const PALET = ['#0369a1', '#0d9488', '#d97706', '#64748b', '#0284c7', '#1e3a8a', '#0f766e', '#475569', '#0e7490', '#b45309', '#2563eb', '#334155']
 export const warna = (indeks) => PALET[((indeks % PALET.length) + PALET.length) % PALET.length]
 export const WARNA_LAINNYA = '#cbd5e1'

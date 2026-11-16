@@ -90,7 +90,8 @@ export default function DashboardPiGt({ dataId, onDataHilang }) {
               </Petak>
               <Petak padat="lg:col-span-4">
                 <KartuGrafik judul="Menunggu GT per Perusahaan" petunjuk="Barang yang belum di-GT per perusahaan peminta, di awal dan akhir periode. Klik perusahaan untuk memfilter.">
-                  <KategoriOutstandingChart daftar={data.outstanding_perusahaan} terpilih={filter.perusahaan} onPilih={pilihDari('perusahaan')} />
+                  <KategoriOutstandingChart daftar={data.outstanding_perusahaan} terpilih={filter.perusahaan} onPilih={pilihDari('perusahaan')}
+                    namaAwal="Menunggu GT awal" namaAkhir="Menunggu GT akhir" />
                 </KartuGrafik>
               </Petak>
 

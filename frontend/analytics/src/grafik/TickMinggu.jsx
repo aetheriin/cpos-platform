@@ -3,7 +3,7 @@ export default function TickMinggu({ x, y, payload, data, terpilih, onPilih, pad
   const w = data.find((d) => d.singkat === payload.value)
   const indeks = w?.indeks
   const aktif = terpilih === indeks
-  const gaya = { fontSize: 10, fill: '#475569', opacity: terpilih != null && !aktif ? 0.4 : 1, fontWeight: aktif ? 700 : 400 }
+  const gaya = { fontSize: 11, fill: '#475569', opacity: terpilih != null && !aktif ? 0.4 : 1, fontWeight: aktif ? 700 : 400 }
   return (
     <g transform={`translate(${x},${y})`} style={{ cursor: 'pointer' }} onClick={() => onPilih(indeks)}>
       {padat ? (

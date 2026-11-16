@@ -1,6 +1,7 @@
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { angka, barisMinggu, BATAS_PADAT_KECIL, jedaLabel } from '../lib/data'
 import TickMinggu from './TickMinggu'
+import { ANIMASI, DURASI_ANIMASI } from './animasi'
 
 // Memakai nama prop 'warna' karena Recharts menimpa prop 'fill'.
 function TitikSeri({ cx, cy, payload, warna, redup, terpilih, onKlik }) {
@@ -97,7 +98,7 @@ export default function GarisSeri({ mingguan, seri, warnaSeri, terpilihSeri = []
                   stroke={warnaSeri(s.nama)}
                   strokeWidth={aktif ? 3 : 2}
                   strokeOpacity={redup ? 0.2 : 1}
-                  isAnimationActive={false}
+                  isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI}
                   dot={
                     baris.length > 26 ? false : <TitikSeri warna={warnaSeri(s.nama)} redup={redup} terpilih={minggu} onKlik={(e) => onPilihSeri(s.nama, e)} />
                   }

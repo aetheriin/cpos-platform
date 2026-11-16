@@ -1,12 +1,8 @@
-"""Kartu, grafik, dan tabel detail laporan Cash Flow. Cross filter sama dengan laporan lain.
+"""Kartu, grafik, dan tabel detail laporan Cash Flow.
 
-Saldo adalah milik rekening, jadi grafik dan kartu saldo hanya mengikuti filter perusahaan dan rekening; filter lain (lawan transaksi,
-jenis dokumen, pembuat, tanggal) menyaring mutasi masuk/keluar dan tabel.
-Semua nilai sudah dalam rupiah (rekening valas dikonversi di sumber.py); rekening yang tetap tanpa kurs tidak dihitung dan disebutkan.
-Data dimuat dari 1 Januari; rentang tampilan bawaannya bulan berjalan (awal bulan sampai hari ini), dan bulan lain dipilih lewat filter
-tanggal. Grafik running balance tidak mengikuti rentang itu: semua bulan sampai bulan terpilih dikirim, layar memilih berapa bulan ke belakang. Istilah mengikuti rekening koran / file cashflow: kredit = uang keluar,
-debit = uang masuk; kredit/debit to date dihitung sejak awal data.
-"""
+Saldo hanya mengikuti filter perusahaan dan rekening; filter lain menyaring mutasi dan tabel. Rekening tanpa kurs tidak dihitung.
+Data dimuat dari 1 Januari, tampilan bawaan bulan berjalan; running balance selalu dikirim sampai bulan terpilih.
+Istilah mengikuti rekening koran: kredit = uang keluar, debit = uang masuk."""
 import pandas as pd
 
 from inti import konfigurasi

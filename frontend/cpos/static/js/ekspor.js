@@ -8,7 +8,10 @@
 function dataTabel(idTbody) {
     const tbody = document.getElementById(idTbody);
     const tabel = tbody.closest('table');
-    const th = [...tabel.querySelectorAll('thead th')];
+    const barisKepala = tabel.tHead?.rows;
+    const th = barisKepala?.length
+        ? [...barisKepala[barisKepala.length - 1].cells]
+        : [...tabel.querySelectorAll('thead th')];
     // Kolom yang disembunyikan lewat tombol "Kolom" (kolom_tabel.js) ikut dilewati
     const pakai = th.map(h => !h.hasAttribute('data-tanpa-ekspor') && getComputedStyle(h).display !== 'none'
         && !['aksi', 'action', 'actions'].includes(h.textContent.trim().toLowerCase()));
@@ -79,10 +82,16 @@ function cetakTabelPdf(judul, { kepala, baris }) {
     const area = document.createElement('div');
     area.id = 'areaCetakTabel';
     const angka = baris[0].map((_, i) => baris.every(r => !r[i] || keAngka(r[i]) != null));
+    const kolomAtensi = kepala.findIndex(k => k.trim().toUpperCase() === 'ATTENSI');
     area.innerHTML = `<h1>${escapeHtml(judul)}</h1>
         <p>${escapeHtml(t(`Dicetak ${new Date().toLocaleString(I18N.lokal)} oleh ${document.body.dataset.user || '-'} · ${baris.length} baris`))}</p>
         <table><thead><tr>${kepala.map((k, i) => `<th${angka[i] ? ' class="kanan"' : ''}>${escapeHtml(k)}</th>`).join('')}</tr></thead>
-        <tbody>${baris.map(r => `<tr>${r.map((v, i) => `<td${angka[i] ? ' class="kanan"' : ''}>${escapeHtml(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+        <tbody>${baris.map(r => `<tr>${r.map((v, i) => {
+            const status = i === kolomAtensi ? String(v).trim().toUpperCase() : '';
+            const warna = status === 'NAIK' ? ' atensi-naik' : status === 'TURUN' ? ' atensi-turun' : '';
+            const kanan = angka[i] ? ' kanan' : '';
+            return `<td class="${(kanan + warna).trim()}">${escapeHtml(v)}</td>`;
+        }).join('')}</tr>`).join('')}</tbody></table>`;
     document.body.appendChild(area);
     document.body.classList.add('mode-cetak-tabel');
     const judulAsli = document.title;
@@ -110,9 +119,15 @@ function kolomExcel(i) {
 function buatXlsx(judul, { kepala, baris }) {
     const sel = (v, r, c, gaya) => {
         const ref = `${kolomExcel(c)}${r}`;
-        const n = gaya === 1 ? null : keAngka(v);
+        const n = [1, 4, 5].includes(gaya) ? null : keAngka(v);
         return n != null ? `<c r="${ref}" s="${Number.isInteger(n) ? 2 : 3}"><v>${n}</v></c>`
             : `<c r="${ref}" t="inlineStr"${gaya ? ` s="${gaya}"` : ''}><is><t xml:space="preserve">${xmlAman(v)}</t></is></c>`;
+    };
+    const kolomAtensi = kepala.findIndex(k => k.trim().toUpperCase() === 'ATTENSI');
+    const gayaStatus = (v, c) => {
+        if (c !== kolomAtensi) return 0;
+        const status = String(v).trim().toUpperCase();
+        return status === 'NAIK' ? 4 : status === 'TURUN' ? 5 : 0;
     };
     const lebar = kepala.map((k, i) => Math.min(60, Math.max(k.length, ...baris.map(r => (r[i] || '').length)) + 2));
     const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -121,19 +136,22 @@ function buatXlsx(judul, { kepala, baris }) {
 <cols>${lebar.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols>
 <sheetData>
 <row r="1">${kepala.map((k, c) => sel(k, 1, c, 1)).join('')}</row>
-${baris.map((r, i) => `<row r="${i + 2}">${r.map((v, c) => sel(v, i + 2, c, 0)).join('')}</row>`).join('\n')}
+${baris.map((r, i) => `<row r="${i + 2}">${r.map((v, c) => sel(v, i + 2, c, gayaStatus(v, c))).join('')}</row>`).join('\n')}
 </sheetData>
 <autoFilter ref="A1:${kolomExcel(kepala.length - 1)}${baris.length + 1}"/>
 <ignoredErrors><ignoredError sqref="A1:${kolomExcel(kepala.length - 1)}${baris.length + 1}" numberStoredAsText="1"/></ignoredErrors>
 </worksheet>`;
     const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
-<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>
-<fill><patternFill patternType="solid"><fgColor rgb="FFE2E8F0"/></patternFill></fill></fills>
+<fonts count="4"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font>
+<font><b/><color rgb="FF047857"/><sz val="11"/><name val="Calibri"/></font><font><b/><color rgb="FFB91C1C"/><sz val="11"/><name val="Calibri"/></font></fonts>
+<fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFE2E8F0"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFD1FAE5"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFFEE2E2"/></patternFill></fill></fills>
 <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>
+<cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="2" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="3" fillId="4" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
     const namaSheet = xmlAman(judul.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31));

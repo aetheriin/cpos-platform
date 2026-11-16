@@ -1,15 +1,9 @@
 """Laporan Penerimaan TBS: KPI, deret harian, dan forecast netto.
 
-Forecast untuk H = TBS_HARI_FORECAST hari setelah hari aktual terakhir:
-  forecast(t) = Rata-rata Harian x H x Proporsi Tahun Lalu(t)
-- Rata-rata Harian  : rata-rata netto per hari selama TBS_HARI_SKALA hari terakhir (bawaan 14 = 2 minggu), hanya dari hari yang ada
-                      penerimaannya. Hari tanpa penerimaan (mis. libur) tidak dihitung. Dikali H = kapasitas minggu depan.
-- Proporsi Tahun Lalu(t): netto tanggal t - 364 hari (hari dalam seminggu sama) dibagi total netto blok H hari tahun lalu itu. Jumlah
-                      proporsi = 1. Hari yang tahun lalu kosong diisi dulu dari hari yang sama di minggu-minggu sekitarnya (_isi_hari_kosong):
-                      forecast memperkirakan penerimaan kalau hari itu tetap ada yang masuk.
-Kalau tidak ada hari kosong, hasilnya sama dengan cara Excel lama (total 14 hari / 2 x proporsi).
-Kalau blok tahun lalu tidak ada di data (atau seluruhnya nol) forecast kosong.
-Interval kepercayaan: lihat _interval (kesalahan metode yang sama pada minggu-minggu sebelumnya)."""
+Forecast H = TBS_HARI_FORECAST hari ke depan: forecast(t) = rata-rata harian x H x proporsi tahun lalu(t).
+- Rata-rata harian: netto per hari selama TBS_HARI_SKALA hari terakhir, hanya hari yang ada penerimaannya.
+- Proporsi tahun lalu(t): netto t - 364 hari dibagi total blok H hari itu; hari kosong diisi dari hari yang sama di minggu sekitarnya.
+Tanpa blok tahun lalu, forecast kosong. Interval kepercayaan: lihat _interval."""
 from datetime import date
 
 import numpy as np

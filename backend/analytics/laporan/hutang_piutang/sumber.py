@@ -1,16 +1,8 @@
-"""Laporan Outstanding: dokumen hutang dan piutang yang belum lunas dari semua sumber yang dipakai ERP saat membuat PV/RV
-(SH_ARAPCalculations), semua riwayat.
+"""Laporan Outstanding: hutang dan piutang belum lunas dari semua sumber yang dipakai ERP untuk PV/RV (SH_ARAPCalculations).
 
-Data diambil lewat SP OUTSTANDING_SP (Main.dbo.R_OUTSTANDING_ARAP, SQL-nya di backend/database/outstanding_sp.sql), dipanggil per perusahaan
-secara bersamaan. SP itu wajib ada di Main dan diberi izin EXECUTE untuk login aplikasi.
-Perusahaan memakai CompID (YBS, SUN, ...) dari tabel company; baris tanpa server/database (HEAD OFFICE) dilewati.
-
-SQL hanya mengambil dokumen yang belum lunas beserta nilai mentahnya. Di sini:
-- Hutang: potongan (AP Discount Notes dll, IsPositive = 0) diberi nilai negatif, jadi jumlah sisa = hutang bersih.
-- Status: PVR pending (belum dibuatkan PV) dan PV bertanggal setelah hari muat dihitung belum dibayar.
-- Kurs ke rupiah: kurs yang tercatat di dokumen ERP itu sendiri (KursDok > 1); kalau tidak ada, urutan laporan Cash Flow
-  (kurs voucher ERP, kurs input CPOS, kurs tahunan exc_rate, kurs internet).
-"""
+Data dari SP OUTSTANDING_SP (backend/database/outstanding_sp.sql), per perusahaan bersamaan; perusahaan tanpa server/database dilewati.
+Di sini: potongan hutang (IsPositive = 0) bernilai negatif; PVR pending dan PV bertanggal setelah hari muat dihitung belum dibayar;
+kurs memakai kurs dokumen ERP, kalau tidak ada urutan kurs laporan Cash Flow."""
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date

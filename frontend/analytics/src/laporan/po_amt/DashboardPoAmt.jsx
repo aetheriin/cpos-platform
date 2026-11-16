@@ -73,17 +73,17 @@ export default function DashboardPoAmt({ dataId, onDataHilang }) {
 
             <KisiGrafik>
               <Petak padat="lg:col-span-6">
-                <KartuGrafik judul="Persentase jumlah dan nilai PO per kategori" perbesar>
+                <KartuGrafik judul="Persentase Jumlah dan Nilai PO per Kategori" perbesar>
                   <PoNilaiPersen data={data.kategori} onPilih={pilihKategori} />
                 </KartuGrafik>
               </Petak>
               <Petak padat="lg:col-span-6">
-                <KartuGrafik judul="Jumlah dan nilai PO per kategori" perbesar>
+                <KartuGrafik judul="Jumlah dan Nilai PO per Kategori" perbesar>
                   <PoNilai data={data.kategori} onPilih={pilihKategori} />
                 </KartuGrafik>
               </Petak>
               <Petak padat="lg:col-span-6">
-                <KartuGrafik judul={`${ukuranSeri === 'nilai' ? 'Nilai' : 'Jumlah'} PO per bulan`} perbesar
+                <KartuGrafik judul={`${ukuranSeri === 'nilai' ? 'Nilai' : 'Jumlah'} PO per Bulan`} perbesar
                   aksi={<>
                     <Select otomatis kecil aria-label="Kategori" value={kategoriSeri} onChange={(e) => setKategoriSeri(e.target.value)}>
                       {data.nama_kategori.map((k, i) => <option key={k} value={i}>{k}</option>)}
@@ -96,7 +96,7 @@ export default function DashboardPoAmt({ dataId, onDataHilang }) {
                 </KartuGrafik>
               </Petak>
               <Petak padat="lg:col-span-6">
-                <KartuGrafik judul={`${ukuran === 'nilai' ? 'Nilai' : 'Jumlah'} PO antartahun`} perbesar aksi={<PilihUkuran nilai={ukuran} onUbah={setUkuran} />}>
+                <KartuGrafik judul={`${ukuran === 'nilai' ? 'Nilai' : 'Jumlah'} PO Antartahun`} perbesar aksi={<PilihUkuran nilai={ukuran} onUbah={setUkuran} />}>
                   <BandingTahun data={data.banding_tahun} ukuran={ukuran} format={formatUkuran} />
                 </KartuGrafik>
               </Petak>

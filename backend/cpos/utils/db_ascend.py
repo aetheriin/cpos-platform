@@ -177,6 +177,39 @@ def daftar_produk_master_ascend():
     finally:
         koneksi.close()
 
+def daftar_produk_tbs_luar_ascend():
+    """Nama produk yang pernah digunakan pada tiket TBS Luar Ascend."""
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute(
+            """
+            SELECT
+                ProductName AS nama_produk,
+                COUNT_BIG(*) AS jumlah_tiket,
+                MAX([Date]) AS terakhir_dipakai
+            FROM dbo.PALM_Tickets
+            WHERE TicketType = 'TBSLuar'
+              AND ISNULL(Void, 0) = 0
+              AND NULLIF(LTRIM(RTRIM(ProductName)), '') IS NOT NULL
+            GROUP BY ProductName
+            ORDER BY ProductName
+            """
+        )
+
+        hasil = []
+        for row in _baris_hasil(cursor):
+            terakhir = row.get("terakhir_dipakai")
+            hasil.append({
+                "nama_produk": str(row.get("nama_produk") or "").strip(),
+                "jumlah_tiket": int(row.get("jumlah_tiket") or 0),
+                "terakhir_dipakai": terakhir.isoformat()[:10] if terakhir else None,
+            })
+
+        return hasil
+    finally:
+        koneksi.close()
+
 def simpan_produk_master_ascend(
     product_id,
     product_name,

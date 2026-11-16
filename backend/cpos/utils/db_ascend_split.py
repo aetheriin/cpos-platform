@@ -6,11 +6,11 @@ def simpan_pasangan_do2(ticket_id, ticket_no, no_do2, created_by=None):
     """Buat atau perbarui rencana pasangan DO2; DO2 boleh belum tersedia."""
     ticket_id = int(ticket_id)
     ticket_no = (ticket_no or "").strip()
-    no_do2 = (no_do2 or "").strip().upper()
+    no_do2 = (no_do2 or "").strip().upper() or None
 
     if not ticket_no:
         raise ValueError("Nomor tiket Ascend wajib diisi.")
-    if len(no_do2) > 50:
+    if no_do2 is not None and len(no_do2) > 50:
         raise ValueError("Nomor DO kedua maksimal 50 karakter.")
 
     koneksi = get_connection()
@@ -20,7 +20,7 @@ def simpan_pasangan_do2(ticket_id, ticket_no, no_do2, created_by=None):
             """
             UPDATE dbo.AscendTicketSplitPlan
             SET TicketNo = ?,
-                NoDO2 = ?,
+                NoDO2 = COALESCE(?, NoDO2),
                 CreatedBy = COALESCE(?, CreatedBy)
             WHERE TicketID = ?
             """,

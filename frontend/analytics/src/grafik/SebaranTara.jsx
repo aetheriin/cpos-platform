@@ -3,6 +3,7 @@ import { CartesianGrid, Legend, ReferenceArea, ReferenceLine, ResponsiveContaine
 import { WARNA_TARA_RINGAN, warnaRisiko } from './risiko'
 import { angka } from '../lib/data'
 import { Kosong } from '../komponen/Keadaan'
+import { LEGENDA } from './legenda'
 
 function PetunjukTitik({ active, payload }) {
   const t = active && payload?.[0]?.payload
@@ -19,7 +20,7 @@ function PetunjukTitik({ active, payload }) {
 
 // Durasi timbang lawan selisih tara per transaksi. Garis putus-putus = ambang WARNING; area merah = timbang lama dan tara lebih ringan.
 function SebaranTara({ sebaran, indikator, ambang, terpilih, onPilih, risikoTerpilih, onPilihRisiko }) {
-  if (sebaran.titik.length === 0) return <Kosong teks="Tidak ada transaksi untuk filter ini" />
+  if (sebaran.titik.length === 0) return <Kosong teks="Tidak ada transaksi pada periode dan filter ini" />
   const ada = terpilih.length > 0
   let xMaks = ambang.durasi_menit * 1.2
   let yMin = -ambang.tara_kg * 1.2
@@ -30,8 +31,9 @@ function SebaranTara({ sebaran, indikator, ambang, terpilih, onPilih, risikoTerp
   const pilihan = sebaran.titik.filter((t) => terpilih.includes(t.tiket))
   return (
     <div>
-      <div className="h-80 w-full">
+      <div className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
+          {/* Tanpa animasi: bisa ribuan titik, menganimasikannya membuat halaman tersendat */}
           <ScatterChart margin={{ top: 8, right: 16, bottom: 20, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis type="number" dataKey="durasi" name="Durasi (menit)" domain={[0, 'auto']} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} tick={{ fontSize: 11, fill: '#475569' }} tickFormatter={(v) => angka.format(v)} label={{ value: 'Durasi timbang (menit)', position: 'insideBottom', offset: -12, fontSize: 11, fill: '#475569' }} />
@@ -42,7 +44,7 @@ function SebaranTara({ sebaran, indikator, ambang, terpilih, onPilih, risikoTerp
             <ReferenceLine y={-ambang.tara_kg} stroke={warnaRisiko('tara')} strokeDasharray="4 4" />
             <ReferenceLine x={ambang.durasi_menit} stroke={warnaRisiko('durasi')} strokeDasharray="4 4" />
             <Tooltip content={<PetunjukTitik />} cursor={{ stroke: '#94a3b8' }} isAnimationActive={false} />
-            <Legend verticalAlign="top" height={30} wrapperStyle={{ fontSize: 11, cursor: 'pointer' }} onClick={(item, _, e) => item.value && onPilihRisiko(item.value, e)} formatter={(nama) => <span style={{ opacity: risikoTerpilih.length > 0 && !risikoTerpilih.includes(nama) ? 0.4 : 1 }}>{nama}</span>} />
+            <Legend {...LEGENDA} wrapperStyle={{ ...LEGENDA.wrapperStyle, cursor: 'pointer' }} onClick={(item, _, e) => item.value && onPilihRisiko(item.value, e)} formatter={(nama) => <span style={{ opacity: risikoTerpilih.length > 0 && !risikoTerpilih.includes(nama) ? 0.4 : 1 }}>{nama}</span>} />
             {indikator.map((i) => (
               <Scatter
                 key={i.kunci}

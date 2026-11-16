@@ -1,5 +1,4 @@
 import Select from '../../komponen/Select'
-import { rentangTgl } from '../../lib/data'
 import { IkonPanahKanan } from '../../komponen/Ikon'
 import { MODE, daftarPeriode, geser, judulPeriode, kunciPeriode, rentangData, tglPendek } from './periode'
 
@@ -23,7 +22,7 @@ function TombolGeser({ arah, mati, judul, onKlik }) {
 
 // Pilih jenis periode (harian, mingguan, bulanan), lalu hari, minggu, atau bulannya. Tombol panah pindah ke periode sebelum atau sesudahnya.
 // batas: data yang dimuat { mulai, akhir }; periode di luar batas tidak bisa dipilih (pakai Ganti periode di bar atas).
-export default function PilihPeriode({ mode, acuan, batas, onUbah, pembanding = null }) {
+export default function PilihPeriode({ mode, acuan, batas, onUbah, sampaiJam = null }) {
   const pilih = (m, a) => onUbah(m, a)
   const sebelum = geser(mode, acuan, -1)
   const sesudah = geser(mode, acuan, 1)
@@ -37,11 +36,8 @@ export default function PilihPeriode({ mode, acuan, batas, onUbah, pembanding = 
     if (r.sampai === batas.akhir && mode !== 'hari') catatan = `${kapital(satuan)} ini belum selesai, data sampai ${tglPendek(batas.akhir)}.`
     else if (r.dari === batas.mulai) catatan = `Data yang tersedia mulai ${tglPendek(batas.mulai)}.`
   }
-  let banding = 'Tidak ada data pembanding untuk periode ini.'
-  if (pembanding) {
-    banding = `Dibandingkan dengan ${rentangTgl(pembanding.mulai, pembanding.akhir)}`
-    banding += pembanding.sampai_jam ? ` sampai pukul ${pembanding.sampai_jam}.59, sama dengan jam sekarang.` : '.'
-  }
+  // Periode dan pembandingnya sudah ditulis di kepala laporan; di sini hanya catatan kalau pembanding dipotong ke jam sekarang
+  const banding = sampaiJam ? `Pembanding dihitung sampai pukul ${sampaiJam}.59, sama dengan jam sekarang.` : null
 
   return (
     <section aria-label="Periode" className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
@@ -98,7 +94,7 @@ export default function PilihPeriode({ mode, acuan, batas, onUbah, pembanding = 
       <div className="min-w-0 text-sm leading-snug">
         {mode === 'hari' && <p className="font-medium text-slate-900">{judulPeriode(mode, acuan)}</p>}
         {catatan && <p className="text-xs text-slate-600">{catatan}</p>}
-        <p className="text-xs text-slate-600">{banding}</p>
+        {banding && <p className="text-xs text-slate-600">{banding}</p>}
       </div>
     </section>
   )

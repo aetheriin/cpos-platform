@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { angka } from '../lib/data'
 import { namaHariSingkat, tglPanjang } from '../laporan/tiket_penjualan/periode'
+import { ANIMASI, DURASI_ANIMASI } from './animasi'
 
 const satu = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 const ringkas = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 })
@@ -41,7 +42,7 @@ function SebaranWaktu({ satuan, data, terpilih, onPilih, warna = '#0369a1', ting
           <XAxis dataKey="label" interval={0} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} tick={{ fontSize: 11, fill: '#475569' }} />
           <YAxis width={44} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#475569' }} tickFormatter={(v) => ringkas.format(v)} />
           <Tooltip content={<IsiTooltip satuan={satuan} />} cursor={{ fill: 'rgba(15,23,42,0.05)' }} />
-          <Bar dataKey="ton" radius={[3, 3, 0, 0]} isAnimationActive={false} className="cursor-pointer" onClick={(d, _, e) => onPilih((d.payload ?? d).kunci, e)}>
+          <Bar dataKey="ton" radius={[3, 3, 0, 0]} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} className="cursor-pointer" onClick={(d, _, e) => onPilih((d.payload ?? d).kunci, e)}>
             {baris.map((d) => {
               const redup = adaPilihan && !terpilih.includes(d.kunci)
               return <Cell key={d.kunci} fill={warna} fillOpacity={redup ? 0.25 : 0.9} />

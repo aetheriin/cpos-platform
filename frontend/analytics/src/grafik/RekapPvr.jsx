@@ -6,7 +6,7 @@ const skor = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 })
 // Skor per bulan (baris) x pembuat (kolom), seperti pivot REKAP di Excel Penilaian PVR. Sel makin pekat makin tinggi skornya.
 // Klik nama pembuat untuk memfilter.
 function RekapPvr({ data, voucher = 'PVR', terpilih, onPilih }) {
-  if (data.bulan.length === 0) return <div className="py-10 text-center text-sm text-slate-500">Belum ada {voucher} untuk filter ini</div>
+  if (data.bulan.length === 0) return <div className="py-10 text-center text-sm text-slate-500">Belum ada {voucher} pada periode dan filter ini</div>
   const maks = Math.max(...data.nilai.flat(), 1)
   return (
     <div className="overflow-x-auto">

@@ -2,10 +2,11 @@ import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Too
 import { WARNA } from './warna'
 import { angka } from '../lib/data'
 import { Kosong } from '../komponen/Keadaan'
+import { ANIMASI, DURASI_ANIMASI } from './animasi'
 
 export default function BatangPembuat({ data, terpilih = [], onPilih }) {
   if (data.length === 0 || data.every((d) => d.jumlah === 0)) {
-    return <Kosong teks="Tidak ada outstanding untuk filter ini" />
+    return <Kosong teks="Tidak ada outstanding pada periode dan filter ini" />
   }
   const opasitas = (nama) => (terpilih.length > 0 && !terpilih.includes(nama) ? 0.3 : 1)
   return (
@@ -16,7 +17,7 @@ export default function BatangPembuat({ data, terpilih = [], onPilih }) {
           <XAxis dataKey="pembuat" tickLine={false} axisLine={{ stroke: '#cbd5e1' }} tick={{ fontSize: 11, fill: '#475569' }} />
           <YAxis width={40} allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#475569' }} tickFormatter={(v) => angka.format(v)} />
           <Tooltip formatter={(v) => [angka.format(v), 'Outstanding akhir']} cursor={{ fill: 'rgba(14,165,233,0.08)' }} />
-          <Bar dataKey="jumlah" name="Outstanding akhir" fill={WARNA.akhir} radius={[3, 3, 0, 0]} className="cursor-pointer" onClick={(_, i, e) => onPilih(data[i].pembuat, e)}>
+          <Bar isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} dataKey="jumlah" name="Outstanding akhir" fill={WARNA.akhir} radius={[3, 3, 0, 0]} className="cursor-pointer" onClick={(_, i, e) => onPilih(data[i].pembuat, e)}>
             {data.map((d) => (
               <Cell key={d.pembuat} fillOpacity={opasitas(d.pembuat)} />
             ))}

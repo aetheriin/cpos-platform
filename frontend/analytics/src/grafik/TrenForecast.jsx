@@ -2,6 +2,8 @@ import { memo, useMemo, useState } from 'react'
 import { Area, CartesianGrid, ComposedChart, Legend, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { lintasTahun, persen, tgl, tglLengkap } from '../lib/data'
 import { kgRingkas, rupiah, sumbu } from './tbs'
+import { LEGENDA } from './legenda'
+import { ANIMASI, DURASI_ANIMASI } from './animasi'
 
 const WARNA_AKTUAL = '#0369a1'
 const WARNA_FORECAST = '#d97706'
@@ -59,21 +61,21 @@ function TrenForecast({ tren, forecast, terpilih, onPilih }) {
           ))}
         </div>
       </div>
-      <div className="h-72 w-full">
+      <div className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 0 }} onClick={(s, e) => s?.activeLabel && data.some((d) => d.hari === s.activeLabel && d.aktual != null) && onPilih(s.activeLabel, e)} className="cursor-pointer">
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-            <XAxis dataKey="hari" tickFormatter={tickTgl} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} tick={{ fontSize: 10, fill: '#475569' }} minTickGap={12} />
+            <XAxis dataKey="hari" tickFormatter={tickTgl} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} tick={{ fontSize: 11, fill: '#475569' }} minTickGap={12} />
             <YAxis width={52} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#475569' }} tickFormatter={sumbu} />
             <Tooltip content={<Petunjuk ukuran={ukuran} />} cursor={{ stroke: '#94a3b8' }} />
-            <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: 11 }} />
-            {iv && <Area dataKey="rentang" name={`Interval ${persenIv}`} stroke="none" fill={WARNA_FORECAST} fillOpacity={0.15} isAnimationActive={false} connectNulls={false} legendType="square" />}
+            <Legend {...LEGENDA} />
+            {iv && <Area dataKey="rentang" name={`Interval ${persenIv}`} stroke="none" fill={WARNA_FORECAST} fillOpacity={0.15} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} connectNulls={false} legendType="square" />}
             {forecast && <ReferenceLine x={forecast.akhir_aktual} stroke="#94a3b8" strokeDasharray="4 4" />}
             {terpilih.map((h) => (
               <ReferenceLine key={h} x={h} stroke={WARNA_AKTUAL} strokeWidth={2} strokeOpacity={0.35} />
             ))}
-            <Line dataKey="aktual" name="Aktual" stroke={WARNA_AKTUAL} strokeWidth={2} dot={titik(WARNA_AKTUAL)} activeDot={{ r: 5 }} isAnimationActive={false} connectNulls={false} />
-            {forecast && <Line dataKey="forecast" name="Forecast" stroke={WARNA_FORECAST} strokeWidth={2} strokeDasharray="4 4" dot={titik(WARNA_FORECAST)} activeDot={{ r: 5 }} isAnimationActive={false} connectNulls={false} />}
+            <Line dataKey="aktual" name="Aktual" stroke={WARNA_AKTUAL} strokeWidth={2} dot={titik(WARNA_AKTUAL)} activeDot={{ r: 5 }} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} connectNulls={false} />
+            {forecast && <Line dataKey="forecast" name="Forecast" stroke={WARNA_FORECAST} strokeWidth={2} strokeDasharray="4 4" dot={titik(WARNA_FORECAST)} activeDot={{ r: 5 }} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} connectNulls={false} />}
           </ComposedChart>
         </ResponsiveContainer>
       </div>

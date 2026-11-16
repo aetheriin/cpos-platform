@@ -3,6 +3,8 @@ import { angka, potong, teratas } from '../lib/data'
 import { useTataLetak } from '../lib/tampilan'
 import { WARNA } from './warna'
 import { Kosong } from '../komponen/Keadaan'
+import { LEGENDA } from './legenda'
+import { ANIMASI, DURASI_ANIMASI } from './animasi'
 
 const BARIS_MAKS = 2
 const LEBAR_HURUF = 6.2   // perkiraan lebar satu huruf pada ukuran 11 px
@@ -44,18 +46,21 @@ function TickKategori({ x, y, payload, perBaris, terpilih, onPilih }) {
   )
 }
 
-export default function KategoriOutstandingChart({ daftar, terpilih = [], onPilih }) {
+// namaAwal/namaAkhir: nama seri di legenda dan tooltip, mengikuti istilah kartu di laporan itu (mis. "Menunggu GT awal").
+export default function KategoriOutstandingChart({ daftar, terpilih = [], onPilih, namaAwal = 'Outstanding awal', namaAkhir = 'Outstanding akhir' }) {
   const padat = useTataLetak()[0] === 'padat'
   const data = teratas(daftar, 10, terpilih, 'kategori')
 
   if (data.length === 0) {
-    return <Kosong teks="Tidak ada outstanding untuk filter ini" />
+    return <Kosong teks="Tidak ada outstanding pada periode dan filter ini" />
   }
 
   const opasitas = (kategori) => (terpilih.length > 0 && !terpilih.includes(kategori) ? 0.3 : 1)
   // Tata letak padat: baris lebih rapat dan label lebih sempit supaya tingginya mendekati grafik di sebelahnya
   const tebal = padat ? 8 : 12
-  const lebarLabel = padat ? 140 : 180
+  // Lebar label mengikuti nama terpanjang, supaya kode pendek (YBS, SJN) tidak menyisakan kolom kosong di kiri batang
+  const lebarMaks = padat ? 140 : 180
+  const lebarLabel = Math.min(lebarMaks, Math.max(40, Math.ceil(Math.max(...data.map((d) => tampil(d.kategori).length)) * LEBAR_HURUF) + 12))
   const perBaris = Math.floor((lebarLabel - 8) / LEBAR_HURUF)
   const duaBaris = data.some((d) => tampil(d.kategori).length > perBaris)
   const tinggiBaris = padat ? (duaBaris ? 36 : 28) : 46
@@ -82,14 +87,14 @@ export default function KategoriOutstandingChart({ daftar, terpilih = [], onPili
             tick={<TickKategori perBaris={perBaris} terpilih={terpilih} onPilih={onPilih} />}
           />
           <Tooltip formatter={(v) => angka.format(v)} labelFormatter={tampil} cursor={{ fill: 'rgba(14,165,233,0.08)' }} />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Legend {...LEGENDA} />
 
-          <Bar dataKey="outstanding_awal" name="Outstanding awal" fill={WARNA.awal} barSize={tebal} radius={[0, 3, 3, 0]} className="cursor-pointer" onClick={(_, i, e) => onPilih(data[i].kategori, e)}>
+          <Bar isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} dataKey="outstanding_awal" name={namaAwal} fill={WARNA.awal} barSize={tebal} radius={[0, 3, 3, 0]} className="cursor-pointer" onClick={(_, i, e) => onPilih(data[i].kategori, e)}>
             {data.map((d) => (
               <Cell key={d.kategori} fillOpacity={opasitas(d.kategori)} />
             ))}
           </Bar>
-          <Bar dataKey="outstanding_akhir" name="Outstanding akhir" fill={WARNA.akhir} barSize={tebal} radius={[0, 3, 3, 0]} className="cursor-pointer" onClick={(_, i, e) => onPilih(data[i].kategori, e)}>
+          <Bar isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} dataKey="outstanding_akhir" name={namaAkhir} fill={WARNA.akhir} barSize={tebal} radius={[0, 3, 3, 0]} className="cursor-pointer" onClick={(_, i, e) => onPilih(data[i].kategori, e)}>
             {data.map((d) => (
               <Cell key={d.kategori} fillOpacity={opasitas(d.kategori)} />
             ))}

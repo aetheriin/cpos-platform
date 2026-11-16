@@ -485,7 +485,15 @@ def laporan(jenis):
         galat = "Tanggal awal tidak boleh melewati tanggal akhir."
     if not galat:
         try:
-            tabel = laporan_tbs.susun_tabel(jenis, pramuat_tbs.jalankan(lap["prosedur"], *pramuat_tbs.param(jenis, pilih, awal, akhir), paksa=paksa_muat_ulang))
+            tabel = laporan_tbs.susun_tabel(
+                jenis,
+                pramuat_tbs.jalankan(
+                    lap["prosedur"],
+                    *pramuat_tbs.param(jenis, pilih, awal, akhir),
+                    paksa=paksa_muat_ulang,
+                ),
+                company=pilih,
+            )
         except pyodbc.Error:
             # rincian teknis (koneksi REKAPIN_ERP_*, prosedur) hanya di log; pengguna cukup tahu datanya belum bisa dimuat
             current_app.logger.exception("Laporan TBS %s gagal (%s)", jenis, lap["prosedur"])

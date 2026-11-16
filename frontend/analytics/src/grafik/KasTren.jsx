@@ -3,6 +3,7 @@ import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ResponsiveCont
 import { angka, lintasTahun, tgl, tglLengkap } from '../lib/data'
 import { sumbuUang, uangPenuh, WARNA_KELUAR, WARNA_MASUK } from './kas'
 import { Kosong } from '../komponen/Keadaan'
+import { ANIMASI, DURASI_ANIMASI } from './animasi'
 
 const NAMA_BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
 const sumbu = { tickLine: false, axisLine: false, tick: { fontSize: 11, fill: '#64748b' } }
@@ -59,7 +60,7 @@ function KotakInfo({ judul, baris }) {
   )
 }
 
-const kosong = <Kosong teks="Tidak ada data untuk filter ini" />
+const kosong = <Kosong teks="Tidak ada data pada periode dan filter ini" />
 const redup = (terpilih, nilai) => (terpilih.length && !terpilih.includes(nilai) ? 0.3 : 1)
 
 // Ending balance (garis, sumbu kiri) dengan debit dan credit (batang, sumbu kanan) per bulan.
@@ -81,9 +82,9 @@ export const SaldoBerjalan = memo(function SaldoBerjalan({ bulanan, satuan }) {
               if (!d) return null
               return <KotakInfo judul={d.label} baris={[['Debit', uangPenuh(d.debit, satuan)], ['Credit', uangPenuh(d.kredit, satuan)], ['Ending balance', uangPenuh(d.saldo, satuan)]]} />
             }} />
-            <Bar yAxisId="arus" dataKey="debit" stackId="arus" fill={WARNA_MASUK} maxBarSize={36} isAnimationActive={false} />
-            <Bar yAxisId="arus" dataKey="kreditNeg" stackId="arus" fill={WARNA_KELUAR} maxBarSize={36} isAnimationActive={false} />
-            <Line yAxisId="saldo" dataKey="saldo" stroke={WARNA_SALDO} strokeWidth={2.5} dot={{ r: 3, fill: WARNA_SALDO }} isAnimationActive={false} />
+            <Bar yAxisId="arus" dataKey="debit" stackId="arus" fill={WARNA_MASUK} maxBarSize={36} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} />
+            <Bar yAxisId="arus" dataKey="kreditNeg" stackId="arus" fill={WARNA_KELUAR} maxBarSize={36} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} />
+            <Line yAxisId="saldo" dataKey="saldo" stroke={WARNA_SALDO} strokeWidth={2.5} dot={{ r: 3, fill: WARNA_SALDO }} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -104,11 +105,11 @@ export const KreditToDate = memo(function KreditToDate({ harian, bulanan, period
         <Kunci isi={[['Credit', kotak(WARNA_KELUAR)], ['Credit to date', garis(WARNA_TD)]]} />
         <span className="text-xs tabular-nums text-slate-600">{uangPenuh(data.at(-1).kredit_td, satuan)}</span>
       </div>
-      <div className="min-h-56 w-full flex-1">
+      <div className="min-h-64 w-full flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 6, right: 0, bottom: 0, left: 0 }}>
             <CartesianGrid yAxisId="periode" strokeDasharray="3 3" vertical={false} stroke="var(--color-slate-200)" />
-            <XAxis dataKey="label" {...sumbu} tick={{ fontSize: 10, fill: '#64748b' }} minTickGap={12} />
+            <XAxis dataKey="label" {...sumbu} tick={{ fontSize: 11, fill: '#64748b' }} minTickGap={12} />
             <YAxis yAxisId="periode" width={lebarSumbu(data, 'kredit')} {...sumbu} tickFormatter={sumbuUang} />
             <YAxis yAxisId="td" orientation="right" width={lebarSumbu(data, 'kredit_td')} {...sumbu} tickFormatter={sumbuUang} domain={['auto', 'auto']} />
             <Tooltip cursor={{ fill: 'rgba(100,116,139,0.08)' }} content={({ active, payload }) => {
@@ -117,8 +118,8 @@ export const KreditToDate = memo(function KreditToDate({ harian, bulanan, period
               return <KotakInfo judul={perHari ? tglLengkap(d.hari) : d.label} baris={[
                 ['Credit', uangPenuh(d.kredit, satuan)], ['Credit to date', uangPenuh(d.kredit_td, satuan)]]} />
             }} />
-            <Bar yAxisId="periode" dataKey="kredit" fill={WARNA_KELUAR} radius={[2, 2, 0, 0]} maxBarSize={perHari ? 14 : 28} isAnimationActive={false} />
-            <Line yAxisId="td" dataKey="kredit_td" stroke={WARNA_TD} strokeWidth={2.5} dot={!perHari && { r: 3, fill: WARNA_TD }} isAnimationActive={false} />
+            <Bar yAxisId="periode" dataKey="kredit" fill={WARNA_KELUAR} radius={[2, 2, 0, 0]} maxBarSize={perHari ? 14 : 28} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} />
+            <Line yAxisId="td" dataKey="kredit_td" stroke={WARNA_TD} strokeWidth={2.5} dot={!perHari && { r: 3, fill: WARNA_TD }} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -146,10 +147,10 @@ export const JenisDokumen = memo(function JenisDokumen({ dokumen, satuan, terpil
               return <KotakInfo judul={d.jenis} baris={[['Debit', uangPenuh(d.debit, satuan)], ['Credit', uangPenuh(d.kredit, satuan)],
                 ['Jumlah transaksi', angka.format(d.jumlah)]]} />
             }} />
-            <Bar dataKey="debit" fill={WARNA_MASUK} maxBarSize={12} isAnimationActive={false}>
+            <Bar dataKey="debit" fill={WARNA_MASUK} maxBarSize={12} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI}>
               {dokumen.map((d) => <Cell key={d.jenis} fillOpacity={redup(terpilih, d.jenis)} />)}
             </Bar>
-            <Bar dataKey="kredit" fill={WARNA_KELUAR} maxBarSize={12} isAnimationActive={false}>
+            <Bar dataKey="kredit" fill={WARNA_KELUAR} maxBarSize={12} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI}>
               {dokumen.map((d) => <Cell key={d.jenis} fillOpacity={redup(terpilih, d.jenis)} />)}
             </Bar>
           </BarChart>

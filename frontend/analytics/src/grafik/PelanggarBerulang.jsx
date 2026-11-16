@@ -32,7 +32,7 @@ function PelanggarBerulang({ data, terpilih, onPilih }) {
         ))}
       </div>
       {daftar.length === 0 ? (
-        <Kosong teks="Tidak ada transaksi WARNING untuk filter ini." />
+        <Kosong teks="Tidak ada transaksi WARNING pada periode dan filter ini" />
       ) : (
         <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-slate-200 text-xs text-slate-500">

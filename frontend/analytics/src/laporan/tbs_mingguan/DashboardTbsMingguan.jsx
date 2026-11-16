@@ -9,6 +9,7 @@ import KepalaLaporan from '../../komponen/KepalaLaporan'
 import PanelFilter from '../../komponen/PanelFilter'
 import TabelDetail from '../../komponen/TabelDetail'
 import { MemuatLaporan } from '../../komponen/Keadaan'
+import { ANIMASI, DURASI_ANIMASI } from '../../grafik/animasi'
 
 // Atensi dihitung di backend (laporan/tbs_mingguan/ukuran.py): minggu lengkap terakhir dibanding rata-rata ± batas SD minggu lengkap sebelumnya.
 // Tampilan awal hanya YBS; perusahaan lain lewat panel filter.
@@ -94,7 +95,7 @@ function TrenTotal({ minggu, rata, target, jumlahRiwayat }) {
             />
             <ReferenceLine y={target / 1000} stroke="#94a3b8" strokeWidth={1.5} />
             {rata != null && <ReferenceLine y={rata / 1000} stroke="#64748b" strokeDasharray="4 4" />}
-            <Area type="linear" dataKey="ton" stroke={BIRU} strokeWidth={2} fill={BIRU} fillOpacity={0.08} dot={{ r: 3.5, fill: BIRU, strokeWidth: 0 }} isAnimationActive={false} />
+            <Area type="linear" dataKey="ton" stroke={BIRU} strokeWidth={2} fill={BIRU} fillOpacity={0.08} dot={{ r: 3.5, fill: BIRU, strokeWidth: 0 }} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
