@@ -12,7 +12,7 @@ export const TENTANG = {
   'Tiket Penjualan': 'Tiket timbang produk keluar per hari, minggu, atau bulan, dengan peringkat produk, pengangkut, dan pembeli.',
   'Pembelian TBS Mingguan': 'Tonase TBS per business group per minggu lengkap (Senin sampai Minggu), dengan tanda naik atau turun yang tidak biasa.',
   'Forecast Penerimaan TBS': 'Penerimaan TBS harian dan perkiraan 7 hari ke depan, per supplier dan kebun.',
-  'Bank Statement': 'Saldo berjalan, mutasi harian, dan jasa giro per rekening. Debit uang masuk, kredit uang keluar.',
+  'Bank Statement': 'Saldo berjalan, mutasi harian, dan jasa giro per rekening. In uang masuk, out uang keluar.',
   'Purchase Request': 'Tiap baris PR dengan status belum, sebagian, atau sudah dibuatkan PO.',
   'Purchase Orders': 'Tiap baris PO dengan status belum, sebagian, atau sudah dibuatkan PI.',
   'Purchase Invoice': 'PI yang belum punya PVR atau PV, yang dibayar PV tanpa PVR, dan yang sudah PVR.',

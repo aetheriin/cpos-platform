@@ -6,6 +6,21 @@ const WARNA_STATUS = {
   Completed: 'bg-emerald-100 text-emerald-800',
   Closed: 'bg-slate-200 text-slate-700',
   Void: 'bg-red-100 text-red-700',
+  // Status hutang/piutang Outstanding: makin perlu tindakan makin hangat warnanya
+  'Belum PVR': 'bg-red-100 text-red-800',
+  'PV sebagian, sisa belum PVR': 'bg-amber-100 text-amber-800',
+  'PVR sebagian': 'bg-amber-100 text-amber-800',
+  'PVR pending': 'bg-sky-100 text-sky-800',
+  'PV tanggal ke depan sebagian': 'bg-sky-100 text-sky-800',
+  'PV tanggal ke depan': 'bg-emerald-100 text-emerald-800',
+  'Belum RV': 'bg-red-100 text-red-800',
+  'RV sebagian': 'bg-amber-100 text-amber-800',
+  // Voucher di jendela rincian
+  'Belum approve': 'bg-amber-100 text-amber-800',
+  'Sudah approve': 'bg-sky-100 text-sky-800',
+  'Sudah jadi PV': 'bg-emerald-100 text-emerald-800',
+  'Sudah dibayar': 'bg-emerald-100 text-emerald-800',
+  'Belum jatuh tempo': 'bg-sky-100 text-sky-800',
   NAIK: 'bg-emerald-100 text-emerald-800',   // atensi Pembelian TBS Mingguan
   TURUN: 'bg-red-100 text-red-700',
 }
@@ -23,12 +38,13 @@ const gabungGrup = (kolom) =>
   }, [])
 
 // onPilihBaris dan terpilih opsional: kalau ada, klik baris (atau Enter) memfilter semua grafik dan kartu.
-// onBukaBaris opsional: klik ganda baris (atau Enter/Spasi saat baris difokus) membuka rinciannya.
+// onBukaBaris opsional: klik ganda baris, ketukan di layar sentuh, atau Enter/Spasi saat baris difokus membuka rinciannya.
 export default function TabelBaris({ kolom, baris, urut, arah, onUrut, onPilihBaris, terpilih, onBukaBaris }) {
   const bergrup = kolom.some((k) => k.grup)
   const awalGrup = (i) => bergrup && i > 0 && kolom[i].grup !== kolom[i - 1].grup ? 'border-l border-slate-300 ' : ''
+  // Tinggi mengikuti layar (70%) supaya di layar besar lebih banyak baris terlihat tanpa gulir ganda
   return (
-    <div className="max-h-[30rem] overflow-auto rounded-lg border border-slate-200">
+    <div className="max-h-[70vh] overflow-auto rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-sm">
         <thead className="sticky top-0 z-10 bg-slate-50">
           {bergrup && (
@@ -75,7 +91,11 @@ export default function TabelBaris({ kolom, baris, urut, arah, onUrut, onPilihBa
               aria-selected={onPilihBaris ? aktif : undefined}
               tabIndex={onPilihBaris || onBukaBaris ? 0 : undefined}
               title={onBukaBaris ? 'Klik ganda untuk melihat rincian' : undefined}
-              onClick={onPilihBaris ? (e) => onPilihBaris(b, e) : undefined}
+              onClick={onPilihBaris || onBukaBaris ? (e) => {
+                // Layar sentuh tidak punya klik ganda: satu ketukan langsung membuka rincian
+                if (onBukaBaris && e.nativeEvent.pointerType === 'touch') onBukaBaris(b)
+                else onPilihBaris?.(b, e)
+              } : undefined}
               onDoubleClick={onBukaBaris ? () => onBukaBaris(b) : undefined}
               onKeyDown={onPilihBaris || onBukaBaris ? (e) => {
                 if (e.key !== 'Enter' && e.key !== ' ') return

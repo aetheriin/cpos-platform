@@ -13,7 +13,7 @@ export default function JendelaRincian({ laporanId, dataId, filter, buka, onTutu
     onDataHilang,
   )
   return (
-    <Modal judul={data?.judul ?? buka.judul} kecil={data?.kecil} onTutup={onTutup} lebar="max-w-4xl">
+    <Modal judul={data?.judul ?? buka.judul} kecil={data?.kecil} onTutup={onTutup} lebar="max-w-6xl">
       {galat && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{galat.message}</div>}
       {!data && !galat && <Memuat teks="Memuat rincian..." />}
       {data && (
@@ -35,12 +35,15 @@ export default function JendelaRincian({ laporanId, dataId, filter, buka, onTutu
               ))}
             </div>
           )}
-          {data.tabel && (
-            <section className="min-w-0">
-              <h3 className="mb-1.5 text-xs font-medium text-slate-500">{data.tabel.judul} ({data.tabel.baris.length})</h3>
-              <TabelBaris kolom={data.tabel.kolom} baris={data.tabel.baris} />
+          {(data.tabel ?? []).map((t) => (
+            <section key={t.judul} className="min-w-0">
+              <h3 className="mb-1.5 text-xs font-medium text-slate-500">{t.judul} ({t.baris.length})</h3>
+              {t.baris.length > 0
+                ? <TabelBaris kolom={t.kolom} baris={t.baris} />
+                : <p className="text-sm text-slate-600">Belum ada.</p>}
             </section>
-          )}
+          ))}
+          {data.catatan && <p className="text-xs text-amber-800">{data.catatan}</p>}
         </div>
       )}
     </Modal>

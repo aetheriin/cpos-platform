@@ -77,6 +77,24 @@ def _status_hutang(sisa, pvr, pv_depan, sudah_pv):
     return BELUM_PVR
 
 
+# Nama sumber dari ERP (SH_ARAPCalculations.DisplayTitle) diganti nama yang biasa dipakai pengguna. Yang tidak ada di sini tetap apa adanya.
+NAMA_SUMBER = {
+    "AP Purchase": "Purchase Invoice", "AP Purchase Return": "Retur Pembelian",
+    "IT2/Purchase": "Purchase Invoice (Pajak Impor)", "X1/Purchase": "Purchase Invoice (Biaya Tambahan)",
+    "X2/Purchase": "Purchase Invoice (Biaya Tambahan)", "Shp/Purchase": "Purchase Invoice (Ongkos Kirim)",
+    "FFB Purchase": "Pembelian TBS", "FFB Purchase (PPn)": "Pembelian TBS (PPN)", "FFB By.Bongkar": "Biaya Bongkar TBS",
+    "FFB Fee": "Fee TBS", "FFB Fee-2": "Fee TBS", "FFB Fee-3": "Fee TBS", "FFB Fee-4": "Fee TBS",
+    "FFB Pot. Lain": "Potongan Lain TBS", "FFB SPSI": "SPSI TBS", "FFB Shipping Cost": "Ongkos Angkut TBS",
+    "Penjualan TBS (Transport)": "Ongkos Angkut Penjualan TBS", "Transport": "Ongkos Angkut",
+    "Sales Shipping Cost": "Ongkos Kirim Penjualan", "OA Pembelian (Non-Kontrak)": "Ongkos Angkut Pembelian",
+    "Pending Cash V2": "Pending Cash", "Card Charges": "Biaya Kartu", "Customer Rebate (AP)": "Rebate Customer",
+    "Customer Rebate (AR)": "Rebate Customer", "Warr. Card (AP)": "Kartu Garansi", "Warr. Card (AR)": "Kartu Garansi",
+    "Salary Loan": "Pinjaman Karyawan", "Void AP Check": "Cek Batal", "Void AR Check": "Cek Batal",
+    "Sales": "Penjualan", "AR Sales": "Penjualan", "AR Sales Return": "Retur Penjualan", "AP FA Sales": "Penjualan Aset",
+    "Asset Rental": "Sewa Aset", "Shipping Contract": "Kontrak Angkut", "PPh Deduction (ARDN)": "Potongan PPh",
+}
+
+
 def bersihkan(raw, kurs_cadangan=None):
     """Satu baris per dokumen. Nilai, sisa, dan kolom PVR diberi tanda (potongan negatif), lalu dikali kurs ke rupiah.
     kurs_cadangan: fungsi(DataFrame comp, mata_uang, tgl) -> (Series kurs, [sumber]) untuk dokumen valas tanpa kurs dokumen."""
@@ -111,6 +129,7 @@ def bersihkan(raw, kurs_cadangan=None):
         "no_tc": _teks(raw["NoTC"]),
         "keterangan": _teks(raw["Keterangan"]),
     })
+    d["sumber"] = d["sumber"].replace(NAMA_SUMBER)
     d["nilai_pvr"] = d["tagihan_pvr"] - d["potongan_pvr"]
     d["belum_diajukan"] = d["sisa"] - d["dalam_pvr"] - d["pv_depan"]
     hutang = d["jenis"] == "hutang"
@@ -198,3 +217,20 @@ def muat(mulai, akhir, kendali=None):
         kendali.periksa()
     d = pd.concat([bersihkan(raw, kurs_cadangan), pp], ignore_index=True)
     return d, {"baris_sp": len(d)}
+
+
+def ambil_rincian(comp, kode, no_dok, buka=get_connection):
+    """Baris SP RINCIAN_SP untuk satu dokumen (info, item PI, PVR/PV/RV). None kalau SP belum dibuat di database Main."""
+    conn = buka()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT OBJECT_ID(?, 'P')", konfigurasi.RINCIAN_SP)
+        if cur.fetchone()[0] is None:
+            return None
+        cur.execute(f"EXEC {konfigurasi.RINCIAN_SP} ?, ?, ?", comp, kode, no_dok)
+        while cur.description is None:
+            if not cur.nextset():
+                return pd.DataFrame(columns=["Bagian", "Urut", "No", "Tgl", "Nama", "Qty", "Harga", "Nilai", "Status", "Ket"])
+        return pd.DataFrame([tuple(r) for r in cur.fetchall()], columns=[c[0] for c in cur.description])
+    finally:
+        conn.close()

@@ -88,6 +88,7 @@ html[data-sematan] main { padding: 1rem var(--tepi, 1rem) 1.5rem; }
 :root[data-tema="gelap"] {
   color-scheme: dark;
   --color-slate-50: #0b1120;
+  --color-sky-50: #0c2a3e;   /* sorotan baris tabel dan menu aktif, termasuk saat fokus (focus-visible:bg-sky-50) */
   --color-slate-100: #1a2335;
   --color-slate-200: #253046;
   --color-slate-300: #354157;

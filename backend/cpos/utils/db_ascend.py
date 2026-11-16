@@ -894,6 +894,64 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
         ticket_id_induk = int(nilai("TicketID"))
         tiket_split = []
 
+        # Untuk timbang biasa, pastikan nilai benar-benar sudah tertulis
+        # di PALM_Tickets sebelum transaksi di-commit.
+        # Kasus split diperiksa lewat validasi dua tiket pecahan di bawah.
+        if not spdo2:
+            cursor.execute(
+                """
+                SELECT Bruto, Tara, Netto, [Step], DateTimeOut
+                FROM dbo.PALM_Tickets
+                WHERE TicketID = ?
+                """,
+                ticket_id_induk,
+            )
+            tersimpan = cursor.fetchone()
+
+            if not tersimpan:
+                raise RuntimeError(
+                    "Tiket tidak ditemukan saat memeriksa hasil simpan timbang."
+                )
+
+            bruto_db, tara_db, netto_db, step_db, datetime_out_db = tersimpan
+            toleransi_kg = Decimal("0.01")
+
+            def berat_sesuai(nilai_db, nilai_harapan):
+                if nilai_db is None:
+                    return False
+                return (
+                    abs(Decimal(str(nilai_db)) - Decimal(str(nilai_harapan)))
+                    <= toleransi_kg
+                )
+
+            if int(step_db or 0) != step_baru:
+                raise RuntimeError(
+                    "Step tiket Ascend tidak sama dengan tahap timbang yang dikirim."
+                )
+
+            if not berat_sesuai(bruto_db, bruto):
+                raise RuntimeError(
+                    "Nilai Bruto yang tersimpan di Ascend tidak sesuai."
+                )
+
+            if not berat_sesuai(tara_db, tara):
+                raise RuntimeError(
+                    "Nilai Tara yang tersimpan di Ascend tidak sesuai."
+                )
+
+            if step_baru == 2:
+                netto_harapan = Decimal(str(tiket["netto"] or 0))
+
+                if not berat_sesuai(netto_db, netto_harapan):
+                    raise RuntimeError(
+                        "Nilai Netto yang tersimpan di Ascend tidak sesuai."
+                    )
+
+                if datetime_out_db is None:
+                    raise RuntimeError(
+                        "DateTimeOut belum tersimpan pada timbang terakhir."
+                    )
+
         if spdo2:
             cursor.execute(
                 """
@@ -1171,7 +1229,7 @@ def buat_tiket_kosong(ticket_type, produk, associate_id, vehicle_no,
             produk,
             associate_id,
             vehicle_no,
-            date_time_in.strftime("%Y%m%d"),
+            date_time_in,
             sp_do,
             mill_id,
         )
@@ -1199,17 +1257,39 @@ def buat_tiket_kosong(ticket_type, produk, associate_id, vehicle_no,
             raise ValueError(f"Ascend mengembalikan TicketID {ticket_id}.")
 
         cursor.execute(
-            "SELECT TicketNo FROM dbo.PALM_Tickets WHERE TicketID = ?",
+            """
+            SELECT TicketNo, DateTimeIn
+            FROM dbo.PALM_Tickets
+            WHERE TicketID = ?
+            """,
             ticket_id,
         )
         tiket = cursor.fetchone()
+
         if not tiket:
             raise RuntimeError(
-                f"TicketID {ticket_id} dikembalikan, tetapi nomor tiket tidak ditemukan."
+                f"TicketID {ticket_id} dikembalikan, tetapi tiket tidak ditemukan."
+            )
+
+        waktu_tersimpan = tiket[1]
+        if waktu_tersimpan is None:
+            raise RuntimeError(
+                f"DateTimeIn tiket {tiket[0]} belum tersimpan di Ascend."
+            )
+
+        selisih_detik = abs(
+            (waktu_tersimpan - date_time_in).total_seconds()
+        )
+        if selisih_detik > 1:
+            raise RuntimeError(
+                f"DateTimeIn tiket {tiket[0]} tidak cocok dengan waktu yang dikirim."
             )
 
         koneksi.commit()
-        return {"ticket_id": ticket_id, "ticket_no": str(tiket[0])}
+        return {
+            "ticket_id": ticket_id,
+            "ticket_no": str(tiket[0]),
+        }
     except Exception:
         koneksi.rollback()
         raise

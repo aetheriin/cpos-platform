@@ -7,7 +7,7 @@ import { ANIMASI, DURASI_ANIMASI } from './animasi'
 
 const NAMA_BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
 const sumbu = { tickLine: false, axisLine: false, tick: { fontSize: 11, fill: '#64748b' } }
-// Garis: kontras di latar terang maupun gelap, dan berbeda dari batang debit (biru) dan credit (oranye)
+// Garis: kontras di latar terang maupun gelap, dan berbeda dari batang in (biru) dan out (oranye)
 const WARNA_SALDO = '#16a34a'
 const WARNA_TD = '#db2777'
 const labelBulan = (b) => `${NAMA_BULAN[Number(b.slice(5, 7)) - 1]} ${b.slice(2, 4)}`
@@ -63,13 +63,13 @@ function KotakInfo({ judul, baris }) {
 const kosong = <Kosong teks="Tidak ada data pada periode dan filter ini" />
 const redup = (terpilih, nilai) => (terpilih.length && !terpilih.includes(nilai) ? 0.3 : 1)
 
-// Ending balance (garis, sumbu kiri) dengan debit dan credit (batang, sumbu kanan) per bulan.
+// Ending balance (garis, sumbu kiri) dengan in dan out (batang, sumbu kanan) per bulan.
 export const SaldoBerjalan = memo(function SaldoBerjalan({ bulanan, satuan }) {
   if (bulanan.length === 0) return kosong
   const data = bulanan.map((r) => ({ ...r, label: labelBulan(r.bulan), kreditNeg: r.kredit ? -r.kredit : null }))
   return (
     <div className="flex h-full flex-col">
-      <Kunci isi={[['Balance', garis(WARNA_SALDO)], ['Debit', kotak(WARNA_MASUK)], ['Credit', kotak(WARNA_KELUAR)]]} />
+      <Kunci isi={[['Balance', garis(WARNA_SALDO)], ['In', kotak(WARNA_MASUK)], ['Out', kotak(WARNA_KELUAR)]]} />
       <div className="min-h-64 w-full flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} stackOffset="sign" margin={{ top: 6, right: 0, bottom: 0, left: 0 }}>
@@ -80,7 +80,7 @@ export const SaldoBerjalan = memo(function SaldoBerjalan({ bulanan, satuan }) {
             <Tooltip cursor={{ stroke: '#64748b' }} content={({ active, payload }) => {
               const d = active && payload?.[0]?.payload
               if (!d) return null
-              return <KotakInfo judul={d.label} baris={[['Debit', uangPenuh(d.debit, satuan)], ['Credit', uangPenuh(d.kredit, satuan)], ['Ending balance', uangPenuh(d.saldo, satuan)]]} />
+              return <KotakInfo judul={d.label} baris={[['In', uangPenuh(d.debit, satuan)], ['Out', uangPenuh(d.kredit, satuan)], ['Ending balance', uangPenuh(d.saldo, satuan)]]} />
             }} />
             <Bar yAxisId="arus" dataKey="debit" stackId="arus" fill={WARNA_MASUK} maxBarSize={36} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} />
             <Bar yAxisId="arus" dataKey="kreditNeg" stackId="arus" fill={WARNA_KELUAR} maxBarSize={36} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} />
@@ -92,7 +92,7 @@ export const SaldoBerjalan = memo(function SaldoBerjalan({ bulanan, satuan }) {
   )
 })
 
-// Credit per periode (batang) dan credit to date (garis, sumbu kanan), dijumlahkan sejak awal data.
+// Out per periode (batang) dan out to date (garis, sumbu kanan), dijumlahkan sejak awal data.
 export const KreditToDate = memo(function KreditToDate({ harian, bulanan, periode, satuan }) {
   const perHari = periode === 'hari'
   const sumber = perHari ? harian : bulanan
@@ -102,7 +102,7 @@ export const KreditToDate = memo(function KreditToDate({ harian, bulanan, period
   return (
     <div className="flex h-full flex-col">
       <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-        <Kunci isi={[['Credit', kotak(WARNA_KELUAR)], ['Credit to date', garis(WARNA_TD)]]} />
+        <Kunci isi={[['Out', kotak(WARNA_KELUAR)], ['Out to date', garis(WARNA_TD)]]} />
         <span className="text-xs tabular-nums text-slate-600">{uangPenuh(data.at(-1).kredit_td, satuan)}</span>
       </div>
       <div className="min-h-64 w-full flex-1">
@@ -116,7 +116,7 @@ export const KreditToDate = memo(function KreditToDate({ harian, bulanan, period
               const d = active && payload?.[0]?.payload
               if (!d) return null
               return <KotakInfo judul={perHari ? tglLengkap(d.hari) : d.label} baris={[
-                ['Credit', uangPenuh(d.kredit, satuan)], ['Credit to date', uangPenuh(d.kredit_td, satuan)]]} />
+                ['Out', uangPenuh(d.kredit, satuan)], ['Out to date', uangPenuh(d.kredit_td, satuan)]]} />
             }} />
             <Bar yAxisId="periode" dataKey="kredit" fill={WARNA_KELUAR} radius={[2, 2, 0, 0]} maxBarSize={perHari ? 14 : 28} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} />
             <Line yAxisId="td" dataKey="kredit_td" stroke={WARNA_TD} strokeWidth={2.5} dot={!perHari && { r: 3, fill: WARNA_TD }} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} />
@@ -127,13 +127,13 @@ export const KreditToDate = memo(function KreditToDate({ harian, bulanan, period
   )
 })
 
-// Debit dan credit per jenis dokumen (batang mendatar). Klik untuk memfilter laporan ke jenis itu.
+// In dan out per jenis dokumen (batang mendatar). Klik untuk memfilter laporan ke jenis itu.
 export const JenisDokumen = memo(function JenisDokumen({ dokumen, satuan, terpilih = [], onPilih }) {
   if (dokumen.length === 0) return kosong
   const tinggi = Math.max(160, dokumen.length * 38 + 30)
   return (
     <div className="flex h-full flex-col">
-      <Kunci isi={[['Debit', kotak(WARNA_MASUK)], ['Credit', kotak(WARNA_KELUAR)]]} />
+      <Kunci isi={[['In', kotak(WARNA_MASUK)], ['Out', kotak(WARNA_KELUAR)]]} />
       <div className="w-full flex-1" style={{ minHeight: tinggi }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={dokumen} layout="vertical" margin={{ top: 4, right: 44, bottom: 0, left: 0 }} barGap={1} className="cursor-pointer"
@@ -144,7 +144,7 @@ export const JenisDokumen = memo(function JenisDokumen({ dokumen, satuan, terpil
             <Tooltip cursor={{ fill: 'rgba(100,116,139,0.08)' }} content={({ active, payload }) => {
               const d = active && payload?.[0]?.payload
               if (!d) return null
-              return <KotakInfo judul={d.jenis} baris={[['Debit', uangPenuh(d.debit, satuan)], ['Credit', uangPenuh(d.kredit, satuan)],
+              return <KotakInfo judul={d.jenis} baris={[['In', uangPenuh(d.debit, satuan)], ['Out', uangPenuh(d.kredit, satuan)],
                 ['Jumlah transaksi', angka.format(d.jumlah)]]} />
             }} />
             <Bar dataKey="debit" fill={WARNA_MASUK} maxBarSize={12} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI}>

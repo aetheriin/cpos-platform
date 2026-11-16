@@ -1,6 +1,8 @@
 """Laporan Purchase Invoice: PI yang belum dan sudah dibuatkan PVR (tabel saja, tanpa grafik)."""
 from inti.laporan import Laporan
 
+from .. import rincian_dokumen
+
 from . import dashboard
 from .sumber import muat
 
@@ -12,6 +14,7 @@ LAPORAN = Laporan(
     pemuat=muat,
     bangun=lambda ds, n, mg, f: dashboard.bangun(ds.df, ds, f),
     detail=lambda ds, jenis, n, mg, f, cari, urut, arah, hal, uk: dashboard.detail(ds.df, jenis, ds, f, cari, urut, arah, hal, uk),
+    rincian=lambda ds, jenis, kunci, f: rincian_dokumen.rincian("pi", kunci),
     filter_didukung=tuple(dashboard.DIM),
     label_filter=dashboard.LABEL_FILTER,
     awal_tahun=True,   # periode bawaan: 1 Januari tahun ini sampai hari ini

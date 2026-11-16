@@ -2,7 +2,7 @@
 
 Saldo hanya mengikuti filter perusahaan dan rekening; filter lain menyaring mutasi dan tabel. Rekening tanpa kurs tidak dihitung.
 Data dimuat dari 1 Januari, tampilan bawaan bulan berjalan; running balance selalu dikirim sampai bulan terpilih.
-Istilah mengikuti rekening koran: kredit = uang keluar, debit = uang masuk."""
+Di layar dan Excel: In = uang masuk, Out = uang keluar."""
 import pandas as pd
 
 from inti import konfigurasi
@@ -22,7 +22,7 @@ FILTER_SALDO = ("perusahaan", "rekening")   # filter yang berlaku untuk saldo
 KOLOM_CARI = ["comp", "no", "mitra", "akun", "keterangan", "pembuat", "jenis_dok"]
 KOLOM_MUTASI = [
     ("comp", "Perusahaan", "teks"), ("tgl", "Tanggal", "tanggal"), ("no", "No. Dokumen", "teks"), ("jenis_dok", "Jenis", "teks"), ("mitra", "Lawan Transaksi", "teks"),
-    ("akun", "Rekening", "teks"), ("masuk", "Debit", "angka"), ("keluar", "Credit", "angka"), ("saldo", "Balance", "angka"),
+    ("akun", "Rekening", "teks"), ("masuk", "In", "angka"), ("keluar", "Out", "angka"), ("saldo", "Balance", "angka"),
     ("mata_uang", "Mata Uang", "teks"), ("nilai_asli", "Nilai Asli", "angka"), ("kurs", "Kurs", "angka"), ("keterangan", "Keterangan", "teks"), ("pembuat", "Pembuat", "teks"),
 ]
 KOLOM_GIRO = [
@@ -30,8 +30,8 @@ KOLOM_GIRO = [
     ("nilai", "Jasa Giro", "angka"), ("mata_uang", "Mata Uang", "teks"), ("nilai_asli", "Nilai Asli", "angka"), ("kurs", "Kurs", "angka"),
 ]
 KOLOM_HARIAN = [
-    ("tgl", "Tanggal", "tanggal"), ("masuk", "Debit", "angka"), ("keluar", "Credit", "angka"), ("debit", "Debit to Date", "angka"),
-    ("kredit", "Credit to Date", "angka"), ("awal", "Beginning Balance", "angka"), ("saldo", "Ending Balance", "angka"), ("mutasi", "Transaksi", "angka"),
+    ("tgl", "Tanggal", "tanggal"), ("masuk", "In", "angka"), ("keluar", "Out", "angka"), ("debit", "In to Date", "angka"),
+    ("kredit", "Out to Date", "angka"), ("awal", "Beginning Balance", "angka"), ("saldo", "Ending Balance", "angka"), ("mutasi", "Transaksi", "angka"),
 ]
 KOLOM_REKAP_GIRO = [
     ("perusahaan", "Perusahaan", "teks"), ("rekening", "Rekening", "teks"), ("dari", "Dari", "tanggal"), ("sampai", "Sampai", "tanggal"),
@@ -374,7 +374,7 @@ def detail(df, jenis, ds, filt=None, cari=None, urut=None, arah=None, halaman=1,
     else:
         df = _asli(df) if asli else df
         t = saring(_dalam(df, dari, sampai), filt, DIM).reset_index(drop=True)
-        t["nilai_asli"] = t["nilai_asli"].abs()   # arah sudah ditunjukkan kolom Debit / Credit; di ledger uang keluar bertanda minus
+        t["nilai_asli"] = t["nilai_asli"].abs()   # arah sudah ditunjukkan kolom In / Out; di ledger uang keluar bertanda minus
         # Urutan tetap: perusahaan, rekening, tanggal. Tiap rekening dimulai Beginning Balance, lalu urutan yang sama dengan perhitungan saldo
         t = pd.concat([_baris_awal(df, filt, dari, sampai), t], ignore_index=True)
         t[KOLOM_CARI] = t[KOLOM_CARI].fillna("")

@@ -5,7 +5,7 @@ import { angka, rentangTgl, rupiah, rupiahPenuh } from '../../lib/data'
 import { chipDaftar, chipRentang, useDashboard } from '../../lib/filter'
 import FilterMulti from '../../komponen/FilterMulti'
 import FilterTanggal from '../../komponen/FilterTanggal'
-import { GridKartu, Kartu } from '../../komponen/Kartu'
+import { Kartu } from '../../komponen/Kartu'
 import PanelFilter, { TombolFilter } from '../../komponen/PanelFilter'
 import TabelDetail from '../../komponen/TabelDetail'
 import { MemuatLaporan } from '../../komponen/Keadaan'
@@ -31,7 +31,10 @@ const TAB_PIUTANG = [
 // PR outstanding disembunyikan dulu atas permintaan pengguna (14 Nov 2026). Ubah ke true untuk menampilkannya lagi.
 const TAMPIL_PR = false
 const TAB_PR = [{ kunci: 'pr', nama: 'Per item', ket: () => 'Item PR berstatus Open yang belum seluruhnya dibuatkan PO. Yang paling lama di atas.' }]
-const TAB_PO = [{ kunci: 'po', nama: 'Per item', ket: () => 'Item PO berstatus Open yang belum seluruhnya diterima. Yang paling lama di atas.' }]
+const TAB_PO = [
+  { kunci: 'po', nama: 'Per item', ket: () => 'Item PO berstatus Open yang belum seluruhnya diterima. Yang paling lama di atas.' },
+  { kunci: 'po_supplier', nama: 'Per supplier', ket: () => 'Jumlah PO dan item yang belum diterima per supplier. Nilai kosong kalau PO-nya bermata uang campuran. Yang paling lama di atas.' },
+]
 
 // "113 PR" + catatan jumlah item dan yang lewat 30 hari
 function catatanPengadaan(item, lama) {
@@ -39,18 +42,13 @@ function catatanPengadaan(item, lama) {
 }
 // Identitas baris untuk jendela rincian: per mitra cukup perusahaan dan nama, per dokumen nomor (dan sumber untuk hutang/piutang)
 function bukaRincian(jenis, b) {
-  if (jenis === 'supplier' || jenis === 'customer') return { jenis, judul: b.mitra, kunci: { comp: b.comp, mitra: b.mitra } }
+  if (jenis === 'supplier' || jenis === 'customer' || jenis === 'po_supplier') return { jenis, judul: b.mitra, kunci: { comp: b.comp, mitra: b.mitra } }
   return { jenis, judul: b.no_dok, kunci: { comp: b.comp, no_dok: b.no_dok, sumber: b.sumber ?? '' } }
 }
 
-// Judul kecil di atas sekelompok kartu
-function Kelompok({ judul, kolom, children }) {
-  return (
-    <section className="min-w-0">
-      <h2 className="mb-1.5 text-xs font-medium text-slate-500">{judul}</h2>
-      <GridKartu kolom={kolom}>{children}</GridKartu>
-    </section>
-  )
+// Judul kecil di atas sekelompok kartu, menempati baris kisinya sendiri
+function Judul({ kelas = '', children }) {
+  return <h2 className={'-mb-1.5 text-xs font-medium text-slate-500 ' + kelas}>{children}</h2>
 }
 
 
@@ -68,7 +66,12 @@ export default function LaporanOutstanding({ dataId, onDataHilang }) {
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold">Outstanding<Info teks={TENTANG.Outstanding} label="laporan Outstanding" /></h1>
-            {data && <p className="text-sm text-slate-500">Tanggal dokumen {rentangTgl(data.periode.mulai, data.periode.akhir)}</p>}
+            {/* Tanpa filter tanggal, laporan memuat semua dokumen yang belum lunas, termasuk yang lebih tua dari data yang dimuat di atas */}
+            {data && <p className="text-sm text-slate-500">
+              {filter.dari
+                ? `Tanggal dokumen ${rentangTgl(data.periode.mulai, data.periode.akhir)}`
+                : `Semua dokumen yang belum lunas per ${rentangTgl(data.periode.akhir, data.periode.akhir)}, yang tertua bertanggal ${rentangTgl(data.periode.mulai, data.periode.mulai)}`}
+            </p>}
           </div>
           <TombolFilter jumlahAktif={aktif.length} terbuka={panel} onToggle={togglePanel} />
         </header>
@@ -92,7 +95,9 @@ export default function LaporanOutstanding({ dataId, onDataHilang }) {
 
         {data && (
           <div className={memuat ? 'space-y-4 opacity-60 transition-opacity' : 'space-y-4 transition-opacity'}>
-            <Kelompok judul="Hutang" kolom={4}>
+            {/* Satu kisi 4 kolom untuk semua kartu, supaya tepi kartu sejajar ke samping dan ke bawah */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Judul kelas="sm:col-span-2 lg:col-span-4">Hutang</Judul>
               <Kartu judul="Hutang belum lunas" nilai={rupiah(k.hutang)} catatan={`${angka.format(k.hutang_dok)} dokumen`}
                 info={`sisa bersih setelah potongan ${rupiahPenuh.format(k.potongan)}. Total ${rupiahPenuh.format(k.hutang)}`} />
               <Kartu judul="Supplier belum dibayar" nilai={angka.format(k.supplier)}
@@ -102,21 +107,24 @@ export default function LaporanOutstanding({ dataId, onDataHilang }) {
                 info={`bagian hutang yang sudah masuk PVR tapi belum dibuatkan PV. Total ${rupiahPenuh.format(k.dalam_pvr)}`} />
               <Kartu judul="PV belum jatuh tempo" nilai={rupiah(k.pv_depan)} catatan="tanggal PV setelah hari ini"
                 info={`PV sudah dibuat tapi tanggalnya belum lewat, jadi dihitung belum dibayar. Total ${rupiahPenuh.format(k.pv_depan)}`} />
-            </Kelompok>
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Kelompok judul="Piutang" kolom={2}>
+              <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
+                <Judul kelas="sm:col-span-2">Piutang</Judul>
                 <Kartu judul="Piutang belum lunas" nilai={rupiah(k.piutang)} catatan={`${angka.format(k.piutang_dok)} dokumen`}
                   info={`total ${rupiahPenuh.format(k.piutang)}`} />
                 <Kartu judul="Customer belum bayar" nilai={angka.format(k.customer)}
                   catatan={k.customer_teratas ? `terbesar ${rupiah(k.customer_teratas_nilai)}` : ''}
                   info={k.customer_teratas ? `customer dengan sisa terbesar: ${k.customer_teratas}` : 'tidak ada'} />
-              </Kelompok>
-              <Kelompok judul="Pengadaan" kolom={TAMPIL_PR ? 2 : 1}>
+              </div>
+              <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
+                <Judul kelas="sm:col-span-2">Pengadaan</Judul>
                 {TAMPIL_PR && <Kartu judul="PR outstanding" nilai={`${angka.format(k.pr_dok)} PR`} catatan={catatanPengadaan(k.pr_item, k.pr_lama)}
                   info={k.pr_umur_maks == null ? 'tidak ada' : `PR yang belum seluruhnya dibuatkan PO. Paling lama ${angka.format(k.pr_umur_maks)} hari`} />}
                 <Kartu judul="PO outstanding" nilai={`${angka.format(k.po_dok)} PO`} catatan={catatanPengadaan(k.po_item, k.po_lama)}
                   info={k.po_umur_maks == null ? 'tidak ada' : `PO yang barangnya belum seluruhnya diterima. Paling lama ${angka.format(k.po_umur_maks)} hari`} />
-              </Kelompok>
+                {!TAMPIL_PR && <Kartu judul="Supplier PO outstanding" nilai={angka.format(k.po_supplier)}
+                  catatan={k.po_supplier_teratas ? `terbanyak ${angka.format(k.po_supplier_teratas_po)} PO` : ''}
+                  info={k.po_supplier_teratas ? `supplier dengan PO outstanding terbanyak: ${k.po_supplier_teratas}` : 'tidak ada'} />}
+              </div>
             </div>
             {k.tanpa_kurs > 0 && (
               <p className="text-xs text-amber-700">{angka.format(k.tanpa_kurs)} dokumen valas belum punya kurs dan tidak ikut dijumlahkan.</p>

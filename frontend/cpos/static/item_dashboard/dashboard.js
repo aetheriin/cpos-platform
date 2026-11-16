@@ -67,80 +67,68 @@
             || null;
     }
 
-    const chartTypes = ['donut', 'bar', 'pie', 'bar', 'pyramid', 'bar'];
-    const chartColors = ['#2563eb', '#0d9488', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#84cc16', '#f97316', '#64748b', '#ec4899'];
+    const chartTypes = ['bar', 'progress', 'lollipop', 'bar', 'progress', 'lollipop'];
+    const chartTitles = {
+        bar: 'Horizontal Bar Chart',
+        progress: 'Horizontal Progress Bar Chart',
+        lollipop: 'Horizontal Lollipop Chart',
+    };
 
     function tooltipText(point, nameType) {
         return [
             point.company ? `Perusahaan: ${point.company}` : null,
             `${nameType}: ${point.name || point.itemCode || point.label}`,
-            point.itemCode && point.itemCode !== point.name ? `Kode item: ${point.itemCode}` : null,
             `Jumlah: ${formatNumber(point.value)}`,
         ].filter(Boolean).join('\n');
     }
 
-    function renderCircularChart(points, donut, nameType) {
-        const chartPoints = points.filter(point => point.value > 0);
-        const total = chartPoints.reduce((sum, point) => sum + point.value, 0);
-        if (!chartPoints.length || !Number.isFinite(total)) {
-            return '<p class="py-6 text-center text-sm text-slate-500">Tidak ada jumlah positif untuk divisualisasikan.</p>';
-        }
-
-        const center = 110;
-        const radius = 88;
-        const innerRadius = 50;
-        let angle = -Math.PI / 2;
-        const slices = chartPoints.map((point, index) => {
-            const start = angle;
-            angle += point.value / total * Math.PI * 2;
-            const end = angle;
-            const color = chartColors[index % chartColors.length];
-            const title = escapeHtml(tooltipText(point, nameType));
-
-            if (chartPoints.length === 1) {
-                return donut
-                    ? `<circle cx="${center}" cy="${center}" r="${(radius + innerRadius) / 2}" fill="none" stroke="${color}" stroke-width="${radius - innerRadius}"><title>${title}</title></circle>`
-                    : `<circle cx="${center}" cy="${center}" r="${radius}" fill="${color}"><title>${title}</title></circle>`;
-            }
-
-            const largeArc = end - start > Math.PI ? 1 : 0;
-            const x1 = center + radius * Math.cos(start);
-            const y1 = center + radius * Math.sin(start);
-            const x2 = center + radius * Math.cos(end);
-            const y2 = center + radius * Math.sin(end);
-            const path = donut
-                ? `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${center + innerRadius * Math.cos(end)} ${center + innerRadius * Math.sin(end)} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${center + innerRadius * Math.cos(start)} ${center + innerRadius * Math.sin(start)} Z`
-                : `M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
-            return `<path d="${path}" fill="${color}" stroke="white" stroke-width="1"><title>${title}</title></path>`;
-        }).join('');
-        const centerLabel = donut
-            ? `<text x="${center}" y="104" text-anchor="middle" fill="#64748b" font-size="11">Total</text><text x="${center}" y="125" text-anchor="middle" fill="#0f172a" font-size="14" font-weight="600">${formatNumber(total)}</text>`
-            : '';
-
-        return `<div class="grid grid-cols-1 items-center gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <svg viewBox="0 0 220 220" class="mx-auto h-52 w-full max-w-[220px]" role="img" aria-label="${donut ? 'Donut' : 'Pie'} chart">
-                ${slices}${centerLabel}
-            </svg>
-            <ul class="max-h-52 space-y-1 overflow-y-auto">
-                ${chartPoints.map((point, index) => `<li class="flex items-center gap-2 text-xs" title="${escapeHtml(tooltipText(point, nameType))}">
-                    <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color:${chartColors[index % chartColors.length]}"></span>
-                    <span class="min-w-0 flex-1 truncate">${escapeHtml(point.label)}</span>
-                    <span class="shrink-0 font-medium tabular-nums text-slate-700">${formatNumber(point.value)}</span>
-                </li>`).join('')}
-            </ul>
+    function renderBarChart(points, nameType) {
+        const maximum = Math.max(...points.map(point => point.value), 1);
+        return `<div class="space-y-3">
+            ${points.map(point => {
+                const width = Math.max(2, Math.min(100, point.value / maximum * 100));
+                return `<div class="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)_auto] items-center gap-2 text-xs" title="${escapeHtml(tooltipText(point, nameType))}">
+                    <span class="truncate text-slate-600">${escapeHtml(point.label)}</span>
+                    <div class="h-5">
+                        <div class="h-full rounded-r bg-blue-600" style="width:${width}%"></div>
+                    </div>
+                    <span class="font-semibold tabular-nums text-slate-700">${formatNumber(point.value)}</span>
+                </div>`;
+            }).join('')}
         </div>`;
     }
 
-    function renderPyramid(points, nameType) {
+    function renderProgressChart(points, nameType) {
         const maximum = Math.max(...points.map(point => point.value), 1);
-        return `<div class="space-y-1.5">
-            ${points.map((point, index) => {
-                const width = Math.max(12, Math.min(100, Math.max(0, point.value) / maximum * 100));
-                return `<div class="text-center" title="${escapeHtml(tooltipText(point, nameType))}">
-                    <div class="mx-auto flex h-7 items-center justify-center rounded bg-blue-600 px-2 text-xs text-white shadow-sm" style="width:${width}%;opacity:${1 - index * 0.035}">
-                        <span class="truncate">${escapeHtml(point.label)}</span>
+        return `<div class="space-y-3">
+            ${points.map(point => {
+                const width = Math.max(2, Math.min(100, point.value / maximum * 100));
+                return `<div title="${escapeHtml(tooltipText(point, nameType))}">
+                    <div class="mb-1 flex justify-between gap-3 text-xs">
+                        <span class="truncate text-slate-600">${escapeHtml(point.label)}</span>
+                        <span class="shrink-0 font-semibold tabular-nums text-slate-700">${formatNumber(point.value)}</span>
                     </div>
-                    <span class="mt-0.5 block text-[11px] tabular-nums text-slate-500">${formatNumber(point.value)}</span>
+                    <div class="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                        <div class="h-full rounded-full bg-teal-600" style="width:${width}%"></div>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>`;
+    }
+
+    function renderLollipopChart(points, nameType) {
+        const maximum = Math.max(...points.map(point => point.value), 1);
+        return `<div class="space-y-2">
+            ${points.map(point => {
+                const width = Math.max(0, Math.min(100, point.value / maximum * 100));
+                return `<div class="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)_auto] items-center gap-2 text-xs" title="${escapeHtml(tooltipText(point, nameType))}">
+                    <span class="truncate text-slate-600">${escapeHtml(point.label)}</span>
+                    <div class="relative h-7">
+                        <div class="absolute inset-x-0 top-1/2 h-px bg-slate-200"></div>
+                        <div class="absolute left-0 top-1/2 h-0.5 bg-sky-300" style="width:${width}%"></div>
+                        <span class="absolute top-1/2 h-3 w-3 rounded-full bg-sky-600 ring-2 ring-white" style="left:${width}%;transform:translate(-50%,-50%)"></span>
+                    </div>
+                    <span class="font-semibold tabular-nums text-slate-700">${formatNumber(point.value)}</span>
                 </div>`;
             }).join('')}
         </div>`;
@@ -188,7 +176,6 @@
                     name: labelKey ? String(row[labelKey] ?? '').trim() : '',
                     label: [
                         companyKey ? row[companyKey] : null,
-                        itemCodeKey ? row[itemCodeKey] : null,
                         labelKey ? row[labelKey] : null,
                     ].filter(value => value != null && String(value).trim()).join(' · ') || `Baris ${rowIndex + 1}`,
                     value: numberOf(row[metricKey]),
@@ -200,30 +187,17 @@
             const chartType = chartTypes[index] || 'bar';
             let chartBody = '<p class="py-6 text-center text-sm text-slate-500">Tidak ada data angka untuk divisualisasikan.</p>';
             if (points.length) {
-                const maximum = Math.max(...points.map(point => point.value), 1);
-                chartBody = `<div class="space-y-3">${points.map(point => {
-                    const width = Math.max(2, Math.min(100, point.value / maximum * 100));
-                    return `<div>
-                        <div class="mb-1 flex justify-between gap-3 text-xs">
-                            <span class="truncate text-slate-600" title="${escapeHtml(tooltipText(point, nameType))}">${escapeHtml(point.label)}</span>
-                            <span class="shrink-0 font-semibold text-slate-700">${formatNumber(point.value)}</span>
-                        </div>
-                        <div class="h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-blue-600" style="width:${width}%"></div></div>
-                    </div>`;
-                }).join('')}</div>`;
+                if (chartType === 'progress') chartBody = renderProgressChart(points, nameType);
+                else if (chartType === 'lollipop') chartBody = renderLollipopChart(points, nameType);
+                else chartBody = renderBarChart(points, nameType);
             } else if (!companyRows.length) {
                 chartBody = '<p class="py-6 text-center text-sm text-slate-500">Tidak ada data untuk ditampilkan.</p>';
-            }
-            if (points.length && (chartType === 'donut' || chartType === 'pie')) {
-                chartBody = renderCircularChart(points, chartType === 'donut', nameType);
-            } else if (points.length && chartType === 'pyramid') {
-                chartBody = renderPyramid(points, nameType);
             }
             return `<article class="section-box p-4">
                 <div class="flex flex-wrap items-start justify-between gap-2">
                     <div>
                         <h2 class="font-bold text-slate-800">${escapeHtml(title)}</h2>
-                        <p class="mt-1 text-xs capitalize text-slate-500">Grafik ${chartType === 'bar' ? 'batang horizontal' : chartType}</p>
+                        <p class="mt-1 text-xs text-slate-500">${chartTitles[chartType]}</p>
                     </div>
                     ${companies.length ? `<select class="input-field py-1.5 text-xs" data-chart-company="${index}" aria-label="Filter perusahaan ${escapeHtml(title)}">
                         <option value="">All company</option>
@@ -375,8 +349,7 @@
             activeDataset = 0;
             renderCharts();
             selectDataset();
-            const totalBaris = datasets.reduce((total, dataset) => total + dataset.baris.length, 0);
-            statusSelesai = `Sumber: dbo.top_item_category_analysis · ${formatNumber(datasets.length)} result set · ${formatNumber(totalBaris)} baris`;
+            statusSelesai = `${formatNumber(datasets.length)} result set`;
         } catch (error) {
             pesanSelesai = 'Data analisis item gagal dimuat.';
             statusSelesai = 'Data analisis belum tersedia.';

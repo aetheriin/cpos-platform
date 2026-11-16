@@ -26,7 +26,11 @@ window.addEventListener('platLookup', (e) => {
         noTiketAktif = data.no_tiket;
         idSupplierAktif = data.id_supplier;
         jenisAktif = data.jenis_transaksi;
-        document.getElementById('tbJenisTransaksi').value = labelKode(data.jenis_transaksi);
+        const jenisTiket = data.ticket_type === 'TBSLuar'
+            ? 'TBS Luar'
+            : 'Produk';
+        document.getElementById('tbJenisTransaksi').value =
+            `${jenisTiket} · ${labelKode(data.jenis_transaksi)}`;
         document.getElementById('tbSupplier').value = data.supplier;
         document.getElementById('tbProduk').value = data.produk;
         muatHistoryAscend(data.associate_id, data.ticket_type);

@@ -1,7 +1,7 @@
 """Laporan Tiket Penjualan: ambil tiket timbang produk keluar dari SP TIKET_PENJUALAN dan rapikan.
 
 SP membaca PALM_Tickets tiap perusahaan lewat server tertaut (tabel company). Nama pengangkutan adalah kolom Contractor di tiket (isian
-"Nama Pengangkutan" di layar timbangan Ascend). Tiket split sudah diwakili tiket induknya oleh SP; pecahannya tidak ikut."""
+"Nama Pengangkutan" di layar timbangan Ascend). Tiket split diwakili pecahannya oleh SP (Nomor DO hanya ada di pecahan); induknya tidak ikut."""
 import re
 from datetime import date, timedelta
 

@@ -1,6 +1,8 @@
 """Laporan Purchase Orders: PO yang belum, sebagian, dan sudah dibuatkan PI (tabel saja, model laporan Purchase Invoice)."""
 from inti.laporan import Laporan
 
+from .. import rincian_dokumen
+
 from ..status_dokumen import AMBANG_LAMA, LaporanStatus, Tab, dokumen, lama
 from .sumber import BELUM, DITUTUP, SEBAGIAN, SUDAH, URUTAN_STATUS, muat
 
@@ -47,6 +49,7 @@ LAPORAN = Laporan(
     pemuat=muat,
     bangun=lambda ds, n, mg, f: _L.bangun(ds.df, ds, f),
     detail=lambda ds, jenis, n, mg, f, cari, urut, arah, hal, uk: _L.detail(ds.df, jenis, ds, f, cari, urut, arah, hal, uk),
+    rincian=lambda ds, jenis, kunci, f: rincian_dokumen.rincian("po", kunci),
     filter_didukung=_L.filter_didukung,
     label_filter=_L.label_filter,
     awal_tahun=True,

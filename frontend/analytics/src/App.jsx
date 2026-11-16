@@ -20,7 +20,21 @@ export default function App() {
   const [aktif, setAktif] = useState(null)
   const [dibuka, setDibuka] = useState([]) // laporan yang pernah dibuka. Tetap terpasang agar tidak dimuat ulang
   const [status, setStatus] = useState({})
-  const [menu, setMenu] = useState(true)
+  // Layar di bawah 1024px: menu tertutup di awal dan tampil melayang, supaya isi laporan tidak terjepit
+  const [sempit, setSempit] = useState(() => window.matchMedia('(max-width: 1023px)').matches)
+  const [menu, setMenu] = useState(() => !window.matchMedia('(max-width: 1023px)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)')
+    const ubah = () => { setSempit(mq.matches); setMenu(!mq.matches) }
+    mq.addEventListener('change', ubah)
+    return () => mq.removeEventListener('change', ubah)
+  }, [])
+  useEffect(() => {
+    if (!(sempit && menu)) return
+    const tekan = (e) => e.key === 'Escape' && setMenu(false)
+    document.addEventListener('keydown', tekan)
+    return () => document.removeEventListener('keydown', tekan)
+  }, [sempit, menu])
   const [pengguna, setPengguna] = useState(null)
   const [cek, setCek] = useState(true)
   const [pesanLogin, setPesanLogin] = useState('')
@@ -98,6 +112,7 @@ export default function App() {
     if (id) setDibuka((d) => (d.includes(id) ? d : [...d, id]))
   }
   const pilih = (id) => {
+    if (sempit) setMenu(false)
     buka(id)
     pindahAlamat(id)
   }
@@ -139,7 +154,8 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-800">
-      {menu && !SEMATAN && <Sidebar nama={merek} tanpaAkses={tanpaAkses} laporan={laporan} aktif={aktif} status={status} onPilih={pilih} />}
+      {menu && !SEMATAN && sempit && <button type="button" aria-label="Tutup menu" className="fixed inset-0 z-40 cursor-default bg-slate-900/40" onClick={() => setMenu(false)} />}
+      {menu && !SEMATAN && <Sidebar nama={merek} tanpaAkses={tanpaAkses} laporan={laporan} aktif={aktif} status={status} onPilih={pilih} melayang={sempit} />}
 
       <div className="min-w-0 flex-1">
         {!SEMATAN && (

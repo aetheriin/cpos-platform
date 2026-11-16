@@ -66,7 +66,8 @@ const butir = ({ kunci, aktif, Ikon, label, onClick, titik }) => (
 
 // Hanya tampil kalau Analytics dibuka langsung (bukan di dalam CPOS). Bisa disembunyikan lewat tombol di bilah atas.
 // nama: nama aplikasi dari server. tanpaAkses: akun belum punya akses ke laporan mana pun, jadi menunya dikosongkan.
-export default function Sidebar({ nama = '', laporan, aktif, status, onPilih, tanpaAkses = false }) {
+// melayang: di layar sempit menu tampil di atas halaman (bukan mendorongnya), ditutup App lewat latar gelap, Esc, atau memilih laporan.
+export default function Sidebar({ nama = '', laporan, aktif, status, onPilih, tanpaAkses = false, melayang = false }) {
   const [terlipat, setTerlipat] = useState(bacaLipat)
   const lipat = (judul) =>
     setTerlipat((lama) => {
@@ -88,7 +89,7 @@ export default function Sidebar({ nama = '', laporan, aktif, status, onPilih, ta
     else grup.push({ nama, laporan: [l] })
   }
   return (
-    <nav aria-label="Menu utama" className="sticky top-0 flex h-screen w-64 shrink-0 flex-col self-start border-r border-slate-200 bg-white">
+    <nav aria-label="Menu utama" className={(melayang ? 'fixed inset-y-0 left-0 z-50 shadow-xl ' : 'sticky top-0 self-start ') + 'flex h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-white'}>
       <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-slate-200 px-4">
         <Logo className="h-8 w-8 shrink-0" />
         <span className="truncate text-sm font-semibold text-slate-900">{nama}</span>

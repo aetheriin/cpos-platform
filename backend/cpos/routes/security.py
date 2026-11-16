@@ -209,6 +209,10 @@ def ascend_buat_tiket():
 
     try:
         tanggal = datetime.strptime(tanggal_teks, "%Y-%m-%d").date()
+        date_time_in = datetime.combine(
+            tanggal,
+            datetime.now().time().replace(microsecond=0),
+        )
     except ValueError:
         return jsonify({"error": "Tanggal tidak valid."}), 400
 
@@ -283,7 +287,7 @@ def ascend_buat_tiket():
     try:
         tiket = db_ascend.buat_tiket_kosong(
             ticket_type, produk, associate_id, vehicle_no,
-            tanggal, no_do, mill_id,
+            date_time_in, no_do, mill_id,
         )
     except ValueError as e:
         return jsonify({"error": str(e)}), 400

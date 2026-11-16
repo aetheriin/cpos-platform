@@ -91,4 +91,4 @@ def api_item():
         return jsonify(_muat_data())
     except (pyodbc.Error, RuntimeError):
         log.exception("Gagal memuat dbo.top_item_category_analysis dari database Main")
-        return jsonify({"error": "Data analisis item gagal dimuat dari database Main."}), 503
+        return jsonify({"error": "Data analisis item gagal dimuat."}), 503

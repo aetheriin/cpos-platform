@@ -3,7 +3,7 @@ from utils.db_utils import get_connection
 
 
 def simpan_pasangan_do2(ticket_id, ticket_no, no_do2, created_by=None):
-    """Buat atau perbarui rencana pasangan DO2; DO2 boleh belum tersedia."""
+    """Catat tiket CPOS; tandai selesai split hanya jika DO2 nyata tersedia."""
     ticket_id = int(ticket_id)
     ticket_no = (ticket_no or "").strip()
     no_do2 = (no_do2 or "").strip().upper() or None
@@ -13,7 +13,9 @@ def simpan_pasangan_do2(ticket_id, ticket_no, no_do2, created_by=None):
     if no_do2 is not None and len(no_do2) > 50:
         raise ValueError("Nomor DO kedua maksimal 50 karakter.")
 
+    pembuat = int(created_by) if created_by is not None else None
     koneksi = get_connection()
+
     try:
         cursor = koneksi.cursor()
         cursor.execute(
@@ -21,12 +23,27 @@ def simpan_pasangan_do2(ticket_id, ticket_no, no_do2, created_by=None):
             UPDATE dbo.AscendTicketSplitPlan
             SET TicketNo = ?,
                 NoDO2 = COALESCE(?, NoDO2),
-                CreatedBy = COALESCE(?, CreatedBy)
+                CreatedBy = COALESCE(?, CreatedBy),
+                PendingStatus = CASE
+                    WHEN ? IS NOT NULL THEN 'SELESAI_SPLIT'
+                    ELSE PendingStatus
+                END,
+                PendingLastError = CASE
+                    WHEN ? IS NOT NULL THEN NULL
+                    ELSE PendingLastError
+                END,
+                PendingCompletedAt = CASE
+                    WHEN ? IS NOT NULL THEN SYSDATETIME()
+                    ELSE PendingCompletedAt
+                END
             WHERE TicketID = ?
             """,
             ticket_no,
             no_do2,
-            int(created_by) if created_by is not None else None,
+            pembuat,
+            no_do2,
+            no_do2,
+            no_do2,
             ticket_id,
         )
 
@@ -34,13 +51,22 @@ def simpan_pasangan_do2(ticket_id, ticket_no, no_do2, created_by=None):
             cursor.execute(
                 """
                 INSERT INTO dbo.AscendTicketSplitPlan
-                    (TicketID, TicketNo, NoDO2, CreatedBy)
-                VALUES (?, ?, ?, ?)
+                    (
+                        TicketID, TicketNo, NoDO2, CreatedBy,
+                        PendingStatus, PendingCompletedAt
+                    )
+                VALUES (
+                    ?, ?, ?, ?,
+                    CASE WHEN ? IS NOT NULL THEN 'SELESAI_SPLIT' ELSE NULL END,
+                    CASE WHEN ? IS NOT NULL THEN SYSDATETIME() ELSE NULL END
+                )
                 """,
                 ticket_id,
                 ticket_no,
                 no_do2,
-                int(created_by) if created_by is not None else None,
+                pembuat,
+                no_do2,
+                no_do2,
             )
 
         koneksi.commit()

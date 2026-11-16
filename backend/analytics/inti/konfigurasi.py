@@ -120,6 +120,7 @@ SP_PI_GT = nama_sp("SP_PI_GT", "dbo.CheckStatItem")              # PI yang belum
 SP_GT_OUT = nama_sp("SP_GT_OUT", "dbo.gt_out")                    # semua GT, sama dengan query di Excel PI GT db
 PVR_TABEL_BOBOT = nama_sp("PVR_TABEL_BOBOT", "dbo.Bobot_PVR")     # kolom Kategori, Bobot
 OUTSTANDING_SP = nama_sp("OUTSTANDING_SP", "dbo.R_OUTSTANDING_ARAP")   # laporan Outstanding; SQL di backend/database/outstanding_sp.sql
+RINCIAN_SP = nama_sp("RINCIAN_SP", "dbo.RINCIAN_ARAP")   # jendela rincian laporan Outstanding; SQL di backend/analytics/database/rincian_arap_sp.sql
 HARGA_PO_SP = nama_sp("HARGA_PO_SP", "dbo.R_HARGA_PO")   # harga per baris PO; SQL di backend/database/harga_po_sp.sql
 PI_PVR_SP = nama_sp("PI_PVR_SP", "dbo.PI_PVR")   # laporan PI & PVR; SQL di backend/database/pi_pvr_sp.sql
 PENILAIAN_PVR_SP = nama_sp("PENILAIAN_PVR_SP", "dbo.PENILAIAN_PVR")   # laporan Penilaian PVR; SQL di backend/database/penilaian_pvr_sp.sql

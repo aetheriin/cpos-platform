@@ -31,7 +31,7 @@ def timbang_reset():
         reset_deteksi_stabil(j["id_jembatan"])
     return jsonify({"message": "Titik nol timbangan berhasil diatur ulang"}), 200
 
-@timbangan_bp.route("/api/timbang/data/<no_tiket>")
+@timbangan_bp.route("/api/timbang/data/<path:no_tiket>")
 @login_required
 @lihat(*MENU_OPERASI)
 def timbang_data(no_tiket):

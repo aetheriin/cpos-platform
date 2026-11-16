@@ -31,7 +31,7 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
       <p className="mb-3 mt-0.5 text-xs text-slate-500">
         {acuan}
         {onPilihBaris && ' Klik baris untuk memfilter semua grafik dan kartu ke transaksi itu.'}
-        {onBukaBaris && ' Klik ganda baris untuk melihat rinciannya.'}
+        {onBukaBaris && ' Klik ganda baris (ketuk sekali di layar sentuh) untuk melihat rinciannya.'}
       </p>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">

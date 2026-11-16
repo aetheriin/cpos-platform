@@ -20,7 +20,12 @@ async function ambilRespons(url, opsi = {}) {
   const { tanpa401, ...opsiFetch } = opsi // tanpa401: panggilan cek sesi, 401-nya bukan "sesi berakhir"
   const res = await fetch(alamatApi(url), { credentials: 'same-origin', cache: 'no-store', ...opsiFetch })
   if (!res.ok) {
-    let pesan = `Terjadi kesalahan (${res.status})`
+    // Tanpa pesan dari server: jelaskan dengan kata-kata, kode angka hanya di akhir untuk admin
+    let pesan = [502, 503, 504].includes(res.status)
+      ? `Server Analytics tidak menjawab. Muat ulang halaman sebentar lagi; hubungi admin kalau terus terjadi (kode ${res.status}).`
+      : res.status >= 500
+        ? `Server Analytics mengalami gangguan. Coba lagi; hubungi admin kalau terus terjadi (kode ${res.status}).`
+        : `Permintaan tidak bisa diproses (kode ${res.status}).`
     let dariServer // pesan yang benar-benar ditulis server; kosong kalau jawabannya tidak membawa pesan (mis. dari proxy)
     try {
       const isi = await res.json()

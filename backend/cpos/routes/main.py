@@ -331,12 +331,12 @@ def _svg_qr(teks):
     svg = buf.getvalue().decode("utf-8")
     return svg[svg.index("<svg"):]     # buang deklarasi <?xml?> supaya bisa disisipkan langsung di HTML
 
-@main_bp.route("/api/qr/<no_tiket>")
+@main_bp.route("/api/qr/<path:no_tiket>") 
 @login_required
 def qr_tiket(no_tiket):
     return Response(_svg_qr(no_tiket), mimetype="image/svg+xml")
 
-@main_bp.route("/cetak/tiket/<no_tiket>")
+@main_bp.route("/cetak/tiket/<path:no_tiket>") 
 @login_required
 @lihat(*MENU_OPERASI)
 def cetak_tiket(no_tiket):

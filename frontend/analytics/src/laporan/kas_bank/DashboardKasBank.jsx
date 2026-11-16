@@ -33,7 +33,7 @@ function LawanTransaksi({ mitra, satuan, terpilih, onPilih }) {
   return (
     <div>
       <div role="radiogroup" aria-label="Sisi" className="mb-3 inline-flex gap-0.5 rounded-lg bg-slate-100 p-1">
-        {[['keluar', 'Credit'], ['masuk', 'Debit']].map(([k, nama]) => (
+        {[['keluar', 'Out'], ['masuk', 'In']].map(([k, nama]) => (
           <button key={k} type="button" role="radio" aria-checked={arah === k} onClick={() => setArah(k)}
             className={'rounded-md px-3 py-1 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ' +
               (arah === k ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800')}>
@@ -198,7 +198,7 @@ function PilihBulan({ bulan, filter, onUbah }) {
   )
 }
 
-// Credit to date, Jenis dokumen, dan Lawan transaksi terbesar disembunyikan dulu atas permintaan pengguna (14 Nov 2026).
+// Out to date, Jenis dokumen, dan Lawan transaksi terbesar disembunyikan dulu atas permintaan pengguna (14 Nov 2026).
 // Ubah ke true untuk menampilkannya lagi; kodenya tetap ada.
 const GRAFIK_DISEMBUNYIKAN_TAMPIL = false
 
@@ -253,9 +253,9 @@ export default function DashboardKasBank({ dataId, onDataHilang }) {
             <GridKartu kolom={4} lebarMin={240}>
               <Kartu judul="Ending balance" nilai={uangPenuh(kpi.saldo_akhir, satuan)} info="Jumlah saldo rekening terpilih"
                 catatan={`per ${tglLengkap(kpi.tanggal_saldo)} · opening ${uangPenuh(kpi.saldo_awal, satuan)}`} />
-              <Kartu judul="Total debit" nilai={uangPenuh(kpi.masuk, satuan)} info="Penerimaan, termasuk transfer masuk antar rekening"
+              <Kartu judul="Total in" nilai={uangPenuh(kpi.masuk, satuan)} info="Penerimaan, termasuk transfer masuk antar rekening"
                 catatan={`${angka.format(kpi.jumlah_masuk)} transaksi · transfer ${uangPenuh(kpi.transfer_masuk, satuan)}`} />
-              <Kartu judul="Total credit" nilai={uangPenuh(kpi.keluar, satuan)} info="Pengeluaran, termasuk transfer keluar antar rekening"
+              <Kartu judul="Total out" nilai={uangPenuh(kpi.keluar, satuan)} info="Pengeluaran, termasuk transfer keluar antar rekening"
                 catatan={`${angka.format(kpi.jumlah_keluar)} transaksi · transfer ${uangPenuh(kpi.transfer_keluar, satuan)}`} />
               <Kartu judul="Jasa giro" nilai={uangPenuh(data.giro.total, satuan)} info="Giro ÷ AVG balance × 12"
                 catatan={data.giro.imbal != null ? `${persenGiro(data.giro.imbal)} per tahun` : null} />
@@ -264,7 +264,7 @@ export default function DashboardKasBank({ dataId, onDataHilang }) {
             <KisiGrafik>
               {/* Grafik waktu utama selebar penuh, seperti laporan lain */}
               <Petak padat="lg:col-span-12">
-                <KartuGrafik judul="Running Balance" perbesar petunjuk={`Ending balance, debit, dan credit, ${belakang} bulan terakhir.`}
+                <KartuGrafik judul="Running Balance" perbesar petunjuk={`Ending balance, in, dan out, ${belakang} bulan terakhir.`}
                   aksi={<PilihRentang label="Panjang running balance" nilai={belakang} onUbah={setBelakang}
                     opsi={OPSI_BELAKANG.map((n) => ({ nilai: n, label: `${n} bln`, judul: `${n} bulan terakhir` }))} />}>
                   <SaldoBerjalan bulanan={data.running.slice(-belakang)} satuan={satuan} />
@@ -272,7 +272,7 @@ export default function DashboardKasBank({ dataId, onDataHilang }) {
               </Petak>
               {GRAFIK_DISEMBUNYIKAN_TAMPIL && (
               <Petak padat="lg:col-span-6">
-                <KartuGrafik judul="Credit to Date" perbesar aksi={pilihPeriode}
+                <KartuGrafik judul="Out to Date" perbesar aksi={pilihPeriode}
                   petunjuk={`Kumulatif sejak ${tglLengkap(kpi.awal_data)}. Tidak terpengaruh filter tanggal.`}>
                   <KreditToDate harian={data.deret.hari} bulanan={data.deret.bulan} periode={periode} satuan={satuan} />
                 </KartuGrafik>

@@ -8,6 +8,8 @@ import { GridKartu, Kartu } from '../../komponen/Kartu'
 import PanelFilter, { TombolFilter } from '../../komponen/PanelFilter'
 import TabelDetail from '../../komponen/TabelDetail'
 import { MemuatLaporan } from '../../komponen/Keadaan'
+import JendelaRincian from '../../komponen/JendelaRincian'
+import { useState } from 'react'
 
 const FILTER_AWAL = { dari: null, sampai: null, perusahaan: [], status: [], aging: [], supplier: [], pembuat: [] }
 const JENIS = [
@@ -24,6 +26,8 @@ const satu = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 })
 
 // Report tabel saja, menurut tanggal PI. Ganti periode di bar atas menarik data baru; filter Tanggal mempersempit data yang sudah dimuat.
 export default function LaporanPiPvr({ dataId, onDataHilang }) {
+  const [rinci, setRinci] = useState(null)
+  const buka = (_, b) => setRinci({ jenis: 'dokumen', judul: b.pi_number, kunci: { comp: b.comp, no_dok: b.pi_number } })
   const { data, galat, memuat, filter, ubah, terpilih, lepas, reset, panel, setPanel, togglePanel } = useDashboard('pi_pvr', dataId, FILTER_AWAL, onDataHilang)
   const aktif = [...chipRentang(filter), ...chipDaftar(JENIS, terpilih)]
   const k = data?.kpi
@@ -68,11 +72,12 @@ export default function LaporanPiPvr({ dataId, onDataHilang }) {
               <Kartu judul="PI sampai PVR" nilai={k.lama_pvr.median == null ? 'belum ada' : `${satu.format(k.lama_pvr.median)} hari`}
                 catatan={k.lama_pvr.rata == null ? '' : `rata-rata ${satu.format(k.lama_pvr.rata)} hari`} info="nilai tengah hari dari PI dibuat sampai PVR pertama dibuat di sistem" />
             </GridKartu>
-            <TabelDetail judul="PI belum PVR" laporanId="pi_pvr" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_BELUM} onDataHilang={onDataHilang} />
-            <TabelDetail judul="PI sudah PVR" laporanId="pi_pvr" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_SUDAH} onDataHilang={onDataHilang} />
+            <TabelDetail judul="PI belum PVR" laporanId="pi_pvr" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_BELUM} onDataHilang={onDataHilang} onBukaBaris={buka} />
+            <TabelDetail judul="PI sudah PVR" laporanId="pi_pvr" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_SUDAH} onDataHilang={onDataHilang} onBukaBaris={buka} />
           </div>
         )}
       </div>
+      {rinci && <JendelaRincian laporanId="pi_pvr" dataId={dataId} filter={filter} buka={rinci} onTutup={() => setRinci(null)} onDataHilang={onDataHilang} />}
       <PanelFilter terbuka={panel} onTutup={() => setPanel(false)} jumlahAktif={aktif.length} onReset={reset}>
         {data && <FilterTanggal dari={filter.dari} sampai={filter.sampai} efektif={data.rentang} satuan="hari" bawaan={null} dataset={data.dataset} onUbah={ubah} />}
         {JENIS.map(({ kunci, nama }) => (

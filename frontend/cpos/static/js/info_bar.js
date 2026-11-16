@@ -126,7 +126,7 @@ function terapkanHasilLookup(data) {
             data.sumber === 'ASCEND'
                 ? (data.ticket_type === 'Produk'
                     ? 'Produk · Penjualan'
-                    : 'TBS Luar · Penerimaan')
+                    : 'TBS Luar · Pembelian')
                 : labelKode(data.jenis_transaksi);
         statusValidasi = 'done';
     } else {

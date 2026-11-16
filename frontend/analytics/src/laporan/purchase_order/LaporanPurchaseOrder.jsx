@@ -29,5 +29,5 @@ const TABEL = [
 const FILTER = [{ kunci: 'kategori', nama: 'Kategori' }, { kunci: 'supplier', nama: 'Supplier' }, { kunci: 'pembuat', nama: 'Dibuat oleh' }]
 
 export default function LaporanPurchaseOrder(props) {
-  return <LaporanStatus {...props} laporanId="purchase_order" judul="Purchase Orders" teksTanggal="Tanggal PO dibuat" kartu={kartu} tabel={TABEL} filterTambahan={FILTER} />
+  return <LaporanStatus {...props} laporanId="purchase_order" kolomNomor="po_number" judul="Purchase Orders" teksTanggal="Tanggal PO dibuat" kartu={kartu} tabel={TABEL} filterTambahan={FILTER} />
 }

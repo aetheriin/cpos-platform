@@ -1,6 +1,7 @@
 import Info from './Info'
 import { TENTANG } from './tentang'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import JendelaRincian from './JendelaRincian'
 import { rentangTgl, rupiah, rupiahPenuh } from '../lib/data'
 import { chipDaftar, chipRentang, useDashboard } from '../lib/filter'
 import FilterMulti from './FilterMulti'
@@ -19,7 +20,10 @@ export const hari = (x) => (x == null ? 'belum ada' : `${satu.format(x)} hari`)
 
 // Laporan status tindak lanjut dokumen (model Purchase Invoice), dipakai Purchase Request dan Purchase Orders.
 // kartu(kpi) -> [{judul, nilai, catatan, info}]; tabel: [{judul, tab: [{kunci, nama, ket}]}]
-export default function LaporanStatus({ laporanId, judul, teksTanggal, kartu, tabel, filterTambahan = [], dataId, onDataHilang }) {
+// kolomNomor: kolom nomor dokumen di baris tabel; klik ganda baris membuka rincian dokumen itu
+export default function LaporanStatus({ laporanId, judul, teksTanggal, kartu, tabel, filterTambahan = [], kolomNomor, dataId, onDataHilang }) {
+  const [rinci, setRinci] = useState(null)
+  const buka = (_, b) => setRinci({ jenis: 'dokumen', judul: b[kolomNomor], kunci: { comp: b.comp, no_dok: b[kolomNomor] } })
   const [JENIS, FILTER_AWAL] = useMemo(() => {
     const jenis = [...JENIS_DASAR, ...filterTambahan]
     return [jenis, { dari: null, sampai: null, ...Object.fromEntries(jenis.map((j) => [j.kunci, []])) }]
@@ -62,11 +66,12 @@ export default function LaporanStatus({ laporanId, judul, teksTanggal, kartu, ta
             </GridKartu>
             {tabel.map((t) => (
               <TabelDetail key={t.judul} judul={t.judul} laporanId={laporanId} dataId={dataId} filter={filter} jumlah={data.jumlah} tab={t.tab}
-                onDataHilang={onDataHilang} />
+                onDataHilang={onDataHilang} onBukaBaris={kolomNomor ? buka : undefined} />
             ))}
           </div>
         )}
       </div>
+      {rinci && <JendelaRincian laporanId={laporanId} dataId={dataId} filter={filter} buka={rinci} onTutup={() => setRinci(null)} onDataHilang={onDataHilang} />}
       <PanelFilter terbuka={panel} onTutup={() => setPanel(false)} jumlahAktif={aktif.length} onReset={reset}>
         {data && <FilterTanggal dari={filter.dari} sampai={filter.sampai} efektif={data.rentang} satuan="hari" bawaan={null} dataset={data.dataset} onUbah={ubah} />}
         {JENIS.map(({ kunci, nama }) => (
