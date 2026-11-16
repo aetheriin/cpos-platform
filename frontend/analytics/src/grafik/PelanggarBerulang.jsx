@@ -7,18 +7,22 @@ const TAB = [
   { kunci: 'kendaraan', nama: 'Kendaraan' },
   { kunci: 'supir', nama: 'Supir' },
   { kunci: 'supplier', nama: 'Supplier' },
+  { kunci: 'customer', nama: 'Customer' },
 ]
 
 // Nilai dengan transaksi WARNING terbanyak per dimensi. Batang di belakang angka membandingkan jumlah WARNING antarbaris. Klik baris untuk memfilter.
-function PelanggarBerulang({ data, terpilih, onPilih }) {
-  const [tab, setTab] = useState('kendaraan')
-  const daftar = data[tab]
+// mitra: tab mitra yang tampil, ['supplier'] untuk pembelian, ['customer'] untuk penjualan, keduanya untuk semua transaksi.
+function PelanggarBerulang({ data, terpilih, onPilih, mitra = ['supplier'] }) {
+  const [pilihTab, setTab] = useState('kendaraan')
+  const tabTampil = TAB.filter((t) => !['supplier', 'customer'].includes(t.kunci) || mitra.includes(t.kunci))
+  const tab = tabTampil.some((t) => t.kunci === pilihTab) ? pilihTab : 'kendaraan'
+  const daftar = data[tab] ?? []
   const maks = Math.max(1, ...daftar.map((d) => d.berisiko))
-  const pilihan = terpilih[tab]
+  const pilihan = terpilih[tab] ?? []
   return (
     <div>
       <div role="tablist" className="mb-3 inline-flex rounded-lg border border-slate-300 p-0.5">
-        {TAB.map((t) => (
+        {tabTampil.map((t) => (
           <button
             key={t.kunci}
             type="button"

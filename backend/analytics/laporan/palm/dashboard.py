@@ -206,7 +206,8 @@ def bangun(semua, ds, filt=None):
         "tren": _tren(tanpa("tanggal"), dari, sampai),
         "pelanggar": {"kendaraan": _pelanggar(tanpa("kendaraan"), "kendaraan", filt["kendaraan"]),
                       "supir": _pelanggar(tanpa("supir"), "supir", filt["supir"]),
-                      "supplier": _pelanggar(tanpa("supplier"), "supplier", filt["supplier"])},
+                      "supplier": _pelanggar(tanpa("supplier"), "supplier", filt["supplier"]),   # pembelian
+                      "customer": _pelanggar(tanpa("customer"), "customer", filt["customer"])},  # penjualan
         "operator_jam": _operator_jam(tanpa(("operator", "jam")), filt["operator"]),
         "pilihan": _pilihan_per_jenis(kini, filt, pilihan),
     }

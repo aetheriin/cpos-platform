@@ -128,10 +128,8 @@ def bangun(df, ds, filt=None):
     d = saring(kini, filt, DIM)
     tanpa = lambda nama: saring(kini, filt, DIM, lewati=nama)
     n = konfigurasi.TIKET_PENJUALAN_TOP
-    if dari == sampai:
-        sebaran = {"satuan": "jam", "data": U.per_jam(tanpa("jam"))}
-    else:
-        sebaran = {"satuan": "hari", "data": U.per_hari(tanpa("tanggal"), dari, sampai)}
+    # Grafik waktu hanya tampil di mode mingguan dan bulanan, jadi selalu per hari, juga saat periode baru berjalan sehari
+    sebaran = {"satuan": "hari", "data": U.per_hari(tanpa("tanggal"), dari, sampai)}
     k = U.kpi(d)
     return {
         "periode": {"mulai": tgl(dari), "akhir": tgl(sampai)},

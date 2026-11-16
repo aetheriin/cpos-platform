@@ -1155,6 +1155,245 @@ def daftar_do(ticket_type):
     finally:
         koneksi.close()
 
+def daftar_kontrak_do_ascend(cari="", batas=500):
+    """Daftar DO Produk dan TBS Luar untuk halaman Kontrak & DO."""
+    cari = (cari or "").strip()
+    pola = f"%{cari}%"
+    batas = max(1, min(int(batas), 1000))
+
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute(
+            f"""
+            SELECT TOP ({batas}) *
+            FROM (
+                SELECT
+                    CAST('PRODUK' AS varchar(10)) AS source_kind,
+                    d.DeliveryOrderID AS source_id,
+                    d.DeliveryOrderNumber AS no_do,
+                    d.ContractID AS id_kontrak,
+                    COALESCE(
+                        NULLIF(d.ContractNoEx, ''),
+                        NULLIF(c.ContractNumber, ''),
+                        c.ReferenceNo,
+                        ''
+                    ) AS no_kontrak,
+                    CAST('PENJUALAN' AS varchar(20)) AS jenis_transaksi,
+                    d.CustomerID AS id_customer,
+                    a.CustomerName AS nama_customer,
+                    d.ProductName AS nama_produk,
+                    COALESCE(c.ContractDate, d.DeliveryOrderDate) AS tanggal_kontrak,
+                    d.Quantity AS qty_kg,
+                    c.PricePerKg AS harga_per_kg,
+                    COALESCE(
+                        NULLIF(d.Remarks, ''),
+                        NULLIF(c.Remarks, ''),
+                        ''
+                    ) AS keterangan,
+                    CASE
+                        WHEN ISNULL(c.TaxPercent, 0) > 0 THEN 1
+                        ELSE 0
+                    END AS ppn,
+                    ISNULL(c.InclusiveTax, 0) AS harga_termasuk_ppn,
+                    d.MillID AS id_company,
+                    d.MillID AS mill_id,
+                    CONCAT('Mill ', d.MillID) AS kode_company,
+                    d.DeliveryOrderDate AS tanggal_do,
+                    d.DeliveryOrderDateUntil AS berlaku_sampai,
+                    CASE
+                        WHEN ISNULL(d.Void, 0) = 0
+                         AND ISNULL(d.Closed, 0) = 0
+                         AND ISNULL(c.Void, 0) = 0 THEN 1
+                        ELSE 0
+                    END AS is_active,
+                    d.CreateDate AS created_at,
+                    d.QuantityShipped AS realisasi_kg
+                FROM dbo.PALM_DeliveryOrders d
+                LEFT JOIN dbo.PALM_Contracts c
+                    ON c.ContractID = d.ContractID
+                LEFT JOIN dbo.AR_Customers a
+                    ON a.CustomerID = d.CustomerID
+
+                UNION ALL
+
+                SELECT
+                    CAST('TBSLUAR' AS varchar(10)) AS source_kind,
+                    r.ReceivingDeliveryOrderID AS source_id,
+                    r.ReceivingDeliveryOrderNumber AS no_do,
+                    r.ContractID AS id_kontrak,
+                    COALESCE(
+                        NULLIF(pc.PurchaseContractNumber, ''),
+                        pc.ReferenceNo,
+                        ''
+                    ) AS no_kontrak,
+                    CAST('PEMBELIAN' AS varchar(20)) AS jenis_transaksi,
+                    r.SupplierID AS id_customer,
+                    s.SupplierName AS nama_customer,
+                    r.ProductName AS nama_produk,
+                    COALESCE(
+                        pc.PurchaseContractDate,
+                        r.ReceivingDeliveryOrderDate
+                    ) AS tanggal_kontrak,
+                    r.Quantity AS qty_kg,
+                    pc.PricePerKg AS harga_per_kg,
+                    COALESCE(
+                        NULLIF(r.Remarks, ''),
+                        NULLIF(pc.Remarks, ''),
+                        ''
+                    ) AS keterangan,
+                    CASE
+                        WHEN ISNULL(pc.TaxPercent, 0) > 0 THEN 1
+                        ELSE 0
+                    END AS ppn,
+                    ISNULL(pc.InclusiveTax, 0) AS harga_termasuk_ppn,
+                    r.MillID AS id_company,
+                    r.MillID AS mill_id,
+                    CONCAT('Mill ', r.MillID) AS kode_company,
+                    r.ReceivingDeliveryOrderDate AS tanggal_do,
+                    CAST(NULL AS datetime) AS berlaku_sampai,
+                    CASE
+                        WHEN ISNULL(r.Void, 0) = 0
+                         AND ISNULL(r.Closed, 0) = 0
+                         AND ISNULL(pc.Void, 0) = 0
+                         AND ISNULL(pc.Closed, 0) = 0 THEN 1
+                        ELSE 0
+                    END AS is_active,
+                    r.CreateDate AS created_at,
+                    r.QuantityShipped AS realisasi_kg
+                FROM dbo.PALM_ReceivingDeliveryOrders r
+                LEFT JOIN dbo.PALM_PurchaseContracts pc
+                    ON pc.PurchaseContractID = r.ContractID
+                LEFT JOIN dbo.AP_Suppliers s
+                    ON s.SupplierID = r.SupplierID
+            ) AS daftar
+            WHERE no_do LIKE ?
+               OR no_kontrak LIKE ?
+               OR nama_customer LIKE ?
+               OR nama_produk LIKE ?
+            ORDER BY is_active DESC, created_at DESC
+            """,
+            pola,
+            pola,
+            pola,
+            pola,
+        )
+        rows = _baris_hasil(cursor)
+
+        id_do_produk = [
+            int(row["source_id"])
+            for row in rows
+            if row["source_kind"] == "PRODUK"
+        ]
+        angkutan_per_do = {}
+
+        for awal in range(0, len(id_do_produk), 900):
+            bagian = id_do_produk[awal:awal + 900]
+            tanda_tanya = ", ".join("?" for _ in bagian)
+
+            cursor.execute(
+                f"""
+                SELECT
+                    t.DeliveryOrderID AS id_do,
+                    t.ShipperID AS shipper_id,
+                    s.SupplierName AS nama_pengangkutan,
+                    t.MaxKg AS max_kg,
+                    t.CostPerKg AS ongkos_per_kg
+                FROM dbo.PALM_DOTransport t
+                LEFT JOIN dbo.AP_Suppliers s
+                    ON s.SupplierID = t.ShipperID
+                WHERE t.DeliveryOrderID IN ({tanda_tanya})
+                ORDER BY t.DetailID
+                """,
+                *bagian,
+            )
+
+            for row in _baris_hasil(cursor):
+                id_do = int(row["id_do"])
+                nama = str(row.get("nama_pengangkutan") or "").strip()
+
+                if not nama:
+                    nama = f"Shipper {row['shipper_id']}"
+
+                angkutan_per_do.setdefault(id_do, []).append({
+                    "cara_angkut": "ASCEND",
+                    "nama_pengangkutan": nama,
+                    "qty_kg": (
+                        float(row["max_kg"])
+                        if row.get("max_kg") is not None else None
+                    ),
+                    "ongkos_per_kg": (
+                        float(row["ongkos_per_kg"])
+                        if row.get("ongkos_per_kg") is not None else None
+                    ),
+                    "label": nama,
+                })
+
+        hasil = []
+
+        for row in rows:
+            source_kind = str(row["source_kind"]).strip()
+            source_id = int(row["source_id"])
+            mill_id = row.get("mill_id")
+
+            hasil.append({
+                "id_do": f"{source_kind}:{source_id}",
+                "no_do": str(row.get("no_do") or "").strip(),
+                "id_kontrak": (
+                    int(row["id_kontrak"])
+                    if row.get("id_kontrak") is not None else None
+                ),
+                "no_kontrak": str(row.get("no_kontrak") or "").strip(),
+                "jenis_transaksi": str(
+                    row.get("jenis_transaksi") or ""
+                ).strip(),
+                "id_customer": (
+                    int(row["id_customer"])
+                    if row.get("id_customer") is not None else None
+                ),
+                "nama_customer": str(
+                    row.get("nama_customer") or ""
+                ).strip(),
+                "id_produk": None,
+                "nama_produk": str(row.get("nama_produk") or "").strip(),
+                "tanggal_kontrak": row.get("tanggal_kontrak"),
+                "qty_kg": (
+                    float(row["qty_kg"])
+                    if row.get("qty_kg") is not None else None
+                ),
+                "harga_per_kg": (
+                    float(row["harga_per_kg"])
+                    if row.get("harga_per_kg") is not None else None
+                ),
+                "keterangan": str(row.get("keterangan") or "").strip(),
+                "ppn": bool(row.get("ppn")),
+                "harga_termasuk_ppn": bool(
+                    row.get("harga_termasuk_ppn")
+                ),
+                "id_company": (
+                    int(mill_id) if mill_id is not None else None
+                ),
+                "kode_company": str(
+                    row.get("kode_company") or ""
+                ).strip(),
+                "tanggal_do": row.get("tanggal_do"),
+                "berlaku_sampai": row.get("berlaku_sampai"),
+                "is_active": bool(row.get("is_active")),
+                "created_at": row.get("created_at"),
+                "realisasi_kg": (
+                    float(row["realisasi_kg"])
+                    if row.get("realisasi_kg") is not None else None
+                ),
+                "angkutan": (
+                    angkutan_per_do.get(source_id, [])
+                    if source_kind == "PRODUK" else []
+                ),
+            })
+
+        return hasil
+    finally:
+        koneksi.close()
+
 def _baca_do_produk_ascend(no_do):
     """Baca DO Produk Ascend, termasuk DO yang outstanding-nya sudah nol."""
     no_do = (no_do or "").strip()

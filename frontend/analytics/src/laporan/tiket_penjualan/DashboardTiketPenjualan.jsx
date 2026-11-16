@@ -10,9 +10,19 @@ import { MemuatLaporan } from '../../komponen/Keadaan'
 import PanelFilter from '../../komponen/PanelFilter'
 import TabelDetail from '../../komponen/TabelDetail'
 import PilihPeriode from './PilihPeriode'
-import { batasData, judulPeriode, rentangData, tglPanjang } from './periode'
+import { batasData, judulPeriode, rentangData, rentangPenuh, tambahHari, tglPanjang } from './periode'
 
 const LAPORAN = 'tiket_penjualan'
+
+// Sumbu grafik selalu satu minggu (Senin sampai Minggu) atau satu bulan penuh; hari yang belum ada datanya dibiarkan kosong
+function sumbuPenuh(data, mode, acuan) {
+  if (!acuan || mode === 'hari') return data
+  const { dari, sampai } = rentangPenuh(mode, acuan)
+  const ada = new Map(data.map((d) => [d.kunci, d]))
+  const hasil = []
+  for (let h = dari; h <= sampai; h = tambahHari(h, 1)) hasil.push(ada.get(h) ?? { kunci: h, netto: null, rit: null })
+  return hasil
+}
 const FILTER_AWAL = {}
 const KOSONG = []
 const WARNA = '#0369a1'
@@ -62,11 +72,11 @@ export default function DashboardTiketPenjualan({ dataId, onDataHilang }) {
   const sebaran = data?.sebaran
   const harian = periode.mode === 'hari'
   const adaPengangkut = (data?.per_pengangkut.data.length ?? 0) > 0
-  // Pengangkut dan Pembeli hanya berdampingan kalau jumlah barisnya mirip; kalau jauh beda, masing-masing selebar penuh supaya tidak ada
-  // kartu yang setengah kosong di samping kartu yang panjang
-  const nPembeli = data?.per_pembeli.data.length ?? 0
-  const berdampingan = adaPengangkut && Math.abs(data.per_pengangkut.data.length - nPembeli) <= 3
-  const lebarPeringkat = berdampingan ? 'lg:col-span-6' : 'lg:col-span-12'
+  // Tata letak padat. Mingguan/bulanan: grafik waktu (8) dan Produk (4) sebaris, Pengangkut dan Pembeli berdampingan di bawahnya.
+  // Harian (tanpa grafik waktu): Pengangkut, Pembeli, dan Produk sebaris sepertiga lebar.
+  const lebarPeringkat = harian ? (adaPengangkut ? 'lg:col-span-4 lg:order-1' : 'lg:col-span-6 lg:order-1')
+    : (adaPengangkut ? 'lg:col-span-6 lg:order-3' : 'lg:col-span-12 lg:order-3')
+  const lebarProduk = harian ? (adaPengangkut ? 'lg:col-span-4 lg:order-2' : 'lg:col-span-6 lg:order-2') : 'lg:col-span-4 lg:order-2'
   const namaPeriode = acuan ? judulPeriode(periode.mode, acuan) : ''
 
   return (
@@ -104,9 +114,9 @@ export default function DashboardTiketPenjualan({ dataId, onDataHilang }) {
                 Harian tanpa grafik waktu: truk sehari terlalu sedikit untuk membentuk pola. */}
             <KisiGrafik>
               {!harian && (
-                <Petak>
+                <Petak padat="lg:col-span-8 lg:order-1">
                   <KartuGrafik judul="Berat Keluar per Hari" perbesar petunjuk="Ton per tanggal timbang. Klik batang untuk memfilter ke tanggal itu.">
-                    <SebaranWaktu tinggi="h-64" satuan={sebaran.satuan} data={sebaran.data} warna={WARNA}
+                    <SebaranWaktu tinggi="h-64" satuan="hari" data={sumbuPenuh(sebaran.data, periode.mode, acuan)} warna={WARNA}
                       terpilih={terpilih('tanggal')} onPilih={pilih.tanggal} kosong={<KosongKecil teks="Tidak ada tiket." />} />
                   </KartuGrafik>
                 </Petak>
@@ -126,7 +136,7 @@ export default function DashboardTiketPenjualan({ dataId, onDataHilang }) {
                     terpilih={terpilih('pembeli')} onPilih={pilih.pembeli} kosong={<KosongKecil teks="Belum ada nama pembeli di tiket." />} />
                 </KartuGrafik>
               </Petak>
-              <Petak>
+              <Petak padat={lebarProduk}>
                 <KartuGrafik judul="Produk" petunjuk="Berat per produk. Klik batang untuk memfilter.">
                   <BatangTonase data={data.per_produk.data} lainnya={data.per_produk.lainnya} satuanLain="produk" persen warna={WARNA}
                     terpilih={terpilih('produk')} onPilih={pilih.produk} kosong={<KosongKecil teks="Tidak ada produk." />} />

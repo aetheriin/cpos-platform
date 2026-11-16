@@ -89,11 +89,14 @@ export default function DashboardPalm({ dataId, onDataHilang }) {
   const tampil = (kunci, nilai) => (kunci === 'tanggal' ? tglLengkap(nilai) : kunci === 'jam' ? `${nilai}.00 sampai ${nilai}.59` : nilai)
   const aktif = [...chipRentang(filter), ...chipDaftar(daftarFilter, terpilih, tampil)]
   const pelanggarTerpilih = useMemo(
-    () => ({ kendaraan: filter.kendaraan ?? KOSONG, supir: filter.supir ?? KOSONG, supplier: filter.supplier ?? KOSONG }),
-    [filter.kendaraan, filter.supir, filter.supplier],
+    () => ({ kendaraan: filter.kendaraan ?? KOSONG, supir: filter.supir ?? KOSONG, supplier: filter.supplier ?? KOSONG, customer: filter.customer ?? KOSONG }),
+    [filter.kendaraan, filter.supir, filter.supplier, filter.customer],
   )
 
   const kpi = data?.kpi
+  // Pembelian: supplier, Penjualan: customer, Semua: keduanya
+  const jenisTerpilih = filter.transaksi ?? KOSONG
+  const mitraPelanggar = jenisTerpilih.length === 1 ? [jenisTerpilih[0] === 'Penjualan' ? 'customer' : 'supplier'] : ['supplier', 'customer']
   const mitra = data?.risiko_supplier?.dimensi ?? 'supplier'   // Penjualan: customer
   const tren = data?.tren ?? KOSONG
   return (
@@ -143,7 +146,7 @@ export default function DashboardPalm({ dataId, onDataHilang }) {
 
               <Petak panjang="md:col-span-10 lg:col-span-4" padat="lg:order-5 lg:col-span-5">
                 <KartuGrafik judul="Pelanggar Berulang" petunjuk="WARNING terbanyak; persentase menunjukkan seberapa sering dari semua transaksinya">
-                  <PelanggarBerulang data={data.pelanggar} terpilih={pelanggarTerpilih} onPilih={pilih.pelanggar} />
+                  <PelanggarBerulang data={data.pelanggar} terpilih={pelanggarTerpilih} onPilih={pilih.pelanggar} mitra={mitraPelanggar} />
                 </KartuGrafik>
               </Petak>
               <Petak panjang="md:col-span-10 lg:col-span-6" padat="lg:order-6 lg:col-span-7">

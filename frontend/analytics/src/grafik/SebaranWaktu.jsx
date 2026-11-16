@@ -18,6 +18,7 @@ function label(satuan, kunci, jumlah) {
 function IsiTooltip({ active, payload, satuan }) {
   if (!active || !payload?.length) return null
   const d = payload[0].payload
+  if (d.rit == null) return null
   const judul = satuan === 'jam' ? `Jam ${d.kunci}.00–${d.kunci}.59` : tglPanjang(d.kunci, { hari: true })
   return (
     <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs shadow-md">
@@ -31,8 +32,8 @@ function IsiTooltip({ active, payload, satuan }) {
 
 // Berat keluar per jam (satu hari) atau per tanggal (satu minggu atau bulan). Klik batang untuk memfilter jam atau tanggal itu.
 function SebaranWaktu({ satuan, data, terpilih, onPilih, warna = '#0369a1', tinggi = 'h-64', kosong }) {
-  if (data.every((d) => d.rit === 0)) return kosong
-  const baris = data.map((d) => ({ ...d, label: label(satuan, d.kunci, data.length), ton: d.netto / 1000 }))
+  if (data.every((d) => !d.rit)) return kosong   // rit null: hari yang belum ada datanya (minggu atau bulan berjalan)
+  const baris = data.map((d) => ({ ...d, label: label(satuan, d.kunci, data.length), ton: d.netto == null ? null : d.netto / 1000 }))
   const adaPilihan = terpilih.length > 0
   return (
     <div className={`${tinggi} w-full`}>
@@ -42,7 +43,7 @@ function SebaranWaktu({ satuan, data, terpilih, onPilih, warna = '#0369a1', ting
           <XAxis dataKey="label" interval={0} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} tick={{ fontSize: 11, fill: '#475569' }} />
           <YAxis width={44} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#475569' }} tickFormatter={(v) => ringkas.format(v)} />
           <Tooltip content={<IsiTooltip satuan={satuan} />} cursor={{ fill: 'rgba(15,23,42,0.05)' }} />
-          <Bar dataKey="ton" radius={[3, 3, 0, 0]} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} className="cursor-pointer" onClick={(d, _, e) => onPilih((d.payload ?? d).kunci, e)}>
+          <Bar dataKey="ton" radius={[3, 3, 0, 0]} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} className="cursor-pointer" onClick={(d, _, e) => (d.payload ?? d).rit != null && onPilih((d.payload ?? d).kunci, e)}>
             {baris.map((d) => {
               const redup = adaPilihan && !terpilih.includes(d.kunci)
               return <Cell key={d.kunci} fill={warna} fillOpacity={redup ? 0.25 : 0.9} />

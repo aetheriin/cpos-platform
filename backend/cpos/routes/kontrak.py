@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
 
 from utils.hak_akses import lihat, MENU_KONTRAK
-from utils import db_kontrak as db, kolom_wajib
+from utils import db_ascend, db_kontrak as db, kolom_wajib
 from utils.db_utils import get_semua_produk
 from utils.hak_akses import izin, boleh, halaman as lihat_halaman
 from utils.area import company_user
@@ -36,22 +36,46 @@ def _json_do(d):
 @login_required
 @lihat_halaman("KONTRAK_DO")
 def kontrak_halaman():
-    """Semua level bisa melihat; tambah / ubah sesuai Admin › Hak Akses (dicek juga di API)."""
-    pt = company_user(current_user.id)
-    mitra = [m for m in db.daftar_mitra() if supplier_boleh(m["id_supplier"], pt)]
-    return render_template("kontrak/kontrak.html", halaman="kontrak", jenis_list=db.JENIS_VALID,
-                           boleh_ubah=boleh("KONTRAK_DO"),
-                           customer_list=[m for m in mitra if m["peran"] == "CUSTOMER"],
-                           angkutan_list=[m for m in mitra if m["peran"] == "PENGANGKUTAN"],
-                           company_list=_company_user(),
-                           produk_list=get_semua_produk())
+    supplier_ascend = db_ascend.daftar_supplier_master_ascend()
+
+    return render_template(
+        "kontrak/kontrak.html",
+        halaman="kontrak",
+        boleh_ubah=False,
+
+        # Pilihan Associate dari Ascend
+        associate_produk_list=db_ascend.daftar_associate("Produk"),
+        associate_tbs_list=db_ascend.daftar_associate("TBSLuar"),
+
+        # Pilihan produk dari Ascend
+        produk_ascend_list=db_ascend.daftar_produk_master_ascend(),
+        produk_tbs_luar_list=db_ascend.daftar_produk_tbs_luar_ascend(),
+
+        # Mill dan pengangkut Ascend
+        mill_list=db_ascend.daftar_mill(),
+        pengangkut_ascend_list=[
+            s for s in supplier_ascend
+            if s["is_transport"] or s["is_expedition"]
+        ],
+
+        # Nilai awal pajak dari data Ascend
+        ppn_default_produk=0,
+        ppn_default_tbs=11,
+        pilihan_ppn=(0, 11),
+        pilihan_pph23=(0, 2),
+    )
 
 
 @kontrak_bp.route("/api/kontrak/do")
 @login_required
 @lihat(*MENU_KONTRAK)
 def do_daftar():
-    return jsonify([_json_do(d) for d in db.daftar_do(request.args.get("cari", ""))])
+    return jsonify([
+        _json_do(d)
+        for d in db_ascend.daftar_kontrak_do_ascend(
+            request.args.get("cari", "")
+        )
+    ])
 
 
 def _company_user():
