@@ -69,7 +69,7 @@ export const SaldoBerjalan = memo(function SaldoBerjalan({ bulanan, satuan }) {
   const data = bulanan.map((r) => ({ ...r, label: labelBulan(r.bulan), kreditNeg: r.kredit ? -r.kredit : null }))
   return (
     <div className="flex h-full flex-col">
-      <Kunci isi={[['Balance', garis(WARNA_SALDO)], ['In', kotak(WARNA_MASUK)], ['Out', kotak(WARNA_KELUAR)]]} />
+      <Kunci isi={[['Ending balance', garis(WARNA_SALDO)], ['In', kotak(WARNA_MASUK)], ['Out', kotak(WARNA_KELUAR)]]} />
       <div className="min-h-64 w-full flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} stackOffset="sign" margin={{ top: 6, right: 0, bottom: 0, left: 0 }}>

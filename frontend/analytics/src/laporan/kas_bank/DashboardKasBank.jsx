@@ -264,7 +264,7 @@ export default function DashboardKasBank({ dataId, onDataHilang }) {
             <KisiGrafik>
               {/* Grafik waktu utama selebar penuh, seperti laporan lain */}
               <Petak padat="lg:col-span-12">
-                <KartuGrafik judul="Running Balance" perbesar petunjuk={`Ending balance, in, dan out, ${belakang} bulan terakhir.`}
+                <KartuGrafik judul="Balance per Bulan" perbesar petunjuk={`Ending balance tiap akhir bulan, dengan In dan Out per bulan, ${belakang} bulan terakhir.`}
                   aksi={<PilihRentang label="Panjang running balance" nilai={belakang} onUbah={setBelakang}
                     opsi={OPSI_BELAKANG.map((n) => ({ nilai: n, label: `${n} bln`, judul: `${n} bulan terakhir` }))} />}>
                   <SaldoBerjalan bulanan={data.running.slice(-belakang)} satuan={satuan} />

@@ -774,44 +774,58 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
             alasan_pending = None
 
             try:
-                daftar = daftar_do("Produk")
-                do1 = next(
-                    (
-                        d for d in daftar
-                        if d["no_do"].strip().casefold() == no_do1.casefold()
-                    ),
-                    None,
+                do1 = _baca_do_produk_ascend(no_do1)
+            except Exception as e:
+                do1 = None
+                alasan_pending = (
+                    f"Data DO pertama Ascend belum dapat dibaca: {e}"
                 )
 
+            if not alasan_pending:
                 if not do1:
                     alasan_pending = (
-                        "DO pertama tidak ditemukan sebagai DO outstanding; "
-                        "menunggu data DO Ascend dapat dipastikan."
+                        "DO pertama tidak ditemukan di Ascend; "
+                        "menunggu data DO dapat dipastikan."
+                    )
+                elif do1["void"]:
+                    raise ValueError(
+                        "DO pertama sudah dibatalkan di Ascend. "
+                        "Tiket perlu diperiksa sebelum timbang akhir disimpan."
                     )
                 else:
                     netto_final = Decimal(str(tiket["netto"]))
-                    sisa_do1 = Decimal(str(do1.get("sisa") or 0))
+                    sisa_do1 = Decimal(str(do1["sisa"] or 0))
+
+                    # DO yang ditutup tidak menerima alokasi baru.
+                    if do1["closed"]:
+                        sisa_do1 = Decimal("0")
 
                     if netto_final > sisa_do1:
                         try:
-                            do2 = cari_pasangan_do2_ascend("Produk", no_do1)
+                            do2 = cari_pasangan_do2_ascend(
+                                "Produk",
+                                no_do1,
+                            )
                         except Exception as e:
+                            do2 = None
                             alasan_pending = (
                                 f"Pasangan DO2 belum dapat dipastikan: {e}"
                             )
-                        else:
-                            if do2:
-                                spdo2 = do2["no_do"]
-                            else:
+
+                        if not alasan_pending:
+                            if not do2:
                                 alasan_pending = (
                                     "Netto melewati sisa DO1; "
                                     "menunggu DO2 yang cocok."
                                 )
-
-            except Exception as e:
-                alasan_pending = (
-                    f"Data DO Ascend belum dapat dipastikan: {e}"
-                )
+                            elif sisa_do1 > 0:
+                                # Masih ada bagian untuk DO1: minta Ascend split.
+                                spdo2 = do2["no_do"]
+                            else:
+                                # DO1 habis: seluruh tiket diarahkan ke DO2.
+                                # Tidak meminta Ascend membuat anak dengan netto 0.
+                                tiket["spdo"] = do2["no_do"]
+                                tiket["deliveryorderid"] = int(do2["id_do"])
 
             if alasan_pending:
                 pending = db_ascend_split.simpan_timbang_akhir_pending(
@@ -900,7 +914,7 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
         if not spdo2:
             cursor.execute(
                 """
-                SELECT Bruto, Tara, Netto, [Step], DateTimeOut
+                SELECT Bruto, Tara, Netto, [Step], DateTimeOut, SPDO
                 FROM dbo.PALM_Tickets
                 WHERE TicketID = ?
                 """,
@@ -913,7 +927,7 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
                     "Tiket tidak ditemukan saat memeriksa hasil simpan timbang."
                 )
 
-            bruto_db, tara_db, netto_db, step_db, datetime_out_db = tersimpan
+            bruto_db, tara_db, netto_db, step_db, datetime_out_db, spdo_db = tersimpan
             toleransi_kg = Decimal("0.01")
 
             def berat_sesuai(nilai_db, nilai_harapan):
@@ -950,6 +964,15 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
                 if datetime_out_db is None:
                     raise RuntimeError(
                         "DateTimeOut belum tersimpan pada timbang terakhir."
+                    )
+
+            if ticket_type == "Produk" and step_baru == 2 and not spdo2:
+                spdo_harapan = str(tiket.get("spdo") or "").strip()
+                spdo_tersimpan = str(spdo_db or "").strip()
+
+                if spdo_tersimpan.casefold() != spdo_harapan.casefold():
+                    raise RuntimeError(
+                        "Nomor DO tiket yang tersimpan di Ascend tidak sesuai."
                     )
 
         if spdo2:
@@ -1132,29 +1155,84 @@ def daftar_do(ticket_type):
     finally:
         koneksi.close()
 
-def cari_pasangan_do2_ascend(ticket_type, no_do1):
-    """Cari satu DO outstanding lain dengan kontrak dan atribut yang sama."""
-    no_do1 = (no_do1 or "").strip().casefold()
-    daftar = daftar_do(ticket_type)
+def _baca_do_produk_ascend(no_do):
+    """Baca DO Produk Ascend, termasuk DO yang outstanding-nya sudah nol."""
+    no_do = (no_do or "").strip()
+    if not no_do:
+        return None
 
-    do1 = next(
-        (d for d in daftar if d["no_do"].strip().casefold() == no_do1),
-        None,
-    )
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute(
+            """
+            SELECT TOP (1)
+                DeliveryOrderID,
+                DeliveryOrderNumber,
+                ContractNoEx,
+                ContractID,
+                CustomerID,
+                ProductName,
+                MillID,
+                Quantity,
+                QuantityShipped,
+                Void,
+                Closed
+            FROM dbo.PALM_DeliveryOrders
+            WHERE DeliveryOrderNumber = ?
+            """,
+            no_do,
+        )
+        row = cursor.fetchone()
+    finally:
+        koneksi.close()
+
+    if not row:
+        return None
+
+    quantity = Decimal(str(row[7] or 0))
+    quantity_shipped = Decimal(str(row[8] or 0))
+    sisa = max(Decimal("0"), quantity - quantity_shipped)
+
+    return {
+        "id_do": int(row[0]),
+        "no_do": str(row[1] or "").strip(),
+        "contract_no": str(row[2] or "").strip(),
+        "contract_id": int(row[3]) if row[3] is not None else None,
+        "associate_id": int(row[4]) if row[4] is not None else None,
+        "produk": str(row[5] or "").strip(),
+        "mill_id": int(row[6]) if row[6] is not None else None,
+        "sisa": sisa,
+        "void": bool(row[9]),
+        "closed": bool(row[10]),
+    }
+
+def cari_pasangan_do2_ascend(ticket_type, no_do1):
+    """Cari DO2 outstanding untuk DO Produk yang kontraknya sama."""
+    if ticket_type != "Produk":
+        raise ValueError("Split DO hanya berlaku untuk tiket Produk.")
+
+    do1 = _baca_do_produk_ascend(no_do1)
     if not do1:
         raise ValueError(
-            "DO pertama tidak ditemukan di daftar outstanding Ascend."
+            "DO pertama tidak ditemukan di database Ascend."
+        )
+    if do1["void"]:
+        raise ValueError(
+            "DO pertama sudah dibatalkan di Ascend."
         )
 
-    kontrak1 = do1.get("contract_no", "").strip().casefold()
+    kontrak1 = do1["contract_no"].strip().casefold()
     if not kontrak1:
         raise ValueError(
-            "Nomor referensi kontrak DO pertama kosong; pasangan DO belum bisa ditentukan."
+            "Nomor referensi kontrak DO pertama kosong; "
+            "pasangan DO belum bisa ditentukan."
         )
 
+    daftar = daftar_do("Produk")
     kandidat = [
         d for d in daftar
-        if d["no_do"].strip().casefold() != no_do1
+        if d["no_do"].strip().casefold() != do1["no_do"].casefold()
         and d.get("contract_no", "").strip().casefold() == kontrak1
         and int(d["associate_id"]) == int(do1["associate_id"])
         and d["produk"].strip().casefold() == do1["produk"].strip().casefold()
