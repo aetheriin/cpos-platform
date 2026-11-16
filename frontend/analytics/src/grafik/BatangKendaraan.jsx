@@ -33,7 +33,7 @@ function BatangKendaraan({ data, terpilih, onPilih }) {
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
             <XAxis dataKey="kendaraan" interval={0} height={60} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} tick={<TickKlik onPilih={onPilih} terpilih={terpilih} miring />} />
             <YAxis width={52} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#475569' }} tickFormatter={(v) => angka.format(v)} />
-            <ReferenceLine y={0} stroke="#94a3b8" />
+            <ReferenceLine y={0} stroke="#64748b" />
             <Tooltip content={<Petunjuk />} cursor={{ fill: 'rgba(15,23,42,0.05)' }} />
             <Bar dataKey="rata" name="Rata-rata selisih tara" radius={[3, 3, 0, 0]} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} className="cursor-pointer" onClick={(_, i, e) => onPilih(data[i].kendaraan, e)}>
               {data.map((d) => (

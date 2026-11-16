@@ -89,7 +89,7 @@ export default function KategoriOutstandingChart({ daftar, terpilih = [], onPili
           <Tooltip formatter={(v) => angka.format(v)} labelFormatter={tampil} cursor={{ fill: 'rgba(14,165,233,0.08)' }} />
           <Legend {...LEGENDA} />
 
-          <Bar isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} dataKey="outstanding_awal" name={namaAwal} fill={WARNA.awal} barSize={tebal} radius={[0, 3, 3, 0]} className="cursor-pointer" onClick={(_, i, e) => onPilih(data[i].kategori, e)}>
+          <Bar isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} dataKey="outstanding_awal" name={namaAwal} fill={WARNA.awal} stroke={WARNA.tepiAwal} strokeWidth={1} barSize={tebal} radius={[0, 3, 3, 0]} className="cursor-pointer" onClick={(_, i, e) => onPilih(data[i].kategori, e)}>
             {data.map((d) => (
               <Cell key={d.kategori} fillOpacity={opasitas(d.kategori)} />
             ))}

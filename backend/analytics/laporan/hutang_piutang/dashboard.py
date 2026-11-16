@@ -2,9 +2,9 @@
 PO yang masih outstanding (per item). Nilai hutang/piutang dalam rupiah; rentang tampilan memakai tanggal dokumen."""
 import pandas as pd
 
-from inti.filter import kanonik, saring, tgl
+from inti.filter import FilterTidakValid, kanonik, saring, tgl
 from inti.laporan import rentang_tampil
-from inti.tabel import periksa, susun
+from inti.tabel import nilai, periksa, susun
 from inti.umur import URUTAN_KELOMPOK_UMUR as URUTAN_AGING, kelompok_umur
 from .sumber import BELUM_RV, RV_SEBAGIAN, URUTAN_STATUS
 
@@ -172,3 +172,85 @@ def detail(df, jenis, ds, filt=None, cari=None, urut=None, arah=None, halaman=1,
     urut_awal, arah_awal = URUT_AWAL[jenis]
     hasil = susun(t, KOLOM[jenis], KOLOM_CARI[jenis], cari, urut, arah, urut_awal, arah_awal, halaman, ukuran, pembanding="mitra")
     return {"jenis": jenis, "judul": JENIS_DETAIL[jenis], "periode": {"mulai": tgl(dari), "akhir": tgl(sampai)}, **hasil}
+
+
+# Jendela rincian (klik ganda baris tabel). Semua isi diambil dari data yang sudah dimuat, tanpa query baru.
+_RINCI_HUTANG = [
+    ("Dokumen", [("no_dok", "No. Dokumen", "teks"), ("sumber", "Sumber", "teks"), ("tgl", "Tanggal", "tanggal"), ("umur", "Umur (hari)", "angka"),
+                 ("aging", "Aging", "teks"), ("status", "Status", "teks"), ("keterangan", "Keterangan", "teks")]),
+    ("Nilai", [("nilai_rp", "Nilai", "angka"), ("sudah_bayar_rp", "Sudah PV", "angka"), ("sisa_rp", "Sisa", "angka"),
+               ("dalam_pvr_rp", "Sudah diajukan PVR", "angka"), ("pv_depan_rp", "PV belum jatuh tempo", "angka"), ("belum_diajukan_rp", "Belum diajukan", "angka")]),
+    ("PVR", [("no_pvr", "No. PVR", "teks"), ("tgl_pvr", "Tanggal PVR", "tanggal"), ("approve_pvr", "Approve", "teks"),
+             ("tagihan_pvr", "Tagihan PVR", "angka"), ("potongan_pvr", "Potongan PVR", "angka"), ("nilai_pvr", "Setelah potongan", "angka")]),
+    ("PV", [("no_bayar", "No. PV", "teks"), ("no_pv_depan", "No. PV belum jatuh tempo", "teks"), ("tgl_pv_depan", "Tanggal PV itu", "tanggal")]),
+    ("Kurs", [("mata_uang", "Mata uang", "teks"), ("kurs", "Kurs", "angka"), ("sumber_kurs", "Sumber kurs", "teks")]),
+]
+_RINCI_PIUTANG = [
+    ("Dokumen", [("no_dok", "No. Dokumen", "teks"), ("sumber", "Sumber", "teks"), ("tgl", "Tanggal", "tanggal"), ("umur", "Umur (hari)", "angka"),
+                 ("aging", "Aging", "teks"), ("status", "Status", "teks"), ("keterangan", "Keterangan", "teks")]),
+    ("Nilai", [("nilai_rp", "Nilai", "angka"), ("sudah_bayar_rp", "Sudah RV", "angka"), ("sisa_rp", "Sisa", "angka")]),
+    ("Dokumen terkait", [("no_do", "No. DO", "teks"), ("no_kontrak", "No. Kontrak", "teks"), ("no_tc", "No. TC", "teks"), ("no_bayar", "No. RV", "teks")]),
+    ("Kurs", [("mata_uang", "Mata uang", "teks"), ("kurs", "Kurs", "angka"), ("sumber_kurs", "Sumber kurs", "teks")]),
+]
+_RINCI_PENGADAAN = {
+    "po": [("Dokumen", [("no_dok", "No. PO", "teks"), ("tgl", "Tanggal PO", "tanggal"), ("umur", "Umur (hari)", "angka"), ("aging", "Aging", "teks"),
+                        ("mitra", "Supplier", "teks"), ("kategori", "Kategori", "teks"), ("mata_uang_po", "Mata uang", "teks"), ("dibuat_oleh", "Dibuat oleh", "teks")])],
+    "pr": [("Dokumen", [("no_dok", "No. PR", "teks"), ("tgl", "Tanggal PR", "tanggal"), ("umur", "Umur (hari)", "angka"), ("aging", "Aging", "teks"),
+                        ("kategori", "Kategori", "teks"), ("dibuat_oleh", "Dibuat oleh", "teks"), ("approve_oleh", "Approve oleh", "teks")])],
+}
+_KOLOM_ITEM = {
+    "po": [("kode_barang", "Kode Barang", "teks"), ("nama_barang", "Nama Barang", "teks"), ("satuan", "Satuan", "teks"), ("qty_minta", "Qty Order", "angka"),
+           ("qty_proses", "Qty Diterima", "angka"), ("qty_sisa", "Qty Outstanding", "angka"), ("harga_po", "Harga Satuan", "angka"),
+           ("nilai_sisa", "Nilai Outstanding", "angka"), ("no_lanjut", "No. PI", "teks")],
+    "pr": [("kode_barang", "Kode Barang", "teks"), ("nama_barang", "Nama Barang", "teks"), ("satuan", "Satuan", "teks"), ("qty_minta", "Qty Diminta", "angka"),
+           ("qty_proses", "Qty Sudah PO", "angka"), ("qty_sisa", "Qty Outstanding", "angka"), ("no_lanjut", "No. PO", "teks"), ("mitra", "Supplier", "teks")],
+}
+# Daftar dokumen satu supplier/customer: kolom tabel per dokumen tanpa perusahaan dan mitra (sudah di judul)
+_KOLOM_DOK = {j: [k for k in KOLOM[j] if k[0] not in ("comp", "mitra")][:11] for j in ARAP}
+
+
+def _isian(r, bagian):
+    hasil = []
+    for judul, kolom in bagian:
+        isi = [{"label": lbl, "nilai": nilai(r.get(k), tp), "tipe": tp} for k, lbl, tp in kolom if k in r]
+        isi = [i for i in isi if i["nilai"] not in (None, 0)]
+        if isi:
+            hasil.append({"judul": judul, "isian": isi})
+    return hasil
+
+
+def _tabel_rinci(t, kolom, judul):
+    return {"judul": judul, "kolom": [{"kunci": k, "judul": j, "tipe": tp} for k, j, tp in kolom],
+            "baris": [{k: nilai(r.get(k), tp) for k, _, tp in kolom} for r in t.to_dict("records")]}
+
+
+def rincian(df, ds, jenis, kunci, filt=None):
+    """kunci: {comp, mitra} untuk supplier/customer, {comp, no_dok, sumber?} untuk dokumen dan PR/PO."""
+    periksa(jenis, JENIS_DETAIL, None, [], None)
+    d, _, _, _ = _saring(df, ds, filt)
+    comp = str(kunci.get("comp") or "")
+    if jenis in ("supplier", "customer"):
+        asal = "hutang" if jenis == "supplier" else "piutang"
+        mitra = str(kunci.get("mitra") or "")
+        t = d[(d["jenis"] == asal) & (d["comp"] == comp) & (d["mitra"] == mitra)].sort_values("umur", ascending=False)
+        ringkas = {"dokumen": len(t), "sisa_rp": t["sisa_rp"].sum(), "tertua": t["tgl"].min(), "umur": t["umur"].max()}
+        bagian = _isian(ringkas, [("Ringkasan", [("dokumen", "Dokumen outstanding", "angka"), ("sisa_rp", "Sisa", "angka"),
+                                                 ("tertua", "Dokumen tertua", "tanggal"), ("umur", "Umur terlama (hari)", "angka")])])
+        return {"kecil": f"{'Supplier' if asal == 'hutang' else 'Customer'} · {comp}", "judul": mitra, "bagian": bagian,
+                "tabel": _tabel_rinci(t, _KOLOM_DOK[asal], "Dokumen yang belum lunas")}
+    no = str(kunci.get("no_dok") or "")
+    t = d[(d["jenis"] == jenis) & (d["comp"] == comp) & (d["no_dok"] == no)]
+    if jenis in ARAP:
+        if kunci.get("sumber"):
+            t = t[t["sumber"] == kunci["sumber"]]
+        if t.empty:
+            raise FilterTidakValid("Dokumen tidak ditemukan di data yang dimuat. Muat ulang data lalu coba lagi.")
+        r = t.iloc[0].to_dict()
+        bagian = (_RINCI_HUTANG if jenis == "hutang" else _RINCI_PIUTANG)[:None if r.get("mata_uang") != "IDR" else -1]   # kurs hanya untuk valas
+        return {"kecil": f"{'Hutang' if jenis == 'hutang' else 'Piutang'} · {comp} · {r['mitra']}", "judul": no,
+                "bagian": _isian(r, bagian)}
+    if t.empty:
+        raise FilterTidakValid("Dokumen tidak ditemukan di data yang dimuat. Muat ulang data lalu coba lagi.")
+    r = t.sort_values("umur", ascending=False).iloc[0].to_dict()
+    return {"kecil": f"{jenis.upper()} · {comp}", "judul": no, "bagian": _isian(r, _RINCI_PENGADAAN[jenis]),
+            "tabel": _tabel_rinci(t, _KOLOM_ITEM[jenis], "Item yang masih outstanding")}

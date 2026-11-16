@@ -127,7 +127,7 @@ export default function App() {
         </span>
         <h1 className="mt-4 text-lg font-semibold">{pesanLogin || 'Sesi CPOS berakhir atau belum masuk.'}</h1>
         <p className="mt-1 text-sm text-slate-600">Laporan Analytics dibuka dari menu CPOS. Masuk lagi di CPOS untuk melanjutkan.</p>
-        <button type="button" onClick={keLoginCpos} className="mt-5 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700">
+        <button type="button" onClick={keLoginCpos} className="mt-5 rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800">
           Masuk ke CPOS
         </button>
       </section>

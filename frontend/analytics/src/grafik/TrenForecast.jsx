@@ -67,10 +67,10 @@ function TrenForecast({ tren, forecast, terpilih, onPilih }) {
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
             <XAxis dataKey="hari" tickFormatter={tickTgl} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} tick={{ fontSize: 11, fill: '#475569' }} minTickGap={12} />
             <YAxis width={52} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#475569' }} tickFormatter={sumbu} />
-            <Tooltip content={<Petunjuk ukuran={ukuran} />} cursor={{ stroke: '#94a3b8' }} />
+            <Tooltip content={<Petunjuk ukuran={ukuran} />} cursor={{ stroke: '#64748b' }} />
             <Legend {...LEGENDA} />
             {iv && <Area dataKey="rentang" name={`Interval ${persenIv}`} stroke="none" fill={WARNA_FORECAST} fillOpacity={0.15} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} connectNulls={false} legendType="square" />}
-            {forecast && <ReferenceLine x={forecast.akhir_aktual} stroke="#94a3b8" strokeDasharray="4 4" />}
+            {forecast && <ReferenceLine x={forecast.akhir_aktual} stroke="#64748b" strokeDasharray="4 4" />}
             {terpilih.map((h) => (
               <ReferenceLine key={h} x={h} stroke={WARNA_AKTUAL} strokeWidth={2} strokeOpacity={0.35} />
             ))}

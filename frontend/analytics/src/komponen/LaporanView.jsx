@@ -30,7 +30,7 @@ export function LayarGagal({ pesan, onCoba }) {
       </span>
       <h1 className="mt-4 text-lg font-semibold">Data belum bisa ditampilkan</h1>
       <p className="mt-1 text-sm text-slate-600">{pesan}</p>
-      <button type="button" onClick={onCoba} className="mt-5 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700">
+      <button type="button" onClick={onCoba} className="mt-5 rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800">
         Coba lagi
       </button>
     </section>

@@ -74,6 +74,13 @@ function paramFilter(dataId, filter) {
 export const ambilDashboard = (laporanId, dataId, filter, sinyal) =>
   ambilJson(`/api/laporan/${encodeURIComponent(laporanId)}/dashboard?${paramFilter(dataId, filter)}`, { signal: sinyal })
 
+export function ambilRincian(laporanId, dataId, filter, jenis, kunci, sinyal) {
+  const p = paramFilter(dataId, filter)
+  p.set('jenis', jenis)
+  p.set('kunci', JSON.stringify(kunci))
+  return ambilJson(`/api/laporan/${encodeURIComponent(laporanId)}/rincian?${p}`, { signal: sinyal })
+}
+
 export function ambilDetail(laporanId, dataId, filter, opsi, sinyal) {
   const p = paramFilter(dataId, filter)
   p.set('jenis', opsi.jenis)

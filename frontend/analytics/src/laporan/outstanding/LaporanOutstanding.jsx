@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import Info from '../../komponen/Info'
+import { TENTANG } from '../../komponen/tentang'
 import { angka, rentangTgl, rupiah, rupiahPenuh } from '../../lib/data'
 import { chipDaftar, chipRentang, useDashboard } from '../../lib/filter'
 import FilterMulti from '../../komponen/FilterMulti'
@@ -6,6 +9,7 @@ import { GridKartu, Kartu } from '../../komponen/Kartu'
 import PanelFilter, { TombolFilter } from '../../komponen/PanelFilter'
 import TabelDetail from '../../komponen/TabelDetail'
 import { MemuatLaporan } from '../../komponen/Keadaan'
+import JendelaRincian from '../../komponen/JendelaRincian'
 
 const FILTER_AWAL = { dari: null, sampai: null, perusahaan: [], aging: [], sumber: [], status: [], kategori: [] }
 // grup: filter yang hanya menyaring sebagian tabel diberi judul kelompoknya di panel
@@ -33,6 +37,12 @@ const TAB_PO = [{ kunci: 'po', nama: 'Per item', ket: () => 'Item PO berstatus O
 function catatanPengadaan(item, lama) {
   return `${angka.format(item)} item, ${angka.format(lama)} lewat 30 hari`
 }
+// Identitas baris untuk jendela rincian: per mitra cukup perusahaan dan nama, per dokumen nomor (dan sumber untuk hutang/piutang)
+function bukaRincian(jenis, b) {
+  if (jenis === 'supplier' || jenis === 'customer') return { jenis, judul: b.mitra, kunci: { comp: b.comp, mitra: b.mitra } }
+  return { jenis, judul: b.no_dok, kunci: { comp: b.comp, no_dok: b.no_dok, sumber: b.sumber ?? '' } }
+}
+
 // Judul kecil di atas sekelompok kartu
 function Kelompok({ judul, kolom, children }) {
   return (
@@ -49,13 +59,15 @@ export default function LaporanOutstanding({ dataId, onDataHilang }) {
   const { data, galat, memuat, filter, ubah, terpilih, lepas, reset, panel, setPanel, togglePanel } = useDashboard('outstanding', dataId, FILTER_AWAL, onDataHilang)
   const aktif = [...chipRentang(filter), ...chipDaftar(JENIS, terpilih)]
   const k = data?.kpi
+  const [rinci, setRinci] = useState(null)
+  const buka = (jenis, b) => setRinci(bukaRincian(jenis, b))
 
   return (
     <div className="flex items-start gap-4">
       <div className="min-w-0 flex-1 space-y-4">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold">Outstanding</h1>
+            <h1 className="text-2xl font-semibold">Outstanding<Info teks={TENTANG.Outstanding} label="laporan Outstanding" /></h1>
             {data && <p className="text-sm text-slate-500">Tanggal dokumen {rentangTgl(data.periode.mulai, data.periode.akhir)}</p>}
           </div>
           <TombolFilter jumlahAktif={aktif.length} terbuka={panel} onToggle={togglePanel} />
@@ -109,13 +121,14 @@ export default function LaporanOutstanding({ dataId, onDataHilang }) {
             {k.tanpa_kurs > 0 && (
               <p className="text-xs text-amber-700">{angka.format(k.tanpa_kurs)} dokumen valas belum punya kurs dan tidak ikut dijumlahkan.</p>
             )}
-            <TabelDetail judul="Hutang" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_HUTANG} onDataHilang={onDataHilang} />
-            <TabelDetail judul="Piutang" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_PIUTANG} onDataHilang={onDataHilang} />
-            {TAMPIL_PR && <TabelDetail judul="PR outstanding" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_PR} onDataHilang={onDataHilang} />}
-            <TabelDetail judul="PO outstanding" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_PO} onDataHilang={onDataHilang} />
+            <TabelDetail judul="Hutang" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_HUTANG} onDataHilang={onDataHilang} onBukaBaris={buka} />
+            <TabelDetail judul="Piutang" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_PIUTANG} onDataHilang={onDataHilang} onBukaBaris={buka} />
+            {TAMPIL_PR && <TabelDetail judul="PR outstanding" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_PR} onDataHilang={onDataHilang} onBukaBaris={buka} />}
+            <TabelDetail judul="PO outstanding" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_PO} onDataHilang={onDataHilang} onBukaBaris={buka} />
           </div>
         )}
       </div>
+      {rinci && <JendelaRincian laporanId="outstanding" dataId={dataId} filter={filter} buka={rinci} onTutup={() => setRinci(null)} onDataHilang={onDataHilang} />}
       <PanelFilter terbuka={panel} onTutup={() => setPanel(false)} jumlahAktif={aktif.length} onReset={reset}>
         {data && <FilterTanggal dari={filter.dari} sampai={filter.sampai} efektif={data.rentang} satuan="hari" bawaan={null} dataset={data.dataset} onUbah={ubah} />}
         {JENIS.map(({ kunci, nama, grup }, i) => (

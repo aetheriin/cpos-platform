@@ -7,7 +7,7 @@ import Select from './Select'
 import TabelBaris from './TabelBaris'
 import { Memuat } from './Keadaan'
 
-export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumlah, hasil, galat, memuat, cariInput, onCari, ukuran, onUkuran, onHalaman, onUrut, onEkspor, mengekspor = false, galatEkspor = '', onPilihBaris, barisTerpilih }) {
+export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumlah, hasil, galat, memuat, cariInput, onCari, ukuran, onUkuran, onHalaman, onUrut, onEkspor, mengekspor = false, galatEkspor = '', onPilihBaris, barisTerpilih, onBukaBaris }) {
   const [terbuka, setTerbuka] = useState(true)
   const acuan = hasil ? tab.find((t) => t.kunci === jenis)?.ket(hasil) ?? '' : ''
   const { dari, sampai } = hasil ? rentangBaris(hasil.halaman, hasil.ukuran, hasil.total) : { dari: 0, sampai: 0 }
@@ -31,6 +31,7 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
       <p className="mb-3 mt-0.5 text-xs text-slate-500">
         {acuan}
         {onPilihBaris && ' Klik baris untuk memfilter semua grafik dan kartu ke transaksi itu.'}
+        {onBukaBaris && ' Klik ganda baris untuk melihat rinciannya.'}
       </p>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -42,7 +43,7 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
               role="tab"
               aria-selected={jenis === kunci}
               onClick={() => onJenis(kunci)}
-              className={'rounded-md px-3 py-1 text-sm ' + (jenis === kunci ? 'bg-sky-600 text-white' : 'text-slate-700 hover:bg-slate-100')}
+              className={'rounded-md px-3 py-1 text-sm ' + (jenis === kunci ? 'bg-sky-700 text-white' : 'text-slate-700 hover:bg-slate-100')}
             >
               {nama} <span className="tabular-nums opacity-80">({angka.format(jumlah[kunci])})</span>
             </button>
@@ -94,7 +95,7 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
 
       {hasil && (
         <div className={memuat ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
-          <TabelBaris kolom={hasil.kolom} baris={hasil.baris} urut={hasil.urut} arah={hasil.arah} onUrut={hasil.bisa_urut === false ? undefined : onUrut} onPilihBaris={onPilihBaris} terpilih={barisTerpilih} />
+          <TabelBaris kolom={hasil.kolom} baris={hasil.baris} urut={hasil.urut} arah={hasil.arah} onUrut={hasil.bisa_urut === false ? undefined : onUrut} onPilihBaris={onPilihBaris} terpilih={barisTerpilih} onBukaBaris={onBukaBaris ? (b) => onBukaBaris(jenis, b) : undefined} />
 
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
             <span>
@@ -132,7 +133,7 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
   )
 }
 
-export default function TabelDetail({ judul, laporanId, dataId, filter, jumlah, tab, onDataHilang, onPilihBaris, barisTerpilih }) {
+export default function TabelDetail({ judul, laporanId, dataId, filter, jumlah, tab, onDataHilang, onPilihBaris, barisTerpilih, onBukaBaris }) {
   const [jenis, setJenis] = useState(tab[0].kunci)
   const [cariInput, setCariInput] = useState('')
   const [cari, setCari] = useState('')
@@ -200,6 +201,7 @@ export default function TabelDetail({ judul, laporanId, dataId, filter, jumlah, 
       galatEkspor={galatEkspor}
       onPilihBaris={onPilihBaris}
       barisTerpilih={barisTerpilih}
+      onBukaBaris={onBukaBaris}
     />
   )
 }

@@ -55,7 +55,7 @@ export default function WeeklyChart({ data, minggu, onPilihMinggu, garis = GARIS
           />
           <Legend {...LEGENDA} />
 
-          <Bar isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} dataKey="outstanding_awal" name="Outstanding awal" fill={WARNA.awal} radius={[3, 3, 0, 0]} className="cursor-pointer" onClick={(_, i) => onPilihMinggu(i)}>
+          <Bar isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} dataKey="outstanding_awal" name="Outstanding awal" fill={WARNA.awal} stroke={WARNA.tepiAwal} strokeWidth={1} radius={[3, 3, 0, 0]} className="cursor-pointer" onClick={(_, i) => onPilihMinggu(i)}>
             {baris.map((d) => (
               <Cell key={d.indeks} fillOpacity={opasitas(d.indeks)} />
             ))}

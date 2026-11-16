@@ -23,7 +23,8 @@ const gabungGrup = (kolom) =>
   }, [])
 
 // onPilihBaris dan terpilih opsional: kalau ada, klik baris (atau Enter) memfilter semua grafik dan kartu.
-export default function TabelBaris({ kolom, baris, urut, arah, onUrut, onPilihBaris, terpilih }) {
+// onBukaBaris opsional: klik ganda baris (atau Enter/Spasi saat baris difokus) membuka rinciannya.
+export default function TabelBaris({ kolom, baris, urut, arah, onUrut, onPilihBaris, terpilih, onBukaBaris }) {
   const bergrup = kolom.some((k) => k.grup)
   const awalGrup = (i) => bergrup && i > 0 && kolom[i].grup !== kolom[i - 1].grup ? 'border-l border-slate-300 ' : ''
   return (
@@ -72,10 +73,17 @@ export default function TabelBaris({ kolom, baris, urut, arah, onUrut, onPilihBa
             <tr
               key={`${b.prnumber ?? b.ticket_no}-${b.itemcode ?? ''}-${n}`}
               aria-selected={onPilihBaris ? aktif : undefined}
-              tabIndex={onPilihBaris ? 0 : undefined}
+              tabIndex={onPilihBaris || onBukaBaris ? 0 : undefined}
+              title={onBukaBaris ? 'Klik ganda untuk melihat rincian' : undefined}
               onClick={onPilihBaris ? (e) => onPilihBaris(b, e) : undefined}
-              onKeyDown={onPilihBaris ? (e) => e.key === 'Enter' && onPilihBaris(b, e) : undefined}
-              className={'border-b border-slate-100 ' + (aktif ? 'bg-sky-50 ' : 'hover:bg-slate-50 ') + (onPilihBaris ? 'cursor-pointer focus:outline-none focus-visible:bg-sky-50' : '')}
+              onDoubleClick={onBukaBaris ? () => onBukaBaris(b) : undefined}
+              onKeyDown={onPilihBaris || onBukaBaris ? (e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return
+                e.preventDefault()
+                if (onBukaBaris) onBukaBaris(b)
+                else onPilihBaris(b, e)
+              } : undefined}
+              className={'border-b border-slate-100 ' + (aktif ? 'bg-sky-50 ' : 'hover:bg-slate-50 ') + (onPilihBaris || onBukaBaris ? 'cursor-pointer focus:outline-none focus-visible:bg-sky-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-600' : '')}
             >
               {kolom.map((k, i) => {
                 const teks = formatSel(b[k.kunci], k.tipe)

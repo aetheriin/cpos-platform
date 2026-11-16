@@ -157,10 +157,11 @@ export function bandingKpi(kini, banding, ambil, { jenis = 'relatif', naikBaik =
     teks: arah === 0 ? 'tetap' : `${arah > 0 ? '▲' : '▼'} ${angka}`,
     nada,
     // tahun hanya ditulis kalau melintasi tahun atau bukan tahun ini
-    periode:
-      banding.mulai.slice(0, 4) === banding.akhir.slice(0, 4) && banding.akhir.slice(0, 4) === String(new Date().getFullYear())
+    periode: banding.mulai === banding.akhir
+      ? (banding.akhir.slice(0, 4) === String(new Date().getFullYear()) ? tgl(banding.akhir) : tglLengkap(banding.akhir))
+      : banding.mulai.slice(0, 4) === banding.akhir.slice(0, 4) && banding.akhir.slice(0, 4) === String(new Date().getFullYear())
         ? `${tgl(banding.mulai)}–${tgl(banding.akhir)}`
         : `${tglLengkap(banding.mulai)}–${tglLengkap(banding.akhir)}`,
-    judul: `Periode sebelumnya ${tglLengkap(banding.mulai)} sampai ${tglLengkap(banding.akhir)}`,
+    judul: banding.mulai === banding.akhir ? `Pembanding ${tglLengkap(banding.akhir)}` : `Periode sebelumnya ${tglLengkap(banding.mulai)} sampai ${tglLengkap(banding.akhir)}`,
   }
 }

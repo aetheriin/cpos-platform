@@ -6,6 +6,7 @@ saja (tanpa banyak worker). Isi .env dijelaskan di README.
 """
 import asyncio
 import logging
+import json
 import os
 import time
 from contextlib import asynccontextmanager
@@ -189,7 +190,7 @@ def _batasi_pt(ds, boleh):
     return ds if boleh is None else _DatasetPT(ds, boleh)
 
 
-_PARAMETER_UMUM = {"data_id", "jenis", "jumlah_minggu", "minggu", "dari", "sampai", "cari", "urut", "arah", "halaman", "ukuran"}
+_PARAMETER_UMUM = {"data_id", "jenis", "jumlah_minggu", "minggu", "dari", "sampai", "cari", "urut", "arah", "halaman", "ukuran", "kunci"}
 
 
 def _rentang(lap, ds, jumlah_minggu, dari, sampai):
@@ -383,6 +384,37 @@ def detail(
         raise HTTPException(422, str(e))
     return {**hasil, "maks_ekspor": ekspor.MAKS_BARIS,
             "dataset": {"mulai": ds.mulai, "akhir": ds.akhir, "dimuat_pada": ds.dimuat_pada.isoformat(timespec="seconds")}}
+
+
+@app.get("/api/laporan/{laporan_id}/rincian")
+def rincian(
+    laporan_id: str,
+    data_id: str = Query(..., max_length=40),
+    jenis: str = Query(..., max_length=20),
+    kunci: str = Query(..., max_length=600, description="JSON identitas baris, mis. {comp, no_dok} atau {comp, mitra}"),
+    dari: Annotated[date | None, Query()] = None,
+    sampai: Annotated[date | None, Query()] = None,
+    request: Request = None,
+    user=Depends(pengguna_saat_ini),
+):
+    """Isi jendela rincian satu baris tabel detail."""
+    lap = _laporan(laporan_id)
+    _izinkan(user, lap.id)
+    if lap.rincian is None:
+        raise HTTPException(404, "Laporan ini belum punya rincian per baris.")
+    try:
+        k = json.loads(kunci)
+    except ValueError:
+        raise HTTPException(422, "kunci bukan JSON yang sah")
+    if not isinstance(k, dict):
+        raise HTTPException(422, "kunci harus objek JSON")
+    ds = _dataset(lap, data_id, user)
+    f = _filter(lap, request)
+    lihat, _ = _rentang(lap, ds, 5, dari, sampai)
+    try:
+        return lap.rincian(lihat, jenis, k, f)
+    except FilterTidakValid as e:
+        raise HTTPException(422, str(e))
 
 
 _LABEL_FILTER = {"perusahaan": "Perusahaan", "kategori": "Kategori", "buyer": "Buyer", "pembuat": "Buyer", "umur": "Aging", "supir": "Nama Supir", "produk": "Produk", "operator": "Operator"}

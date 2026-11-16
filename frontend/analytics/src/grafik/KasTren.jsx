@@ -77,7 +77,7 @@ export const SaldoBerjalan = memo(function SaldoBerjalan({ bulanan, satuan }) {
             <XAxis dataKey="label" {...sumbu} />
             <YAxis yAxisId="saldo" width={lebarSumbu(data, 'saldo')} {...sumbu} tickFormatter={sumbuUang} domain={['auto', 'auto']} />
             <YAxis yAxisId="arus" orientation="right" width={lebarSumbu(data, 'debit', 'kreditNeg')} {...sumbu} tickFormatter={sumbuUang} />
-            <Tooltip cursor={{ stroke: '#94a3b8' }} content={({ active, payload }) => {
+            <Tooltip cursor={{ stroke: '#64748b' }} content={({ active, payload }) => {
               const d = active && payload?.[0]?.payload
               if (!d) return null
               return <KotakInfo judul={d.label} baris={[['Debit', uangPenuh(d.debit, satuan)], ['Credit', uangPenuh(d.kredit, satuan)], ['Ending balance', uangPenuh(d.saldo, satuan)]]} />

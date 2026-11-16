@@ -39,11 +39,11 @@ function SebaranTara({ sebaran, indikator, ambang, terpilih, onPilih, risikoTerp
             <XAxis type="number" dataKey="durasi" name="Durasi (menit)" domain={[0, 'auto']} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} tick={{ fontSize: 11, fill: '#475569' }} tickFormatter={(v) => angka.format(v)} label={{ value: 'Durasi timbang (menit)', position: 'insideBottom', offset: -12, fontSize: 11, fill: '#475569' }} />
             <YAxis type="number" dataKey="tara" name="Selisih tara (kg)" width={56} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#475569' }} tickFormatter={(v) => angka.format(v)} />
             <ReferenceArea x1={ambang.durasi_menit} x2={xMaks} y1={yMin} y2={-ambang.tara_kg} fill={WARNA_TARA_RINGAN} fillOpacity={0.06} stroke="none" ifOverflow="hidden" />
-            <ReferenceLine y={0} stroke="#94a3b8" />
+            <ReferenceLine y={0} stroke="#64748b" />
             <ReferenceLine y={ambang.tara_kg} stroke={warnaRisiko('tara')} strokeDasharray="4 4" />
             <ReferenceLine y={-ambang.tara_kg} stroke={warnaRisiko('tara')} strokeDasharray="4 4" />
             <ReferenceLine x={ambang.durasi_menit} stroke={warnaRisiko('durasi')} strokeDasharray="4 4" />
-            <Tooltip content={<PetunjukTitik />} cursor={{ stroke: '#94a3b8' }} isAnimationActive={false} />
+            <Tooltip content={<PetunjukTitik />} cursor={{ stroke: '#64748b' }} isAnimationActive={false} />
             <Legend {...LEGENDA} wrapperStyle={{ ...LEGENDA.wrapperStyle, cursor: 'pointer' }} onClick={(item, _, e) => item.value && onPilihRisiko(item.value, e)} formatter={(nama) => <span style={{ opacity: risikoTerpilih.length > 0 && !risikoTerpilih.includes(nama) ? 0.4 : 1 }}>{nama}</span>} />
             {indikator.map((i) => (
               <Scatter

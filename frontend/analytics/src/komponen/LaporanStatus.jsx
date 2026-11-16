@@ -1,3 +1,5 @@
+import Info from './Info'
+import { TENTANG } from './tentang'
 import { useMemo } from 'react'
 import { rentangTgl, rupiah, rupiahPenuh } from '../lib/data'
 import { chipDaftar, chipRentang, useDashboard } from '../lib/filter'
@@ -30,7 +32,7 @@ export default function LaporanStatus({ laporanId, judul, teksTanggal, kartu, ta
       <div className="min-w-0 flex-1 space-y-4">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold">{judul}</h1>
+            <h1 className="text-2xl font-semibold">{judul}<Info teks={TENTANG[judul]} label={`laporan ${judul}`} /></h1>
             {data && <p className="text-sm text-slate-500">{teksTanggal} {rentangTgl(data.periode.mulai, data.periode.akhir)}</p>}
           </div>
           <TombolFilter jumlahAktif={aktif.length} terbuka={panel} onToggle={togglePanel} />

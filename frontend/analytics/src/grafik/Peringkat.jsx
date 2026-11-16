@@ -8,6 +8,9 @@ function Peringkat({ data, terpilih = [], onPilih, warna = '#0369a1', kosong = n
   const maks = Math.max(...data.map((d) => Math.abs(d.nilai)), 1)
   const adaPilihan = terpilih.length > 0
   const adaKanan = data.some((d) => d.kanan)
+  // Kolom nama selebar nama terpanjang (maks 40%), supaya batang tidak jauh dari nama yang pendek
+  const panjang = Math.max(...data.map((d) => String(d.nama).length))
+  const kolom = `minmax(0, min(40%, ${panjang + 1}ch)) minmax(0, 1fr)` + (adaKanan ? ' auto' : '')
   return (
     <div className="flex h-full flex-col">
       {/* Satu baris per nama (nama | batang + angka) supaya peringkat 10 nama tidak memakan banyak tempat; nama panjang dipotong, lengkapnya saat disorot */}
@@ -21,8 +24,8 @@ function Peringkat({ data, terpilih = [], onPilih, warna = '#0369a1', kosong = n
                 onClick={(e) => onPilih?.(d.nama, e)}
                 aria-pressed={aktif}
                 title={d.judul ?? d.nama}
-                className={'grid w-full items-center ' + (adaKanan ? 'grid-cols-[minmax(0,2fr)_minmax(0,3fr)_auto]' : 'grid-cols-[minmax(0,2fr)_minmax(0,3fr)]') + ' gap-2 rounded-md px-1 py-0.5 text-left text-xs hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500'}
-                style={{ opacity: adaPilihan && !aktif ? 0.45 : 1 }}
+                className={'grid w-full items-center gap-2 rounded-md px-1 py-0.5 text-left text-xs hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500'}
+                style={{ gridTemplateColumns: kolom, opacity: adaPilihan && !aktif ? 0.45 : 1 }}
               >
                 <span className={'truncate ' + (aktif ? 'font-semibold text-slate-900' : 'text-slate-700')}>{d.nama}</span>
                 <span className="flex min-w-0 items-center gap-2">

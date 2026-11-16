@@ -3,7 +3,7 @@ import Info from './Info'
 import { TombolFilter } from './PanelFilter'
 import PilihTataLetak from './PilihTataLetak'
 
-const CARA_FILTER = 'Klik batang, titik, label, legenda, atau baris tabel untuk memfilter. Tahan Ctrl (Cmd di Mac) untuk memilih lebih dari satu.'
+import { CARA_FILTER, TENTANG } from './tentang'
 
 // Kepala yang sama untuk semua dashboard: judul, satu baris periode (dengan periode pembanding), pilihan tata letak, tombol filter,
 // lalu chip filter aktif. aktif: daftar [jenis, nilai, teks]; klik chip memanggil onLepas(jenis, nilai).
@@ -14,7 +14,7 @@ export default function KepalaLaporan({ judul, data, aktif, onLepas, onReset, pa
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold">
             {judul}
-            <Info teks={CARA_FILTER} label="cara memfilter" />
+            <Info teks={[TENTANG[judul], CARA_FILTER].filter(Boolean).join(' ')} label={`laporan ${judul}`} />
           </h1>
           {data && (
             <p className="text-sm text-slate-500">

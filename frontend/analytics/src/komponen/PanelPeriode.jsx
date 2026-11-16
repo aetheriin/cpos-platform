@@ -76,7 +76,7 @@ export function PopupPeriode({ nama, mulai, akhir, onMulai, onAkhir, onMuat, onT
               type="button"
               disabled={Boolean(galat)}
               onClick={onMuat}
-              className="rounded-md bg-sky-600 px-4 py-1.5 text-sm text-white hover:bg-sky-700 disabled:opacity-40"
+              className="rounded-md bg-sky-700 px-4 py-1.5 text-sm text-white hover:bg-sky-800 disabled:opacity-40"
             >
               Muat data
             </button>

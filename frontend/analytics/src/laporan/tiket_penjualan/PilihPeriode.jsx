@@ -51,7 +51,7 @@ export default function PilihPeriode({ mode, acuan, batas, onUbah, sampaiJam = n
             onClick={() => mode !== m.kunci && pilih(m.kunci, acuan)}
             className={
               'rounded-md px-3.5 py-1.5 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ' +
-              (mode === m.kunci ? 'bg-sky-600 font-medium text-white' : 'text-slate-700 hover:bg-slate-100')
+              (mode === m.kunci ? 'bg-sky-700 font-medium text-white' : 'text-slate-700 hover:bg-slate-100')
             }
           >
             {m.nama}

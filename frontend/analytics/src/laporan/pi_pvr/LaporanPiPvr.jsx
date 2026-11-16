@@ -1,3 +1,5 @@
+import Info from '../../komponen/Info'
+import { TENTANG } from '../../komponen/tentang'
 import { angka, rentangTgl, rupiah, rupiahPenuh } from '../../lib/data'
 import { chipDaftar, chipRentang, useDashboard } from '../../lib/filter'
 import FilterMulti from '../../komponen/FilterMulti'
@@ -31,7 +33,7 @@ export default function LaporanPiPvr({ dataId, onDataHilang }) {
       <div className="min-w-0 flex-1 space-y-4">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold">Purchase Invoice</h1>
+            <h1 className="text-2xl font-semibold">Purchase Invoice<Info teks={TENTANG['Purchase Invoice']} label="laporan Purchase Invoice" /></h1>
             {data && <p className="text-sm text-slate-500">Tanggal PI {rentangTgl(data.periode.mulai, data.periode.akhir)}</p>}
           </div>
           <TombolFilter jumlahAktif={aktif.length} terbuka={panel} onToggle={togglePanel} />
