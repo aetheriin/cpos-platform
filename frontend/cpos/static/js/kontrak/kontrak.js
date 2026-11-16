@@ -1,5 +1,7 @@
 // ===== KONTRAK & DO (HO) =====
 let daftarDO = [];
+let daftarKontrak = [];
+let timerCariKontrak = null;
 let filterAktifDO = '';
 let timerCariDO = null;
 const bolehUbahDO = () => document.getElementById('tabelDO').dataset.bolehUbah === '1';
@@ -8,6 +10,7 @@ const bolehUbahDO = () => document.getElementById('tabelDO').dataset.bolehUbah =
 document.addEventListener('DOMContentLoaded', () => {
     const cari = new URLSearchParams(location.search).get('cari');
     if (cari) document.getElementById('cariDO').value = cari;
+    muatKontrak();
     muatDO();
 });
 
@@ -18,6 +21,106 @@ async function muatDO() {
     if (data.error) { tbody.innerHTML = `<p class="text-sm text-red-600">${escapeHtml(data.error)}</p>`; return false; }
     daftarDO = data;
     tampilkanDO();
+}
+
+function nilaiKontrak(k, ...namaKolom) {
+    for (const nama of namaKolom) {
+        if (k[nama] !== undefined && k[nama] !== null) return k[nama];
+    }
+    return null;
+}
+
+function flagKontrak(nilai) {
+    return nilai === true || nilai === 1 ||
+        ['1', 'true', 'yes'].includes(String(nilai ?? '').toLowerCase());
+}
+
+async function muatKontrak() {
+    const input = document.getElementById('cariKontrak');
+    const tabel = document.getElementById('tabelKontrak');
+    if (!input || !tabel) return;
+
+    const data = await ambilJson(
+        `/api/kontrak/kontrak?cari=${encodeURIComponent(input.value.trim())}`
+    );
+
+    if (!Array.isArray(data)) {
+        tabel.innerHTML =
+            `<tr><td colspan="8" class="table-cell text-red-600">` +
+            `${escapeHtml(data.error || 'Daftar kontrak gagal dimuat.')}</td></tr>`;
+        return;
+    }
+
+    daftarKontrak = data;
+    tampilkanKontrak();
+}
+
+function tampilkanKontrak() {
+    const tabel = document.getElementById('tabelKontrak');
+    if (!tabel) return;
+
+    const teks = nilai => nilai == null || nilai === '' ? '-' : String(nilai);
+    const aman = nilai => escapeHtml(teks(nilai));
+    const angka = nilai => {
+        if (nilai == null || nilai === '') return '-';
+        const n = Number(nilai);
+        return Number.isFinite(n) ? n.toLocaleString('id-ID') : aman(nilai);
+    };
+
+    tabel.innerHTML = daftarKontrak.map(k => {
+        const no = nilaiKontrak(
+            k, 'no_kontrak', 'nomor_kontrak', 'contract_number',
+            'purchase_contract_number', 'ContractNumber', 'PurchaseContractNumber'
+        );
+        const jenis = nilaiKontrak(
+            k, 'jenis_transaksi', 'jenis_kontrak', 'contract_type',
+            'purchase_contract_type', 'ContractType', 'PurchaseContractType'
+        );
+        const pihak = nilaiKontrak(
+            k, 'nama_associate', 'nama_supplier', 'nama_customer',
+            'associate_name', 'supplier_name', 'customer_name'
+        );
+        const produk = nilaiKontrak(
+            k, 'nama_produk', 'product_name', 'ProductName'
+        );
+        const tanggal = nilaiKontrak(
+            k, 'tanggal_kontrak', 'tanggal', 'contract_date',
+            'purchase_contract_date', 'ContractDate', 'PurchaseContractDate'
+        );
+        const qty = nilaiKontrak(k, 'qty_kg', 'quantity', 'Quantity');
+        const jumlahDO = nilaiKontrak(
+            k, 'jumlah_do', 'do_count', 'linked_do_count', 'JumlahDO'
+        );
+        const voided = flagKontrak(nilaiKontrak(k, 'is_void', 'void', 'Void'));
+        const closed = flagKontrak(nilaiKontrak(k, 'is_closed', 'closed', 'Closed'));
+        const aktif = nilaiKontrak(k, 'is_active', 'active', 'Active');
+
+        let status = 'Aktif';
+        if (voided) status = 'Void';
+        else if (closed) status = 'Ditutup';
+        else if (aktif != null && !flagKontrak(aktif)) status = 'Nonaktif';
+
+        return `<tr>
+            <td class="table-cell font-mono">${aman(no)}</td>
+            <td class="table-cell">${aman(jenis)}</td>
+            <td class="table-cell">${aman(pihak)}</td>
+            <td class="table-cell">${aman(produk)}</td>
+            <td class="table-cell">${aman(tanggal)}</td>
+            <td class="table-cell text-right font-mono">${angka(qty)}</td>
+            <td class="table-cell text-right">${aman(jumlahDO)}</td>
+            <td class="table-cell">${aman(status)}</td>
+        </tr>`;
+    }).join('') || `
+        <tr>
+            <td colspan="8" class="table-cell text-center text-slate-400">
+                Belum ada data kontrak
+            </td>
+        </tr>`;
+}
+
+function cariDaftarKontrak() {
+    clearTimeout(timerCariKontrak);
+    timerCariKontrak = setTimeout(muatKontrak, 300);
 }
 
 const fmtKg = v => v == null ? '-' : Number(v).toLocaleString('id-ID');

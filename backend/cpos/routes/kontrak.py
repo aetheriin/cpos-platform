@@ -31,6 +31,12 @@ def _json_do(d):
             "angkutan": [{**a, "qty_kg": _angka(a["qty_kg"]), "ongkos_per_kg": _angka(a.get("ongkos_per_kg"))} for a in d["angkutan"]],
             "ppn": bool(d.get("ppn")), "harga_termasuk_ppn": bool(d.get("harga_termasuk_ppn"))}
 
+def _json_kontrak(k):
+    """Ubah tanggal dari hasil query Ascend agar siap dikirim sebagai JSON."""
+    return {
+        nama: _tgl(nilai) if hasattr(nilai, "strftime") else nilai
+        for nama, nilai in k.items()
+    }
 
 @kontrak_bp.route("/kontrak")
 @login_required
@@ -77,6 +83,16 @@ def do_daftar():
         )
     ])
 
+@kontrak_bp.route("/api/kontrak/kontrak")
+@login_required
+@lihat(*MENU_KONTRAK)
+def kontrak_daftar():
+    return jsonify([
+        _json_kontrak(k)
+        for k in db_ascend.daftar_kontrak_ascend(
+            request.args.get("cari", "")
+        )
+    ])
 
 def _company_user():
     """PT yang boleh dipilih sebagai pemilik kontrak: kantor pusat = semua PT aktif, selain itu PT sendiri."""

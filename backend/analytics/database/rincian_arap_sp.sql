@@ -5,7 +5,7 @@
 --        '#SUP' untuk semua PO terbuka satu supplier sekaligus (@NoDok = nama supplier persis seperti di ERP),
 --        atau '#PR' untuk satu PR (barang beserta PO dan PI lanjutannya).
 -- Hasil satu tabel, kolom Bagian membedakan isinya:
---   'info'  : keterangan tambahan dokumen (Nama = label, Ket = isi): lengkap untuk PI, Keterangan saja untuk sumber lain yang punya kolom Remarks
+--   'info'  : keterangan tambahan dokumen (Nama = label, Ket = isi): lengkap untuk PI; sumber lain: Dibuat oleh (operator untuk tiket) dan Keterangan
 --   'item'  : baris barang PI atau PO (No = kode barang, Nama = nama barang, Qty, Harga, Nilai, Ket = catatan baris),
 --             dengan asal dokumennya: NoPO, NoPR, TglPR, PembuatPR, serta KetPO (keterangan PO), KetPR (keterangan PR), PerluPR (keperluan PR),
 --             dan NoPI (PI lanjutan baris PO/PR, dipisah koma)
@@ -100,6 +100,17 @@ BEGIN
              + @tabel + N'' M WHERE '' + @kunci + N'' = @ID AND NULLIF(LTRIM(CAST(M.Remarks AS nvarchar(max))), '''''''') IS NOT NULL'';
     EXEC sp_executesql @sql, N''@ID int'', @ID;
 END
+-- Pembuat dokumen untuk sumber selain PI (PI sudah di bagian atas), kalau tabelnya punya kolom CreatedBy
+IF @tabel <> ''AP_Purchases'' AND COL_LENGTH(@tabel, ''CreatedBy'') IS NOT NULL
+BEGIN
+    SET @sql = N''INSERT #R (Bagian, Urut, Nama, Ket) SELECT ''''info'''', 5, ''''Dibuat oleh'''', LEFT(CAST(M.CreatedBy AS nvarchar(200)), 200) FROM ''
+             + @tabel + N'' M WHERE '' + @kunci + N'' = @ID AND NULLIF(LTRIM(CAST(M.CreatedBy AS nvarchar(200))), '''''''') IS NOT NULL'';
+    EXEC sp_executesql @sql, N''@ID int'', @ID;
+END
+-- Tiket timbang tidak mencatat pembuat; yang tercatat operator timbangan
+IF @tabel = ''PALM_Tickets''
+    INSERT #R (Bagian, Urut, Nama, Ket)
+    SELECT ''info'', 5, ''Operator timbang'', LEFT(Operator, 200) FROM PALM_Tickets WHERE TicketID = @ID AND NULLIF(LTRIM(Operator), '''') IS NOT NULL;
 
 -- PVR yang sudah dibuatkan PV (aturan ERP, sama dengan SP Outstanding)
 SELECT DISTINCT SourceVoucherID AS ID INTO #PVRSelesai FROM FI_ARAP WHERE (VoidCheck = 1 OR Void = 0) AND SourceVoucherID > 0 AND IsAR = 0

@@ -1154,7 +1154,153 @@ def daftar_do(ticket_type):
         return hasil
     finally:
         koneksi.close()
+def daftar_kontrak_ascend(cari="", batas=500):
+    """Daftar Kontrak Produk dan Kontrak Pembelian TBS Luar dari Ascend."""
+    cari = (cari or "").strip()
+    pola = f"%{cari}%"
+    batas = max(1, min(int(batas), 1000))
 
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute(
+            f"""
+            SELECT TOP ({batas}) *
+            FROM (
+                SELECT
+                    CAST('PRODUK' AS varchar(10)) AS source_kind,
+                    c.ContractID AS source_id,
+                    c.ContractNumber AS no_kontrak,
+                    c.ReferenceNo AS no_referensi,
+                    CAST('PENJUALAN' AS varchar(20)) AS jenis_transaksi,
+                    c.CustomerID AS associate_id,
+                    a.CustomerName AS nama_associate,
+                    c.ProductName AS nama_produk,
+                    c.ContractDate AS tanggal_kontrak,
+                    c.Quantity AS qty_kg,
+                    c.PricePerKg AS harga_per_kg,
+                    c.TaxPercent AS tax_percent,
+                    c.InclusiveTax AS inclusive_tax,
+                    c.MillID AS mill_id,
+                    c.CreateDate AS created_at,
+                    c.Void AS is_void,
+                    CAST(0 AS bit) AS is_closed,
+                    c.ManagerApproved AS manager_approved,
+                    c.DirectorApproved AS director_approved,
+                    c.Verified AS verified,
+                    (
+                        SELECT COUNT_BIG(*)
+                        FROM dbo.PALM_DeliveryOrders d
+                        WHERE d.ContractID = c.ContractID
+                          AND ISNULL(d.Void, 0) = 0
+                    ) AS jumlah_do
+                FROM dbo.PALM_Contracts c
+                LEFT JOIN dbo.AR_Customers a
+                    ON a.CustomerID = c.CustomerID
+
+                UNION ALL
+
+                SELECT
+                    CAST('TBSLUAR' AS varchar(10)) AS source_kind,
+                    pc.PurchaseContractID AS source_id,
+                    pc.PurchaseContractNumber AS no_kontrak,
+                    pc.ReferenceNo AS no_referensi,
+                    CAST('PEMBELIAN' AS varchar(20)) AS jenis_transaksi,
+                    pc.SupplierID AS associate_id,
+                    s.SupplierName AS nama_associate,
+                    pc.ProductName AS nama_produk,
+                    pc.PurchaseContractDate AS tanggal_kontrak,
+                    pc.Quantity AS qty_kg,
+                    pc.PricePerKg AS harga_per_kg,
+                    pc.TaxPercent AS tax_percent,
+                    pc.InclusiveTax AS inclusive_tax,
+                    pc.MillID AS mill_id,
+                    pc.CreateDate AS created_at,
+                    pc.Void AS is_void,
+                    pc.Closed AS is_closed,
+                    pc.ManagerApproved AS manager_approved,
+                    pc.DirectorApproved AS director_approved,
+                    pc.Verified AS verified,
+                    (
+                        SELECT COUNT_BIG(*)
+                        FROM dbo.PALM_ReceivingDeliveryOrders r
+                        WHERE r.ContractID = pc.PurchaseContractID
+                          AND ISNULL(r.Void, 0) = 0
+                    ) AS jumlah_do
+                FROM dbo.PALM_PurchaseContracts pc
+                LEFT JOIN dbo.AP_Suppliers s
+                    ON s.SupplierID = pc.SupplierID
+            ) AS daftar
+            WHERE no_kontrak LIKE ?
+               OR no_referensi LIKE ?
+               OR nama_associate LIKE ?
+               OR nama_produk LIKE ?
+            ORDER BY
+                CASE WHEN is_void = 0 AND is_closed = 0 THEN 0 ELSE 1 END,
+                created_at DESC
+            """,
+            pola,
+            pola,
+            pola,
+            pola,
+        )
+
+        hasil = []
+        for row in _baris_hasil(cursor):
+            hasil.append({
+                "id_kontrak": (
+                    f"{row['source_kind']}:{int(row['source_id'])}"
+                ),
+                "jenis_dokumen": str(row["source_kind"]).strip(),
+                "no_kontrak": str(row.get("no_kontrak") or "").strip(),
+                "no_referensi": str(
+                    row.get("no_referensi") or ""
+                ).strip(),
+                "jenis_transaksi": str(
+                    row.get("jenis_transaksi") or ""
+                ).strip(),
+                "id_associate": (
+                    int(row["associate_id"])
+                    if row.get("associate_id") is not None else None
+                ),
+                "nama_associate": str(
+                    row.get("nama_associate") or ""
+                ).strip(),
+                "nama_produk": str(row.get("nama_produk") or "").strip(),
+                "tanggal_kontrak": row.get("tanggal_kontrak"),
+                "qty_kg": (
+                    float(row["qty_kg"])
+                    if row.get("qty_kg") is not None else None
+                ),
+                "harga_per_kg": (
+                    float(row["harga_per_kg"])
+                    if row.get("harga_per_kg") is not None else None
+                ),
+                "tax_percent": (
+                    float(row["tax_percent"])
+                    if row.get("tax_percent") is not None else 0
+                ),
+                "inclusive_tax": bool(row.get("inclusive_tax")),
+                "mill_id": (
+                    int(row["mill_id"])
+                    if row.get("mill_id") is not None else None
+                ),
+                "created_at": row.get("created_at"),
+                "is_void": bool(row.get("is_void")),
+                "is_closed": bool(row.get("is_closed")),
+                "is_active": not bool(
+                    row.get("is_void") or row.get("is_closed")
+                ),
+                "manager_approved": bool(row.get("manager_approved")),
+                "director_approved": bool(row.get("director_approved")),
+                "verified": bool(row.get("verified")),
+                "jumlah_do": int(row.get("jumlah_do") or 0),
+            })
+
+        return hasil
+    finally:
+        koneksi.close()
+        
 def daftar_kontrak_do_ascend(cari="", batas=500):
     """Daftar DO Produk dan TBS Luar untuk halaman Kontrak & DO."""
     cari = (cari or "").strip()
