@@ -327,6 +327,7 @@
         const mulai = performance.now();
         let pesanSelesai = 'Data analisis item berhasil dimuat.';
         let statusSelesai = '';
+        root.setAttribute('aria-busy', 'true');
         elements.loading.classList.remove('hidden');
         elements.loading.classList.add('flex');
         elements.loadingTime.textContent = '0 detik';
@@ -361,6 +362,7 @@
             loadingInterval = null;
             elements.loading.classList.add('hidden');
             elements.loading.classList.remove('flex');
+            root.setAttribute('aria-busy', 'false');
             elements.status.textContent = `${statusSelesai} · ${durasi}`;
             showDuration(`${pesanSelesai} Waktu loading: ${durasi}.`);
             elements.refresh.disabled = false;

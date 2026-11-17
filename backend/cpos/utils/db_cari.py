@@ -6,25 +6,6 @@ def _pola(kata):
     aman = kata.replace("[", "[[]").replace("%", "[%]").replace("_", "[_]")
     return f"%{aman}%"
 
-
-def cari_tiket(kata, id_area=None, batas=8):
-    filter_area, param_area = _filter_area(id_area)
-    pola = _pola(kata)
-    return _query(f"""
-        SELECT TOP {int(batas)} t.TicketNumber AS no_tiket, k.NoVehicle AS no_plat, t.DONumber AS no_do, t.StatusCode AS status_alur, t.TicketDate AS created_at,
-               s.SupplierName AS customer, p.ProductName AS produk, d.Nama AS supir,
-               COALESCE(tb.Netto, t.SplitWeight) AS netto
-        FROM WeightBridge t
-        JOIN DetailVehicle k ON k.IDVehicle = t.IDVehicle
-        JOIN Supplier s ON s.SupplierID = t.SupplierID
-        JOIN Product p ON p.ProductID = t.ProductID
-        JOIN Users d ON d.UserID = t.DriverID
-        LEFT JOIN WeighingSummary tb ON tb.TicketNumber = t.TicketNumber
-        WHERE (t.TicketNumber LIKE ? OR REPLACE(k.NoVehicle, ' ', '') LIKE REPLACE(?, ' ', '') OR t.DONumber LIKE ?
-               OR d.Nama LIKE ? OR s.SupplierName LIKE ?){filter_area}
-        ORDER BY t.TicketDate DESC""", pola, pola, pola, pola, pola, *param_area)
-
-
 def cari_do(kata, company=None, batas=5):
     """DO / kontrak: no. DO, no. kontrak, atau nama customer. Realisasi = total netto tiket DO (tanpa VOID).
     company: None = semua PT, atau kode PT yang boleh dilihat (kontrak milik PT itu)."""
@@ -45,9 +26,7 @@ def cari_do(kata, company=None, batas=5):
         WHERE (o.DONumber LIKE ? OR k.ContractNumber LIKE ? OR c.SupplierName LIKE ?){f_pt}
         ORDER BY o.Active DESC, o.CreateDate DESC""", pola, pola, pola, *sorted(company or ()))
 
-
 NIK_MIN_ANGKA = 6     # NIK baru dicari bila yang diketik minimal sekian angka, supaya NIK tidak bisa ditelusuri dari 2 angka
-
 
 def cari_personel(kata, batas=5):
     pola = _pola(kata)

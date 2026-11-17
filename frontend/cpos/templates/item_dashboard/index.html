@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block tab_content %}
-<div id="itemDashboard" data-api="{{ url_for('item_dashboard.api_item') }}">
+<div id="itemDashboard" class="relative" data-api="{{ url_for('item_dashboard.api_item') }}" aria-busy="true">
     <div class="section-box p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
         <p id="statusItemDashboard" class="text-sm text-slate-500" role="status">Memuat analisis item…</p>
         <button id="refreshItemDashboard" type="button" class="btn-secondary btn-sm">
@@ -48,7 +48,7 @@
             </div>
         </div>
     </section>
-    <div id="popupMemuatItemDashboard" class="hidden fixed inset-0 z-50 items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="judulMemuatItemDashboard">
+    <div id="popupMemuatItemDashboard" class="hidden absolute inset-0 z-10 items-center justify-center bg-slate-900/40 p-4" role="status" aria-live="polite" aria-labelledby="judulMemuatItemDashboard">
         <div class="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 text-center shadow-xl">
             <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" aria-hidden="true"></div>
             <h2 id="judulMemuatItemDashboard" class="mt-4 font-semibold text-slate-800">Sedang memuat data item</h2>

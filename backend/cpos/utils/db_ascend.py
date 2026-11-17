@@ -516,6 +516,91 @@ def daftar_tiket_ascend_aktif(ticket_ids):
     finally:
         koneksi.close()
 
+def cari_tiket_ascend_global(kata, ticket_ids, batas=8):
+    """Cari tiket Ascend yang TicketID-nya sudah dibatasi berdasarkan area CPOS."""
+    kata = (kata or "").strip()
+    ticket_ids = sorted({int(i) for i in (ticket_ids or [])})
+
+    if not kata or not ticket_ids:
+        return []
+
+    batas = max(1, min(int(batas), 8))
+    aman = kata.replace("[", "[[]").replace("%", "[%]").replace("_", "[_]")
+    pola = f"%{aman}%"
+    hasil = []
+
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+
+        for awal in range(0, len(ticket_ids), 850):
+            bagian = ticket_ids[awal:awal + 850]
+            tanda_tanya = ", ".join("?" for _ in bagian)
+
+            cursor.execute(
+                f"""
+                SELECT TOP ({batas})
+                    t.TicketNo AS no_tiket,
+                    t.VehicleNo AS no_plat,
+                    t.SPDO AS no_do,
+                    CASE
+                        WHEN ISNULL(t.Void, 0) = 1 THEN 'VOID'
+                        WHEN ISNULL(t.[Step], 0) >= 2
+                             AND t.DateTimeOut IS NOT NULL THEN 'SELESAI'
+                        WHEN ISNULL(t.[Step], 0) = 0 THEN 'SECURITY_REGISTER'
+                        ELSE 'TIMBANG_2'
+                    END AS status_alur,
+                    COALESCE(t.DateTimeIn, CONVERT(DATETIME, t.[Date])) AS created_at,
+                    COALESCE(c.CustomerName, s.SupplierName, '') AS customer,
+                    t.ProductName AS produk,
+                    CAST('' AS VARCHAR(100)) AS supir,
+                    CASE
+                        WHEN ISNULL(t.[Step], 0) >= 2
+                             AND t.DateTimeOut IS NOT NULL THEN t.Netto
+                        ELSE NULL
+                    END AS netto
+                FROM dbo.PALM_Tickets t
+                LEFT JOIN dbo.AR_Customers c
+                    ON t.TicketType = 'Produk'
+                   AND c.CustomerID = t.AssociateID
+                LEFT JOIN dbo.AP_Suppliers s
+                    ON t.TicketType = 'TBSLuar'
+                   AND s.SupplierID = t.AssociateID
+                WHERE t.TicketID IN ({tanda_tanya})
+                  AND ISNULL(t.ParentTicketID, 0) = 0
+                  AND (
+                      t.TicketNo LIKE ?
+                      OR REPLACE(UPPER(ISNULL(t.VehicleNo, '')), ' ', '')
+                         LIKE REPLACE(UPPER(?), ' ', '')
+                      OR ISNULL(t.SPDO, '') LIKE ?
+                      OR COALESCE(c.CustomerName, s.SupplierName, '') LIKE ?
+                      OR ISNULL(t.ProductName, '') LIKE ?
+                  )
+                ORDER BY
+                    COALESCE(t.DateTimeIn, CONVERT(DATETIME, t.[Date])) DESC
+                """,
+                *bagian,
+                pola,
+                pola,
+                pola,
+                pola,
+                pola,
+            )
+
+            hasil.extend(_baris_hasil(cursor))
+
+        hasil.sort(
+            key=lambda row: row.get("created_at") or datetime.min,
+            reverse=True,
+        )
+
+        for row in hasil:
+            row["netto"] = float(row["netto"]) if row["netto"] is not None else None
+
+        return hasil[:batas]
+    finally:
+        koneksi.close()
+
 def baca_berat_tiket_ascend(no_tiket):
     """Baca berat Ascend sesuai tahap timbang tiket."""
     koneksi = _koneksi()

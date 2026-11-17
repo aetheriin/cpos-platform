@@ -2,20 +2,17 @@
 from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
 
-from utils import db_cari
+from utils import db_cari, db_ascend, db_ascend_split
 from utils.area import area_data, company_user
 from utils.hak_akses import MENU_KENDARAAN, MENU_KONTRAK, MENU_OPERASI, MENU_ORANG, admin_required, boleh_lihat
 
 cari_bp = Blueprint("cari", __name__)
 MIN_HURUF = 2
 
-
 def _kata():
     return (request.args.get("q") or "").strip()[:50]
 
-
 BULAN = ("Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des")
-
 
 def _waktu(r):
     w = r.get("created_at")
@@ -45,9 +42,16 @@ def cari():
     hasil = {"tiket": [], "do": [], "personel": [], "kendaraan": []}
     if len(kata) < MIN_HURUF:
         return jsonify(hasil)
+    
     if _boleh(MENU_OPERASI):
-        hasil["tiket"] = [_waktu({**r, "netto": float(r["netto"]) if r["netto"] is not None else None})
-                          for r in db_cari.cari_tiket(kata, area_data(current_user.id))]
+        ticket_ids = db_ascend_split.daftar_ticket_id_di_area(
+            area_data(current_user.id)
+        )
+        hasil["tiket"] = [
+            _waktu(r)
+            for r in db_ascend.cari_tiket_ascend_global(kata, ticket_ids)
+        ]
+
     if _boleh(MENU_KONTRAK):
         hasil["do"] = [{**r, "qty_kg": _angka(r["qty_kg"]), "realisasi_kg": _angka(r["realisasi_kg"]),
                         "berlaku_sampai": str(r["berlaku_sampai"])[:10] if r["berlaku_sampai"] else None}
