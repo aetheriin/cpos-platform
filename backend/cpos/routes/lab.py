@@ -56,6 +56,21 @@ def lab_antrian():
             "error": "Antrean Lab Ascend belum dapat dibaca."
         }), 503
 
+@lab_bp.route("/api/lab/riwayat")
+@login_required
+@lihat(*MENU_OPERASI)
+def lab_riwayat_ascend():
+    try:
+        ticket_ids = db_ascend_split.daftar_ticket_id_lab_di_area(
+            area_data(current_user.id)
+        )
+        return jsonify(db_ascend.daftar_riwayat_lab_ascend(ticket_ids))
+    except Exception:
+        current_app.logger.exception("Gagal membaca riwayat Lab Ascend")
+        return jsonify({
+            "error": "Riwayat Lab Ascend belum dapat dibaca."
+        }), 503
+
 @lab_bp.route("/api/lab/simpan", methods=["POST"])
 @login_required
 @izin('FORM_LAB', 'tambah')

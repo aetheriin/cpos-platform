@@ -485,6 +485,88 @@ def daftar_antrian_lab_ascend(ticket_ids):
     finally:
         koneksi.close()
 
+def daftar_riwayat_lab_ascend(ticket_ids, batas=100):
+    """Baca hasil Lab tersimpan dari tiket induk Ascend yang boleh dilihat area."""
+    ticket_ids = sorted({int(ticket_id) for ticket_id in (ticket_ids or [])})
+    if not ticket_ids:
+        return []
+
+    batas = max(1, min(int(batas), 200))
+    hasil = []
+    koneksi = _koneksi()
+
+    try:
+        cursor = koneksi.cursor()
+
+        # Kelompok 850 menjaga jumlah parameter SQL Server tetap aman.
+        for awal in range(0, len(ticket_ids), 850):
+            bagian = ticket_ids[awal:awal + 850]
+            tanda_tanya = ", ".join("?" for _ in bagian)
+
+            cursor.execute(
+                f"""
+                SELECT TOP ({batas})
+                    t.TicketID,
+                    t.TicketNo,
+                    t.[Date],
+                    t.DateTimeIn,
+                    t.VehicleNo,
+                    t.ProductName,
+                    t.FFA,
+                    t.Suhu,
+                    t.PctAir,
+                    t.PctKotoran,
+                    t.KColor,
+                    t.LabBy,
+                    t.LabDateTime,
+                    c.CustomerName
+                FROM dbo.PALM_Tickets t
+                LEFT JOIN dbo.AR_Customers c
+                    ON c.CustomerID = t.AssociateID
+                WHERE t.TicketID IN ({tanda_tanya})
+                  AND t.TicketType = 'Produk'
+                  AND t.ProductName IN ('CPO', 'PK', 'Kernel')
+                  AND t.LabDateTime IS NOT NULL
+                ORDER BY t.LabDateTime DESC, t.TicketID DESC
+                """,
+                *bagian,
+            )
+
+            kolom = [item[0] for item in cursor.description]
+            for baris in cursor.fetchall():
+                row = dict(zip(kolom, baris))
+
+                def tanggal(nilai):
+                    return nilai.isoformat() if nilai else None
+
+                def angka(nilai):
+                    return float(nilai) if nilai is not None else None
+
+                hasil.append({
+                    "ticket_id": int(row["TicketID"]),
+                    "no_tiket": str(row.get("TicketNo") or "").strip(),
+                    "tanggal": tanggal(row.get("Date")),
+                    "datetime_in": tanggal(row.get("DateTimeIn")),
+                    "no_plat": str(row.get("VehicleNo") or "").strip(),
+                    "customer": str(row.get("CustomerName") or "").strip(),
+                    "produk": str(row.get("ProductName") or "").strip(),
+                    "ffa": angka(row.get("FFA")),
+                    "suhu": angka(row.get("Suhu")),
+                    "pct_air": angka(row.get("PctAir")),
+                    "pct_kotoran": angka(row.get("PctKotoran")),
+                    "kcolor": str(row.get("KColor") or "").strip(),
+                    "lab_by": str(row.get("LabBy") or "").strip(),
+                    "lab_datetime": tanggal(row.get("LabDateTime")),
+                })
+
+        hasil.sort(
+            key=lambda row: (row.get("lab_datetime") or "", row["ticket_id"]),
+            reverse=True,
+        )
+        return hasil[:batas]
+    finally:
+        koneksi.close()
+
 def daftar_tiket_ascend_aktif(ticket_ids):
     """Ambil tiket Ascend aktif yang ID-nya sudah dibatasi oleh cakupan area CPOS."""
     ticket_ids = sorted({int(ticket_id) for ticket_id in (ticket_ids or [])})

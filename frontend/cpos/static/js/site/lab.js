@@ -70,6 +70,7 @@ async function submitLab(btn) {
     );
     if (tampilkanHasil(data)) {
         muatAntrianLabAscend();
+        muatRiwayatLabAscend();
     }
 }
 
@@ -98,6 +99,36 @@ async function muatAntrianLabAscend() {
             <td class="table-cell text-right">${kg(r.netto)}</td>
         </tr>
     `).join('') || barisKosong(8, 'Tidak ada tiket yang menunggu input Lab di Ascend');
+}
+
+async function muatRiwayatLabAscend() {
+    const data = await ambilJson('/api/lab/riwayat');
+    const tbody = document.getElementById('tabelRiwayatLabAscend');
+
+    if (data.error) {
+        tbody.innerHTML = barisGagal(11, data.error);
+        return;
+    }
+
+    const angka = nilai => nilai == null
+        ? '-'
+        : Number(nilai).toLocaleString('id-ID');
+
+    tbody.innerHTML = data.map(r => `
+        <tr>
+            <td class="table-cell whitespace-nowrap">${escapeHtml(r.lab_datetime || '-')}</td>
+            <td class="table-cell">${escapeHtml(r.no_tiket)}</td>
+            <td class="table-cell">${escapeHtml(r.no_plat || '-')}</td>
+            <td class="table-cell">${escapeHtml(r.customer || '-')}</td>
+            <td class="table-cell">${escapeHtml(r.produk || '-')}</td>
+            <td class="table-cell text-right">${angka(r.ffa)}</td>
+            <td class="table-cell text-right">${angka(r.suhu)}</td>
+            <td class="table-cell text-right">${angka(r.pct_air)}</td>
+            <td class="table-cell text-right">${angka(r.pct_kotoran)}</td>
+            <td class="table-cell">${escapeHtml(r.kcolor || '-')}</td>
+            <td class="table-cell">${escapeHtml(r.lab_by || '-')}</td>
+        </tr>
+    `).join('') || barisKosong(11, 'Belum ada hasil Lab tersimpan di Ascend');
 }
 
 function bukaStandarMutu() {
@@ -138,6 +169,7 @@ window.addEventListener('tabChange', e => {
     if (e.detail === 'lab') {
         muatHistoryStandar();
         muatAntrianLabAscend();
+        muatRiwayatLabAscend();
     }
 });
 
