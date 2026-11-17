@@ -1,6 +1,5 @@
 let noTiketLabAktif = null;
 let idProdukLabAktif = null;
-let keputusanDipilih = null;
 let standarAktif = {};
 
 function tampilkanStandar(std) {
@@ -13,20 +12,26 @@ function tampilkanStandar(std) {
 
 window.addEventListener('platLookup', (e) => {
     const data = e.detail;
-    // Tiket lain (TBS / belum ada tiket) -> kosongkan, supaya hasil lab tidak tersimpan ke tiket sebelumnya
-    const tiketPks = data.status === 'ADA_TIKET' && tiketPunyaTahap(data, 'LAB');
+    const produk = String(data.produk || '').trim().toUpperCase();
+    const tiketPks =
+        data.status === 'ADA_TIKET' &&
+        data.sumber === 'ASCEND' &&
+        data.ticket_type === 'Produk' &&
+        ['CPO', 'PK', 'KERNEL'].includes(produk);
+
     noTiketLabAktif = tiketPks ? data.no_tiket : null;
-    idProdukLabAktif = tiketPks ? data.id_produk : null;
-    ['labFfa', 'labAir', 'labKotoran', 'labWarna'].forEach(id => document.getElementById(id).value = '');
-    keputusanDipilih = null;
-    setKeputusan(null);
-    if (tiketPks) {
+    idProdukLabAktif = tiketPks && data.id_produk ? data.id_produk : null;
+
+    ['labFfa', 'labSuhu', 'labAir', 'labKotoran', 'labWarna'].forEach(
+        id => document.getElementById(id).value = ''
+    );
+
+    if (tiketPks && data.id_produk) {
         muatStandar(data.id_produk);
     } else {
         tampilkanStandar({});
         document.getElementById('labStatusLive').textContent = '-';
     }
-    muatHistoryLab();
 });
 
 async function muatStandar(idProduk) {
@@ -45,27 +50,25 @@ function cekStandar() {
     document.getElementById('labStatusLive').className = 'py-2 text-right font-bold ' + (lolos ? 'text-emerald-600' : 'text-red-600');
 }
 
-function setKeputusan(val) {
-    keputusanDipilih = val;
-    const dasar = 'border-2 rounded-lg py-3 text-base font-semibold transition ';
-    document.getElementById('btnApprove').className = dasar + (val === 'APPROVE'
-        ? 'bg-emerald-600 text-white border-emerald-600' : 'text-emerald-600 border-emerald-300 hover:bg-emerald-50');
-    document.getElementById('btnReject').className = dasar + (val === 'REJECT'
-        ? 'bg-red-600 text-white border-red-600' : 'text-red-600 border-red-300 hover:bg-red-50');
-}
-
 async function submitLab(btn) {
-    if (!noTiketLabAktif) { Notif.peringatan('Silakan pilih plat atau tiket terlebih dahulu'); return; }
-    if (!keputusanDipilih) { Notif.peringatan('Silakan pilih Terima atau Tolak'); return; }
+    if (!noTiketLabAktif) {
+        Notif.peringatan('Silakan pilih plat atau tiket terlebih dahulu');
+        return;
+    }
+
     const formData = new FormData();
     formData.append('no_tiket', noTiketLabAktif);
     formData.append('ffa', document.getElementById('labFfa').value);
+    formData.append('suhu', document.getElementById('labSuhu').value);
     formData.append('kadar_air', document.getElementById('labAir').value);
     formData.append('kadar_kotoran', document.getElementById('labKotoran').value);
     formData.append('warna_locis', document.getElementById('labWarna').value);
-    formData.append('keputusan', keputusanDipilih);
-    const data = await denganTombol(btn, () => kirimForm('/api/lab/simpan', formData));
-    if (tampilkanHasil(data)) muatHistoryLab();
+
+    const data = await denganTombol(
+        btn,
+        () => kirimForm('/api/lab/simpan', formData)
+    );
+    tampilkanHasil(data);
 }
 
 function bukaStandarMutu() {
@@ -113,14 +116,4 @@ function cetakCOA() {
         <p>Kadar Kotoran: ${nilai('labKotoran')}%</p>`;
     area.id = 'printArea';
     window.print();
-}
-
-async function muatHistoryLab() {
-    const data = await ambilJson('/api/history/lab');
-    const tbody = document.getElementById('tabelHistoryLab');
-    if (data.error) { tbody.innerHTML = barisGagal(4, data.error); return; }
-    tbody.innerHTML = data.map(r => `
-        <tr><td class="table-cell">${escapeHtml(r.no_plat)}</td><td class="table-cell">${escapeHtml(r.nama_produk)}</td>
-        <td class="table-cell">${escapeHtml(r.nama_supplier)}</td><td class="table-cell">${escapeHtml(r.status_val || '-')}</td></tr>
-    `).join('') || barisKosong(4, 'Belum ada data');
 }

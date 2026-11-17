@@ -23,6 +23,7 @@
 
         const url = new URL(window.location.href);
         url.searchParams.set('muat_ulang', '1');
+        window.cposTbsLoading?.start();
         window.location.assign(url.toString());
     });
 
@@ -33,7 +34,10 @@
 
         // Jangan memuat ulang halaman saat tab tidak terlihat.
         if (!document.hidden) {
-            timer = setTimeout(() => window.location.reload(), INTERVAL_MS);
+            timer = setTimeout(() => {
+                window.cposTbsLoading?.start();
+                window.location.reload();
+            }, INTERVAL_MS);
         }
     }
 

@@ -4,20 +4,10 @@
             <h3 class="text-sm font-semibold text-slate-700 mb-4 pb-2 border-b">Input Hasil Uji Sampel Laboratorium</h3>
             <div class="grid grid-cols-2 gap-4">
                 <div><label class="field-label">FFA (%)</label><input type="number" id="labFfa" class="input-field" data-on-input="cekStandar"></div>
+                <div><label class="field-label">Suhu (°C)</label><input type="number" step="0.01" id="labSuhu" class="input-field"></div>
                 <div><label class="field-label">Air (%)</label><input type="number" id="labAir" class="input-field" data-on-input="cekStandar"></div>
                 <div><label class="field-label">Kotoran (%)</label><input type="number" id="labKotoran" class="input-field" data-on-input="cekStandar"></div>
                 <div><label class="field-label">Warna Locis</label><input type="text" id="labWarna" class="input-field"></div>
-            </div>
-            <div class="mt-4">
-                <label class="field-label">Status Kelayakan Mutu</label>
-                <div class="grid grid-cols-2 gap-3">
-                    <button id="btnApprove" data-on-click="setKeputusan" data-arg="APPROVE" class="border-2 rounded-lg py-3 text-base font-semibold text-emerald-600 border-emerald-300 hover:bg-emerald-50 transition">
-                        <i class="fa-solid fa-check mr-1"></i> Terima
-                    </button>
-                    <button id="btnReject" data-on-click="setKeputusan" data-arg="REJECT" class="border-2 rounded-lg py-3 text-base font-semibold text-red-600 border-red-300 hover:bg-red-50 transition">
-                        <i class="fa-solid fa-xmark mr-1"></i> Tolak
-                    </button>
-                </div>
             </div>
             <button data-on-click="submitLab" data-arg="$el" class="btn-primary mt-4 w-full"><i class="fa-solid fa-floppy-disk"></i> Simpan Hasil Lab</button>
         </div>
@@ -54,13 +44,6 @@
         <div class="section-header" data-on-click="toggleSection" data-arg="history-lab">
             <span class="section-header-text"><i id="chevron-history-lab" class="fa-solid fa-chevron-down section-chevron"></i> Riwayat Laboratorium</span>
         </div>
-        <div id="body-history-lab" class="section-body">
-            <table class="w-full text-left text-sm">
-                <thead class="table-header-row"><tr><th class="table-cell">No. Plat</th><th class="table-cell">Produk</th><th class="table-cell">Supplier</th><th class="table-cell">Status</th></tr></thead>
-                <tbody data-per-halaman="20" id="tabelHistoryLab" class="divide-y divide-slate-100"></tbody>
-            </table>
-        </div>
     </div>
 </div>
-
 <div id="printAreaCOA" class="hidden"></div>

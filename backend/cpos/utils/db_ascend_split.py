@@ -374,3 +374,45 @@ def daftar_ticket_id_di_area(id_area):
         return [int(row[0]) for row in cursor.fetchall()]
     finally:
         koneksi.close()
+
+def tiket_di_area(ticket_id, id_area):
+    """Pastikan tiket CPOS dibuat dalam cakupan area pengguna."""
+    ticket_id = int(ticket_id)
+    koneksi = get_connection()
+    try:
+        cursor = koneksi.cursor()
+
+        if id_area is None:
+            cursor.execute(
+                """
+                SELECT TOP (1) 1
+                FROM dbo.AscendTicketSplitPlan
+                WHERE TicketID = ?
+                """,
+                ticket_id,
+            )
+        else:
+            area = (
+                tuple(id_area)
+                if isinstance(id_area, (tuple, list, set, frozenset))
+                else (int(id_area),)
+            )
+            if not area:
+                return False
+
+            tanda_tanya = ", ".join("?" for _ in area)
+            cursor.execute(
+                f"""
+                SELECT TOP (1) 1
+                FROM dbo.AscendTicketSplitPlan p
+                JOIN dbo.Users u ON u.UserID = p.CreatedBy
+                WHERE p.TicketID = ?
+                  AND u.CompAreaID IN ({tanda_tanya})
+                """,
+                ticket_id,
+                *area,
+            )
+
+        return cursor.fetchone() is not None
+    finally:
+        koneksi.close()

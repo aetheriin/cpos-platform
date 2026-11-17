@@ -1,18 +1,10 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from utils.hak_akses import lihat, MENU_OPERASI
 from utils.area import area_data
 from flask_login import login_required, current_user
-from utils.db_utils import (get_standar_mutu, update_standar_mutu, simpan_lab, get_history_umum, cari_transaksi_aktif,
-                            get_history_standar)
+from utils.db_utils import (get_standar_mutu, update_standar_mutu, get_history_umum, get_history_standar)
 from utils.hak_akses import izin
-from utils import alur
-
-
-def _tahap_ada(trx, kode):
-    """Tahap ini ada di alur tiket; tiket lama tanpa alur memakai kategori produk."""
-    if trx.id_alur:
-        return alur.punya_tahap(trx.id_alur, kode)
-    return trx.kategori == ("TBS" if kode == "SORTASI" else "PRODUK_PKS")
+from utils import db_ascend, db_ascend_split
 
 lab_bp = Blueprint('lab', __name__)
 
@@ -54,27 +46,56 @@ def lab_standar_history():
 @izin('FORM_LAB', 'tambah')
 def lab_simpan():
     f = request.form
-    no_tiket, keputusan = f.get("no_tiket"), f.get("keputusan")
+    no_tiket = (f.get("no_tiket") or "").strip()
+
     if not no_tiket:
-        return jsonify({"error": "Tiket belum dipilih"}), 400
-    if keputusan not in ('APPROVE', 'REJECT'):
-        return jsonify({"error": "Keputusan harus APPROVE atau REJECT"}), 400
-    trx = cari_transaksi_aktif(no_tiket=no_tiket)
-    if trx is None:
-        return jsonify({"error": "Tiket tidak ditemukan, sudah selesai, atau ditolak"}), 404
-    # Alur dinamis: lab saat tahapnya ditunggu (sebelum / sesudah timbang sesuai alur); tiket lama: setelah timbang 1
-    dinamis, pesan = alur.cek_tahap(no_tiket, "LAB", boleh_ulang=True)
-    if pesan:
-        return jsonify({"error": pesan}), 400
-    if not dinamis and not _tahap_ada(trx, "LAB"):
-        return jsonify({"error": "Pemeriksaan lab tidak ada di alur tiket ini (lihat Admin › Alur Tiket)"}), 400
-    if not dinamis and trx.status_alur not in ('TIMBANG_1', 'TIMBANG_2'):
-        return jsonify({"error": "Pemeriksaan lab dilakukan setelah timbang pertama"}), 400
-    no_coa = f"COA-{no_tiket}" if keputusan == 'APPROVE' else None
-    simpan_lab(no_tiket, f.get("ffa"), f.get("kadar_air"), f.get("kadar_kotoran"),
-               f.get("warna_locis"), keputusan, no_coa, current_user.id)
-    lanjut = "lanjut ke tahap berikutnya" if keputusan == 'APPROVE' else "tiket ditolak"
-    return jsonify({"message": f"Hasil lab berhasil disimpan ({'diterima' if keputusan == 'APPROVE' else 'ditolak'}), {lanjut}", "no_dokumen_coa": no_coa}), 200
+        return jsonify({"error": "Tiket belum dipilih."}), 400
+
+    tiket = db_ascend.cari_tiket_ascend_berdasarkan_no_tiket(no_tiket)
+    if not tiket:
+        return jsonify({"error": "Tiket Ascend tidak ditemukan atau sudah selesai."}), 404
+
+    produk = str(tiket.get("produk") or "").strip().upper()
+    if tiket.get("ticket_type") != "Produk" or produk not in {"CPO", "PK", "KERNEL"}:
+        return jsonify({
+            "error": "Lab Ascend saat ini hanya menerima produk CPO, PK, dan Kernel."
+        }), 400
+
+    id_tiket_induk = tiket.get("parent_ticket_id") or tiket.get("ticket_id")
+    if not id_tiket_induk or not db_ascend_split.tiket_di_area(
+        id_tiket_induk,
+        area_data(current_user.id),
+    ):
+        return jsonify({"error": "Tiket tidak ditemukan pada area Anda."}), 404
+
+    try:
+        hasil = db_ascend.simpan_hasil_lab_tiket_ascend(
+            no_tiket,
+            ffa=f.get("ffa") or None,
+            suhu=f.get("suhu") or None,
+            pct_air=f.get("kadar_air") or None,
+            pct_kotoran=f.get("kadar_kotoran") or None,
+            kcolor=f.get("warna_locis") or None,
+            operator=current_user.username,
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception:
+        current_app.logger.exception(
+            "Gagal menyimpan hasil Lab Ascend untuk tiket %s",
+            no_tiket,
+        )
+        return jsonify({
+            "error": "Hasil Lab gagal disimpan ke Ascend. Periksa status tiket sebelum mencoba lagi."
+        }), 503
+
+    waktu_lab = hasil.get("lab_datetime")
+    return jsonify({
+        "message": f"Hasil Lab {hasil['product']} berhasil disimpan ke Ascend.",
+        "no_tiket": hasil["ticket_no"],
+        "lab_by": hasil["lab_by"],
+        "lab_datetime": waktu_lab.isoformat() if waktu_lab else None,
+    }), 200
 
 @lab_bp.route("/api/history/lab")
 @login_required
