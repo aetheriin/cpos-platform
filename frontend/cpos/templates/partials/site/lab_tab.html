@@ -41,9 +41,30 @@
     </div>
 
     <div class="section-box mt-5">
-        <div class="section-header" data-on-click="toggleSection" data-arg="history-lab">
-            <span class="section-header-text"><i id="chevron-history-lab" class="fa-solid fa-chevron-down section-chevron"></i> Riwayat Laboratorium</span>
+        <div class="section-header" data-on-click="toggleSection" data-arg="antrean-lab-ascend">
+            <span class="section-header-text">
+                <i id="chevron-antrean-lab-ascend" class="fa-solid fa-chevron-down section-chevron"></i>
+                Antrean Lab Ascend
+            </span>
+        </div>
+        <div id="body-antrean-lab-ascend" class="section-body overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="table-header-row">
+                    <tr>
+                        <th class="table-cell">Tanggal</th>
+                        <th class="table-cell">No. Tiket</th>
+                        <th class="table-cell">No. Plat</th>
+                        <th class="table-cell">Customer</th>
+                        <th class="table-cell">Produk</th>
+                        <th class="table-cell text-right">Bruto</th>
+                        <th class="table-cell text-right">Tara</th>
+                        <th class="table-cell text-right">Netto</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelAntrianLabAscend" class="divide-y divide-slate-100"></tbody>
+            </table>
         </div>
     </div>
 </div>
+
 <div id="printAreaCOA" class="hidden"></div>

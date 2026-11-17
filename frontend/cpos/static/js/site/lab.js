@@ -68,7 +68,36 @@ async function submitLab(btn) {
         btn,
         () => kirimForm('/api/lab/simpan', formData)
     );
-    tampilkanHasil(data);
+    if (tampilkanHasil(data)) {
+        muatAntrianLabAscend();
+    }
+}
+
+async function muatAntrianLabAscend() {
+    const data = await ambilJson('/api/lab/antrian');
+    const tbody = document.getElementById('tabelAntrianLabAscend');
+
+    if (data.error) {
+        tbody.innerHTML = barisGagal(8, data.error);
+        return;
+    }
+
+    const kg = nilai => nilai == null
+        ? '-'
+        : Number(nilai).toLocaleString('id-ID');
+
+    tbody.innerHTML = data.map(r => `
+        <tr>
+            <td class="table-cell whitespace-nowrap">${escapeHtml(r.tanggal || '-')}</td>
+            <td class="table-cell">${escapeHtml(r.no_tiket)}</td>
+            <td class="table-cell">${escapeHtml(r.no_plat || '-')}</td>
+            <td class="table-cell">${escapeHtml(r.customer || '-')}</td>
+            <td class="table-cell">${escapeHtml(r.produk || '-')}</td>
+            <td class="table-cell text-right">${kg(r.bruto)}</td>
+            <td class="table-cell text-right">${kg(r.tara)}</td>
+            <td class="table-cell text-right">${kg(r.netto)}</td>
+        </tr>
+    `).join('') || barisKosong(8, 'Tidak ada tiket yang menunggu input Lab di Ascend');
 }
 
 function bukaStandarMutu() {
@@ -105,7 +134,12 @@ async function muatHistoryStandar() {
     </tr>`).join('') || barisKosong(6, 'Tidak ada perubahan standar 2 hari terakhir');
 }
 
-window.addEventListener('tabChange', e => { if (e.detail === 'lab') muatHistoryStandar(); });
+window.addEventListener('tabChange', e => {
+    if (e.detail === 'lab') {
+        muatHistoryStandar();
+        muatAntrianLabAscend();
+    }
+});
 
 function cetakCOA() {
     const area = document.getElementById('printAreaCOA');

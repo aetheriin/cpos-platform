@@ -416,3 +416,38 @@ def tiket_di_area(ticket_id, id_area):
         return cursor.fetchone() is not None
     finally:
         koneksi.close()
+
+def daftar_ticket_id_lab_di_area(id_area):
+    """TicketID induk CPOS untuk cakupan area Lab."""
+    koneksi = get_connection()
+    try:
+        cursor = koneksi.cursor()
+
+        if id_area is None:
+            cursor.execute("""
+                SELECT TicketID
+                FROM dbo.AscendTicketSplitPlan
+            """)
+        else:
+            area = (
+                tuple(id_area)
+                if isinstance(id_area, (tuple, list, set, frozenset))
+                else (int(id_area),)
+            )
+            if not area:
+                return []
+
+            tanda_tanya = ", ".join("?" for _ in area)
+            cursor.execute(
+                f"""
+                SELECT p.TicketID
+                FROM dbo.AscendTicketSplitPlan p
+                JOIN dbo.Users u ON u.UserID = p.CreatedBy
+                WHERE u.CompAreaID IN ({tanda_tanya})
+                """,
+                *area,
+            )
+
+        return sorted({int(row[0]) for row in cursor.fetchall()})
+    finally:
+        koneksi.close()

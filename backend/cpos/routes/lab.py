@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify, current_app
 from utils.hak_akses import lihat, MENU_OPERASI
 from utils.area import area_data
 from flask_login import login_required, current_user
-from utils.db_utils import (get_standar_mutu, update_standar_mutu, get_history_umum, get_history_standar)
+from utils.db_utils import (get_standar_mutu, update_standar_mutu, get_history_standar)
 from utils.hak_akses import izin
 from utils import db_ascend, db_ascend_split
 
@@ -40,6 +40,21 @@ def lab_standar_update():
 @lihat(*MENU_OPERASI)
 def lab_standar_history():
     return jsonify([{**r, "updated_at": r["updated_at"].strftime("%Y-%m-%d %H:%M")} for r in get_history_standar(2)])
+
+@lab_bp.route("/api/lab/antrian")
+@login_required
+@lihat(*MENU_OPERASI)
+def lab_antrian():
+    try:
+        ticket_ids = db_ascend_split.daftar_ticket_id_lab_di_area(
+            area_data(current_user.id)
+        )
+        return jsonify(db_ascend.daftar_antrian_lab_ascend(ticket_ids))
+    except Exception:
+        current_app.logger.exception("Gagal membaca antrean Lab Ascend")
+        return jsonify({
+            "error": "Antrean Lab Ascend belum dapat dibaca."
+        }), 503
 
 @lab_bp.route("/api/lab/simpan", methods=["POST"])
 @login_required
@@ -96,9 +111,3 @@ def lab_simpan():
         "lab_by": hasil["lab_by"],
         "lab_datetime": waktu_lab.isoformat() if waktu_lab else None,
     }), 200
-
-@lab_bp.route("/api/history/lab")
-@login_required
-@lihat(*MENU_OPERASI)
-def history_lab():
-    return jsonify(get_history_umum('lab_hasil', id_area=area_data(current_user.id)))
