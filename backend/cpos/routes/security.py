@@ -7,7 +7,6 @@ from utils.face_utils import (embedding_frontal, extract_embedding, extract_embe
                               cek_liveness, TANPA_TANTANGAN)
 from utils.plat_utils import normalisasi_plat
 from utils import pengaturan, verifikasi_state as verif, db_ascend, db_ascend_split
-from utils.db_kontrak import get_do
 from utils.db_blacklist import supplier_diblacklist
 from utils.db_organisasi import daftar_lokasi
 from utils.keamanan import id_pos

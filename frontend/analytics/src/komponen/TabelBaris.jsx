@@ -15,6 +15,19 @@ const WARNA_STATUS = {
   'PV tanggal ke depan': 'bg-emerald-100 text-emerald-800',
   'Belum RV': 'bg-red-100 text-red-800',
   'RV sebagian': 'bg-amber-100 text-amber-800',
+  // Tindak lanjut Purchase Request, Purchase Orders, dan Purchase Invoice: belum = perlu tindakan, sebagian = berjalan, sudah = selesai
+  'Belum PO': 'bg-red-100 text-red-800',
+  'PO sebagian': 'bg-amber-100 text-amber-800',
+  'Sudah PO': 'bg-emerald-100 text-emerald-800',
+  'Ditutup tanpa PO': 'bg-slate-200 text-slate-700',
+  'Belum PI': 'bg-red-100 text-red-800',
+  'PI sebagian': 'bg-amber-100 text-amber-800',
+  'Sudah PI': 'bg-emerald-100 text-emerald-800',
+  'Ditutup tanpa PI': 'bg-slate-200 text-slate-700',
+  'Belum PVR & PV': 'bg-red-100 text-red-800',
+  'PV tanpa PVR': 'bg-amber-100 text-amber-800',   // dibayar, tapi tidak lewat jalur PVR
+  'PVR, belum PV': 'bg-sky-100 text-sky-800',
+  'PVR & PV': 'bg-emerald-100 text-emerald-800',
   // Voucher di jendela rincian
   'Belum approve': 'bg-amber-100 text-amber-800',
   'Sudah approve': 'bg-sky-100 text-sky-800',
@@ -71,9 +84,9 @@ export default function TabelBaris({ kolom, baris, urut, arah, onUrut, onPilihBa
                   }
                 >
                   {onUrut ? (
-                    <button type="button" className="inline-flex items-center gap-1 hover:text-slate-900" onClick={() => onUrut(k.kunci)}>
+                    <button type="button" className="inline-flex items-center gap-1 hover:text-slate-900 pointer-coarse:min-h-11" onClick={() => onUrut(k.kunci)}>
                       {k.label ?? k.judul}
-                      <span className="text-slate-400">{aktif ? (arah === 'asc' ? '▲' : '▼') : ''}</span>
+                      <span className="text-slate-500">{aktif ? (arah === 'asc' ? '▲' : '▼') : ''}</span>
                     </button>
                   ) : (k.label ?? k.judul)}
                 </th>
@@ -111,7 +124,8 @@ export default function TabelBaris({ kolom, baris, urut, arah, onUrut, onPilihBa
                 const dasar =
                   'whitespace-nowrap px-2 py-1.5 tabular-nums ' +
                   (k.tipe === 'angka' ? 'text-right ' : '') +
-                  (kosong ? 'text-slate-400 ' : '') +
+                  (kosong ? 'text-slate-500 ' : '') +
+                  (onPilihBaris || onBukaBaris ? 'pointer-coarse:py-3 ' : '') +
                   awalGrup(i) +
                   (i === 0 ? `sticky left-0 z-[5] ${latar} font-medium ` : '')
                 if (k.kunci === 'status' && !kosong) {

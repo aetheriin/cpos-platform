@@ -5,9 +5,9 @@ import { angka, rentangBaris } from '../lib/data'
 import TombolExcel from './TombolExcel'
 import Select from './Select'
 import TabelBaris from './TabelBaris'
-import { Memuat } from './Keadaan'
+import { GalatHalaman, Memuat } from './Keadaan'
 
-export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumlah, hasil, galat, memuat, cariInput, onCari, ukuran, onUkuran, onHalaman, onUrut, onEkspor, mengekspor = false, galatEkspor = '', onPilihBaris, barisTerpilih, onBukaBaris }) {
+export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumlah, hasil, galat, memuat, cariInput, onCari, ukuran, onUkuran, onHalaman, onUrut, onEkspor, mengekspor = false, galatEkspor = '', onPilihBaris, barisTerpilih, onBukaBaris, petunjukBuka = true, onUlang }) {
   const [terbuka, setTerbuka] = useState(true)
   const acuan = hasil ? tab.find((t) => t.kunci === jenis)?.ket(hasil) ?? '' : ''
   const { dari, sampai } = hasil ? rentangBaris(hasil.halaman, hasil.ukuran, hasil.total) : { dari: 0, sampai: 0 }
@@ -19,9 +19,9 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       {/* Judul bisa diklik untuk buka / tutup tabel, seperti header section di CPOS (panah ke bawah = terbuka) */}
       <button type="button" onClick={() => setTerbuka(!terbuka)} aria-expanded={terbuka}
-        className="flex w-full cursor-pointer items-center gap-2 text-left select-none">
+        className="flex w-full cursor-pointer items-center gap-2 text-left select-none pointer-coarse:min-h-11">
         <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-          className={'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ' + (terbuka ? '' : '-rotate-90')}>
+          className={'h-4 w-4 shrink-0 text-slate-500 transition-transform duration-200 ' + (terbuka ? '' : '-rotate-90')}>
           <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clipRule="evenodd" />
         </svg>
         <h2 className="font-medium">{judul}</h2>
@@ -31,7 +31,8 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
       <p className="mb-3 mt-0.5 text-xs text-slate-500">
         {acuan}
         {onPilihBaris && ' Klik baris untuk memfilter semua grafik dan kartu ke transaksi itu.'}
-        {onBukaBaris && ' Klik ganda baris (ketuk sekali di layar sentuh) untuk melihat rinciannya.'}
+        {/* Petunjuk klik ganda cukup di tabel pertama halaman; tabel berikutnya tetap punya tooltip di barisnya */}
+        {onBukaBaris && petunjukBuka && ' Klik ganda baris (ketuk sekali di layar sentuh) untuk melihat rinciannya.'}
       </p>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -43,7 +44,7 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
               role="tab"
               aria-selected={jenis === kunci}
               onClick={() => onJenis(kunci)}
-              className={'rounded-md px-3 py-1 text-sm ' + (jenis === kunci ? 'bg-sky-700 text-white' : 'text-slate-700 hover:bg-slate-100')}
+              className={'rounded-md px-3 py-1 text-sm pointer-coarse:min-h-11 ' + (jenis === kunci ? 'bg-sky-700 text-white' : 'text-slate-700 hover:bg-slate-100')}
             >
               {nama} <span className="tabular-nums opacity-80">({angka.format(jumlah[kunci])})</span>
             </button>
@@ -55,7 +56,7 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
           value={cariInput}
           onChange={(e) => onCari(e.target.value)}
           placeholder="Masukkan pencarian..."
-          className="min-w-56 flex-1 rounded-md border border-slate-300 px-2 py-1 text-sm"
+          className="min-w-56 flex-1 rounded-md border border-slate-300 px-2 py-1 text-sm pointer-coarse:min-h-11"
         />
 
         <label className="text-xs text-slate-600">
@@ -90,7 +91,7 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
           Export gagal: {galatEkspor}
         </div>
       )}
-      {galat && <div className="mb-2 rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-700">{galat.message}</div>}
+      {galat && <div className="mb-2"><GalatHalaman galat={galat} onUlang={onUlang} sedang={memuat} /></div>}
       {!hasil && !galat && <Memuat teks="Memuat tabel..." />}
 
       {hasil && (
@@ -109,7 +110,7 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
                 type="button"
                 disabled={hasil.halaman <= 1}
                 onClick={() => onHalaman(hasil.halaman - 1)}
-                className="rounded-md border border-slate-300 px-2 py-1 disabled:opacity-40"
+                className="rounded-md border border-slate-300 px-2 py-1 disabled:opacity-40 pointer-coarse:min-h-11 pointer-coarse:px-3"
               >
                 Sebelumnya
               </button>
@@ -120,7 +121,7 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
                 type="button"
                 disabled={hasil.halaman >= hasil.jumlah_halaman}
                 onClick={() => onHalaman(hasil.halaman + 1)}
-                className="rounded-md border border-slate-300 px-2 py-1 disabled:opacity-40"
+                className="rounded-md border border-slate-300 px-2 py-1 disabled:opacity-40 pointer-coarse:min-h-11 pointer-coarse:px-3"
               >
                 Berikutnya
               </button>
@@ -133,7 +134,7 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
   )
 }
 
-export default function TabelDetail({ judul, laporanId, dataId, filter, jumlah, tab, onDataHilang, onPilihBaris, barisTerpilih, onBukaBaris }) {
+export default function TabelDetail({ judul, laporanId, dataId, filter, jumlah, tab, onDataHilang, onPilihBaris, barisTerpilih, onBukaBaris, petunjukBuka }) {
   const [jenis, setJenis] = useState(tab[0].kunci)
   const [cariInput, setCariInput] = useState('')
   const [cari, setCari] = useState('')
@@ -154,7 +155,7 @@ export default function TabelDetail({ judul, laporanId, dataId, filter, jumlah, 
     return () => clearTimeout(timer)
   }, [cariInput])
 
-  const { data: hasil, galat, memuat } = useAmbil(
+  const { data: hasil, galat, memuat, ulangi } = useAmbil(
     JSON.stringify([laporanId, dataId, kunciCari, halaman]),
     (sinyal) => ambilDetail(laporanId, dataId, filter, { jenis, cari, urut: urut?.kunci, arah: urut?.arah, halaman, ukuran }, sinyal),
     onDataHilang,
@@ -202,6 +203,8 @@ export default function TabelDetail({ judul, laporanId, dataId, filter, jumlah, 
       onPilihBaris={onPilihBaris}
       barisTerpilih={barisTerpilih}
       onBukaBaris={onBukaBaris}
+      petunjukBuka={petunjukBuka}
+      onUlang={ulangi}
     />
   )
 }

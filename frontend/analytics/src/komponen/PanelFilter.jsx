@@ -21,7 +21,7 @@ export function TombolFilter({ jumlahAktif, terbuka, onToggle }) {
       aria-label={jumlahAktif > 0 ? `Filter, ${jumlahAktif} aktif` : 'Filter'}
       style={{ right: terbuka ? LEBAR_LACI : 0 }}
       className={
-        'tombol-filter group fixed top-1/3 z-40 flex h-9 w-9 items-center justify-center rounded-l-md ' +
+        'tombol-filter group fixed top-1/3 z-40 flex h-9 w-9 items-center justify-center rounded-l-md pointer-coarse:h-11 pointer-coarse:w-11 ' +
         'bg-sky-700 text-white shadow-[-4px_4px_14px_-6px_rgb(15_23_42/0.4)] transition-[right,background-color,padding] duration-200 ease-out ' +
         'hover:bg-sky-800 hover:w-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2'
       }
@@ -93,7 +93,7 @@ export default function PanelFilter({ terbuka, onTutup, jumlahAktif, onReset, ch
           <IkonFilter className="h-4 w-4 text-sky-700" />
           Filter
         </h2>
-        <button type="button" onClick={onTutup} aria-label="Tutup filter" className="rounded-md px-2 py-0.5 text-lg leading-none text-slate-500 hover:bg-slate-100">
+        <button type="button" onClick={onTutup} aria-label="Tutup filter" className="rounded-md px-2 py-0.5 text-lg leading-none text-slate-500 hover:bg-slate-100 pointer-coarse:min-h-11 pointer-coarse:min-w-11">
           ×
         </button>
       </div>

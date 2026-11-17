@@ -35,7 +35,7 @@ export default function Modal({ judul, kecil, onTutup, lebar = 'max-w-lg', child
               {judul}
             </h2>
           </div>
-          <button type="button" onClick={onTutup} aria-label="Tutup" className="-mr-2 rounded-md p-1.5 text-slate-500 hover:bg-slate-100">
+          <button type="button" onClick={onTutup} aria-label="Tutup" className="-mr-2 rounded-md p-1.5 text-slate-500 hover:bg-slate-100 pointer-coarse:p-3">
             <IkonTutup className="h-5 w-5" />
           </button>
         </div>

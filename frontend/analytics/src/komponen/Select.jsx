@@ -8,7 +8,7 @@ export default function Select({ otomatis = false, kecil = false, className = ''
       <select
         {...props}
         className={
-          'w-full appearance-none rounded-md border border-slate-300 bg-white text-sm text-slate-800 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50 ' +
+          'w-full appearance-none rounded-md border border-slate-300 bg-white text-sm text-slate-800 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50 pointer-coarse:min-h-11 ' +
           (kecil ? 'py-1 pl-2 pr-7' : 'py-2 pl-3 pr-9')
         }
       >

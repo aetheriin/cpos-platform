@@ -10,10 +10,11 @@ DIM = {"perusahaan": "comp", "status": "status", "aging": "aging", "supplier": "
 LABEL_FILTER = {"perusahaan": "Perusahaan", "status": "Status", "aging": "Aging", "supplier": "Supplier", "pembuat": "PI dibuat oleh"}
 JENIS_DETAIL = {"belum": "Belum PVR & PV", "pv_tanpa_pvr": "PV tanpa PVR", "sudah": "Sudah PVR"}
 
-_KOLOM_AWAL = [("comp", "Perusahaan", "teks"), ("status", "Status", "teks"), ("po_number", "No. PO", "teks"), ("supplier_code", "Kode Supplier", "teks"),
-               ("supplier_name", "Nama Supplier", "teks"), ("pi_number", "No. PI", "teks")]
-_KOLOM_PI = [("pi_date", "Tanggal PI", "tanggal"), ("itemcode", "Kode Barang", "teks"), ("itemname", "Nama Barang", "teks"),
-             ("line_total", "Line Total", "angka"), ("qty", "Qty PI", "angka"), ("pi_by", "PI Dibuat Oleh", "teks")]
+# No. PI dan tanggalnya di depan: itu yang dicari dan diklik ganda. Supplier, PO, lalu barangnya menyusul.
+_KOLOM_AWAL = [("comp", "Perusahaan", "teks"), ("pi_number", "No. PI", "teks"), ("pi_date", "Tanggal PI", "tanggal")]
+_KOLOM_PI = [("status", "Status", "teks"), ("supplier_name", "Nama Supplier", "teks"), ("supplier_code", "Kode Supplier", "teks"),
+             ("po_number", "No. PO", "teks"), ("itemcode", "Kode Barang", "teks"), ("itemname", "Nama Barang", "teks"),
+             ("qty", "Qty PI", "angka"), ("line_total", "Jumlah", "angka"), ("pi_by", "PI Dibuat Oleh", "teks")]
 _KOLOM_PV = [("pv_number", "No. PV", "teks"), ("pv_date", "Tanggal PV", "tanggal"), ("pv_by", "PV Dibuat Oleh", "teks")]
 KOLOM = {
     "belum": _KOLOM_AWAL + [("umur", "Aging PI (hari)", "angka")] + _KOLOM_PI,

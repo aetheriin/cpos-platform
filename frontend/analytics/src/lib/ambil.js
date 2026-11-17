@@ -16,8 +16,11 @@ export const useSedangMemuat = () => useSyncExternalStore(dengar, () => berjalan
 
 // Ambil data setiap `kunci` berubah. Permintaan lama dibatalkan; saat memuat atau gagal, data terakhir tetap dipakai.
 // memuat dihitung dari kunci yang terakhir selesai, jadi tidak perlu setState di dalam effect.
-export function useAmbil(kunci, ambil, onDataHilang) {
+// ulangi(): ambil lagi dengan kunci yang sama, untuk tombol "Coba lagi" setelah gagal.
+export function useAmbil(kunciAsal, ambil, onDataHilang) {
   const [hasil, setHasil] = useState({ kunci: null, data: null, galat: null })
+  const [ulang, setUlang] = useState(0)
+  const kunci = `${kunciAsal}#${ulang}`
 
   useEffect(() => {
     const kontrol = new AbortController()
@@ -41,5 +44,5 @@ export function useAmbil(kunci, ambil, onDataHilang) {
     }
   }, [kunci]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { data: hasil.data, galat: hasil.galat, memuat: hasil.kunci !== kunci }
+  return { data: hasil.data, galat: hasil.galat, memuat: hasil.kunci !== kunci, ulangi: () => setUlang((n) => n + 1) }
 }

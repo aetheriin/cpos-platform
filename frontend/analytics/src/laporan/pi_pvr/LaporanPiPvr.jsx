@@ -7,7 +7,7 @@ import FilterTanggal from '../../komponen/FilterTanggal'
 import { GridKartu, Kartu } from '../../komponen/Kartu'
 import PanelFilter, { TombolFilter } from '../../komponen/PanelFilter'
 import TabelDetail from '../../komponen/TabelDetail'
-import { MemuatLaporan } from '../../komponen/Keadaan'
+import { GalatHalaman, MemuatLaporan } from '../../komponen/Keadaan'
 import JendelaRincian from '../../komponen/JendelaRincian'
 import { useState } from 'react'
 
@@ -28,7 +28,7 @@ const satu = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 })
 export default function LaporanPiPvr({ dataId, onDataHilang }) {
   const [rinci, setRinci] = useState(null)
   const buka = (_, b) => setRinci({ jenis: 'dokumen', judul: b.pi_number, kunci: { comp: b.comp, no_dok: b.pi_number } })
-  const { data, galat, memuat, filter, ubah, terpilih, lepas, reset, panel, setPanel, togglePanel } = useDashboard('pi_pvr', dataId, FILTER_AWAL, onDataHilang)
+  const { data, galat, memuat, ulangi, filter, ubah, terpilih, lepas, reset, panel, setPanel, togglePanel } = useDashboard('pi_pvr', dataId, FILTER_AWAL, onDataHilang)
   const aktif = [...chipRentang(filter), ...chipDaftar(JENIS, terpilih)]
   const k = data?.kpi
 
@@ -47,17 +47,17 @@ export default function LaporanPiPvr({ dataId, onDataHilang }) {
           <div className="flex flex-wrap items-center gap-2">
             {aktif.map(([jenis, nilai, teks]) => (
               <button key={`${jenis}:${nilai}`} type="button" aria-label={`Lepas filter ${teks}`} onClick={() => lepas(jenis, nilai)}
-                className="max-w-full truncate rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs hover:bg-slate-100">
+                className="max-w-full truncate rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs hover:bg-slate-100 pointer-coarse:min-h-11">
                 {teks} ×
               </button>
             ))}
-            <button type="button" className="rounded-md px-2 py-1 text-xs text-slate-600 underline" onClick={reset}>
+            <button type="button" className="rounded-md px-2 py-1 text-xs text-slate-600 underline pointer-coarse:min-h-11" onClick={reset}>
               Reset filter
             </button>
           </div>
         )}
 
-        {galat && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{galat.message}</div>}
+        {galat && <GalatHalaman galat={galat} onUlang={ulangi} sedang={memuat} />}
         {!data && !galat && <MemuatLaporan />}
 
         {data && (
@@ -73,7 +73,7 @@ export default function LaporanPiPvr({ dataId, onDataHilang }) {
                 catatan={k.lama_pvr.rata == null ? '' : `rata-rata ${satu.format(k.lama_pvr.rata)} hari`} info="nilai tengah hari dari PI dibuat sampai PVR pertama dibuat di sistem" />
             </GridKartu>
             <TabelDetail judul="PI belum PVR" laporanId="pi_pvr" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_BELUM} onDataHilang={onDataHilang} onBukaBaris={buka} />
-            <TabelDetail judul="PI sudah PVR" laporanId="pi_pvr" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_SUDAH} onDataHilang={onDataHilang} onBukaBaris={buka} />
+            <TabelDetail judul="PI sudah PVR" laporanId="pi_pvr" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_SUDAH} onDataHilang={onDataHilang} onBukaBaris={buka} petunjukBuka={false} />
           </div>
         )}
       </div>

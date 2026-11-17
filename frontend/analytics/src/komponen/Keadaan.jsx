@@ -10,6 +10,22 @@ export function Kosong({ teks }) {
   )
 }
 
+// Galat saat mengambil data halaman: diumumkan pembaca layar, dengan tombol untuk mengambil ulang permintaan yang sama.
+// Pesannya dari api.js, yang sudah menjelaskan penyebab dan langkah berikutnya.
+export function GalatHalaman({ galat, onUlang, sedang = false }) {
+  return (
+    <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+      <span className="min-w-0">{galat.message}</span>
+      {onUlang && (
+        <button type="button" onClick={onUlang} disabled={sedang}
+          className="shrink-0 rounded-md border border-red-300 bg-white px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 pointer-coarse:min-h-11">
+          {sedang ? 'Mencoba...' : 'Coba lagi'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 const batang = 'block animate-pulse rounded bg-slate-400/20'
 
 export function Memuat({ teks = 'Memuat data...' }) {

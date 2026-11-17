@@ -10,7 +10,7 @@ _PO = [("comp", "Perusahaan", "teks"), ("status", "Status", "teks"), ("po_number
        ("supplier_code", "Kode Supplier", "teks"), ("supplier_name", "Nama Supplier", "teks")]
 _BARANG = [("category", "Kategori", "teks"), ("itemcode", "Kode Barang", "teks"), ("itemname", "Nama Barang", "teks"), ("uom", "Satuan", "teks"),
            ("qtyordered", "Qty PO", "angka"), ("qtydelivered", "Qty Diterima", "angka"), ("qtyout", "Qty belum diterima", "angka"),
-           ("harga_po", "Harga", "angka"), ("total_po", "Line Total", "angka"), ("mata_uang_po", "Mata Uang", "teks"),
+           ("harga_po", "Harga", "angka"), ("total_po", "Jumlah", "angka"), ("mata_uang_po", "Mata Uang", "teks"),
            ("creator", "PO Dibuat Oleh", "teks")]
 _PI = [("pi_number", "No. PI", "teks"), ("pi_date", "Tanggal PI", "tanggal"), ("lama_pi", "PO ke PI (hari)", "angka")]
 _UMUR = [("umur", "Aging PO (hari)", "angka")]

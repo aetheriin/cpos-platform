@@ -1,14 +1,11 @@
 """Menu Kontrak & DO (role HO) + pencarian DO untuk Form Security."""
 from datetime import date
-
 from flask import Blueprint, render_template, request, jsonify
-from flask_login import login_required, current_user
-
-from utils.hak_akses import lihat, MENU_KONTRAK
+from flask_login import login_required
+from utils.hak_akses import lihat, MENU_KONTRAK, halaman as lihat_halaman, izin, boleh
 from utils import db_ascend, db_kontrak as db, kolom_wajib
-from utils.db_utils import get_semua_produk
-from utils.hak_akses import izin, boleh, halaman as lihat_halaman
 from utils.area import company_user
+from utils.db_utils import get_semua_produk
 from utils.db_organisasi import daftar_company
 from utils.db_admin import supplier_boleh
 from utils.db_blacklist import supplier_diblacklist
@@ -93,12 +90,6 @@ def kontrak_daftar():
             request.args.get("cari", "")
         )
     ])
-
-def _company_user():
-    """PT yang boleh dipilih sebagai pemilik kontrak: kantor pusat = semua PT aktif, selain itu PT sendiri."""
-    pt = company_user(current_user.id)
-    return [c for c in daftar_company() if c["is_active"] and (pt is None or c["id_company"] in pt)]
-
 
 def _tanggal(nama, wajib, label="Tanggal DO"):
     teks = (request.form.get(nama) or "").strip()

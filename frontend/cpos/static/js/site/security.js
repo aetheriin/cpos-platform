@@ -141,55 +141,6 @@ function tandaiSudahValidasi() {
     aturStatusForm('selesai');
 }
 
-// ===== DO (Delivery Order, diisi HO di menu Kontrak & DO) =====
-// Ada DO -> jenis transaksi, customer, produk terisi otomatis (tetap bisa diubah). Tidak ada -> isi sendiri.
-let kontrakAktif = [];                 // kontrak truk (modal Update -> Kontrak Truk), hanya informasi
-let doTerakhir = '';
-
-function sinkronKontrakKeForm(listAktif) {
-    kontrakAktif = listAktif;
-}
-
-function teksPilihan(id) {
-    const sel = document.getElementById(id);
-    return sel.value ? sel.options[sel.selectedIndex].text : '';
-}
-
-// Info bar mengikuti isian form (dari DO maupun diisi sendiri)
-function sinkronInfoBarForm() {
-    document.getElementById('infoNoDO').value = document.getElementById('formNoDo').value.trim().toUpperCase();
-    document.getElementById('infoSupplier').value = teksPilihan('formSupplier');
-    document.getElementById('infoProduk').value = teksPilihan('formProduk');
-    const jenis = document.getElementById('formJenisTransaksi').value;
-    document.getElementById('infoJenis').value = jenis ? labelKode(jenis) : '';
-}
-
-function isiDariDO(d) {
-    if (d) document.getElementById('formNoDo').value = d.no_do;
-    document.getElementById('formJenisTransaksi').value = d ? d.jenis_transaksi : '';
-    document.getElementById('formSupplier').value = d ? d.id_customer : '';
-    document.getElementById('formProduk').value = d ? d.id_produk : '';
-    sinkronInfoBarForm();
-}
-
-async function cariDO(noDo, diam = false) {
-    noDo = (noDo || '').trim().toUpperCase();
-    const info = document.getElementById('infoDO');
-    if (!noDo) return;
-    doTerakhir = noDo;
-    const d = await ambilJson(`/api/do/${encodeURIComponent(noDo)}`);
-    if (d.error) {                      // DO belum ada dari HO: isian yang sudah ada dibiarkan, diisi sendiri
-        info.className = 'text-xs mt-1 text-amber-600';
-        info.textContent = `No. DO ${noDo} belum terdaftar di HO atau tidak aktif. Silakan isi jenis transaksi, customer, dan produk secara manual.`;
-        sinkronInfoBarForm();
-        return;
-    }
-    if (!diam) isiDariDO(d);
-    info.className = 'text-xs mt-1 text-emerald-600';
-    info.textContent = `✓ DO dari HO (kontrak ${d.no_kontrak}): ${d.nama_customer} · ${d.nama_produk}` +
-        (d.berlaku_sampai ? ` · berlaku s/d ${d.berlaku_sampai}` : '') + '. Masih bisa diubah.';
-}
-
 // ===== VALIDASI AWAL (buka section Informasi Supir) =====
 function mulaiValidasiAwal() {
     const wajib = ['formNoPlat', 'formNoTiket', 'formNoStnk', 'formJenisTransaksi', 'formSupplier', 'formProduk'];

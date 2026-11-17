@@ -16,7 +16,7 @@ export default function Info({ teks, label }) {
       <button
         type="button"
         aria-label={label ? `Penjelasan ${label}` : 'Penjelasan'}
-        className="cursor-help rounded-full text-slate-400 hover:text-slate-600 focus:outline-none focus-visible:text-slate-600 focus-visible:ring-2 focus-visible:ring-sky-500"
+        className="relative cursor-help rounded-full text-slate-500 hover:text-slate-700 focus:outline-none focus-visible:text-slate-700 focus-visible:ring-2 focus-visible:ring-sky-500 pointer-coarse:before:absolute pointer-coarse:before:-inset-4 pointer-coarse:before:content-['']"
       >
         <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
           <circle cx="8" cy="8" r="6.5" />

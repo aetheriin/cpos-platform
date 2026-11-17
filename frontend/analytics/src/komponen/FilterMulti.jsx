@@ -37,7 +37,7 @@ export default function FilterMulti({ label, opsi, terpilih, onUbah, sebaris = f
         aria-expanded={buka}
         onClick={() => setBuka((b) => !b)}
         className={
-          'flex items-center gap-1.5 rounded-md border bg-white px-2 py-1 text-sm hover:bg-slate-50 ' +
+          'flex items-center gap-1.5 rounded-md border bg-white px-2 py-1 text-sm hover:bg-slate-50 pointer-coarse:min-h-11 ' +
           (sebaris ? 'w-full ' : '') +
           (terpilih.length > 0 ? 'border-sky-400' : 'border-slate-300')
         }
@@ -59,15 +59,15 @@ export default function FilterMulti({ label, opsi, terpilih, onUbah, sebaris = f
             value={cari}
             onChange={(e) => setCari(e.target.value)}
             placeholder={`Cari ${label.toLowerCase()}...`}
-            className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+            className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm pointer-coarse:min-h-11"
           />
           <div className="mt-2 flex items-center justify-between text-xs">
-            <button type="button" className="text-sky-700 underline" onClick={pilihHasil}>
+            <button type="button" className="text-sky-700 underline pointer-coarse:min-h-11" onClick={pilihHasil}>
               {cari ? 'Pilih hasil pencarian' : 'Pilih semua'}
             </button>
             <button
               type="button"
-              className="text-slate-600 underline disabled:opacity-40"
+              className="text-slate-600 underline disabled:opacity-40 pointer-coarse:min-h-11"
               disabled={terpilih.length === 0}
               onClick={() => onUbah([])}
             >
@@ -77,7 +77,7 @@ export default function FilterMulti({ label, opsi, terpilih, onUbah, sebaris = f
           <ul className="gulir-halus mt-1 max-h-64 overflow-y-auto">
             {tampil.map((v) => (
               <li key={v}>
-                <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-slate-50">
+                <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-slate-50 pointer-coarse:min-h-11">
                   <input type="checkbox" checked={terpilih.includes(v)} onChange={() => ganti(v)} />
                   <span className="min-w-0 flex-1 truncate" title={v}>
                     {v}

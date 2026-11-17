@@ -55,7 +55,7 @@ export default function JendelaRincian({ laporanId, dataId, filter, buka, onTutu
                 value={cari}
                 onChange={(e) => setCari(e.target.value)}
                 placeholder="Cari nomor dokumen, nama barang, keterangan..."
-                className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm sm:max-w-md"
+                className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm sm:max-w-md pointer-coarse:min-h-11"
               />
             </label>
           )}

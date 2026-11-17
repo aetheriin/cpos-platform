@@ -37,7 +37,8 @@ export function LayarGagal({ pesan, onCoba }) {
   )
 }
 
-const tombolBar = 'inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1 text-xs hover:bg-slate-50 disabled:opacity-40'
+// Di layar sentuh setinggi 44 px supaya mudah diketuk jari
+const tombolBar = 'inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1 text-xs hover:bg-slate-50 disabled:opacity-40 pointer-coarse:min-h-11'
 
 // segar: { detik } selama muat ulang berjalan. pesanSegar: galat muat ulang; data lama tetap dipakai.
 export function BarAtas({ dataset, onGanti, onSegarkan, segar = null, onBatalSegar, pesanSegar = '', onCobaLagi, onTutupPesan }) {

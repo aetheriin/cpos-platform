@@ -12,7 +12,7 @@ export default function PilihRentang({ opsi, nilai, onUbah, label = 'Rentang tre
             aria-pressed={aktif}
             onClick={() => !aktif && onUbah(o.nilai)}
             className={
-              'rounded px-2 py-1 whitespace-nowrap tabular-nums ' + (aktif ? 'bg-sky-50 font-medium text-sky-800' : 'text-slate-600 hover:bg-slate-100')
+              'rounded px-2 py-1 whitespace-nowrap tabular-nums pointer-coarse:min-h-11 pointer-coarse:px-3 ' + (aktif ? 'bg-sky-50 font-medium text-sky-800' : 'text-slate-600 hover:bg-slate-100')
             }
           >
             {o.label}

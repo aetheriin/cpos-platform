@@ -8,7 +8,7 @@ import FilterTanggal from '../../komponen/FilterTanggal'
 import { Kartu } from '../../komponen/Kartu'
 import PanelFilter, { TombolFilter } from '../../komponen/PanelFilter'
 import TabelDetail from '../../komponen/TabelDetail'
-import { MemuatLaporan } from '../../komponen/Keadaan'
+import { GalatHalaman, MemuatLaporan } from '../../komponen/Keadaan'
 import JendelaRincian from '../../komponen/JendelaRincian'
 
 const FILTER_AWAL = { dari: null, sampai: null, perusahaan: [], aging: [], sumber: [], status: [], kategori: [] }
@@ -54,7 +54,7 @@ function Judul({ kelas = '', children }) {
 
 // Report tabel saja, menurut tanggal dokumen. Semua nilai dalam rupiah (valas memakai kurs dokumen ERP).
 export default function LaporanOutstanding({ dataId, onDataHilang }) {
-  const { data, galat, memuat, filter, ubah, terpilih, lepas, reset, panel, setPanel, togglePanel } = useDashboard('outstanding', dataId, FILTER_AWAL, onDataHilang)
+  const { data, galat, memuat, ulangi, filter, ubah, terpilih, lepas, reset, panel, setPanel, togglePanel } = useDashboard('outstanding', dataId, FILTER_AWAL, onDataHilang)
   const aktif = [...chipRentang(filter), ...chipDaftar(JENIS, terpilih)]
   const k = data?.kpi
   const [rinci, setRinci] = useState(null)
@@ -80,17 +80,17 @@ export default function LaporanOutstanding({ dataId, onDataHilang }) {
           <div className="flex flex-wrap items-center gap-2">
             {aktif.map(([jenis, nilai, teks]) => (
               <button key={`${jenis}:${nilai}`} type="button" aria-label={`Lepas filter ${teks}`} onClick={() => lepas(jenis, nilai)}
-                className="max-w-full truncate rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs hover:bg-slate-100">
+                className="max-w-full truncate rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs hover:bg-slate-100 pointer-coarse:min-h-11">
                 {teks} ×
               </button>
             ))}
-            <button type="button" className="rounded-md px-2 py-1 text-xs text-slate-600 underline" onClick={reset}>
+            <button type="button" className="rounded-md px-2 py-1 text-xs text-slate-600 underline pointer-coarse:min-h-11" onClick={reset}>
               Reset filter
             </button>
           </div>
         )}
 
-        {galat && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{galat.message}</div>}
+        {galat && <GalatHalaman galat={galat} onUlang={ulangi} sedang={memuat} />}
         {!data && !galat && <MemuatLaporan />}
 
         {data && (
@@ -130,9 +130,9 @@ export default function LaporanOutstanding({ dataId, onDataHilang }) {
               <p className="text-xs text-amber-700">{angka.format(k.tanpa_kurs)} dokumen valas belum punya kurs dan tidak ikut dijumlahkan.</p>
             )}
             <TabelDetail judul="Hutang" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_HUTANG} onDataHilang={onDataHilang} onBukaBaris={buka} />
-            <TabelDetail judul="Piutang" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_PIUTANG} onDataHilang={onDataHilang} onBukaBaris={buka} />
-            {TAMPIL_PR && <TabelDetail judul="PR outstanding" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_PR} onDataHilang={onDataHilang} onBukaBaris={buka} />}
-            <TabelDetail judul="PO outstanding" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_PO} onDataHilang={onDataHilang} onBukaBaris={buka} />
+            <TabelDetail judul="Piutang" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_PIUTANG} onDataHilang={onDataHilang} onBukaBaris={buka} petunjukBuka={false} />
+            {TAMPIL_PR && <TabelDetail judul="PR outstanding" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_PR} onDataHilang={onDataHilang} onBukaBaris={buka} petunjukBuka={false} />}
+            <TabelDetail judul="PO outstanding" laporanId="outstanding" dataId={dataId} filter={filter} jumlah={data.jumlah} tab={TAB_PO} onDataHilang={onDataHilang} onBukaBaris={buka} petunjukBuka={false} />
           </div>
         )}
       </div>

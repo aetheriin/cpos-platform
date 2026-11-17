@@ -25,7 +25,7 @@ export default function RentangTanggal({ dari, sampai, min, maks, onUbah, padat 
     if (baru.dari && baru.sampai && baru.dari <= baru.sampai && baru.dari >= min && baru.sampai <= maks) onUbah(baru.dari, baru.sampai)
   }
 
-  const kelas = 'min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm tabular-nums text-slate-800'
+  const kelas = 'min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm tabular-nums text-slate-800 pointer-coarse:min-h-11'
   return (
     <div>
       <div className={padat ? 'flex items-center gap-1.5' : 'grid grid-cols-[1fr_auto_1fr] items-center gap-1.5'}>

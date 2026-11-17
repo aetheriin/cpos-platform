@@ -72,10 +72,16 @@ function tampilkanKontrak() {
             k, 'no_kontrak', 'nomor_kontrak', 'contract_number',
             'purchase_contract_number', 'ContractNumber', 'PurchaseContractNumber'
         );
-        const jenis = nilaiKontrak(
-            k, 'jenis_transaksi', 'jenis_kontrak', 'contract_type',
-            'purchase_contract_type', 'ContractType', 'PurchaseContractType'
-        );
+        const jenisDokumen = nilaiKontrak(k, 'jenis_dokumen');
+        const jenis = jenisDokumen === 'PRODUK'
+            ? 'Produk'
+            : jenisDokumen === 'TBSLUAR'
+                ? 'TBS Luar'
+                : nilaiKontrak(
+                    k, 'jenis_transaksi', 'jenis_kontrak', 'contract_type',
+                    'purchase_contract_type', 'ContractType', 'PurchaseContractType'
+                );
+                
         const pihak = nilaiKontrak(
             k, 'nama_associate', 'nama_supplier', 'nama_customer',
             'associate_name', 'supplier_name', 'customer_name'

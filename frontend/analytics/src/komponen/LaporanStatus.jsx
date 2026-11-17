@@ -9,7 +9,7 @@ import FilterTanggal from './FilterTanggal'
 import { GridKartu, Kartu } from './Kartu'
 import PanelFilter, { TombolFilter } from './PanelFilter'
 import TabelDetail from './TabelDetail'
-import { MemuatLaporan } from './Keadaan'
+import { GalatHalaman, MemuatLaporan } from './Keadaan'
 
 // Filter yang ada di semua laporan ini; laporan menambah filternya sendiri lewat prop filterTambahan (kunci sama dengan backend `dim`)
 const JENIS_DASAR = [{ kunci: 'perusahaan', nama: 'Perusahaan' }, { kunci: 'status', nama: 'Status' }, { kunci: 'aging', nama: 'Aging' }]
@@ -28,7 +28,7 @@ export default function LaporanStatus({ laporanId, judul, teksTanggal, kartu, ta
     const jenis = [...JENIS_DASAR, ...filterTambahan]
     return [jenis, { dari: null, sampai: null, ...Object.fromEntries(jenis.map((j) => [j.kunci, []])) }]
   }, [filterTambahan])
-  const { data, galat, memuat, filter, ubah, terpilih, lepas, reset, panel, setPanel, togglePanel } = useDashboard(laporanId, dataId, FILTER_AWAL, onDataHilang)
+  const { data, galat, memuat, ulangi, filter, ubah, terpilih, lepas, reset, panel, setPanel, togglePanel } = useDashboard(laporanId, dataId, FILTER_AWAL, onDataHilang)
   const aktif = [...chipRentang(filter), ...chipDaftar(JENIS, terpilih)]
 
   return (
@@ -46,17 +46,17 @@ export default function LaporanStatus({ laporanId, judul, teksTanggal, kartu, ta
           <div className="flex flex-wrap items-center gap-2">
             {aktif.map(([jenis, nilai, teks]) => (
               <button key={`${jenis}:${nilai}`} type="button" aria-label={`Lepas filter ${teks}`} onClick={() => lepas(jenis, nilai)}
-                className="max-w-full truncate rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs hover:bg-slate-100">
+                className="max-w-full truncate rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs hover:bg-slate-100 pointer-coarse:min-h-11">
                 {teks} ×
               </button>
             ))}
-            <button type="button" className="rounded-md px-2 py-1 text-xs text-slate-600 underline" onClick={reset}>
+            <button type="button" className="rounded-md px-2 py-1 text-xs text-slate-600 underline pointer-coarse:min-h-11" onClick={reset}>
               Reset filter
             </button>
           </div>
         )}
 
-        {galat && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{galat.message}</div>}
+        {galat && <GalatHalaman galat={galat} onUlang={ulangi} sedang={memuat} />}
         {!data && !galat && <MemuatLaporan />}
 
         {data && (
@@ -64,9 +64,9 @@ export default function LaporanStatus({ laporanId, judul, teksTanggal, kartu, ta
             <GridKartu kolom={6}>
               {kartu(data.kpi).map((k) => <Kartu key={k.judul} {...k} />)}
             </GridKartu>
-            {tabel.map((t) => (
+            {tabel.map((t, i) => (
               <TabelDetail key={t.judul} judul={t.judul} laporanId={laporanId} dataId={dataId} filter={filter} jumlah={data.jumlah} tab={t.tab}
-                onDataHilang={onDataHilang} onBukaBaris={kolomNomor ? buka : undefined} />
+                onDataHilang={onDataHilang} onBukaBaris={kolomNomor ? buka : undefined} petunjukBuka={i === 0} />
             ))}
           </div>
         )}

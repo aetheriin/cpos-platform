@@ -4,7 +4,7 @@ export default function TombolExcel({ sibuk = false, kecil = false, ...sisa }) {
     <button
       type="button"
       aria-busy={sibuk}
-      className={'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 ' + (kecil ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-sm')}
+      className={'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 ' + (kecil ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-sm') + ' pointer-coarse:min-h-11'}
       {...sisa}
     >
       <svg viewBox="0 0 24 24" height="1.1em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600" aria-hidden="true">
