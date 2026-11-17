@@ -1,6 +1,6 @@
-from functools import partial
 import pyodbc
 
+from functools import partial
 from utils.cache import cache_ttl
 from utils.db_utils import get_connection, get_semua_supplier, get_semua_produk, get_user_by_id, query as _query, ubah
 from utils import jenis_orang
@@ -73,7 +73,7 @@ def tambah_user(username, id_level, id_department, id_comp_area, password_hash, 
                        username, personel["nama"], personel.get("nik"), id_level,
                        _dept_detail(cursor, id_department, id_comp_area), id_comp_area, id_user)
         if cursor.rowcount == 0:
-            raise ValueError("Orang ini sudah punya akun")
+            raise ValueError("User ini sudah punya akun")
         simpan_password(cursor, id_user, password_hash, wajib_ganti=True)
         conn.commit()
         return id_user
