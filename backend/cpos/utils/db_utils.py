@@ -545,17 +545,6 @@ def cari_transaksi_aktif(no_plat=None, no_tiket=None):
 def cari_transaksi_aktif_by_plat(no_plat):
     return cari_transaksi_aktif(no_plat=no_plat)
 
-def catat_cetak_qr(no_tiket):
-    """Naikkan hitungan cetak QR, kembalikan jumlah cetak sebelumnya (0 = cetakan pertama)."""
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT QRReprintCount AS qr_reprint_count FROM WeightBridge WHERE TicketNumber = ?", no_tiket)
-    sebelumnya = cursor.fetchone()[0] or 0
-    cursor.execute("UPDATE WeightBridge SET QRReprintCount = QRReprintCount + 1 WHERE TicketNumber = ?", no_tiket)
-    conn.commit()
-    conn.close()
-    return sebelumnya
-
 def buat_transaksi_full(no_tiket, no_plat, no_stnk, jenis_transaksi, id_supplier, id_produk, id_driver, no_do, security_id,
                         id_pengangkutan=None, id_comp_area=None, id_alur=None, id_do=None, cara_angkut="PENGIRIM"):
     """INSERT sungguhan, dipanggil saat 'Mulai Validasi Awal' diklik (bukan saat Tab di base bar)."""
@@ -593,156 +582,6 @@ def buat_transaksi_full(no_tiket, no_plat, no_stnk, jenis_transaksi, id_supplier
     conn.close()
     return no_tiket
 
-def catat_timeline(no_tiket, stage, processed_by):
-    from utils import log_aktivitas
-    log_aktivitas.catat("TIMELINE", stage, tabel="WeightBridge", id_baris=no_tiket, user_id=processed_by)
-
-# ===== TIMBANGAN =====
-
-def get_data_timbangan(no_tiket):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT tb.TicketNumber AS no_tiket, tb.Bruto AS berat_bruto, tb.BrutoDate AS waktu_bruto, tb.Tara AS berat_tara, tb.TaraDate AS waktu_tara, tb.Netto AS berat_netto,
-               tb.OperatorID AS operator_timbang_id, tb.ScaleID AS id_jembatan, tb.ScaleCode AS kode_jembatan, s.DeductionKg AS total_potongan_kg,
-               t.CompAreaID AS id_comp_area
-        FROM WeighingSummary tb
-        LEFT JOIN Grading s ON s.TicketNumber = tb.TicketNumber
-        LEFT JOIN WeightBridge t ON t.TicketNumber = tb.TicketNumber
-        WHERE tb.TicketNumber = ?
-    """, no_tiket)
-    row = cursor.fetchone()
-    conn.close()
-    return row
-
-def hitung_hash_timbang(no_tiket, ke, berat, id_jembatan, secret_key=None):
-    """Hash anti-ubah satu baris penimbangan."""
-    if secret_key is None:
-        secret_key = os.getenv("HASH_SECRET_KEY")
-    data = f"{no_tiket}|{ke}|{float(berat):.2f}|{id_jembatan}|{secret_key}"
-    return hashlib.sha256(data.encode()).hexdigest()
-
-def _simpan_penimbangan(cursor, no_tiket, ke, berat, id_jembatan, operator_id):
-    cursor.execute("""INSERT INTO Weighing (TicketNumber, WeighNo, ScaleID, Weight, OperatorID, Hash)
-                      VALUES (?, ?, ?, ?, ?, ?)""",
-                   no_tiket, ke, id_jembatan, round(float(berat), 2), operator_id,
-                   hitung_hash_timbang(no_tiket, ke, berat, id_jembatan))
-
-def _status_setelah(cursor, no_tiket, kode_tahap, id_user=None):
-    """Status tiket setelah tahap ini. Tiket alur dinamis: tahap tiket ditandai selesai (utils/alur.lanjut);
-    tiket lama tanpa tahap: urutan alur produk (utils/alur.status_setelah)."""
-    from utils.alur import status_setelah, lanjut
-    status = lanjut(cursor, no_tiket, kode_tahap, id_user)
-    if status is not None:
-        return status
-    cursor.execute("""SELECT t.WeightTypeCode AS jenis_transaksi, t.FlowID AS id_alur FROM WeightBridge t
-                      WHERE t.TicketNumber = ?""", no_tiket)
-    row = cursor.fetchone()
-    if row.id_alur is None:          # tiket tanpa alur (data lama sebelum migrasi 041): aturan lama
-        if kode_tahap == 'TIMBANG_1':
-            return 'SELESAI' if row.jenis_transaksi == 'PENIMBANGAN_SAJA' else 'TIMBANG_1'
-        return 'SELESAI' if kode_tahap == 'TIMBANG_2' else 'TIMBANG_2'
-    return status_setelah(row.id_alur, kode_tahap)
-
-def simpan_timbang_pertama(no_tiket, berat, operator_id, id_jembatan):
-    """Timbang masuk (penimbangan ke-1). PEMBELIAN / PENIMBANGAN_SAJA: bruto; PENJUALAN: tara.
-    Jembatan masuk dicatat di transaksi; timbang keluar wajib di jembatan yang sama."""
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT WeightTypeCode AS jenis_transaksi FROM WeightBridge WHERE TicketNumber = ?", no_tiket)
-    jenis = cursor.fetchone().jenis_transaksi
-    _simpan_penimbangan(cursor, no_tiket, 1, berat, id_jembatan, operator_id)
-    cursor.execute("UPDATE WeightBridge SET ScaleID = ?, StatusCode = ? WHERE TicketNumber = ?", id_jembatan,
-                   _status_setelah(cursor, no_tiket, 'TIMBANG_1', operator_id), no_tiket)
-    conn.commit()
-    conn.close()
-    return jenis
-
-def simpan_timbang_kedua(no_tiket, berat, operator_id, id_jembatan):
-    """Timbang keluar (penimbangan ke-2) di jembatan yang sama dengan masuk (dicek juga trigger DB)."""
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT Weight AS berat_kg, ScaleID AS id_jembatan FROM Weighing WHERE TicketNumber = ? AND WeighNo = 1", no_tiket)
-    masuk = cursor.fetchone()
-    if masuk.id_jembatan != id_jembatan:
-        conn.close()
-        raise ValueError("Timbang keluar harus di jembatan yang sama dengan timbang masuk")
-    _simpan_penimbangan(cursor, no_tiket, 2, berat, id_jembatan, operator_id)
-    netto = round(abs(float(masuk.berat_kg) - float(berat)), 2)
-    cursor.execute("UPDATE WeightBridge SET StatusCode = ? WHERE TicketNumber = ?",
-                   _status_setelah(cursor, no_tiket, 'TIMBANG_2', operator_id), no_tiket)
-    # Potongan sortasi = persen potongan x NETTO (berat buah saja, tanpa truk)
-    cursor.execute(f"UPDATE Grading SET DeductionKg = ROUND(? * {SQL_PERSEN_POTONGAN} / 100, 2) WHERE TicketNumber = ?",
-                   netto, no_tiket)
-    conn.commit()
-    conn.close()
-    return netto
-
-def get_history_timbangan_by_supplier(id_supplier, hari=7, tanggal=None, id_area=None):
-    """Default 7 hari terakhir; tanggal (date) = hanya hari itu."""
-    if tanggal:
-        filter_waktu, param = "t.TicketDate >= ? AND t.TicketDate < DATEADD(day, 1, ?)", (tanggal, tanggal)
-    else:
-        filter_waktu, param = "t.TicketDate >= DATEADD(day, ?, GETDATE())", (-hari,)
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(f"""
-        SELECT TOP 200 s.SupplierName AS nama_supplier, k.NoVehicle AS no_plat, tb.Bruto AS berat_bruto, tb.Tara AS berat_tara, tb.Netto AS berat_netto, t.TicketDate AS created_at
-        FROM WeightBridge t
-        JOIN Supplier s ON t.SupplierID = s.SupplierID
-        JOIN DetailVehicle k ON t.IDVehicle = k.IDVehicle
-        JOIN WeighingSummary tb ON t.TicketNumber = tb.TicketNumber
-        WHERE t.SupplierID = ? AND {filter_waktu}{_filter_area(id_area)[0]}
-        ORDER BY t.TicketDate DESC
-    """, id_supplier, *param, *_filter_area(id_area)[1])
-    columns = [c[0] for c in cursor.description]
-    data = [dict(zip(columns, row)) for row in cursor.fetchall()]
-    conn.close()
-    return data
-
-def get_list_tiket_aktif(id_area=None):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(f"""
-        SELECT t.TicketNumber AS no_tiket, k.NoVehicle AS no_plat, s.SupplierName AS supplier, t.StatusCode AS status_alur, t.WeightTypeCode AS jenis_transaksi,
-               p.ProductName AS produk, p.Category AS kategori_produk, t.TicketDate AS created_at, t.FlowID AS id_alur,
-               t.DONumber AS no_do, d.Nama AS supir
-        FROM WeightBridge t
-        LEFT JOIN Users d ON d.UserID = t.DriverID
-        JOIN DetailVehicle k ON t.IDVehicle = k.IDVehicle
-        JOIN Supplier s ON t.SupplierID = s.SupplierID
-        JOIN Product p ON t.ProductID = p.ProductID
-        WHERE t.StatusCode NOT IN ('SELESAI', 'REJECTED', 'VOID'){_filter_area(id_area)[0]}
-          AND ISNULL(t.FlowID, 0) NOT IN (SELECT FlowID FROM Flow WHERE FlowCode = 'POS_SAJA')   -- kunjungan Pos Security
-        ORDER BY t.TicketDate DESC
-    """, *_filter_area(id_area)[1])
-    columns = [c[0] for c in cursor.description]
-    data = [dict(zip(columns, row)) for row in cursor.fetchall()]
-    conn.close()
-    from utils.alur import tahap_banyak, tahap_menunggu
-    tahap = tahap_banyak([r["no_tiket"] for r in data])
-    from utils.alur import durasi_tahap
-    for r in data:      # alur dinamis: tahap yang sedang ditunggu (antrean per tahap) + lama tiap tahap (jejak di List)
-        milik = tahap.get(r["no_tiket"])
-        r["tahap_menunggu"] = tahap_menunggu(milik) if milik else None
-        r["tahap"] = durasi_tahap(milik, milik[0]["sekarang"]) if milik else None
-    return data
-
-def periksa_tiket(no_tiket, user_id, id_area=None):
-    """Verifikasi tiket selesai (ERD WeightBridge.IsCheck / CheckDate). Hanya sekali; area mengikuti akses pengguna."""
-    filter_area, param_area = _filter_area(id_area)
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(f"""UPDATE t SET CheckDate = GETDATE(), CheckBy = ?
-                           FROM WeightBridge t WHERE t.TicketNumber = ? AND t.StatusCode = 'SELESAI'
-                             AND t.CheckDate IS NULL{filter_area}""", user_id, no_tiket, *param_area)
-        berhasil = cursor.rowcount > 0
-        conn.commit()
-        return berhasil
-    finally:
-        conn.close()
-
 def get_history_driver(limit=20):
     conn = get_connection()
     cursor = conn.cursor()
@@ -758,55 +597,6 @@ def get_history_driver(limit=20):
     conn.close()
     return data
 
-# ===== SORTASI & LAB =====
-def get_data_sortasi(no_tiket):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""SELECT TicketNumber AS no_tiket, UnripePct AS persen_buah_mentah, RottenPct AS persen_buah_busuk, LongStalkPct AS persen_tangkai_panjang,
-                             DirtPct AS persen_sampah_kotoran, RipePct AS persen_buah_matang, LooseFruitPct AS persen_brondolan, DeductionKg AS total_potongan_kg,
-                             Notes AS catatan, GradingDate AS waktu_sortasi
-                      FROM Grading WHERE TicketNumber = ?""", no_tiket)
-    row = cursor.fetchone()
-    conn.close()
-    return row
-
-# Komponen yang memotong berat: buah mentah + tangkai panjang + sampah/kotoran
-SQL_PERSEN_POTONGAN = ("(COALESCE(UnripePct, 0) + COALESCE(LongStalkPct, 0)"
-                       " + COALESCE(DirtPct, 0))")
-
-def hitung_persen_potongan(mentah, tangkai, sampah):
-    return round((mentah or 0) + (tangkai or 0) + (sampah or 0), 2)
-
-def simpan_sortasi(no_tiket, mentah, busuk, tangkai, sampah, matang, brondolan, catatan, operator_id):
-    """Potongan kg dihitung dari NETTO. Netto baru ada setelah timbang keluar, jadi sebelum itu
-    total_potongan_kg = NULL dan akan diisi otomatis oleh simpan_timbang_kedua."""
-    data_tb = get_data_timbangan(no_tiket)
-    total_persen_potongan = hitung_persen_potongan(mentah, tangkai, sampah)
-    total_potongan_kg = (round(data_tb.berat_netto * total_persen_potongan / 100, 2)
-                         if data_tb.berat_netto is not None else None)
-
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT GradingID AS id_sortasi FROM Grading WHERE TicketNumber = ?", no_tiket)
-    if cursor.fetchone():
-        cursor.execute("""UPDATE Grading SET UnripePct=?, RottenPct=?, LongStalkPct=?,
-                           DirtPct=?, RipePct=?, LooseFruitPct=?, DeductionKg=?,
-                           Notes=?, GradedBy=?, GradingDate=GETDATE() WHERE TicketNumber=?""",
-                       mentah, busuk, tangkai, sampah, matang, brondolan, total_potongan_kg, catatan, operator_id, no_tiket)
-    else:
-        cursor.execute("""INSERT INTO Grading (TicketNumber, UnripePct, RottenPct, LongStalkPct,
-                           DirtPct, RipePct, LooseFruitPct, DeductionKg, Notes,
-                           GradedBy, GradingDate) VALUES (?,?,?,?,?,?,?,?,?,?,GETDATE())""",
-                       no_tiket, mentah, busuk, tangkai, sampah, matang, brondolan, total_potongan_kg, catatan, operator_id)
-    cursor.execute("UPDATE WeightBridge SET StatusCode = ? WHERE TicketNumber = ?",
-                   _status_setelah(cursor, no_tiket, 'SORTASI', operator_id), no_tiket)
-    conn.commit()
-    conn.close()
-    return total_persen_potongan, total_potongan_kg
-
-SQL_STANDAR = "SELECT ProductID AS id_produk, StandardFFA AS maks_ffa, StandardMoist AS maks_air, StandardDirt AS maks_kotoran FROM Product WHERE ProductID = ?"
-
-@cache_ttl(300)
 def get_standar_mutu(id_produk):
     conn = get_connection()
     cursor = conn.cursor()
@@ -848,41 +638,6 @@ def get_history_standar(hari=2):
         return _rows_to_dicts(cursor)
     finally:
         conn.close()
-
-def simpan_lab(no_tiket, ffa, air, kotoran, warna, keputusan, no_coa, operator_id):
-    conn = get_connection()
-    cursor = conn.cursor()
-    from utils.dokumen import buat_dokumen
-    cursor.execute("SELECT LabResultID AS id_lab, COADocID AS id_dokumen FROM LabResult WHERE TicketNumber = ?", no_tiket)
-    lama = cursor.fetchone()
-    # COA (APPROVE) dicatat di tabel dokumen (jenis COA), cukup sekali per tiket
-    id_dokumen = lama.id_dokumen if lama else None
-    if no_coa and id_dokumen is None:
-        id_dokumen = buat_dokumen(cursor, "COA", no_coa, date.today(), f"COA tiket {no_tiket}", None, operator_id)
-    if lama:
-        cursor.execute("""UPDATE LabResult SET FFA=?, Moisture=?, Dirt=?, LovibondColor=?,
-                           Decision=?, COADocID=?, TestedBy=?, TestDate=GETDATE() WHERE TicketNumber=?""",
-                       ffa, air, kotoran, warna, keputusan, id_dokumen, operator_id, no_tiket)
-    else:
-        cursor.execute("""INSERT INTO LabResult (TicketNumber, FFA, Moisture, Dirt, LovibondColor, Decision,
-                           COADocID, TestedBy, TestDate) VALUES (?,?,?,?,?,?,?,?,GETDATE())""",
-                       no_tiket, ffa, air, kotoran, warna, keputusan, id_dokumen, operator_id)
-
-    # APPROVE -> lanjut timbang kedua (bukan langsung SELESAI, supaya netto tetap tercatat)
-    if keputusan == 'REJECT':
-        cursor.execute("UPDATE WeightBridge SET StatusCode='REJECTED' WHERE TicketNumber=?", no_tiket)
-        cursor.execute("""IF NOT EXISTS (SELECT 1 FROM TicketVoid WHERE TicketNumber = ?)
-                          INSERT INTO TicketVoid (TicketNumber, VoidType, Reason, VoidBy) VALUES (?, 'REJECT', ?, ?)""",
-                       no_tiket, no_tiket, 'Ditolak Lab', operator_id)
-    else:
-        cursor.execute("UPDATE WeightBridge SET StatusCode=? WHERE TicketNumber=?", _status_setelah(cursor, no_tiket, 'LAB', operator_id), no_tiket)
-    conn.commit()
-    conn.close()
-
-# Area tiket = area akun Security pembuatnya. Dipakai menyaring List / history per area akun yang membuka
-# (user di site tidak melihat tiket site lain).
-AREA_TIKET = "t.CompAreaID"          # area transaksi (migrasi 041)
-
 
 def _filter_area(id_area):
     from utils.area_filter import sql_area
