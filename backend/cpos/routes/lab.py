@@ -103,6 +103,7 @@ def lab_simpan():
             no_tiket,
             ffa=f.get("ffa") or None,
             suhu=f.get("suhu") or None,
+            ulage=f.get("ulage") or None,
             pct_air=f.get("kadar_air") or None,
             pct_kotoran=f.get("kadar_kotoran") or None,
             kcolor=f.get("warna_locis") or None,

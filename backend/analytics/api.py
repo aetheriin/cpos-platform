@@ -492,3 +492,88 @@ def ekspor_detail(
     log.info("Ekspor Excel %s/%s: %d baris oleh %s", lap.id, jenis, len(baris), user["username"])
     return Response(content=isi, media_type=ekspor.XLSX,
                     headers={"Content-Disposition": f'attachment; filename="{nama}"', "Cache-Control": "no-store"})
+
+
+# ---------- Asisten: tanya jawab data laporan dengan kalimat biasa (backend/analytics/asisten) ----------
+import asisten  # noqa: E402
+
+_perusahaan_asisten = []
+
+
+def _perusahaan_dikenal():
+    """Kode perusahaan yang dikenali di kalimat; dibaca sekali dari tabel company."""
+    global _perusahaan_asisten
+    if not _perusahaan_asisten:
+        try:
+            from inti.perusahaan import daftar_perusahaan
+            _perusahaan_asisten = daftar_perusahaan()
+        except Exception:  # noqa: BLE001 - tanpa daftar, kode perusahaan tidak dikenali tapi pertanyaan lain tetap jalan
+            log.exception("Asisten: daftar perusahaan tidak bisa dibaca")
+    return _perusahaan_asisten
+
+
+class PertanyaanAsisten(BaseModel):
+    teks: str
+    lalu: dict | None = None   # permintaan sebelumnya, untuk kalimat lanjutan
+    menu: str | None = None    # id laporan yang sedang dibuka: rekomendasi dan prioritas jawaban
+
+
+class NilaiAsisten(BaseModel):
+    id: str
+    suka: bool
+    komentar: str | None = None
+
+
+class IngatAsisten(BaseModel):
+    asal: str
+    ke: str
+
+
+@app.post("/api/asisten/tanya")
+def tanya_asisten(perm: PertanyaanAsisten, user=Depends(pengguna_saat_ini)):
+    """Data diambil dari periode bawaan tiap laporan atas nama sesi ini + ':asisten', supaya periode yang sedang dibuka di halaman
+    laporan tidak dilepas. Data yang masih segar dari sesi lain dipakai tanpa SQL."""
+    pemilik = f"{_pemilik(user)}:asisten"
+    _cpos_terakhir[pemilik] = time.monotonic()
+
+    def ambil(sumber):
+        lap = LAPORAN[asisten.kamus.SUMBER[sumber]["laporan"]]
+        if lap.id not in user["laporan"]:
+            raise asisten.TanpaAkses(sumber)
+        p = gudang.mulai_muat(lap.id, *_periode_bawaan(lap), lap.pemuat, pemilik)
+        if p.status == "gagal":
+            raise HTTPException(503, f"Data laporan {lap.nama} gagal dimuat: {p.pesan}")
+        if p.status != "selesai":
+            raise asisten.Memuat(sumber)
+        ds = gudang.ambil(p.data_id)
+        if ds is None:
+            raise asisten.Memuat(sumber)
+        ds = _batasi_pt(ds, _pt_boleh(user, lap.id))
+        return ds.df, {"mulai": ds.mulai, "akhir": ds.akhir, "dimuat_pada": ds.dimuat_pada.isoformat(timespec="seconds")}
+
+    menu = perm.menu if perm.menu in LAPORAN else None
+    hasil = asisten.tanya(perm.teks, perm.lalu, ambil, _perusahaan_dikenal(), user["username"], (user.get("nama") or user["username"]).split()[0].title(),
+                          menu, LAPORAN[menu].nama if menu else None)
+    if hasil.get("jenis") != "memuat":
+        log.info("Asisten %s: %r -> %s", user["username"], perm.teks[:120], hasil.get("jenis"))
+    return hasil
+
+
+@app.get("/api/asisten/saran")
+def saran_asisten(menu: str | None = Query(None, max_length=40), user=Depends(pengguna_saat_ini)):
+    """Rekomendasi pertanyaan untuk menu yang sedang dibuka (panel kosong)."""
+    info = asisten.kamus.MENU.get(menu or "", {})
+    return {"menu": LAPORAN[menu].nama if menu in LAPORAN else None, "saran": info.get("saran") or asisten.kamus.CONTOH[:6],
+            "ada_data": bool(info.get("sumber"))}
+
+
+@app.post("/api/asisten/nilai")
+def nilai_asisten(n: NilaiAsisten, user=Depends(pengguna_saat_ini)):
+    asisten.nilai(n.id[:20], n.suka, user["username"], n.komentar)
+    return {"ok": True}
+
+
+@app.post("/api/asisten/ingat")
+def ingat_asisten(i: IngatAsisten, user=Depends(pengguna_saat_ini)):
+    asisten.ingat(i.asal[:300], i.ke, user["username"])
+    return {"ok": True}

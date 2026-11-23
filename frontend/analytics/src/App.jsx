@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { aturSesiHabis, daftarLaporan, sayaSendiri, statusServer } from './api'
 import LaporanView from './komponen/LaporanView'
 import KembaliKeAtas from './komponen/KembaliKeAtas'
+import Asisten from './komponen/Asisten'
 import TandaMemuat from './komponen/TandaMemuat'
 import { IkonBulan, IkonKunci, IkonMatahari, IkonMenu } from './komponen/Ikon'
 import Sidebar from './komponen/Sidebar'
@@ -253,6 +254,8 @@ export default function App() {
         </main>
       </div>
       <KembaliKeAtas />
+      {/* AkasaBot (tanya jawab data): hanya untuk akun yang boleh membuka salah satu laporan sumbernya */}
+      {laporan?.some((l) => ['outstanding', 'purchase_request', 'purchase_order'].includes(l.id)) && <Asisten laporan={laporan} menu={aktif} onBukaLaporan={pilih} />}
       <TandaMemuat />
     </div>
   )

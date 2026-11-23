@@ -775,14 +775,8 @@ def baca_berat_tiket_ascend(no_tiket):
     finally:
         koneksi.close()
 
-def simpan_hasil_lab_tiket_ascend(
-    no_tiket,
-    ffa=None,
-    suhu=None,
-    pct_air=None,
-    pct_kotoran=None,
-    kcolor=None,
-    operator=None,
+def simpan_hasil_lab_tiket_ascend( no_tiket, ffa=None, suhu=None,
+    ulage=None, pct_air=None, pct_kotoran=None, kcolor=None, operator=None,
 ):
     """Simpan pengukuran Lab pada tiket induk Ascend lewat USP_PALM_Tickets_Update."""
     no_tiket = (no_tiket or "").strip()
@@ -804,6 +798,7 @@ def simpan_hasil_lab_tiket_ascend(
 
     ffa = angka_opsional(ffa, "FFA", batas_persen=True)
     suhu = angka_opsional(suhu, "suhu")
+    ulage = angka_opsional(ulage, "Ulage")
     pct_air = angka_opsional(pct_air, "kadar air", batas_persen=True)
     pct_kotoran = angka_opsional(pct_kotoran, "kadar kotoran", batas_persen=True)
 
@@ -857,15 +852,11 @@ def simpan_hasil_lab_tiket_ascend(
         if jenis != "Produk" or produk not in {"CPO", "PK", "KERNEL"}:
             raise ValueError("Lab Ascend saat ini hanya menerima produk CPO, PK, dan Kernel.")
 
-        if produk == "CPO" and (ffa is None or suhu is None):
-            raise ValueError("Untuk CPO, FFA dan suhu wajib diisi.")
-        if produk in {"PK", "KERNEL"} and (pct_air is None or pct_kotoran is None):
-            raise ValueError("Untuk PK dan Kernel, kadar air dan kadar kotoran wajib diisi.")
-
         # Ubah hanya hasil Lab yang dikirim; nilai timbang, DO, dan field tiket lain dipertahankan.
         for kunci, nilai in (
             ("ffa", ffa),
             ("suhu", suhu),
+            ("ulage", ulage),
             ("pctair", pct_air),
             ("pctkotoran", pct_kotoran),
             ("kcolor", warna),
@@ -937,7 +928,7 @@ def simpan_hasil_lab_tiket_ascend(
         ticket_id = int(tiket["ticketid"])
         cursor.execute(
             """
-            SELECT FFA, Suhu, PctAir, PctKotoran, KColor, LabBy, LabDateTime
+            SELECT FFA, Suhu, Ulage, PctAir, PctKotoran, KColor, LabBy, LabDateTime
             FROM dbo.PALM_Tickets
             WHERE TicketID = ?
             """,
@@ -947,11 +938,12 @@ def simpan_hasil_lab_tiket_ascend(
         if not tersimpan:
             raise RuntimeError("Hasil Lab tidak ditemukan saat membaca balik tiket Ascend.")
 
-        ffa_db, suhu_db, air_db, kotoran_db, warna_db, lab_by_db, lab_at_db = tersimpan
+        ffa_db, suhu_db, ulage_db, air_db, kotoran_db, warna_db, lab_by_db, lab_at_db = tersimpan
 
         for nama, nilai_db, harapan in (
             ("FFA", ffa_db, ffa),
             ("suhu", suhu_db, suhu),
+            ("Ulage", ulage_db, ulage),
             ("kadar air", air_db, pct_air),
             ("kadar kotoran", kotoran_db, pct_kotoran),
         ):

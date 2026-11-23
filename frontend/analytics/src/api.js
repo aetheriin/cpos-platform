@@ -134,3 +134,11 @@ export async function unduhDetail(laporanId, dataId, filter, opsi) {
 }
 
 export const statusServer = () => ambilJson('/api/status', { tanpa401: true })
+
+// Asisten (komponen/Asisten.jsx): tanya jawab data laporan. lalu = permintaan jawaban sebelumnya, untuk kalimat lanjutan.
+const kirimJson = (url, isi) =>
+  ambilJson(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(isi) })
+export const tanyaAsisten = (teks, lalu, menu) => kirimJson('/api/asisten/tanya', { teks, lalu, menu })
+export const saranAsisten = (menu) => ambilJson(`/api/asisten/saran?${new URLSearchParams(menu ? { menu } : {})}`)
+export const nilaiAsisten = (id, suka) => kirimJson('/api/asisten/nilai', { id, suka })
+export const ingatAsisten = (asal, ke) => kirimJson('/api/asisten/ingat', { asal, ke })

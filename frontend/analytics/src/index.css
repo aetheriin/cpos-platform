@@ -188,3 +188,16 @@ html[data-sematan] main h1 { font-size: 1.25rem; font-weight: 700; } /* sama den
 
 /* Ruang bawah supaya tombol ke atas tidak menutupi kaki tabel di akhir halaman */
 html[data-sematan] main { padding-bottom: 4.5rem; }
+
+/* AkasaBot (komponen/Asisten.jsx): lengan timbangan berayun saat menimbang, dan sedikit miring saat tab-nya disorot. Tanpa gerak sama sekali
+   kalau pengguna memilih "kurangi gerak". */
+@keyframes neraca-goyang { 0%, 100% { transform: rotate(-9deg); } 50% { transform: rotate(9deg); } }
+.neraca-goyang { animation: neraca-goyang 1.1s ease-in-out infinite; }
+button:hover .neraca-hover g, button:focus-visible .neraca-hover g { transform: rotate(-9deg); transition: transform 0.3s ease-out; }
+.neraca-hover g { transition: transform 0.3s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .neraca-goyang { animation: none; }
+  button:hover .neraca-hover g, button:focus-visible .neraca-hover g { transform: none; }
+}
+/* Pita kepala tetap biru tua di mode gelap (warna identitas), hanya lebih gelap supaya tidak menyala di latar gelap */
+[data-tema="gelap"] .neraca-pita { background-color: #0b3a57; }

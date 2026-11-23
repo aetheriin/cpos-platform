@@ -28,8 +28,9 @@ DECLARE @Kode varchar(10) = ?, @NoDok varchar(200) = ?;
 DECLARE @tabel sysname, @kunci nvarchar(200), @nomor nvarchar(200), @sql nvarchar(max), @ID int;
 
 CREATE TABLE #R (Bagian varchar(10), Urut int, No nvarchar(200), Tgl date, Nama nvarchar(300), Qty decimal(18, 4), Harga money, Nilai money,
-                 Status nvarchar(50), Ket nvarchar(400), NoPO nvarchar(200), NoPR nvarchar(200), TglPR date, PembuatPR nvarchar(100),
-                 KetPO nvarchar(400), KetPR nvarchar(400), PerluPR nvarchar(400), NoPI nvarchar(400));
+                 Status nvarchar(50), Ket nvarchar(400), NoPO nvarchar(max), NoPR nvarchar(200), TglPR date, PembuatPR nvarchar(100),
+                 KetPO nvarchar(400), KetPR nvarchar(400), PerluPR nvarchar(400), NoPI nvarchar(max));
+-- NoPO dan NoPI tanpa batas: satu baris PO yang diterima sebagian demi sebagian bisa punya puluhan PI
 
 IF @Kode = ''#PR''
 BEGIN
@@ -43,7 +44,7 @@ BEGIN
 
     INSERT #R (Bagian, Urut, No, Nama, Qty, Ket, NoPR, PerluPR, NoPO, NoPI)
     SELECT ''item'', pd.DisplayIndex, it.ItemCode, COALESCE(NULLIF(LTRIM(pd.ItemDescription), ''''), it.ItemName), pd.Quantity, LEFT(pd.Remarks, 400),
-           pr.PRNumber, pd.Purpose,
+           pr.PRNumber, LEFT(pd.Purpose, 400),
            STUFF((SELECT DISTINCT '', '' + o.PONumber FROM AP_PurchaseOrderDetails od JOIN AP_PurchaseOrders o ON o.POID = od.POID
                   WHERE od.SourceID = pd.PRDetailID AND o.Void = 0 FOR XML PATH('''')), 1, 2, ''''),
            STUFF((SELECT DISTINCT '', '' + p.PurchaseNumber FROM AP_PurchaseOrderDetails od JOIN AP_PurchaseOrders o ON o.POID = od.POID
@@ -70,8 +71,8 @@ BEGIN
     INSERT #R
     SELECT ''item'', od.DisplayIndex, it.ItemCode, NULL, it.ItemName, od.QtyOrdered, od.UnitCost, od.LineTotal, NULL, LEFT(CAST(od.Remarks AS nvarchar(max)), 400),
            o.PONumber, pr.PRNumber, CAST(pr.Date AS date), pr.CreatedBy,
-           NULLIF(LTRIM(LEFT(o.Remarks, 400)), ''''), COALESCE(NULLIF(LTRIM(pd.Remarks), ''''), NULLIF(LTRIM(LEFT(pr.Remarks, 400)), '''')),
-           COALESCE(NULLIF(LTRIM(pd.Purpose), ''''), NULLIF(LTRIM(pr.Purpose), '''')),
+           NULLIF(LTRIM(LEFT(o.Remarks, 400)), ''''), LEFT(COALESCE(NULLIF(LTRIM(pd.Remarks), ''''), NULLIF(LTRIM(LEFT(pr.Remarks, 400)), '''')), 400),
+           LEFT(COALESCE(NULLIF(LTRIM(pd.Purpose), ''''), NULLIF(LTRIM(pr.Purpose), '''')), 400),
            STUFF((SELECT DISTINCT '', '' + p.PurchaseNumber FROM AP_PurchaseDetails d JOIN AP_Purchases p ON p.PurchaseID = d.PurchaseID
                   WHERE d.SourceID = od.PODetailID AND d.SourceType = ''PO'' AND p.Void = 0 FOR XML PATH('''')), 1, 2, '''')
     FROM AP_PurchaseOrders o JOIN AP_PurchaseOrderDetails od ON od.POID = o.POID
@@ -146,8 +147,8 @@ BEGIN
     INSERT #R
     SELECT ''item'', d.DisplayIndex, it.ItemCode, NULL, it.ItemName, d.Quantity, d.Cost, d.LineTotal, NULL, LEFT(d.Remarks, 400),
            o.PONumber, pr.PRNumber, CAST(pr.Date AS date), pr.CreatedBy,
-           NULLIF(LTRIM(LEFT(o.Remarks, 400)), ''''), COALESCE(NULLIF(LTRIM(pd.Remarks), ''''), NULLIF(LTRIM(LEFT(pr.Remarks, 400)), '''')),
-           COALESCE(NULLIF(LTRIM(pd.Purpose), ''''), NULLIF(LTRIM(pr.Purpose), '''')), NULL
+           NULLIF(LTRIM(LEFT(o.Remarks, 400)), ''''), LEFT(COALESCE(NULLIF(LTRIM(pd.Remarks), ''''), NULLIF(LTRIM(LEFT(pr.Remarks, 400)), '''')), 400),
+           LEFT(COALESCE(NULLIF(LTRIM(pd.Purpose), ''''), NULLIF(LTRIM(pr.Purpose), '''')), 400), NULL
     FROM AP_PurchaseDetails d LEFT JOIN IC_Items it ON it.ItemID = d.ItemID
     LEFT JOIN AP_PurchaseOrderDetails od ON od.PODetailID = d.SourceID AND d.SourceType = ''PO''
     LEFT JOIN AP_PurchaseOrders o ON o.POID = od.POID
