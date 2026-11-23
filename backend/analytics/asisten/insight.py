@@ -160,6 +160,27 @@ def _outstanding(df, hari_ini):
             porsi = nilai / tp
             hasil.append(_poin("piutang_tua", "sedang" if porsi >= 0.5 else "info", porsi * 50,
                                {"nilai": nilai, "total": tp, "porsi": porsi, "dokumen": _dok(tua, "no_dok"), "batas": batas}, "Piutang per customer"))
+        per = p.groupby("mitra").agg(sisa=("sisa_rp", "sum"), umur=("umur", "max")).sort_values("sisa", ascending=False)
+        if len(per) >= 3 and per["sisa"].iloc[0] / tp >= 0.3:
+            hasil.append(_poin("piutang_satu", "info", 30, {"nama": str(per.index[0]), "nilai": float(per["sisa"].iloc[0]),
+                                                           "porsi": float(per["sisa"].iloc[0] / tp)}, "Piutang per customer"))
+        lama = per[(per["umur"] > AMBANG["umur_lama"] * 2) & (per["sisa"] >= 1e9)]
+        if not lama.empty:
+            hasil.append(_poin("piutang_lama_mitra", "tinggi", 60, {"nama": str(lama.index[0]), "nilai": float(lama["sisa"].iloc[0]),
+                                                                   "umur": int(lama["umur"].iloc[0])}, "Daftar piutang terlama"))
+    if total > 0:
+        setahun = h[h["umur"] > 365]
+        nilai = float(setahun["sisa_rp"].sum())
+        if nilai >= 1e9:
+            g = setahun.groupby("sumber")["sisa_rp"].agg(["sum", "size"]).sort_values("sum", ascending=False)
+            hasil.append(_poin("hutang_setahun", "sedang", 40, {"nilai": nilai, "sumber": str(g.index[0]), "sumber_nilai": float(g["sum"].iloc[0]),
+                                                               "sumber_dok": int(g["size"].iloc[0])}, "Daftar hutang terlama"))
+    if total > 0 and tp > 0:
+        def kunci(s):
+            return s.fillna("").str.upper().str.replace(r"[^A-Z0-9 ]", "", regex=True).str.split().str.join(" ")
+        dua = sorted(set(kunci(h.loc[h["sisa_rp"] > 0, "mitra"])) & set(kunci(p.loc[p["sisa_rp"] > 0, "mitra"])) - {""})
+        if dua:
+            hasil.append(_poin("mitra_dua_arah", "info", 20, {"jumlah": len(dua), "nama": dua[:3]}))
     return hasil
 
 
@@ -225,8 +246,12 @@ def _pi(df, hari_ini):
         porsi = nt / semua
         if porsi >= 0.05:
             pembuat = tanpa.drop_duplicates(["comp", "pi_number"])["pv_by"].fillna("").replace("", "(kosong)").value_counts()
-            hasil.append(_poin("pi_tanpa_pvr", "sedang" if porsi >= 0.1 else "info", porsi * 100,
-                               {"dokumen": nt, "porsi": porsi, "pembuat": str(pembuat.index[0]), "pembuat_dok": int(pembuat.iloc[0])},
+            nilai = float(tanpa["line_total"].sum())
+            dibayar = float(df.loc[df["status"].isin(["PV tanpa PVR", "PVR & PV"]), "line_total"].sum())
+            porsi_nilai = nilai / dibayar if dibayar else 0
+            hasil.append(_poin("pi_tanpa_pvr", "tinggi" if porsi_nilai >= 0.2 else "sedang" if porsi >= 0.1 else "info", 60 + porsi_nilai * 100,
+                               {"dokumen": nt, "porsi": porsi, "nilai": nilai, "porsi_nilai": porsi_nilai, "pembuat": str(pembuat.index[0]),
+                                "pembuat_dok": int(pembuat.iloc[0])},
                                "PI yang dibayar tanpa PVR per pembuat"))
     tahan = df[(df["status"] == "PVR, belum PV") & (df["pvr_date"] <= pd.Timestamp(hari_ini) - pd.Timedelta(days=AMBANG["tertahan"]))]
     if not tahan.empty:
@@ -356,8 +381,13 @@ KALIMAT = {
     "pi_belum_pvr": lambda d: f"{_bil(d['dokumen'])} PI belum punya PVR maupun PV, nilainya {rp(d['nilai'])}. {_bil(d['tua'])} di antaranya "
                               f"sudah lebih dari {d['batas']} hari ({rp(d['nilai_tua'])})." if d["tua"] else
                               f"{_bil(d['dokumen'])} PI belum punya PVR maupun PV ({rp(d['nilai'])}), semuanya masih di bawah {d['batas']} hari.",
-    "pi_tanpa_pvr": lambda d: f"{_bil(d['dokumen'])} PI ({_pct(d['porsi'])}) dibayar PV tanpa PVR. Paling banyak dibuat oleh {d['pembuat']} "
-                              f"({_bil(d['pembuat_dok'])} PI).",
+    "pi_tanpa_pvr": lambda d: f"{_bil(d['dokumen'])} PI senilai {rp(d['nilai'])} dibayar PV tanpa PVR, sekitar {_pct(d['porsi_nilai'])} dari nilai PI "
+                              f"yang sudah dibayar. Paling banyak dibuat oleh {d['pembuat']} ({_bil(d['pembuat_dok'])} PI).",
+    "piutang_satu": lambda d: f"{_pct(d['porsi'])} piutang ada di satu customer, {d['nama']} ({rp(d['nilai'])}).",
+    "piutang_lama_mitra": lambda d: f"Piutang {d['nama']} {rp(d['nilai'])} dengan dokumen tertua {_bil(d['umur'])} hari.",
+    "hutang_setahun": lambda d: f"Hutang lebih dari setahun {rp(d['nilai'])}, terbanyak dari {d['sumber']} ({rp(d['sumber_nilai'])}, "
+                                f"{_bil(d['sumber_dok'])} dokumen).",
+    "mitra_dua_arah": lambda d: f"{_bil(d['jumlah'])} mitra sekaligus punya hutang dan piutang, antara lain {', '.join(x.title() for x in d['nama'])}.",
     "pi_pvr_tertahan": lambda d: f"{_bil(d['dokumen'])} PI sudah punya PVR lebih dari {d['hari']} hari tapi belum dibayar PV "
                                  f"({rp(d['nilai'])}).",
     "pi_lama_tren": lambda d: f"Lama PI jadi PVR di {d['bulan']} rata-rata {fmt(d['kini'], 'hari')}, {_arah(d['ubah'])} "

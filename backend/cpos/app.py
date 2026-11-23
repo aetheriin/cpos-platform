@@ -35,7 +35,6 @@ from routes.kelebihan_do import kelebihan_do_bp
 from routes.persetujuan import persetujuan_bp
 from routes.dashboard import dashboard_bp
 from routes.cari import cari_bp
-from routes.pos import pos_bp
 from routes.analytics import analytics_bp
 from modules.rekapin import rekapin_bp
 from modules.item_request import item_request_bp
@@ -100,7 +99,7 @@ def belum_login():
 
 for bp in (auth_bp, main_bp, security_bp, timbangan_bp, sortasi_bp, lab_bp, kendaraan_bp,
            personel_bp, blacklist_bp, visitor_bp, deteksi_plat_bp, audit_bp, sistem_bp, admin_bp, kontrak_bp, dashboard_bp, master_bp, agen_bp,
-           kelebihan_do_bp, cari_bp, persetujuan_bp, pos_bp, analytics_bp, rekapin_bp, item_request_bp, item_dashboard_bp,
+           kelebihan_do_bp, cari_bp, persetujuan_bp, analytics_bp, rekapin_bp, item_request_bp, item_dashboard_bp,
            netto_sumber_bp, helpdesk_bp):
     app.register_blueprint(bp)
 

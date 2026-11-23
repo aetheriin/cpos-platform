@@ -10,9 +10,7 @@ from utils.db_organisasi import daftar_area, daftar_lokasi
 from utils.area import area_data, company_user
 from utils.db_admin import supplier_boleh
 from flask_login import login_required, current_user
-from utils.db_utils import (
-    get_semua_supplier, get_semua_produk, cari_transaksi_aktif,
-    cari_riwayat_driver_by_plat, 
+from utils.db_utils import (get_semua_supplier, get_semua_produk, cari_riwayat_driver_by_plat, 
     get_kendaraan_by_plat, get_supir_kendaraan, get_kontrak_kendaraan
 )
 from utils.serializers import serialisasi_driver
@@ -199,20 +197,7 @@ def api_plat_lookup():
                                       "id_kendaraan": kendaraan.id_kendaraan, "sumber": "PLAT", "tindakan": "PERINGATAN"},
                              ip_address=request.remote_addr)
 
-    row = cari_transaksi_aktif(no_plat=no_plat)
-
-    if (
-        row
-        and row.id_alur is not None
-        and row.id_alur == alur.id_alur_kode("POS_SAJA")
-    ):
-        return jsonify({
-            "error": (
-                f"{no_plat} tercatat masuk lewat Pos Security "
-                "(tanpa tiket timbang). Catat keluar di Logbook dulu."
-            )
-        }), 400
-
+    
     # Cari Ascend lebih dulu agar tiket lokal aktif tidak menutupi tiket Ascend.
     try:
         tiket_ascend = db_ascend.cari_tiket_ascend_berdasarkan_plat(no_plat)
