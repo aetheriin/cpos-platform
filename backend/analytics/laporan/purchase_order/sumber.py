@@ -38,7 +38,7 @@ def susun(df):
               itemname=("itemname", "first"), uom=("uom", "first"), qtyordered=("qtyordered", "first"), qtydelivered=("qtydelivered", "first"),
               qtyout=("qtyout", "first"), supplier_code=("supplier_code", "first"), supplier_name=("supplier_name", "first"),
               harga_po=("harga_po", "first"), total_po=("total_po", "first"), mata_uang_po=("mata_uang_po", "first"),
-              pi_number=("pi_number", gabung), pi_date=("pi_date", "min")))
+              pi_number=("pi_number", gabung), pi_date=("pi_date", "min"), pi_cd=("pi_cd", "min")))
     d["creator"] = orang(d["creator"])
     d["category"] = seragam(d["category"])
     d["supplier_name"] = seragam(d["supplier_name"])
@@ -50,5 +50,7 @@ def susun(df):
     d.loc[ada_pi & ~selesai & (d["qtyout"] > 0), "status"] = SEBAGIAN
     d["rupiah"] = d["mata_uang_po"].str.upper().isin(RUPIAH)
     d["umur"] = hari_sejak(d["cd"])
-    d["lama_pi"] = (d["pi_date"] - d["cd"]).dt.days
+    # PO dibuat sampai PI pertama dibuat (create date keduanya, seperti PR ke PO). Tanggal dokumen PI bisa lebih awal dari input PO,
+    # jadi hanya dipakai kalau tanggal PI dibuat belum ada dari SP.
+    d["lama_pi"] = (d["pi_cd"].fillna(d["pi_date"]) - d["cd"]).dt.days
     return d.reset_index(drop=True)

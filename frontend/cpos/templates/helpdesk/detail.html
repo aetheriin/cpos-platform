@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% from "partials/layout/_macros.html" import judul_halaman %}
+{% block title %}{{ req.TicketNo }} · IT Helpdesk · CPOS{% endblock %}
+
+{# Forms › IT Helpdesk › Detail tiket (tim IT: panel tindakan). routes/helpdesk.py #}
+{% block info_bar %}{% endblock %}
+{% block info_bar_script %}{% endblock %}
+
+{% block tab_header %}
+    {% call judul_halaman(req.TicketNo, req.RequestTitle, 'fa-headset') %}
+        <a href="{{ url_for('helpdesk.index') }}" class="btn-secondary"><i class="fa-solid fa-arrow-left mr-1"></i> Kembali</a>
+    {% endcall %}
+{% endblock %}
+
+{% block tab_content %}
+{% set badge = {'Open':'bg-amber-100 text-amber-700','In Progress':'bg-sky-100 text-sky-700','Done':'bg-emerald-100 text-emerald-700','Rejected':'bg-rose-100 text-rose-700'} %}
+{% set csrf %}{% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}{% endset %}
+<div class="space-y-4">
+    {% include "helpdesk/_flash.html" %}
+
+    <div class="section-box p-6">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-slate-800">Informasi Request</h3>
+            <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap {{ badge[req.Status] }}">{{ req.Status }}</span>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm mb-4">
+            <div><p class="text-xs text-slate-500">Site</p><p class="font-semibold text-slate-800">{{ req.SiteCode }}</p></div>
+            <div><p class="text-xs text-slate-500">Pembuat</p><p class="font-semibold text-slate-800">{{ req.RequesterName }}</p></div>
+            <div><p class="text-xs text-slate-500">PIC</p><p class="font-semibold text-slate-800">{{ req.PersonInCharge }}</p></div>
+            <div><p class="text-xs text-slate-500">Teknisi</p><p class="font-semibold text-slate-800">{{ req.AssignedTo or '-' }}</p></div>
+            <div><p class="text-xs text-slate-500">Dibuat</p><p class="font-semibold text-slate-800">{{ req.CreatedAt.strftime('%d/%m/%Y %H:%M') }}</p></div>
+        </div>
+        <p class="text-xs text-slate-500 mb-1">Kronologi</p>
+        <p class="text-sm text-slate-700" style="white-space:pre-wrap">{{ req.Chronology }}</p>
+        {% if req.ResolutionNote %}
+        <p class="text-xs text-slate-500 mt-4 mb-1">Catatan Penyelesaian IT</p>
+        <p class="text-sm text-slate-700" style="white-space:pre-wrap">{{ req.ResolutionNote }}</p>
+        {% endif %}
+    </div>
+
+    <div class="section-box p-6">
+        <h3 class="font-bold text-slate-800 mb-2">Lampiran</h3>
+        <ul class="text-sm space-y-1 mb-3">
+            {% for a in attachments %}
+            <li><a href="{{ url_for('helpdesk.download', attachment_id=a.AttachmentId) }}" class="text-utama-600 hover:underline"><i class="fa-solid fa-paperclip mr-1"></i>{{ a.FileName }}</a>
+                <span class="text-xs text-slate-500">({{ a.FileSizeKB }} KB · {{ a.UploadedBy }})</span></li>
+            {% else %}
+            <li class="text-slate-500">Tidak ada lampiran.</li>
+            {% endfor %}
+        </ul>
+        {% if req.Status not in ['Done', 'Rejected'] %}
+        <form method="post" action="{{ url_for('helpdesk.upload', request_id=req.RequestId) }}" enctype="multipart/form-data" class="flex items-center gap-2" data-hd-once>
+            {{ csrf }}
+            <input type="file" name="attachments" multiple data-hd-file accept=".png,.jpg,.jpeg,.pdf,.xls,.xlsx,.csv" class="input-field">
+            <button type="submit" class="btn-secondary">Upload</button>
+        </form>
+        {% endif %}
+    </div>
+
+    {% if is_it and req.Status not in ['Done', 'Rejected'] %}
+    <div class="section-box p-6">
+        <h3 class="font-bold text-slate-800 mb-2">Tindakan Tim IT</h3>
+        <form method="post" action="{{ url_for('helpdesk.update_status', request_id=req.RequestId) }}" class="space-y-3" data-hd-status data-hd-once>
+            {{ csrf }}
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                    <label class="field-label" for="hdStatus">Status</label>
+                    <select id="hdStatus" name="status" class="input-field" required>
+                        {% for s in statuses if s != req.Status %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="field-label" for="hdNote">Catatan singkat</label>
+                    <input type="text" id="hdNote" name="note" maxlength="500" class="input-field" placeholder="Opsional">
+                </div>
+            </div>
+            <div>
+                <label class="field-label" for="hdResolusi">Catatan penyelesaian</label>
+                <textarea id="hdResolusi" name="resolution_note" rows="3" class="input-field" placeholder="Wajib diisi jika status Done"></textarea>
+            </div>
+            <div class="flex justify-end"><button type="submit" class="btn-primary">Simpan Status</button></div>
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="section-box p-6">
+        <h3 class="font-bold text-slate-800 mb-2">Riwayat Status</h3>
+        <ul class="text-sm text-slate-700 space-y-1">
+            {% for l in logs %}
+            <li><span class="font-mono text-xs text-slate-500">{{ l.ChangedAt.strftime('%d/%m/%Y %H:%M') }}</span>
+                &mdash; {{ l.OldStatus or '-' }} &rarr; <b>{{ l.NewStatus }}</b> oleh {{ l.ChangedBy }}{% if l.Note %}: {{ l.Note }}{% endif %}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script defer src="{{ url_for('static', filename='js/helpdesk/helpdesk.js') }}"></script>
+{% endblock %}

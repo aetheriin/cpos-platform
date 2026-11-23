@@ -15,7 +15,7 @@ Sebutan: purchase invoice, faktur pembelian
 Purchase Invoice: tagihan supplier yang dicatat dari PO. PI inilah yang menjadi hutang sampai dibayar dengan PV.
 
 ## PO sebagian
-Sebutan: pi sebagian, diterima sebagian
+Sebutan: diterima sebagian
 Barang di satu baris PO diterima dan ditagih bertahap, jadi satu baris PO bisa punya banyak PI. Di laporan PR, "PO sebagian" berarti baru sebagian qty PR yang dibuatkan PO.
 
 ## PVR
@@ -68,7 +68,7 @@ Nilai tukar untuk dokumen valas. Urutannya: kurs di dokumen ERP, lalu kurs tahun
 
 ## Aging PR
 Sebutan: umur pr, aging purchase request, aging pr belum po
-Hari dari tanggal PR sampai hari ini, dihitung per baris barang. Di kartu dan daftar, satu PR memakai umur barangnya yang paling tua. Kelompoknya sama dengan dokumen lain: Tepat Waktu (0 sampai 8 hari), Perlu Perhatian (9 sampai 15), Telat (16 sampai 30), Perlu Tindakan (lebih dari 30). Lama PR sampai jadi PO itu ukuran lain: tanggal PO pertama dikurangi tanggal PR.
+Hari dari tanggal PR dibuat (create date) sampai hari ini, dihitung per baris barang. Di kartu dan daftar, satu PR memakai umur barangnya yang paling tua. Kelompoknya sama dengan dokumen lain: Tepat Waktu (0 sampai 8 hari), Perlu Perhatian (9 sampai 15), Telat (16 sampai 30), Perlu Tindakan (lebih dari 30). Lama PR sampai jadi PO itu ukuran lain: tanggal PO pertama dikurangi tanggal PR dibuat.
 
 ## Aging PO
 Sebutan: umur po, aging purchase order, aging po belum pi
@@ -109,3 +109,11 @@ Lama dari satu tahap ke tahap berikutnya, misalnya PR ke PO, PO ke PI, atau PI k
 ## PO Spend
 Sebutan: spend analysis, belanja po
 Nilai belanja PO dalam rupiah, dipakai laporan PO Spend Analysis untuk melihat nilai per kategori, bulan, dan supplier.
+
+## Outstanding
+Sebutan: pr outstanding, po outstanding, belum selesai
+Dokumen yang belum selesai diproses ke tahap berikutnya. Di menu PR & PO Outstanding: PR yang belum atau baru sebagian dibuatkan PO. Di menu PO & PI Outstanding: PO yang belum atau baru sebagian dibuatkan PI. Dokumen yang ditutup di ERP tidak dihitung.
+
+## PI sebagian
+Sebutan: ditagih sebagian
+Barang di satu baris PO baru sebagian diterima dan ditagih, sisanya masih menunggu. Sisa nilainya dihitung dari qty yang belum di-PI dikali harga PO.

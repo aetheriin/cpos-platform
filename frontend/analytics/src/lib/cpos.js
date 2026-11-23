@@ -28,6 +28,13 @@ if (SEMATAN && window.parent !== window) {
   window.addEventListener('resize', samakanRem)
 }
 
+// Pindah laporan dari dalam bingkai: CPOS ikut membuka menunya (static/js/analytics/sematan.js). true = CPOS yang memindahkan halaman.
+export function bukaDiCpos(id) {
+  if (!SEMATAN || window.parent === window) return false
+  window.parent.postMessage({ tipe: 'cpos-buka', laporan: id }, '*')
+  return true
+}
+
 // Klik / ketik di dalam bingkai tidak terlihat oleh halaman CPOS; kabari supaya sesi CPOS tidak dianggap diam
 // (CPOS static/js/analytics/sematan.js). Paling sering satu pesan per menit.
 let terakhir = 0

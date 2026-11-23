@@ -22,7 +22,7 @@ window.addEventListener('platLookup', (e) => {
     noTiketLabAktif = tiketPks ? data.no_tiket : null;
     idProdukLabAktif = tiketPks && data.id_produk ? data.id_produk : null;
 
-    ['labFfa', 'labSuhu', 'labAir', 'labKotoran', 'labWarna'].forEach(
+    ['labFfa', 'labSuhu', 'labUlage', 'labAir', 'labKotoran', 'labWarna'].forEach(
         id => document.getElementById(id).value = ''
     );
 
@@ -60,6 +60,7 @@ async function submitLab(btn) {
     formData.append('no_tiket', noTiketLabAktif);
     formData.append('ffa', document.getElementById('labFfa').value);
     formData.append('suhu', document.getElementById('labSuhu').value);
+    formData.append('ulage', document.getElementById('labUlage').value);
     formData.append('kadar_air', document.getElementById('labAir').value);
     formData.append('kadar_kotoran', document.getElementById('labKotoran').value);
     formData.append('warna_locis', document.getElementById('labWarna').value);
@@ -106,7 +107,7 @@ async function muatRiwayatLabAscend() {
     const tbody = document.getElementById('tabelRiwayatLabAscend');
 
     if (data.error) {
-        tbody.innerHTML = barisGagal(11, data.error);
+        tbody.innerHTML = barisGagal(12, data.error);
         return;
     }
 
@@ -123,12 +124,13 @@ async function muatRiwayatLabAscend() {
             <td class="table-cell">${escapeHtml(r.produk || '-')}</td>
             <td class="table-cell text-right">${angka(r.ffa)}</td>
             <td class="table-cell text-right">${angka(r.suhu)}</td>
+            <td class="table-cell text-right">${angka(r.ulage)}</td>
             <td class="table-cell text-right">${angka(r.pct_air)}</td>
             <td class="table-cell text-right">${angka(r.pct_kotoran)}</td>
             <td class="table-cell">${escapeHtml(r.kcolor || '-')}</td>
             <td class="table-cell">${escapeHtml(r.lab_by || '-')}</td>
         </tr>
-    `).join('') || barisKosong(11, 'Belum ada hasil Lab tersimpan di Ascend');
+    `).join('') || barisKosong(12, 'Belum ada hasil Lab tersimpan di Ascend');
 }
 
 function bukaStandarMutu() {

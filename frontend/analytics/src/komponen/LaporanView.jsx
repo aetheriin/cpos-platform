@@ -1,11 +1,13 @@
 import { memo, useEffect, useState } from 'react'
 import { batalkanPekerjaan, mulaiMuat, statusPekerjaan } from '../api'
 import { rentangTgl, tglLengkap, waktuDari } from '../lib/data'
+import { useDaftarLayarMemuat } from '../lib/layarMemuat'
 import { LaporanAktif } from '../lib/tampilan'
 import { IkonKalender, IkonPeringatan, IkonSegarkan } from './Ikon'
 import { PopupPeriode } from './PanelPeriode'
 
 export function LayarMemuat({ nama, mulai, akhir, detik, onBatalkan }) {
+  useDaftarLayarMemuat()
   return (
     <section className="mx-auto mt-10 max-w-lg rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">
       <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-sky-600" aria-hidden="true" />

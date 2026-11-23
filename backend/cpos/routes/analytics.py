@@ -31,8 +31,10 @@ def halaman(laporan):
     if menu is None:
         abort(404)
     kode_aktif = menu["induk"] if menu["level"] == 3 else menu["kode"]
+    # Laporan lain yang boleh dibuka akun ini: dipakai bingkai saat pindah laporan dari dalam (mis. AkasaBot) supaya menu CPOS ikut pindah
+    boleh = sorted(i for i, m in _menu_laporan().items() if boleh_lihat(m["kode"]))
     return render_template("analytics/sematan.html", halaman="analytics", kode_aktif=kode_aktif, remah=remah_menu(menu["kode"]),
-                           menu=menu, src=f"{ANALYTICS_URL}/laporan/{laporan.replace('_', '-')}?embed=1")
+                           menu=menu, laporan_boleh=boleh, src=f"{ANALYTICS_URL}/laporan/{laporan.replace('_', '-')}?embed=1")
 
 
 @analytics_bp.route("/api/analytics/saya")

@@ -514,6 +514,7 @@ def daftar_riwayat_lab_ascend(ticket_ids, batas=100):
                     t.ProductName,
                     t.FFA,
                     t.Suhu,
+                    t.Ulage,
                     t.PctAir,
                     t.PctKotoran,
                     t.KColor,
@@ -552,6 +553,7 @@ def daftar_riwayat_lab_ascend(ticket_ids, batas=100):
                     "produk": str(row.get("ProductName") or "").strip(),
                     "ffa": angka(row.get("FFA")),
                     "suhu": angka(row.get("Suhu")),
+                    "ulage": angka(row.get("Ulage")),
                     "pct_air": angka(row.get("PctAir")),
                     "pct_kotoran": angka(row.get("PctKotoran")),
                     "kcolor": str(row.get("KColor") or "").strip(),
@@ -968,6 +970,7 @@ def simpan_hasil_lab_tiket_ascend( no_tiket, ffa=None, suhu=None,
             "lab_datetime": lab_at_db,
             "ffa": float(ffa_db) if ffa_db is not None else None,
             "suhu": float(suhu_db) if suhu_db is not None else None,
+            "ulage": float(ulage_db) if ulage_db is not None else None,
             "pct_air": float(air_db) if air_db is not None else None,
             "pct_kotoran": float(kotoran_db) if kotoran_db is not None else None,
             "kcolor": str(warna_db or "").strip(),
@@ -977,7 +980,238 @@ def simpan_hasil_lab_tiket_ascend( no_tiket, ffa=None, suhu=None,
         raise
     finally:
         koneksi.close()
+
+def simpan_hasil_sortasi_tiket_ascend(
+    no_tiket,
+    deduction_kg=None,
+    mentah=None,
+    busuk=None,
+    tangkai=None,
+    sampah=None,
+    matang=None,
+    brondolan=None,
+    operator=None,
+):
+    """Simpan Deduction dan grading langsung pada tiket Ascend."""
+    no_tiket = (no_tiket or "").strip()
+    operator_login = str(operator or "").strip()[:30]
+
+    if not no_tiket:
+        raise ValueError("Nomor tiket wajib diisi.")
+    if not operator_login:
+        raise ValueError("Petugas Sortasi wajib diisi.")
+
+    def angka_opsional(nilai, nama, persen=False):
+        if nilai is None or str(nilai).strip() == "":
+            return None
+        try:
+            hasil = Decimal(str(nilai))
+        except Exception as exc:
+            raise ValueError(f"Nilai {nama} harus berupa angka.") from exc
+        if not hasil.is_finite() or hasil < 0:
+            raise ValueError(f"Nilai {nama} tidak valid.")
+        if persen and hasil > 100:
+            raise ValueError(f"Nilai {nama} harus antara 0 dan 100.")
+        return hasil
+
+    deduction = angka_opsional(deduction_kg, "Deduction")
+    grading = {
+        "unripe": angka_opsional(mentah, "buah mentah", persen=True),
+        "rotton": angka_opsional(busuk, "buah busuk", persen=True),
+        "longstalk": angka_opsional(tangkai, "tangkai panjang", persen=True),
+        "rubbish": angka_opsional(sampah, "sampah", persen=True),
+        "gradingmasak": angka_opsional(matang, "buah matang", persen=True),
+        "brondolan": angka_opsional(brondolan, "brondolan", persen=True),
+    }
+
+    if deduction is None and not any(v is not None for v in grading.values()):
+        raise ValueError("Isi Deduction atau minimal satu nilai grading.")
+
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+        cursor.execute(
+            """
+            SELECT TOP (1) *
+            FROM dbo.PALM_Tickets WITH (UPDLOCK, HOLDLOCK)
+            WHERE TicketNo = ?
+              AND ISNULL(Void, 0) = 0
+              AND ISNULL(Splitted, 0) = 0
+            ORDER BY TicketID DESC
+            """,
+            no_tiket,
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError("Tiket Ascend tidak ditemukan atau sudah selesai.")
+
+        kolom = [item[0] for item in cursor.description]
+        tiket = {nama.casefold(): row[i] for i, nama in enumerate(kolom)}
+
+        if (
+            str(tiket.get("tickettype") or "").strip() != "TBSLuar"
+            or str(tiket.get("productname") or "").strip().casefold() != "tbs"
+        ):
+            raise ValueError("Sortasi hanya berlaku untuk tiket TBS Luar produk TBS.")
+
+        if int(tiket.get("step") or 0) != 1:
+            raise ValueError("Sortasi hanya dapat disimpan setelah timbang pertama dan sebelum timbang akhir.")
+
+        for nama, nilai in grading.items():
+            if nilai is not None:
+                tiket[nama] = nilai
+
+        if deduction is not None:
+            tiket["deduction"] = deduction
+
+        if any(v is not None for v in grading.values()):
+            tiket["gradingperformed"] = 1
+
+        sekarang = datetime.now()
+        tiket["sortasiby"] = operator_login[:50]
+        tiket["sortasidatetime"] = sekarang
+
+        bruto = Decimal(str(tiket.get("bruto") or 0))
+        tara = Decimal(str(tiket.get("tara") or 0))
+        deduction_tersimpan = Decimal(str(tiket.get("deduction") or 0))
+        timbang3 = Decimal(str(tiket.get("timbang3") or 0))
+        tara_netto = timbang3 if timbang3 > 0 else tara
+
+        cursor.execute(
+            """
+            SELECT dbo.UDF_SH_Settings_GetAsBit(
+                'PALM_Tickets.IncludeKgRejectInNetto', 0
+            )
+            """
+        )
+        include_kg_reject = bool(cursor.fetchone()[0])
+        kg_reject = (
+            Decimal(str(tiket.get("kgreject") or 0))
+            if include_kg_reject else Decimal("0")
+        )
+
+        # CheckNetto Ascend: Bruto - Tara/Timbang3 - Deduction + KgReject.
+        tiket["netto"] = bruto - tara_netto - deduction_tersimpan + kg_reject
+
+        cursor.execute(
+            """
+            SELECT name
+            FROM sys.parameters
+            WHERE object_id = OBJECT_ID('dbo.USP_PALM_Tickets_Update')
+              AND parameter_id > 0
+            ORDER BY parameter_id
+            """
+        )
+        nama_parameter = [r[0] for r in cursor.fetchall()]
+
+        wajib = {
+            "ticketid", "ticketno", "tickettype", "date", "datetimein",
+            "estateid", "vehicleno", "referenceno", "associateid",
+            "productname", "bruto", "tara", "deduction", "netto",
+            "checkedby", "operator", "printcount", "step",
+            "owncar", "allocated", "external",
+        }
+
+        parameter_terisi = []
+        nilai_parameter = []
+        tidak_tersedia = []
+
+        for nama in nama_parameter:
+            kunci = nama.lstrip("@").casefold()
+
+            if kunci == "loginname":
+                nilai = operator_login
+            elif kunci == "operator":
+                nilai = tiket.get("operator") or operator_login
+            elif kunci == "savelab":
+                nilai = 0
+            elif kunci == "sortasistr":
+                nilai = ""
+            elif kunci == "spdo2":
+                nilai = ""
+            elif kunci in {"linktodo", "force", "checkmaxdolimit"}:
+                nilai = 0
+            elif kunci in tiket:
+                nilai = tiket[kunci]
+            else:
+                if kunci in wajib:
+                    tidak_tersedia.append(nama)
+                continue
+
+            parameter_terisi.append(nama)
+            nilai_parameter.append(nilai)
+
+        if tidak_tersedia:
+            raise RuntimeError(
+                "Data tiket Ascend tidak cukup untuk update Sortasi: "
+                + ", ".join(tidak_tersedia)
+            )
+
+        sql = (
+            "EXEC dbo.USP_PALM_Tickets_Update "
+            + ", ".join(f"{nama} = ?" for nama in parameter_terisi)
+        )
+        cursor.execute(sql, *nilai_parameter)
+
+        cursor.execute(
+            """
+            SELECT Deduction, Netto, Unripe, Rotton, LongStalk,
+                   Rubbish, GradingMasak, Brondolan
+            FROM dbo.PALM_Tickets
+            WHERE TicketID = ?
+            """,
+            int(tiket["ticketid"]),
+        )
+        tersimpan = cursor.fetchone()
+        if not tersimpan:
+            raise RuntimeError("Hasil Sortasi tidak ditemukan saat membaca balik Ascend.")
+
+        deduction_db, netto_db, *grading_db = tersimpan
+        harapan_deduction = Decimal(str(tiket.get("deduction") or 0))
+
+        if (
+            deduction_db is None
+            or abs(Decimal(str(deduction_db)) - harapan_deduction)
+            > Decimal("0.01")
+        ):
+            raise RuntimeError("Deduction yang tersimpan di Ascend tidak sesuai.")
+
+        netto_harapan = Decimal(str(tiket.get("netto") or 0))
+        if (
+            netto_db is None
+            or abs(Decimal(str(netto_db)) - netto_harapan) > Decimal("0.01")
+        ):
+            raise RuntimeError("Netto hasil update Sortasi tidak sesuai.")
         
+        harapan_grading = [
+            tiket.get("unripe"),
+            tiket.get("rotton"),
+            tiket.get("longstalk"),
+            tiket.get("rubbish"),
+            tiket.get("gradingmasak"),
+            tiket.get("brondolan"),
+        ]
+        for nilai_db, harapan in zip(grading_db, harapan_grading):
+            if harapan is not None and (
+                nilai_db is None
+                or abs(Decimal(str(nilai_db)) - Decimal(str(harapan)))
+                > Decimal("0.01")
+            ):
+                raise RuntimeError("Nilai grading yang tersimpan di Ascend tidak sesuai.")
+
+        koneksi.commit()
+        return {
+            "ticket_id": int(tiket["ticketid"]),
+            "ticket_no": no_tiket,
+            "deduction_kg": float(deduction_db or 0),
+            "netto": float(netto_db or 0),
+        }
+    except Exception:
+        koneksi.rollback()
+        raise
+    finally:
+        koneksi.close()
+
 def riwayat_timbang_associate(
     ticket_ids, associate_id, ticket_type, mulai, sampai
 ):
@@ -1185,50 +1419,9 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
 
             nama_produk = str(nilai("ProductName", "") or "").strip().casefold()
             if ticket_type == "TBSLuar" and nama_produk == "tbs":
-                deduction_lama = Decimal(
+                deduction_harapan = Decimal(
                     str(nilai("Deduction", 0) or 0)
                 )
-                deduction_sortasi = Decimal("0")
-
-                sortasi = db_ascend_split.ambil_sortasi_tiket_ascend(
-                    int(nilai("TicketID"))
-                )
-
-                if sortasi:
-                    total_persen = (
-                        Decimal(str(sortasi["mentah"] or 0))
-                        + Decimal(str(sortasi["tangkai"] or 0))
-                        + Decimal(str(sortasi["sampah"] or 0))
-                    ).quantize(
-                        Decimal("0.01"),
-                        rounding=ROUND_HALF_UP,
-                    )
-
-                    # Sama dengan rumus CPOS: potongan dihitung dari Bruto - Tara.
-                    netto_sebelum_potongan = bruto - tara
-                    deduction_sortasi = (
-                        netto_sebelum_potongan
-                        * total_persen
-                        / Decimal("100")
-                    ).quantize(
-                        Decimal("0.01"),
-                        rounding=ROUND_HALF_UP,
-                    )
-
-                if deduction_sortasi > 0:
-                    cursor.execute(
-                        """
-                        SELECT dbo.UDF_SH_Settings_GetAsBit(
-                            'PALM_Tickets.FixDeduction.LBPI_ES', 0
-                        )
-                        """
-                    )
-                    if bool(cursor.fetchone()[0]):
-                        raise ValueError(
-                            "Setting khusus Ascend mengubah Deduction setelah "
-                            "simpan. Potongan sortasi CPOS belum bisa diterapkan "
-                            "dengan aman pada konfigurasi ini."
-                        )
 
                 cursor.execute(
                     """
@@ -1246,11 +1439,12 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
                 timbang3 = Decimal(str(nilai("Timbang3", 0) or 0))
                 tara_untuk_netto = timbang3 if timbang3 > 0 else tara
 
-                deduction_harapan = deduction_lama + deduction_sortasi
                 tiket["deduction"] = deduction_harapan
                 tiket["netto"] = (
-                    bruto - tara_untuk_netto
-                    - deduction_harapan + kg_reject
+                    bruto
+                    - tara_untuk_netto
+                    - deduction_harapan
+                    + kg_reject
                 )
 
         tiket["bruto"] = bruto

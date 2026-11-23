@@ -4,6 +4,8 @@ import { ingatAsisten, nilaiAsisten, saranAsisten, tanyaAsisten } from '../api'
 import Peringkat from '../grafik/Peringkat'
 import { ANIMASI, DURASI_ANIMASI } from '../grafik/animasi'
 import { angka, rupiah, rupiahPenuh, tglLengkap } from '../lib/data'
+import { SEMATAN } from '../lib/cpos'
+import { useAdaLayarMemuat } from '../lib/layarMemuat'
 import { IkonTutup } from './Ikon'
 
 // Tanya jawab data laporan dengan kalimat biasa. Jawaban dihitung server (backend/analytics/asisten) dari data laporan yang sama,
@@ -18,6 +20,19 @@ const CONTOH = [
   'Apa itu PVR?',
 ]
 const JEDA_MEMUAT = 1500
+// Percakapan dibawa ke laporan yang dibuka dari AkasaBot. Di dalam CPOS halamannya dimuat ulang, jadi disimpan sebentar di sessionStorage.
+const KUNCI_BAWA = 'akasabot-bawa'
+function ambilBawaan() {
+  try {
+    const d = JSON.parse(sessionStorage.getItem(KUNCI_BAWA) || 'null')
+    sessionStorage.removeItem(KUNCI_BAWA)
+    return d && Date.now() - d.waktu < 60_000 ? d : null
+  } catch {
+    return null
+  }
+}
+// Dibaca sekali saat halaman dimuat (bukan saat komponen dipasang), supaya tetap ada walau komponen dipasang ulang
+let BAWAAN = ambilBawaan()
 const MAKS_MEMUAT = 80 // sekitar 2 menit
 
 const desimal = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 })
@@ -37,24 +52,24 @@ function sumbu(v, tipe) {
   return n >= 1e12 ? `${desimal.format(v / 1e12)} T` : n >= 1e9 ? `${desimal.format(v / 1e9)} M` : n >= 1e6 ? `${desimal.format(v / 1e6)} jt` : angka.format(v)
 }
 
-// Lambang AkasaBot: timbangan dua piring. goyang = sedang menimbang (lengan dan piring berayun pelan, berhenti saat jawaban datang;
-// mati sama sekali kalau pengguna memilih "kurangi gerak").
-function IkonNeraca({ className = 'h-4 w-4', goyang = false }) {
+// Lambang AkasaBot: daun pengetahuan. Uratnya bercabang seperti catatan yang saling tersambung, tiap ujung cabang satu titik data.
+// nyala = sedang mencari jawaban (titik menyala bergantian dari pangkal ke pucuk; diam kalau pengguna memilih "kurangi gerak").
+const TITIK_AKASA = [[8.6, 16.4], [15.4, 16.4], [8.9, 11.6], [15.1, 11.6], [12, 5.6]]
+function IkonAkasa({ className = 'h-4 w-4', nyala = false }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}>
-      <path d="M12 4v16M8 20h8" />
-      <g className={goyang ? 'neraca-goyang' : undefined} style={{ transformOrigin: '12px 5px', transformBox: 'view-box' }}>
-        <path d="M4 6h16" />
-        <path d="M6 6l-3 6a3 3 0 0 0 6 0zM18 6l-3 6a3 3 0 0 0 6 0z" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}>
+      <path d="M12 2.5C7 5.5 4.6 9.6 5.4 14.2c.7 3.9 3.4 6.4 6.6 7.3 3.2-.9 5.9-3.4 6.6-7.3.8-4.6-1.6-8.7-6.6-11.7z" />
+      <path d="M12 21.5V7M12 18.6l-3.4-2.2M12 18.6l3.4-2.2M12 13.8l-3.1-2.2M12 13.8l3.1-2.2" strokeWidth="1.4" />
+      <g className={nyala ? 'akasa-nyala' : 'akasa-titik'} fill="currentColor" stroke="none">
+        {TITIK_AKASA.map(([x, y]) => <circle key={x + '-' + y} cx={x} cy={y} r="1.3" />)}
       </g>
-      <circle cx="12" cy="4" r="1" fill="currentColor" />
     </svg>
   )
 }
 
-// Pesan saat menimbang, bergantian supaya tunggu terasa hidup; isinya tetap jujur tentang apa yang sedang terjadi
-const PESAN_TIMBANG = ['Menimbang angka…', 'Menyeimbangkan neraca…', 'Mencocokkan dengan laporan…', 'Memastikan tidak berat sebelah…']
-const PESAN_MUAT = ['Mengambil data laporan dari server…', 'Data sedang diangkut ke timbangan…', 'Pertama kali memang agak lama, sampai satu menit…']
+// Pesan saat mencari jawaban, bergantian supaya tunggu terasa hidup; isinya tetap jujur tentang apa yang sedang terjadi
+const PESAN_CARI = ['Membuka catatan laporan…', 'Menelusuri cabang angkanya…', 'Mencocokkan dengan laporan…', 'Merangkum jawabannya…']
+const PESAN_MUAT = ['Mengambil data laporan dari server…', 'Catatannya sedang disalin ke terminal…', 'Pertama kali memang agak lama, sampai satu menit…']
 
 function PesanBerganti({ daftar }) {
   const [i, setI] = useState(0)
@@ -63,9 +78,10 @@ function PesanBerganti({ daftar }) {
     return () => clearInterval(t)
   }, [daftar])
   return (
-    <p role="status" className="flex items-center gap-2 text-sm text-slate-600">
-      <IkonNeraca className="h-5 w-5 text-sky-700" goyang />
-      {daftar[i]}
+    <p className="flex items-center gap-2 text-sm text-slate-600">
+      <IkonAkasa className="h-5 w-5 text-sky-700" nyala />
+      <span aria-hidden="true">{daftar[i]}</span>
+      <span className="sr-only" role="status">{daftar[0]}</span>
     </p>
   )
 }
@@ -134,6 +150,32 @@ function Grafik({ grafik, tabel }) {
   )
 }
 
+// Insight: tingkat ditulis sebagai teks (bukan warna saja), tiap poin bisa dibuka rinciannya
+const WARNA_TINGKAT = {
+  tinggi: 'border-red-200 bg-red-50 text-red-800',
+  sedang: 'border-amber-200 bg-amber-50 text-amber-800',
+  info: 'border-slate-200 bg-slate-50 text-slate-700',
+}
+
+function Poin({ poin, onTanya }) {
+  return (
+    <ol className="space-y-2">
+      {poin.map((x) => (
+        <li key={x.kode} className="rounded-md border border-slate-200 px-2.5 py-2">
+          <span className={'mr-1.5 inline-block rounded border px-1.5 py-px text-[11px] font-semibold ' + (WARNA_TINGKAT[x.tingkat] || WARNA_TINGKAT.info)}>{x.label}</span>
+          <span className="text-sm leading-relaxed text-slate-800">{x.teks}</span>
+          {x.tanya && (
+            <button type="button" onClick={() => onTanya(x.tanya)}
+              className="mt-0.5 block min-h-6 py-1 text-left text-xs font-medium text-sky-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 pointer-coarse:py-1.5">
+              Lihat rincian: {x.tanya}
+            </button>
+          )}
+        </li>
+      ))}
+    </ol>
+  )
+}
+
 function Jawaban({ j, terakhir, onTanya, onBuka, bolehBuka }) {
   const [tabelTerbuka, setTabelTerbuka] = useState(j.jenis === 'daftar' || j.jenis === 'dokumen')
   const [nilai, setNilai] = useState(null)
@@ -147,6 +189,7 @@ function Jawaban({ j, terakhir, onTanya, onBuka, bolehBuka }) {
       {/* Satu angka: angkanya yang paling menonjol, kalimatnya penjelas di bawah */}
       {j.angka && <p className="text-2xl font-semibold tabular-nums text-slate-900">{format(j.angka.nilai, j.angka.satuan === 'rp' ? 'rp' : j.angka.satuan === 'hari' ? 'hari' : 'angka', true)}</p>}
       <p className="text-sm leading-relaxed text-slate-800">{j.teks}</p>
+      {j.poin?.length > 0 && <Poin poin={j.poin} onTanya={onTanya} />}
       {/* Pertanyaan ditulis ulang sebagai filter laporan, bentuknya sama dengan filter di halaman laporan, supaya mudah dicocokkan */}
       {j.tafsiran?.length > 0 && (
         <div className="flex flex-wrap items-center gap-1 text-xs">
@@ -164,7 +207,7 @@ function Jawaban({ j, terakhir, onTanya, onBuka, bolehBuka }) {
       {j.grafik && adaTabel && <Grafik grafik={j.grafik} tabel={j.tabel} />}
       {adaTabel && j.grafik && (
         <button type="button" onClick={() => setTabelTerbuka((t) => !t)} aria-expanded={tabelTerbuka}
-          className="text-xs font-medium text-sky-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
+          className="min-h-6 py-1 text-xs font-medium text-sky-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
           {tabelTerbuka ? 'Sembunyikan tabel' : 'Lihat tabel'}
         </button>
       )}
@@ -179,7 +222,7 @@ function Jawaban({ j, terakhir, onTanya, onBuka, bolehBuka }) {
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs">
         {j.laporan && bolehBuka(j.laporan.id) && (
           <button type="button" onClick={() => onBuka(j.laporan.id)}
-            className="font-medium text-sky-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
+            className="min-h-6 py-1 font-medium text-sky-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
             Buka laporan {j.laporan.nama}
           </button>
         )}
@@ -188,8 +231,8 @@ function Jawaban({ j, terakhir, onTanya, onBuka, bolehBuka }) {
             {nilai === null ? (
               <>
                 Sesuai?
-                <button type="button" onClick={() => nilaiKe(true)} className="rounded-md border border-slate-300 px-2 py-0.5 text-slate-700 hover:border-slate-400 hover:bg-slate-100 active:bg-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 pointer-coarse:py-2">Ya</button>
-                <button type="button" onClick={() => nilaiKe(false)} className="rounded-md border border-slate-300 px-2 py-0.5 text-slate-700 hover:border-slate-400 hover:bg-slate-100 active:bg-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 pointer-coarse:py-2">Kurang tepat</button>
+                <button type="button" onClick={() => nilaiKe(true)} className="min-h-6 rounded-md border border-slate-500 px-2 py-1 text-slate-700 hover:bg-slate-100 active:bg-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 pointer-coarse:py-2">Ya</button>
+                <button type="button" onClick={() => nilaiKe(false)} className="min-h-6 rounded-md border border-slate-500 px-2 py-1 text-slate-700 hover:bg-slate-100 active:bg-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 pointer-coarse:py-2">Kurang tepat</button>
               </>
             ) : (
               <span role="status">{nilai ? 'Terima kasih.' : 'Terima kasih, akan diperiksa.'}</span>
@@ -225,8 +268,10 @@ function SaranMenu({ saran, onTanya }) {
 }
 
 export default function Asisten({ laporan, menu, onBukaLaporan }) {
-  const [buka, setBuka] = useState(false)
-  const [pesan, setPesan] = useState([]) // [{ dari: 'saya' | 'asisten', teks | jawaban }]
+  const [bawaan] = useState(() => BAWAAN)
+  const [buka, setBuka] = useState(!!bawaan)
+  const laporanMemuat = useAdaLayarMemuat()
+  const [pesan, setPesan] = useState(bawaan?.pesan || []) // [{ dari: 'saya' | 'asisten', teks | jawaban }]
   const [teks, setTeks] = useState('')
   const [sibuk, setSibuk] = useState(false)
   const lalu = useRef(null)
@@ -242,7 +287,7 @@ export default function Asisten({ laporan, menu, onBukaLaporan }) {
   // Rekomendasi diambil tiap panel dibuka di menu baru. Pindah menu di tengah percakapan: konteks lama dilepas dan rekomendasi menu
   // baru ditampilkan sebagai penanda di percakapan, supaya jelas jawaban berikutnya mengikuti menu itu.
   const [saran, setSaran] = useState({ menu: undefined, saran: CONTOH, ada_data: true })
-  const menuTerakhir = useRef(menu)
+  const menuTerakhir = useRef(bawaan ? bawaan.menu : menu)
   useEffect(() => {
     if (!buka || saran.menu === menu) return undefined
     let batal = false
@@ -282,6 +327,7 @@ export default function Asisten({ laporan, menu, onBukaLaporan }) {
   // Percakapan tetap tersimpan saat panel ditutup; fokus kembali ke tab Tanya AkasaBot setelah tombolnya tampil lagi
   const kembalikanFokus = useRef(false)
   const tutup = () => {
+    BAWAAN = null
     kembalikanFokus.current = true
     setBuka(false)
   }
@@ -291,6 +337,16 @@ export default function Asisten({ laporan, menu, onBukaLaporan }) {
       tombol.current?.focus()
     }
   }, [buka])
+  const bukaLaporan = (id) => {
+    if (SEMATAN && window.parent !== window) {
+      try {
+        sessionStorage.setItem(KUNCI_BAWA, JSON.stringify({ waktu: Date.now(), menu, pesan: pesan.filter((x) => !x.memuat) }))
+      } catch {
+        // penyimpanan penuh atau diblokir: percakapan mulai baru di laporan tujuan
+      }
+    }
+    onBukaLaporan(id)
+  }
   const baru = () => {
     giliran.current += 1
     lalu.current = null
@@ -335,10 +391,13 @@ export default function Asisten({ laporan, menu, onBukaLaporan }) {
   }
 
   const terakhir = pesan.findLastIndex((x) => x.jawaban || x.dari === 'menu')
+  const akhir = pesan.at(-1)
+  const umumkan = akhir?.jawaban ? `AkasaBot: ${akhir.jawaban.teks}` : akhir?.dari === 'menu' ? `Pindah ke menu ${akhir.nama || 'lain'}` : ''
 
   return (
     <>
-      {!buka && (
+      {!buka && !laporanMemuat && (
+        // Tombol baru muncul setelah laporan selesai dimuat.
         // Tab di tepi kanan, di bawah tab Filter: pola laci yang sama dengan Filter, tidak menutupi tabel atau tombol ke atas, dan tetap
         // terjangkau di posisi gulir mana pun. Putih bertepi supaya beda dari tab Filter yang biru penuh.
         <button
@@ -349,7 +408,7 @@ export default function Asisten({ laporan, menu, onBukaLaporan }) {
           style={{ top: 'calc(33.333% + 3.25rem)' }}
           className="fixed right-0 z-30 flex flex-col items-center gap-1.5 rounded-l-md border border-r-0 border-sky-700 bg-white px-1.5 py-2.5 text-xs font-semibold text-sky-800 shadow-[-4px_4px_14px_-6px_rgb(15_23_42/0.35)] hover:bg-sky-50 active:bg-sky-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 pointer-coarse:px-2.5"
         >
-          <IkonNeraca className="neraca-hover h-4 w-4" />
+          <IkonAkasa className="h-4 w-4" />
           <span className="[writing-mode:vertical-rl] rotate-180 tracking-wide">Tanya AkasaBot</span>
         </button>
       )}
@@ -357,12 +416,12 @@ export default function Asisten({ laporan, menu, onBukaLaporan }) {
         <aside
           role="complementary"
           aria-labelledby={idJudul}
-          className="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-slate-200 bg-white shadow-xl sm:w-[28rem]"
+          className="fixed top-0 right-0 z-50 flex h-dvh w-full flex-col border-l border-slate-200 bg-white shadow-xl sm:w-[28rem]"
         >
           {/* Pita biru tua: satu-satunya bidang berwarna penuh di panel, jadi identitas AkasaBot terbaca tanpa hiasan lain */}
-          <header className="neraca-pita flex items-start gap-3 bg-sky-900 px-4 py-3 text-white">
+          <header className="akasa-pita flex items-start gap-3 bg-sky-900 px-4 py-3 text-white">
             <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white/10">
-              <IkonNeraca className="h-6 w-6" goyang={sibuk} />
+              <IkonAkasa className="h-6 w-6" nyala={sibuk} />
             </span>
             <div className="min-w-0 flex-1">
               <h2 id={idJudul} className="text-base font-semibold">AkasaBot</h2>
@@ -380,10 +439,11 @@ export default function Asisten({ laporan, menu, onBukaLaporan }) {
             </button>
           </header>
 
-          <div ref={daftar} className="flex-1 space-y-4 overflow-y-auto px-4 py-4" aria-live="polite" aria-busy={sibuk}>
+          <p className="sr-only" aria-live="polite">{umumkan}</p>
+          <div ref={daftar} className="flex-1 space-y-4 overflow-y-auto px-4 py-4" aria-busy={sibuk}>
             {pesan.length === 0 && (
               <div className="space-y-3 text-sm text-slate-700">
-                <p>Taruh pertanyaan di piring kiri, saya taruh datanya di piring kanan. Ketik dengan kalimat biasa, lalu lanjutkan dengan "per supplier" atau "kalau YBS?" untuk mengubah jawabannya.</p>
+                <p>Saya terminal kecil untuk catatan laporan di server kantor. Ketik dengan kalimat biasa, lalu lanjutkan dengan "per supplier" atau "kalau YBS?" untuk mengubah jawabannya.</p>
                 <p className="text-xs font-medium text-slate-600">{namaMenu ? `Coba tanya soal ${namaMenu}:` : 'Coba tanya:'}</p>
                 <SaranMenu saran={saran} onTanya={tanya} />
                 {!saran.ada_data && (
@@ -411,15 +471,15 @@ export default function Asisten({ laporan, menu, onBukaLaporan }) {
               ) : (
                 <div key={i} className={'rounded-lg border px-3 py-2.5 ' + (m.jawaban.jenis === 'galat' ? 'border-red-200 bg-red-50' : 'border-slate-200')}>
                   {m.jawaban.jenis === 'galat' ? (
-                    <p className="text-sm text-red-700">{m.jawaban.teks}</p>
+                    <p className="text-sm text-red-700"><b className="font-semibold">Gagal:</b> {m.jawaban.teks}</p>
                   ) : (
                     <Jawaban j={m.jawaban} terakhir={i === terakhir} onTanya={tanya} bolehBuka={bolehBuka}
-                      onBuka={(id) => onBukaLaporan(id)} />
+                      onBuka={bukaLaporan} />
                   )}
                 </div>
               ),
             )}
-            {sibuk && !pesan.at(-1)?.memuat && <PesanBerganti daftar={PESAN_TIMBANG} />}
+            {sibuk && !pesan.at(-1)?.memuat && <PesanBerganti daftar={PESAN_CARI} />}
           </div>
 
           <form
@@ -438,7 +498,7 @@ export default function Asisten({ laporan, menu, onBukaLaporan }) {
               maxLength={300}
               autoComplete="off"
               placeholder={`Mis. ${(saran.saran[0] || "hutang ORI per supplier").toLowerCase()}`}
-              className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+              className="min-w-0 flex-1 rounded-lg border border-slate-500 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
             />
             <button type="submit" disabled={sibuk || !teks.trim()} aria-label="Kirim pertanyaan"
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-700 text-white hover:bg-sky-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">

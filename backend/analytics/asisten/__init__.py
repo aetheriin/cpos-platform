@@ -11,7 +11,7 @@ from datetime import datetime
 from difflib import SequenceMatcher
 from pathlib import Path
 
-from . import kamus, pengolah
+from . import insight, kamus, pengolah
 from .pembaca import NAMA_BULAN, baca, lengkapi, normal
 from .pengolah import Memuat, TanpaAkses
 
@@ -103,6 +103,8 @@ def _jawab(p, ambil, perusahaan, teks, nama=None, menu=None, nama_menu=None):
         bisa = ("Angkanya bisa ditanyakan ke saya." if info_menu.get("sumber") else
                 "Angka di menu ini belum bisa ditanyakan ke saya, tapi istilahnya bisa.")
         return {"jenis": "obrolan", "teks": f"{nama_menu or 'Menu ini'}: {info_menu['isi']} {bisa}", "saran": saran_menu}
+    if m == "insight":
+        return _insight(p, ambil, menu, nama_menu, info_menu, saran_menu)
     # Pertanyaan tanpa ukuran di menu yang punya data ("per supplier", "yang belum"): pakai ukuran utama menu itu
     dari_menu = None
     if m in ("angka", "daftar") and not p.get("ukuran") and not p.get("status") and info_menu.get("ukuran"):
@@ -117,10 +119,11 @@ def _jawab(p, ambil, perusahaan, teks, nama=None, menu=None, nama_menu=None):
         pola = jawab if nama else jawab.replace(", {nama}", "")
         teks = pola.format(nama=nama, salam=salam, asisten=kamus.NAMA_ASISTEN, jam=h.strftime("%H.%M"),
                                  tanggal=f"{hari}, {h.day} {NAMA_BULAN[h.month - 1]} {h.year}")
-        return {"jenis": "obrolan", "teks": teks, **({"saran": saran_menu} if o.get("saran") else {})}
+        saran = o.get("saran_khusus") or (saran_menu if o.get("saran") else None)
+        return {"jenis": "obrolan", "teks": teks, **({"saran": saran} if saran else {})}
     if m == "bantuan":
-        return {"jenis": "teks", "teks": "Saya bisa menjawab angka dari laporan Outstanding, Purchase Request, dan Purchase Order: total, per perusahaan, "
-                                         "per supplier, per bulan, daftar dokumen, membandingkan periode, mencari satu nomor dokumen, dan arti istilah. "
+        return {"jenis": "teks", "teks": "Saya bisa menjawab angka dari laporan Outstanding, Purchase Request, Purchase Order, dan Purchase Invoice: total, per perusahaan, "
+                                         "per supplier, per bulan, daftar dokumen, membandingkan periode, mencari satu nomor dokumen, arti istilah, dan hal yang perlu diperhatikan di menu yang dibuka. "
                                          "Pertanyaan lanjutan seperti \"kalau YBS?\" atau \"per supplier\" melanjutkan pertanyaan sebelumnya.",
                 "saran": saran_menu}
     if m == "istilah":
@@ -147,3 +150,33 @@ def _jawab(p, ambil, perusahaan, teks, nama=None, menu=None, nama_menu=None):
         hasil.setdefault("catatan", []).append(f"Dihitung dengan ukuran utama menu ini: {kamus.UKURAN[dari_menu]['label']}.")
     jenis = "daftar" if p.get("maksud") == "daftar" else "grafik" if hasil.get("grafik") else "angka" if hasil.get("angka") else "teks"
     return {"jenis": jenis, **hasil}
+
+
+def _insight(p, ambil, menu, nama_menu, info_menu, saran_menu):
+    sumber = info_menu.get("sumber")
+    if not sumber:
+        return {"jenis": "teks", "teks": "Insight baru tersedia di menu Outstanding, Purchase Request, Purchase Order, dan Purchase Invoice. "
+                                         "Buka salah satunya, lalu tanya lagi.", "saran": saran_menu}
+    try:
+        df, _ = ambil(sumber)
+    except Memuat as e:
+        return {"jenis": "memuat", "teks": "Sedang mengambil data laporan dari server. Tunggu sebentar…", "sumber": e.sumber}
+    except TanpaAkses as e:
+        nm = pengolah.NAMA_LAPORAN[kamus.SUMBER[e.sumber]["laporan"]]
+        return {"jenis": "teks", "teks": f"Akun Anda tidak punya akses ke laporan {nm}, jadi insight-nya tidak bisa saya hitung."}
+    poin = insight.hitung(sumber, df, p.get("perusahaan"), menu=menu)
+    lingkup = f" {', '.join(p['perusahaan'])}" if p.get("perusahaan") else ""
+    lap = kamus.SUMBER[sumber]["laporan"]
+    a = insight.AMBANG
+    catatan = [f"Yang ditampilkan hanya yang melewati ambang: umur lebih dari {a['umur_lama']} hari, perubahan {a['ubah'] * 100:.0f}% atau lebih, "
+               f"3 teratas memegang {a['penumpukan'] * 100:.0f}% atau lebih, atau {str(a['lambat']).replace('.', ',')} kali rata-rata."]
+    if not poin:
+        teks = f"Di {nama_menu or 'menu ini'}{lingkup} tidak ada yang melewati ambang saat ini."
+    else:
+        teks = f"Yang perlu diperhatikan di {nama_menu or 'menu ini'}{lingkup}, dari yang paling penting:"
+    saran = [x for x in saran_menu if x != kamus.INSIGHT_SARAN][:3]
+    return {"jenis": "insight", "teks": teks, "catatan": catatan,
+            "poin": [{"teks": x["teks"], "tingkat": x["tingkat"], "label": x["label"], "tanya": x["tanya"], "kode": x["kode"], "data": x["data"]}
+                     for x in poin],
+            "laporan": {"id": lap, "nama": pengolah.NAMA_LAPORAN[lap]}, "permintaan": {"maksud": "insight", "perusahaan": p.get("perusahaan")},
+            "saran": saran}

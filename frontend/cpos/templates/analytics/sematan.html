@@ -6,7 +6,7 @@
    (postMessage 'cpos-aktif') supaya sesi CPOS tidak dianggap diam (static/js/analytics/sematan.js). #}
 {% block tab_content %}
 <div class="analytics-bingkai">
-    <iframe id="bingkaiAnalytics" src="{{ src }}" title="{{ menu.nama }}" class="w-full h-full border-0 rounded-xl bg-white"></iframe>
+    <iframe id="bingkaiAnalytics" data-laporan="{{ laporan_boleh | join(',') }}" src="{{ src }}" title="{{ menu.nama }}" class="w-full h-full border-0 rounded-xl bg-white"></iframe>
 </div>
 {% endblock %}
 {% block extra_scripts %}

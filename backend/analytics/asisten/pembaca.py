@@ -196,6 +196,10 @@ def baca(teks, perusahaan_dikenal, hari_ini=None, menu=None):
     if re.search(kamus.POLA_MENU, t):
         p["maksud"] = "menu"
         return p
+    if re.search(kamus.POLA_INSIGHT, t):
+        kode = {k.casefold(): k for k in perusahaan_dikenal}
+        p.update(maksud="insight", perusahaan=[kode[k] for k in t.split() if k in kode] or None)
+        return p
     if _BANTU.search(t):
         p["maksud"] = "bantuan"
         return p

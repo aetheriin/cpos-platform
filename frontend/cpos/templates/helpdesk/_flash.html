@@ -1,0 +1,5 @@
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for cat, msg in messages %}
+<div class="mb-4 px-4 py-3 rounded-lg text-sm {{ {'success':'bg-emerald-50 text-emerald-700','danger':'bg-rose-50 text-rose-700','warning':'bg-amber-50 text-amber-700'}.get(cat, 'bg-slate-100 text-slate-700') }}">{{ msg }}</div>
+{% endfor %}
+{% endwith %}

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from "partials/layout/_macros.html" import judul_halaman %}
+{% block title %}IT Helpdesk · CPOS{% endblock %}
+
+{# Forms › IT Helpdesk: daftar tiket request ke tim IT. routes/helpdesk.py #}
+{% block info_bar %}{% endblock %}
+{% block info_bar_script %}{% endblock %}
+
+{% block tab_header %}
+    {% call judul_halaman('IT Helpdesk', 'Pengajuan request dan tiket tim IT', 'fa-headset') %}
+        {% if boleh_tambah %}<a href="{{ url_for('helpdesk.new_request') }}" class="btn-primary"><i class="fa-solid fa-plus mr-1"></i> Buat Request</a>{% endif %}
+    {% endcall %}
+{% endblock %}
+
+{% block tab_content %}
+{% set badge = {'Open':'bg-amber-100 text-amber-700','In Progress':'bg-sky-100 text-sky-700','Done':'bg-emerald-100 text-emerald-700','Rejected':'bg-rose-100 text-rose-700'} %}
+<div>
+    {% include "helpdesk/_flash.html" %}
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        {% for label, key in [('Open','TotalOpen'),('In Progress','TotalInProgress'),('Done','TotalDone'),('Total','TotalRequest')] %}
+        <div class="section-box p-4">
+            <p class="text-xs text-slate-500">{{ label }}</p>
+            <p class="text-2xl font-bold text-slate-800">{{ summary[key] or 0 }}</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <form method="get" class="filter-bar" data-hd-filter>
+        <div class="flex-1"></div>
+        <select name="status" aria-label="Filter status" class="input-field w-auto">
+            <option value="">Semua status</option>
+            {% for s in statuses %}<option value="{{ s }}" {{ 'selected' if s == status }}>{{ s }}</option>{% endfor %}
+        </select>
+        <select name="site" aria-label="Filter site" class="input-field w-auto">
+            <option value="">Semua site</option>
+            {% for st in sites %}<option value="{{ st.SiteCode }}" {{ 'selected' if st.SiteCode == site }}>{{ st.SiteCode }}</option>{% endfor %}
+        </select>
+        <div class="relative">
+            <input type="search" name="q" value="{{ q }}" aria-label="Cari tiket" placeholder="Cari tiket, request, nama" class="input-field pl-9 w-56">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+        </div>
+        <button type="submit" class="btn-secondary">Filter</button>
+    </form>
+
+    <h3 class="font-bold text-slate-800 mb-2">Daftar Tiket</h3>
+    <div class="section-box overflow-x-auto">
+        <table class="w-full text-left text-sm" data-hd-sort>
+            <thead class="table-header-row"><tr>
+                <th class="table-cell cursor-pointer select-none whitespace-nowrap" data-sort="text">Tiket</th><th class="table-cell cursor-pointer select-none whitespace-nowrap" data-sort="text">Site</th><th class="table-cell cursor-pointer select-none whitespace-nowrap" data-sort="text">Request</th>
+                <th class="table-cell cursor-pointer select-none whitespace-nowrap" data-sort="text">Pembuat</th><th class="table-cell cursor-pointer select-none whitespace-nowrap" data-sort="text">PIC</th><th class="table-cell cursor-pointer select-none whitespace-nowrap" data-sort="text">Teknisi</th>
+                <th class="table-cell cursor-pointer select-none whitespace-nowrap" data-sort="text">Status</th><th class="table-cell cursor-pointer select-none whitespace-nowrap" data-sort="date">Dibuat</th>
+            </tr></thead>
+            <tbody data-per-halaman="10" class="divide-y divide-slate-100">
+            {% for r in requests %}
+                <tr class="hover:bg-slate-50">
+                    <td class="table-cell"><a href="{{ url_for('helpdesk.detail', request_id=r.RequestId) }}" class="font-semibold text-utama-600 hover:underline">{{ r.TicketNo }}</a></td>
+                    <td class="table-cell">{{ r.SiteCode }}</td>
+                    <td class="table-cell">{{ r.RequestTitle }}</td>
+                    <td class="table-cell">{{ r.RequesterName }}</td>
+                    <td class="table-cell">{{ r.PersonInCharge }}</td>
+                    <td class="table-cell">{{ r.AssignedTo or '-' }}</td>
+                    <td class="table-cell"><span class="inline-block px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap {{ badge[r.Status] }}">{{ r.Status }}</span></td>
+                    <td class="table-cell">{{ r.CreatedAt.strftime('%d/%m/%Y %H:%M') }}</td>
+                </tr>
+            {% else %}
+                <tr data-empty><td colspan="8" class="table-cell text-center text-slate-500 py-10">
+                    <i class="fa-solid fa-folder-open text-2xl text-slate-400 block mb-2"></i>Belum ada request
+                </td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <div id="hdPager" class="flex items-center justify-between gap-3 flex-wrap px-4 py-3 text-sm text-slate-600 border-t border-slate-100"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script defer src="{{ url_for('static', filename='js/helpdesk/helpdesk.js') }}"></script>
+{% endblock %}

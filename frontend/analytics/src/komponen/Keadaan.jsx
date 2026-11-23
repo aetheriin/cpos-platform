@@ -1,3 +1,5 @@
+import { useDaftarLayarMemuat } from '../lib/layarMemuat'
+
 // Keadaan kosong dan memuat, sama di semua laporan. Kosong mengikuti barisKosong di CPOS (ikon folder + teks).
 export function Kosong({ teks }) {
   return (
@@ -41,6 +43,7 @@ export function Memuat({ teks = 'Memuat data…' }) {
 
 // Kerangka kartu dan grafik selama laporan pertama kali diambil, supaya tidak tampil area kosong
 export function MemuatLaporan({ teks = 'Memuat laporan…' }) {
+  useDaftarLayarMemuat()
   return (
     <div role="status" className="space-y-3">
       <p className="text-sm text-slate-500">{teks}</p>

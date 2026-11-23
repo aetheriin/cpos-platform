@@ -41,6 +41,7 @@ from modules.rekapin import rekapin_bp
 from modules.item_request import item_request_bp
 from modules.item_dashboard import item_dashboard_bp
 from modules.netto_sumber import netto_sumber_bp
+from routes.helpdesk import helpdesk_bp
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"),
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -100,7 +101,7 @@ def belum_login():
 for bp in (auth_bp, main_bp, security_bp, timbangan_bp, sortasi_bp, lab_bp, kendaraan_bp,
            personel_bp, blacklist_bp, visitor_bp, deteksi_plat_bp, audit_bp, sistem_bp, admin_bp, kontrak_bp, dashboard_bp, master_bp, agen_bp,
            kelebihan_do_bp, cari_bp, persetujuan_bp, pos_bp, analytics_bp, rekapin_bp, item_request_bp, item_dashboard_bp,
-           netto_sumber_bp):
+           netto_sumber_bp, helpdesk_bp):
     app.register_blueprint(bp)
 
 # Agen timbangan (tanpa sesi browser) dilindungi token perangkat, bukan CSRF

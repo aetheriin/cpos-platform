@@ -178,7 +178,7 @@ DAFTAR = {
                                ("umur", "Aging (hari)"), ("status", "Status"), ("sisa_rp", "Sisa")],
                     "piutang": [("comp", "Perusahaan"), ("mitra", "Customer"), ("no_dok", "No. Dokumen"), ("tgl", "Tanggal"),
                                 ("umur", "Aging (hari)"), ("status", "Status"), ("sisa_rp", "Sisa")]},
-    "pr": [("comp", "Perusahaan"), ("prnumber", "No. PR"), ("pr_date", "Tanggal PR"), ("umur", "Aging (hari)"), ("status", "Status"),
+    "pr": [("comp", "Perusahaan"), ("prnumber", "No. PR"), ("pr_date", "Tanggal dibuat"), ("umur", "Aging (hari)"), ("status", "Status"),
            ("itemname", "Barang"), ("po_number", "No. PO")],
     "po": [("comp", "Perusahaan"), ("po_number", "No. PO"), ("cd", "Tanggal PO"), ("umur", "Aging (hari)"), ("status", "Status"),
            ("supplier_name", "Supplier"), ("total_po", "Nilai"), ("pi_number", "No. PI")],
@@ -241,6 +241,27 @@ OBROLAN = [
     {"pola": r"(siapa yang (buat|bikin|membuat)|dibuat (oleh )?siapa|pembuatmu)",
      "jawab": "Saya bot bagian dari Analytics di CPOS. Usul atau keluhan soal saya bisa disampaikan ke tim IT."},
     {"pola": r"^(dah|dadah|bye|sampai jumpa|sampai nanti|see you)$", "jawab": "Dadah, {nama}. AkasaBot tetap tersambung kalau dibutuhkan."},
+    # Pertanyaan yang sering muncul di menu PR & PO Outstanding dan PO & PI Outstanding
+    {"pola": r"(kenapa|mengapa|kok|alasan).*\bpr\b.*(belum|tidak|gak|ga) (jadi |dibuat(kan)? )?po",
+     "jawab": "Alasannya tidak tercatat di data ERP, jadi saya tidak bisa menebaknya. Yang bisa dilihat dari laporan: PR itu sudah disetujui "
+              "atau belum, dan sudah berapa lama menunggu. PR yang belum disetujui belum bisa dibuatkan PO oleh Purchasing. "
+              "Untuk alasan per PR, tanyakan ke buyer atau peminta barangnya.",
+     "saran_khusus": ["Daftar PR belum PO terlama", "PR yang belum PO per perusahaan"]},
+    {"pola": r"(kenapa|mengapa|kok|alasan).*\bpo\b.*(belum|tidak|gak|ga) (jadi |dibuat(kan)? )?pi",
+     "jawab": "PI dibuat setelah barang diterima dan tagihan supplier dicatat, jadi PO yang belum PI biasanya barangnya belum datang atau "
+              "tagihannya belum masuk. Alasan pastinya tidak tercatat di data; cek ke supplier atau gudang penerima untuk PO yang sudah lama.",
+     "saran_khusus": ["Daftar PO belum PI terlama", "PO yang belum PI per supplier"]},
+    {"pola": r"(cara|bagaimana|gimana|bisa) .*(tutup|menutup|hapus|batal|membatalkan|close)\w* .*\b(pr|po)\b|(tutup|batalkan|hapus) (pr|po)\b",
+     "jawab": "PR dan PO ditutup atau dibatalkan di ERP oleh Purchasing. Saya dan laporan ini hanya membaca data, tidak bisa mengubahnya. "
+              "Setelah ditutup di ERP, statusnya berubah menjadi \"Ditutup tanpa PO\" atau \"Ditutup tanpa PI\" saat data dimuat ulang."},
+    {"pola": r"(beda|perbedaan|bedanya).*(aging|umur).*(lama)|(beda|perbedaan|bedanya).*(lama).*(aging|umur)",
+     "jawab": "Aging dipakai untuk dokumen yang masih menunggu: hari dari tanggal dokumen dibuat sampai hari ini. Lama proses dipakai untuk "
+              "dokumen yang sudah lanjut: hari dari tanggal dokumen dibuat sampai dokumen berikutnya dibuat, misalnya PR sampai PO pertama. "
+              "Jadi PR yang belum jadi PO punya aging tapi belum punya lama proses.",
+     "saran_khusus": ["Gimana cara hitung aging PR?", "Gimana cara hitung aging PO?"]},
+    {"pola": r"(data|laporan|angka)(nya)? .*(diperbarui|diupdate|update|terbaru|real ?time|kapan)|kapan (data|laporan)(nya)? .*(update|diperbarui)",
+     "jawab": "Data diambil dari ERP saat laporan dibuka, lalu dipakai ulang sampai 15 menit supaya tidak memuat ulang terus. "
+              "Kalau perlu angka paling baru, tekan Muat ulang data di panel periode."},
     {"pola": r"(cerita|lelucon|lawak|jokes?|lucu|ngelawak|receh|pantun|nyanyi|puisi|hibur)",
      "jawab": ["Kenapa truk sawit ditimbang dua kali? Biar ketahuan mana muatan, mana yang cuma tara.",
                "Pohon pengetahuan boleh terbakar, tapi hutang tetap tercatat. Hutang memang tahan api.",
@@ -256,40 +277,40 @@ MENU = {
     "outstanding": {"sumber": "outstanding", "ukuran": "hutang",
                     "umum": {"belum": "belum pvr", "sebagian": "pvr sebagian", "pending": "pvr pending"},
                     "isi": "Hutang dan piutang yang belum lunas. Periode dan aging memakai tanggal dokumen, dihitung sampai hari ini.",
-                    "saran": ["Hutang per perusahaan", "10 supplier dengan hutang terbesar", "Hutang yang belum PVR per perusahaan",
+                    "saran": ["Apa yang perlu diperhatikan di menu ini?", "Hutang per perusahaan", "10 supplier dengan hutang terbesar", "Hutang yang belum PVR per perusahaan",
                               "Daftar hutang terlama", "Piutang per customer", "Hutang per sumber"]},
     "purchase_request": {"sumber": "pr", "ukuran": "jumlah_pr",
                          "umum": {"belum": "belum po", "sebagian": "po sebagian", "sudah": "sudah po", "ditutup": "ditutup tanpa po"},
                          "isi": "Tiap baris PR dengan status belum, sebagian, atau sudah dibuatkan PO.",
-                         "saran": ["PR yang belum PO per perusahaan", "Daftar PR belum PO terlama", "Lama PR jadi PO per buyer",
+                         "saran": ["Apa yang perlu diperhatikan di menu ini?", "PR yang belum PO per perusahaan", "Daftar PR belum PO terlama", "Lama PR jadi PO per buyer",
                                    "Jumlah PR per bulan", "PR bulan ini per kategori", "Gimana cara hitung aging PR?"]},
     "pr_po": {"sumber": "pr", "ukuran": "jumlah_pr",
               "umum": {"belum": "belum po", "sebagian": "po sebagian", "sudah": "sudah po"},
               "isi": "PR yang belum menjadi PO dan lama prosesnya. Periode dan aging memakai tanggal PR dibuat.",
-              "saran": ["PR yang belum PO per perusahaan", "Lama PR jadi PO per bulan", "Daftar PR belum PO terlama",
+              "saran": ["Apa yang perlu diperhatikan di menu ini?", "PR yang belum PO per perusahaan", "Lama PR jadi PO per bulan", "Daftar PR belum PO terlama",
                         "Rata-rata aging PR belum PO per perusahaan", "Gimana cara hitung aging PR?"]},
     "purchase_order": {"sumber": "po", "ukuran": "jumlah_po",
                        "umum": {"belum": "belum pi", "sebagian": "pi sebagian", "sudah": "sudah pi", "ditutup": "ditutup tanpa pi"},
                        "isi": "Tiap baris PO dengan status belum, sebagian, atau sudah dibuatkan PI.",
-                       "saran": ["PO yang belum PI per supplier", "Nilai PO bulan ini per supplier", "Lama PO jadi PI per perusahaan",
+                       "saran": ["Apa yang perlu diperhatikan di menu ini?", "PO yang belum PI per supplier", "Nilai PO bulan ini per supplier", "Lama PO jadi PI per perusahaan",
                                  "Daftar PO belum PI terlama", "Nilai PO bulan ini dibanding bulan lalu"]},
     "po_pi": {"sumber": "po", "ukuran": "jumlah_po",
               "umum": {"belum": "belum pi", "sebagian": "pi sebagian", "sudah": "sudah pi"},
               "isi": "PO yang belum dibuatkan PI. Periode dan aging memakai tanggal PO dibuat; lama proses dari tanggal PO sampai PI terakhir.",
-              "saran": ["PO yang belum PI per perusahaan", "Lama PO jadi PI per bulan", "Daftar PO belum PI terlama",
+              "saran": ["Apa yang perlu diperhatikan di menu ini?", "PO yang belum PI per perusahaan", "Lama PO jadi PI per bulan", "Daftar PO belum PI terlama",
                         "PO yang belum PI per supplier", "Gimana cara hitung aging PO?"]},
     "po_amt": {"sumber": "po", "ukuran": "nilai_po", "umum": {},
                "isi": "Nilai belanja PO dalam rupiah per kategori, bulan, dan supplier.",
-               "saran": ["Nilai PO per bulan", "Nilai PO per kategori", "10 supplier dengan nilai PO terbesar",
+               "saran": ["Apa yang perlu diperhatikan di menu ini?", "Nilai PO per bulan", "Nilai PO per kategori", "10 supplier dengan nilai PO terbesar",
                          "Nilai PO bulan ini dibanding bulan lalu", "Jumlah supplier PO per perusahaan"]},
     "pi_pvr": {"sumber": "pi", "ukuran": "jumlah_pi",
                "umum": {"belum": "belum pvr", "sudah": "sudah pvr dan pv"},
                "isi": "PI yang belum punya PVR atau PV, yang dibayar PV tanpa PVR, dan yang sudah PVR.",
-               "saran": ["PI yang belum PVR per perusahaan", "Daftar PI belum PVR terlama", "Lama PI jadi PVR per perusahaan",
+               "saran": ["Apa yang perlu diperhatikan di menu ini?", "PI yang belum PVR per perusahaan", "Daftar PI belum PVR terlama", "Lama PI jadi PVR per perusahaan",
                          "Nilai PI bulan ini per supplier", "PI yang dibayar tanpa PVR per pembuat"]},
     "pi_gt": {"sumber": "pi", "ukuran": "jumlah_pi", "umum": {},
               "isi": "Barang yang sudah di-PI tapi belum diterima gudang tujuan lewat GT, beserta lead time-nya.",
-              "saran": ["Apa itu GT?", "Jumlah PI per bulan", "Nilai PI per perusahaan"]},
+              "saran": ["Apa yang perlu diperhatikan di menu ini?", "Apa itu GT?", "Jumlah PI per bulan", "Nilai PI per perusahaan"]},
     "penilaian_pvr": {"isi": "Skor pembuat PVR per bulan menurut kategori dan bobotnya, sama dengan Excel Penilaian PVR.",
                       "saran": ["Apa itu PVR?", "Hutang yang belum PVR per perusahaan", "Lama PI jadi PVR per bulan"]},
     "penilaian_pv": {"isi": "Skor kasir pembuat PV hutang per bulan, aturannya sama dengan PVR KPI dengan bobot PV.",
@@ -308,3 +329,9 @@ MENU = {
 
 # Pertanyaan tentang menu yang sedang dibuka
 POLA_MENU = r"((menu|laporan|halaman|dashboard) ini (isinya )?(apa|tentang apa|buat apa|untuk apa|isinya apa)|isi (menu|laporan|halaman) ini|ini (menu|laporan) apa|ini apa ya)"
+
+# Minta insight menu yang sedang dibuka
+POLA_INSIGHT = (r"\b(insight|insigh|ringkasan|rangkuman|ringkas|kesimpulan|kesimpulannya|temuan|sorotan|highlight|poin penting|"
+                r"(perlu|harus|wajib) (diperhatikan|diperhatiin|dicek|dilihat|diwaspadai)|apa yang (menarik|penting|janggal|aneh)|"
+                r"(bisa|dapat) diambil|apa (masalahnya|yang bermasalah)|ada masalah|analisa|analisis|gimana kondisinya|kondisi(nya)? (gimana|bagaimana))\b")
+INSIGHT_SARAN = "Apa yang perlu diperhatikan di menu ini?"

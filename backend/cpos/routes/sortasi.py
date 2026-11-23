@@ -37,52 +37,40 @@ def sortasi_simpan():
             "error": "Timbang pertama harus tersimpan sebelum sortasi."
         }), 409
 
-    nilai = {
-        nama: request.form.get(nama) or 0
-        for nama in (
-            "mentah", "busuk", "tangkai",
-            "sampah", "matang", "brondolan",
-        )
-    }
+    if not db_ascend_split.tiket_di_area(
+        tiket["ticket_id"],
+        area_data(current_user.id),
+    ):
+        return jsonify({"error": "Tiket tidak ditemukan pada area Anda."}), 404
 
     try:
-        db_ascend_split.simpan_sortasi_tiket_ascend(
-            tiket["ticket_id"],
+        hasil = db_ascend.simpan_hasil_sortasi_tiket_ascend(
             no_tiket,
-            nilai["mentah"],
-            nilai["busuk"],
-            nilai["tangkai"],
-            nilai["sampah"],
-            nilai["matang"],
-            nilai["brondolan"],
-            request.form.get("catatan", ""),
-            current_user.id,
+            deduction_kg=request.form.get("deduction_kg") or None,
+            mentah=request.form.get("mentah") or None,
+            busuk=request.form.get("busuk") or None,
+            tangkai=request.form.get("tangkai") or None,
+            sampah=request.form.get("sampah") or None,
+            matang=request.form.get("matang") or None,
+            brondolan=request.form.get("brondolan") or None,
+            operator=current_user.username,
         )
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception:
         logging.getLogger("weighbridge").exception(
-            "Gagal menyimpan sortasi tiket Ascend %s",
+            "Gagal menyimpan Sortasi Ascend untuk tiket %s",
             no_tiket,
         )
         return jsonify({
-            "error": "Sortasi gagal disimpan. Periksa statusnya sebelum mencoba lagi."
+            "error": "Sortasi gagal disimpan ke Ascend. Periksa status tiket sebelum mencoba lagi."
         }), 503
 
-    total_persen = round(
-        float(nilai["mentah"])
-        + float(nilai["tangkai"])
-        + float(nilai["sampah"]),
-        2,
-    )
-
     return jsonify({
-        "message": (
-            f"Sortasi tersimpan. Potongan {total_persen}% "
-            "akan dihitung dari Netto saat timbang terakhir."
-        ),
-        "total_persen_potongan": total_persen,
-        "total_potongan_kg": None,
+        "message": "Hasil Sortasi berhasil disimpan ke tiket Ascend.",
+        "no_tiket": hasil["ticket_no"],
+        "deduction_kg": hasil["deduction_kg"],
+        "netto": hasil["netto"],
     }), 200
 
 @sortasi_bp.route("/api/history/sortasi")

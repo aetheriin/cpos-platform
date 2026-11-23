@@ -82,6 +82,8 @@ def bersihkan(raw):
         "aging": raw["AGING"].fillna("").astype(str).str.strip(),
         "pi_nomor_mentah": raw["PURCHASENUMBER"],
         "pi_tgl_mentah": raw["PURCHASEDATE"],
+        # Tanggal PI dibuat (SP baru); kosong kalau SP belum diperbarui
+        "pi_cd_mentah": raw["PURCHASECREATEDATE"] if "PURCHASECREATEDATE" in raw.columns else None,
     })
 
     kat, catatan = kategori.petakan_seri(d["comp"], d["category"])
@@ -104,12 +106,13 @@ def bersihkan(raw):
 
     # Pecah daftar PI menjadi satu baris per PI (daftar yang lebih pendek diisi kosong, seperti List.Zip).
     # Pengaman: PI yang awalannya bukan perusahaan PO-nya (salah tautan dari SP) diabaikan.
-    kolom_tetap = [c for c in d.columns if c not in ("pi_nomor_mentah", "pi_tgl_mentah")]
+    kolom_tetap = [c for c in d.columns if c not in ("pi_nomor_mentah", "pi_tgl_mentah", "pi_cd_mentah")]
     ip, ic = kolom_tetap.index("partial"), kolom_tetap.index("comp")
     hasil, salah, contoh = [], 0, []
     for baris in d.to_dict("records"):
         nomor = _daftar(baris["pi_nomor_mentah"])
         tgl = _daftar(baris["pi_tgl_mentah"])
+        dibuat = _daftar(baris["pi_cd_mentah"])
         n = max(len(nomor), len(tgl), 1)
         tetap = [baris[k] for k in kolom_tetap]
         milik = str(tetap[ic]).upper()
@@ -125,12 +128,13 @@ def bersihkan(raw):
         if sah:
             tetap[ip] = "Y" if len({nomor[i] for i in sah if i < len(nomor) and nomor[i]}) > 1 else "N"
             for i in sah:
-                hasil.append(tetap + [nomor[i] if i < len(nomor) else "", tgl[i] if i < len(tgl) else ""])
+                hasil.append(tetap + [nomor[i] if i < len(nomor) else "", tgl[i] if i < len(tgl) else "", dibuat[i] if i < len(dibuat) else ""])
         else:  # semua PI-nya salah tautan: perlakukan seperti PO yang belum punya PI
             tetap[ip] = "N"
-            hasil.append(tetap + ["", ""])
-    out = pd.DataFrame(hasil, columns=kolom_tetap + ["pi_number", "pi_tgl"])
+            hasil.append(tetap + ["", "", ""])
+    out = pd.DataFrame(hasil, columns=kolom_tetap + ["pi_number", "pi_tgl", "pi_cd"])
     out["pi_date"] = _tanggal(out["pi_tgl"].replace("", None))
+    out["pi_cd"] = _tanggal(out["pi_cd"].replace("", None))
     out = out.drop(columns="pi_tgl")
 
     catatan = dict(catatan, pi_beda_perusahaan=salah, pi_beda_perusahaan_contoh=contoh)

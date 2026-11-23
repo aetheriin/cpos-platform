@@ -6,7 +6,7 @@ import Asisten from './komponen/Asisten'
 import TandaMemuat from './komponen/TandaMemuat'
 import { IkonBulan, IkonKunci, IkonMatahari, IkonMenu } from './komponen/Ikon'
 import Sidebar from './komponen/Sidebar'
-import { keBerandaCpos, keLoginCpos, SEMATAN } from './lib/cpos'
+import { bukaDiCpos, keBerandaCpos, keLoginCpos, SEMATAN } from './lib/cpos'
 import { hariIni, salam } from './lib/data'
 import { idDariAlamat, pindahAlamat } from './lib/rute'
 import { useTema } from './lib/tema'
@@ -116,6 +116,9 @@ export default function App() {
   }
   const pilih = (id) => {
     if (sempit) setMenu(false)
+    // Di dalam CPOS, halaman CPOS yang pindah ke /an/<id>. Bingkai tidak mengganti isi atau riwayatnya sendiri, supaya tombol Back
+    // mengembalikan menu CPOS dan isi bingkai bersama-sama.
+    if (id && bukaDiCpos(id)) return
     buka(id)
     pindahAlamat(id)
   }

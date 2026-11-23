@@ -1,49 +1,87 @@
 let noTiketSortasiAktif = null;
-let beratAcuanSortasi = null;   // netto; null = belum timbang kedua
 
 window.addEventListener('platLookup', (e) => {
     const data = e.detail;
-    // Tiket lain (PKS / belum ada tiket) -> kosongkan, supaya sortasi tidak tersimpan ke tiket sebelumnya
     noTiketSortasiAktif = null;
-    beratAcuanSortasi = null;
-    document.getElementById('srBeratAcuan').textContent = '-';
+
+    [
+        'srDeductionKg',
+        'srMentah',
+        'srBusuk',
+        'srTangkai',
+        'srSampah',
+        'srMatang',
+        'srBrondolan',
+    ].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+
     hitungPotongan();
-    if (data.status === 'ADA_TIKET' && tiketPunyaTahap(data, 'SORTASI')) {
+
+    if (
+        data.status === 'ADA_TIKET' &&
+        data.sumber === 'ASCEND' &&
+        tiketPunyaTahap(data, 'SORTASI')
+    ) {
         noTiketSortasiAktif = data.no_tiket;
-        ambilJson(`/api/timbang/data/${data.no_tiket}?sumber=ASCEND`).then(tb => {
-            if (tb.error) { Notif.gagal(tb.error); return; }
-            // Potongan dihitung dari netto (berat buah saja, tanpa truk)
-            beratAcuanSortasi = tb.berat_netto;
-            document.getElementById('srBeratAcuan').textContent = beratAcuanSortasi ?? 'menunggu timbang kedua';
-            hitungPotongan();
-        });
     }
+
     muatHistorySortasi();
 });
 
 function hitungPotongan() {
-    const mentah = parseFloat(document.getElementById('srMentah').value) || 0;
-    const tangkai = parseFloat(document.getElementById('srTangkai').value) || 0;
-    const sampah = parseFloat(document.getElementById('srSampah').value) || 0;
-    const totalPersen = mentah + tangkai + sampah;
-    document.getElementById('srEstimasiPersen').textContent = totalPersen.toFixed(1) + '%';
-    document.getElementById('srTotalPotongan').textContent = beratAcuanSortasi == null
-        ? 'dihitung saat timbang kedua'
-        : round2(beratAcuanSortasi * totalPersen / 100) + ' kg';
-    document.getElementById('srStatusMutu').textContent = totalPersen > 15 ? 'Kurang Baik' : 'Baik';
+    const input = document.getElementById('srDeductionKg');
+    const ringkasan = document.getElementById('srTotalPotongan');
+
+    if (!input || !ringkasan || input.value.trim() === '') {
+        ringkasan.textContent = '- kg';
+        return;
+    }
+
+    const kg = Number(input.value);
+    ringkasan.textContent = Number.isFinite(kg)
+        ? `${kg.toLocaleString('id-ID')} kg`
+        : '- kg';
 }
-function round2(n) { return Math.round(n * 100) / 100; }
 
 async function submitSortasi(btn) {
-    if (!noTiketSortasiAktif) { Notif.peringatan('Silakan pilih plat atau tiket terlebih dahulu'); return; }
+    if (!noTiketSortasiAktif) {
+        Notif.peringatan('Silakan pilih tiket Ascend terlebih dahulu');
+        return;
+    }
+
     const formData = new FormData();
     formData.append('no_tiket', noTiketSortasiAktif);
-    ['mentah', 'busuk', 'tangkai', 'sampah', 'matang', 'brondolan'].forEach(k => {
-        formData.append(k, document.getElementById(`sr${k.charAt(0).toUpperCase() + k.slice(1)}`).value || 0);
-    });
-    formData.append('catatan', document.getElementById('srCatatan').value);
-    const data = await denganTombol(btn, () => kirimForm('/api/sortasi/simpan', formData));
-    if (tampilkanHasil(data)) muatHistorySortasi();
+    formData.append(
+        'deduction_kg',
+        document.getElementById('srDeductionKg').value
+    );
+
+    const grading = [
+        ['mentah', 'srMentah'],
+        ['busuk', 'srBusuk'],
+        ['tangkai', 'srTangkai'],
+        ['sampah', 'srSampah'],
+        ['matang', 'srMatang'],
+        ['brondolan', 'srBrondolan'],
+    ];
+
+    for (const [nama, id] of grading) {
+        const nilai = document.getElementById(id).value.trim();
+        if (nilai !== '') {
+            formData.append(nama, nilai);
+        }
+    }
+
+    const data = await denganTombol(
+        btn,
+        () => kirimForm('/api/sortasi/simpan', formData)
+    );
+
+    if (tampilkanHasil(data)) {
+        muatHistorySortasi();
+    }
 }
 
 async function muatHistorySortasi() {
