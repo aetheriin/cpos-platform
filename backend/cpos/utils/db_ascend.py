@@ -569,6 +569,70 @@ def daftar_riwayat_lab_ascend(ticket_ids, batas=100):
     finally:
         koneksi.close()
 
+def daftar_riwayat_sortasi_ascend(ticket_ids, batas=100):
+    """Baca riwayat Sortasi dari tiket Ascend sesuai cakupan TicketID."""
+    ticket_ids = sorted({int(i) for i in (ticket_ids or [])})
+    if not ticket_ids:
+        return []
+
+    batas = max(1, min(int(batas), 200))
+    hasil = []
+    koneksi = _koneksi()
+
+    try:
+        cursor = koneksi.cursor()
+
+        for awal in range(0, len(ticket_ids), 850):
+            bagian = ticket_ids[awal:awal + 850]
+            tanda_tanya = ", ".join("?" for _ in bagian)
+
+            cursor.execute(
+                f"""
+                SELECT TOP ({batas})
+                    t.TicketID AS ticket_id,
+                    t.TicketNo AS no_tiket,
+                    t.SortasiDateTime AS sortasi_datetime,
+                    t.VehicleNo AS no_plat,
+                    t.ProductName AS nama_produk,
+                    s.SupplierName AS nama_supplier,
+                    t.Deduction AS deduction_kg,
+                    t.SortasiBy AS sortasi_by
+                FROM dbo.PALM_Tickets t
+                LEFT JOIN dbo.AP_Suppliers s
+                    ON s.SupplierID = t.AssociateID
+                WHERE t.TicketID IN ({tanda_tanya})
+                  AND t.TicketType = 'TBSLuar'
+                  AND t.ProductName = 'TBS'
+                  AND t.SortasiDateTime IS NOT NULL
+                ORDER BY t.SortasiDateTime DESC, t.TicketID DESC
+                """,
+                *bagian,
+            )
+
+            for row in cursor.fetchall():
+                hasil.append({
+                    "ticket_id": int(row[0]),
+                    "no_tiket": str(row[1] or "").strip(),
+                    "sortasi_datetime": (
+                        row[2].isoformat() if row[2] else None
+                    ),
+                    "no_plat": str(row[3] or "").strip(),
+                    "nama_produk": str(row[4] or "").strip(),
+                    "nama_supplier": str(row[5] or "").strip(),
+                    "deduction_kg": (
+                        float(row[6]) if row[6] is not None else None
+                    ),
+                    "sortasi_by": str(row[7] or "").strip(),
+                })
+
+        hasil.sort(
+            key=lambda r: (r["sortasi_datetime"] or "", r["ticket_id"]),
+            reverse=True,
+        )
+        return hasil[:batas]
+    finally:
+        koneksi.close()
+
 def daftar_tiket_ascend_aktif(ticket_ids):
     """Ambil tiket Ascend aktif yang ID-nya sudah dibatasi oleh cakupan area CPOS."""
     ticket_ids = sorted({int(ticket_id) for ticket_id in (ticket_ids or [])})

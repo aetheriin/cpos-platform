@@ -148,7 +148,9 @@ def _saring(df, p, ukuran, periode, abaikan_periode=False):
         if st.get("sumber") and st["sumber"] != u["sumber"]:
             continue
         df = df[df[kolom].isin(st["nilai"])]
-        ket.append(("Status", ", ".join(st["nilai"])))
+        if st.get("kosong"):                      # mis. PR belum disetujui: tanggal persetujuan masih kosong
+            df = df[df[st["kosong"]].isna()]
+        ket.append(("Status", st.get("label") or ", ".join(st["nilai"])))
     if p.get("perusahaan"):
         df = df[df["comp"].isin(p["perusahaan"])]
         ket.append(("Perusahaan", ", ".join(p["perusahaan"])))
@@ -510,7 +512,7 @@ def _daftar(d, p, u, sumber, lingkup):
               "total_po": "nilai terbesar", "dalam_pvr_rp": "nilai terbesar", "belum_diajukan_rp": "nilai terbesar"}.get(urut, "")
     if naik and urutan == "nilai terbesar":
         urutan = "nilai terkecil"
-    status = ", ".join(", ".join(kamus.STATUS[i]["nilai"]) for i in p.get("status") or [])
+    status = ", ".join(kamus.STATUS[i].get("label") or ", ".join(kamus.STATUS[i]["nilai"]) for i in p.get("status") or [])
     ciri = ((f" berstatus {status}" if status else "") + (f" {lingkup}" if lingkup else "")).replace(" saat ini", " yang belum lunas")
     teks = f"Ada {_bil(total)} {nama_dok}{ciri}." if total else f"Tidak ada {nama_dok}{ciri}."
     if total > len(t):

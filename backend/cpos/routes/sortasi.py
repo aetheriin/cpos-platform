@@ -4,7 +4,6 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from utils.hak_akses import lihat, MENU_OPERASI, izin
 from utils.area import area_data
-from utils.db_utils import get_history_umum
 from utils import db_ascend, db_ascend_split
 
 sortasi_bp = Blueprint('sortasi', __name__)
@@ -77,4 +76,17 @@ def sortasi_simpan():
 @login_required
 @lihat(*MENU_OPERASI)
 def history_sortasi():
-    return jsonify(get_history_umum('sortasi', id_area=area_data(current_user.id)))
+    try:
+        ticket_ids = db_ascend_split.daftar_ticket_id_lab_di_area(
+            area_data(current_user.id)
+        )
+        return jsonify(
+            db_ascend.daftar_riwayat_sortasi_ascend(ticket_ids)
+        )
+    except Exception:
+        logging.getLogger("weighbridge").exception(
+            "Gagal membaca riwayat Sortasi Ascend"
+        )
+        return jsonify({
+            "error": "Riwayat Sortasi Ascend belum dapat dibaca."
+        }), 503

@@ -87,9 +87,24 @@ async function submitSortasi(btn) {
 async function muatHistorySortasi() {
     const data = await ambilJson('/api/history/sortasi');
     const tbody = document.getElementById('tabelHistorySortasi');
-    if (data.error) { tbody.innerHTML = barisGagal(4, data.error); return; }
+    if (data.error) {
+        tbody.innerHTML = barisGagal(7, data.error);
+        return;
+    }
+
+    const kg = nilai => nilai == null
+        ? '-'
+        : Number(nilai).toLocaleString('id-ID');
+
     tbody.innerHTML = data.map(r => `
-        <tr><td class="table-cell">${escapeHtml(r.no_plat)}</td><td class="table-cell">${escapeHtml(r.nama_produk)}</td>
-        <td class="table-cell">${escapeHtml(r.nama_supplier)}</td><td class="table-cell">${escapeHtml(r.status_val)}</td></tr>
-    `).join('') || barisKosong(4, 'Belum ada data');
+        <tr>
+            <td class="table-cell">${escapeHtml(r.sortasi_datetime || '-')}</td>
+            <td class="table-cell">${escapeHtml(r.no_tiket || '-')}</td>
+            <td class="table-cell">${escapeHtml(r.no_plat || '-')}</td>
+            <td class="table-cell">${escapeHtml(r.nama_produk || '-')}</td>
+            <td class="table-cell">${escapeHtml(r.nama_supplier || '-')}</td>
+            <td class="table-cell text-right">${kg(r.deduction_kg)}</td>
+            <td class="table-cell">${escapeHtml(r.sortasi_by || '-')}</td>
+        </tr>
+    `).join('') || barisKosong(7, 'Belum ada riwayat Sortasi Ascend');
 }

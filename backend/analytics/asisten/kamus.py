@@ -152,6 +152,8 @@ STATUS = [
     {"sebutan": ["belum po", "belum dibuat po", "belum di po", "belum jadi po", "tanpa po"], "sumber": "pr", "nilai": ["Belum PO"], "ukuran": "jumlah_pr"},
     {"sebutan": ["po sebagian"], "sumber": "pr", "nilai": ["PO sebagian"], "ukuran": "jumlah_pr"},
     {"sebutan": ["sudah po", "sudah jadi po", "sudah dibuat po"], "sumber": "pr", "nilai": ["Sudah PO"], "ukuran": "jumlah_pr"},
+    {"sebutan": ["belum disetujui", "belum diapprove", "belum approve", "belum di approve", "menunggu persetujuan"], "sumber": "pr",
+     "nilai": ["Belum PO", "PO sebagian"], "kosong": "approve_date", "label": "Belum disetujui", "ukuran": "jumlah_pr"},
     {"sebutan": ["ditutup tanpa po"], "sumber": "pr", "nilai": ["Ditutup tanpa PO"], "ukuran": "jumlah_pr"},
     {"sebutan": ["belum pi", "belum ditagih", "belum jadi pi", "belum diterima barangnya", "belum datang"], "sumber": "po", "nilai": ["Belum PI"], "ukuran": "jumlah_po"},
     {"sebutan": ["pi sebagian", "diterima sebagian", "datang sebagian"], "sumber": "po", "nilai": ["PI sebagian"], "ukuran": "jumlah_po"},
