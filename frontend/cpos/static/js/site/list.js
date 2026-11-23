@@ -112,12 +112,17 @@ function filterTahap(el) {
 }
 
 async function muatHistoryProduk() {
-    const idProduk = document.getElementById('filterProdukHistory').value;
-    const data = await ambilJson(`/api/list/history-produk?id_produk=${encodeURIComponent(idProduk)}`);
+    const namaProduk = document.getElementById('filterProdukHistory').value;
+    const data = await ambilJson(
+        `/api/list/history-produk?nama_produk=${encodeURIComponent(namaProduk)}`
+    );
     const tbody = document.getElementById('tabelHistoryProduk');
-    if (data.error) { tbody.innerHTML = barisGagal(10, data.error); return; }
-    const bolehPeriksa = tbody.dataset.bolehPeriksa === '1';
-    const bolehKoreksi = tbody.dataset.bolehKoreksi === '1';
+
+    if (data.error) {
+        tbody.innerHTML = barisGagal(10, data.error);
+        return;
+    }
+
     tbody.innerHTML = data.map(r => `
         <tr class="hover:bg-slate-50">
             <td class="table-cell">${duaBaris(escapeHtml(r.no_tiket), escapeHtml(r.created_at), true)}</td>
@@ -128,18 +133,21 @@ async function muatHistoryProduk() {
             <td class="table-cell text-right font-mono text-slate-600">${angkaKg(r.berat_tara)}</td>
             <td class="table-cell text-right font-mono font-bold text-blue-700">${angkaKg(r.berat_netto)}</td>
             <td class="table-cell whitespace-nowrap text-xs">${labelLama(r.lama_menit)}</td>
-            <td class="table-cell">${badgeStatusTiket(r.status_alur)}${r.diperiksa_pada
-                ? `<span class="block text-[11px] text-emerald-700 mt-1" title="${escapeHtml(r.diperiksa_pada)}"><i class="fa-solid fa-check mr-1"></i>Diperiksa ${escapeHtml(r.pemeriksa || '')}</span>` : ''}</td>
-            <td class="table-cell text-right whitespace-nowrap space-x-3">${TIKET_SELESAI_LIST.includes(r.status_alur) ? '' :
-                `<a class="aksi-ikon" title="Cetak QR tiket" href="/cetak/tiket/${encodeURIComponent(r.no_tiket)}" target="_blank"><i class="fa-solid fa-print"></i></a>`}${
-                bolehPeriksa && r.status_alur === 'SELESAI' && !r.diperiksa_pada
-                ? `<button type="button" class="link-aksi text-emerald-700" data-on-click="periksaTiket" data-arg="${escapeHtml(r.no_tiket)}">Periksa</button>` : ''}${
-                bolehKoreksi && r.status_alur !== 'VOID'
-                ? `<button type="button" class="link-aksi text-amber-700" data-on-click="bukaKoreksi" data-arg="${escapeHtml(r.no_tiket)}">Ajukan Koreksi</button>` : ''}
+            <td class="table-cell">${badgeStatusTiket(r.status_alur)}</td>
+            <td class="table-cell text-right whitespace-nowrap">
+                ${TIKET_SELESAI_LIST.includes(r.status_alur) ? '' :
+                    `<a class="aksi-ikon" title="Cetak QR tiket" href="/cetak/tiket/${encodeURIComponent(r.no_tiket)}" target="_blank"><i class="fa-solid fa-print"></i></a>`}
             </td>
-        </tr>`).join('') || barisKosong(10, 'Belum ada transaksi 7 hari terakhir');
-    const total = data.reduce((a, r) => a + (Number(r.berat_netto) || 0), 0);
-    document.getElementById('infoTotalNetto').innerHTML = `Total netto 7 hari: <b class="text-slate-900">${angkaKg(total)} kg</b>`;
+        </tr>
+    `).join('') || barisKosong(10, 'Belum ada transaksi 7 hari terakhir');
+
+    const total = data.reduce(
+        (jumlah, row) => jumlah + (Number(row.berat_netto) || 0),
+        0
+    );
+    document.getElementById('infoTotalNetto').innerHTML =
+        `Total netto 7 hari: <b class="text-slate-900">${angkaKg(total)} kg</b>`;
+
     catatanBatas(tbody, data.length, 500, 10);
     saringTabel(document.getElementById('searchTiket').value);
 }
@@ -163,52 +171,3 @@ function labelLama(menit) {
     const teks = jam ? `${jam} jam ${menit % 60} mnt` : `${menit} mnt`;
     return jam >= 4 ? `<span class="text-red-600 font-semibold">${teks}</span>` : teks;
 }
-
-// Verifikasi tiket selesai (hak Setujui di menu Daftar Tiket): pemeriksa & waktunya dicatat
-async function periksaTiket(noTiket) {
-    const ok = await Dialog.konfirmasi({ judul: `Tandai tiket ${noTiket} sudah diperiksa?`, teksYa: 'Ya, sudah diperiksa',
-        pesan: 'Nama Anda dan waktu pemeriksaan dicatat pada tiket ini dan tidak bisa dibatalkan.' });
-    if (!ok) return;
-    if (tampilkanHasil(await kirimForm(`/api/tiket/${encodeURIComponent(noTiket)}/periksa`, {}))) muatHistoryProduk();
-}
-
-// ===== AJUKAN KOREKSI TIKET =====
-let noKoreksi = null;
-
-async function bukaKoreksi(noTiket) {
-    const data = await ambilJson(`/api/tiket/${encodeURIComponent(noTiket)}/koreksi`);
-    if (data.error) { Notif.gagal(data.error); return; }
-    noKoreksi = noTiket;
-    const t = data.tiket;
-    const isi = (id, daftar, pilih) => {
-        const sel = document.getElementById(id);
-        [...sel.options].filter(o => o.value !== '').forEach(o => o.remove());
-        daftar.forEach(o => sel.add(new Option(o.nama, o.id)));
-        sel.value = String(pilih);
-    };
-    document.getElementById('formKoreksi').reset();
-    isi('korCustomer', data.customer, t.id_supplier);
-    isi('korProduk', data.produk, t.id_produk);
-    isi('korSupir', data.supir, t.id_driver);
-    document.getElementById('korPlat').value = t.no_plat;
-    document.getElementById('noTiketKoreksi').textContent = noTiket;
-    openModal('modalKoreksi');
-    document.getElementById('korAlasan').focus();
-}
-
-document.getElementById('formKoreksi')?.addEventListener('submit', async e => {
-    e.preventDefault();
-    const btn = e.target.querySelector('[type=submit]');
-    const data = await denganTombol(btn, () => kirimForm(`/api/tiket/${encodeURIComponent(noKoreksi)}/koreksi`, new FormData(e.target)));
-    if (!tampilkanHasil(data)) return;
-    closeModal('modalKoreksi');
-    muatHistoryProduk();
-    if (typeof muatPengajuan === 'function') muatPengajuan();
-});
-
-// Dari notifikasi (?bagian=koreksi): langsung ke bagian Pengajuan Koreksi
-document.addEventListener('DOMContentLoaded', () => {
-    if (new URLSearchParams(location.search).get('bagian') === 'koreksi') {
-        setTimeout(() => document.getElementById('bagianKoreksi')?.scrollIntoView({ block: 'start' }), 600);
-    }
-});

@@ -633,6 +633,129 @@ def daftar_riwayat_sortasi_ascend(ticket_ids, batas=100):
     finally:
         koneksi.close()
 
+def daftar_riwayat_tiket_ascend(ticket_ids, nama_produk=None, hari=7, batas=500):
+    """Riwayat tiket induk Ascend yang termasuk area CPOS."""
+    ticket_ids = sorted({int(i) for i in (ticket_ids or [])})
+    if not ticket_ids:
+        return []
+
+    nama_produk = (nama_produk or "").strip() or None
+    hari = max(1, int(hari))
+    batas = max(1, int(batas))
+    hasil = []
+
+    koneksi = _koneksi()
+    try:
+        cursor = koneksi.cursor()
+
+        for awal in range(0, len(ticket_ids), 900):
+            bagian = ticket_ids[awal:awal + 900]
+            tanda_tanya = ", ".join("?" for _ in bagian)
+            filter_produk = "AND t.ProductName = ?" if nama_produk else ""
+
+            parameter = [*bagian, -hari]
+            if nama_produk:
+                parameter.append(nama_produk)
+
+            cursor.execute(
+                f"""
+                SELECT
+                    t.TicketID AS ticket_id,
+                    COALESCE(
+                        t.DateTimeIn,
+                        CONVERT(DATETIME, t.[Date])
+                    ) AS created_at,
+                    t.DateTimeIn AS datetime_in,
+                    t.DateTimeOut AS datetime_out,
+                    t.TicketNo AS no_tiket,
+                    t.VehicleNo AS no_plat,
+                    COALESCE(c.CustomerName, s.SupplierName, '') AS supplier,
+                    t.ProductName AS produk,
+                    t.TicketType AS ticket_type,
+                    t.Bruto AS berat_bruto,
+                    t.Tara AS berat_tara,
+                    t.Netto AS berat_netto,
+                    t.[Step] AS step,
+                    t.SPDO AS no_do,
+                    t.Void AS void,
+                    CASE
+                        WHEN t.DateTimeIn IS NOT NULL
+                         AND t.DateTimeOut IS NOT NULL
+                        THEN DATEDIFF(MINUTE, t.DateTimeIn, t.DateTimeOut)
+                        ELSE NULL
+                    END AS lama_menit
+                FROM dbo.PALM_Tickets t
+                LEFT JOIN dbo.AR_Customers c
+                    ON t.TicketType = 'Produk'
+                   AND c.CustomerID = t.AssociateID
+                LEFT JOIN dbo.AP_Suppliers s
+                    ON t.TicketType = 'TBSLuar'
+                   AND s.SupplierID = t.AssociateID
+                WHERE t.TicketID IN ({tanda_tanya})
+                  AND ISNULL(t.ParentTicketID, 0) = 0
+                  AND COALESCE(
+                      t.DateTimeIn,
+                      CONVERT(DATETIME, t.[Date])
+                  ) >= DATEADD(day, ?, CONVERT(date, GETDATE()))
+                  {filter_produk}
+                ORDER BY created_at DESC, t.TicketID DESC
+                """,
+                *parameter,
+            )
+
+            for row in _baris_hasil(cursor):
+                step = int(row.get("step") or 0)
+                void = bool(row.get("void"))
+
+                if void:
+                    status = "VOID"
+                elif step >= 2 and row.get("datetime_out") is not None:
+                    status = "SELESAI"
+                elif step <= 0:
+                    status = "SECURITY_REGISTER"
+                else:
+                    status = "TIMBANG_2"
+
+                hasil.append({
+                    "created_at": row.get("created_at"),
+                    "no_tiket": str(row.get("no_tiket") or "").strip(),
+                    "no_plat": str(row.get("no_plat") or "").strip(),
+                    "supir": "",
+                    "supplier": str(row.get("supplier") or "").strip(),
+                    "produk": str(row.get("produk") or "").strip(),
+                    "jenis_transaksi": (
+                        "PENJUALAN"
+                        if str(row.get("ticket_type") or "").strip() == "Produk"
+                        else "PEMBELIAN"
+                    ),
+                    "berat_bruto": (
+                        float(row["berat_bruto"])
+                        if row.get("berat_bruto") is not None else None
+                    ),
+                    "berat_tara": (
+                        float(row["berat_tara"])
+                        if row.get("berat_tara") is not None else None
+                    ),
+                    "berat_netto": (
+                        float(row["berat_netto"])
+                        if row.get("berat_netto") is not None else None
+                    ),
+                    "status_alur": status,
+                    "no_do": str(row.get("no_do") or "").strip(),
+                    "lama_menit": (
+                        int(row["lama_menit"])
+                        if row.get("lama_menit") is not None else None
+                    ),
+                })
+
+        hasil.sort(
+            key=lambda row: row.get("created_at") or datetime.min,
+            reverse=True,
+        )
+        return hasil[:batas]
+    finally:
+        koneksi.close()
+
 def daftar_tiket_ascend_aktif(ticket_ids):
     """Ambil tiket Ascend aktif yang ID-nya sudah dibatasi oleh cakupan area CPOS."""
     ticket_ids = sorted({int(ticket_id) for ticket_id in (ticket_ids or [])})

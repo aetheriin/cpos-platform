@@ -3,6 +3,10 @@ import { angka, barisMinggu, BATAS_PADAT_KECIL, jedaLabel } from '../lib/data'
 import TickMinggu from './TickMinggu'
 import { ANIMASI, DURASI_ANIMASI } from './animasi'
 import { Kosong } from '../komponen/Keadaan'
+import { useLebar } from '../lib/lebar'
+
+// Lebar minimal per label tanggal ("23-10 sd 29-10") supaya bisa ditulis mendatar tanpa bertumpuk
+const LEBAR_LABEL = 92
 
 // Memakai nama prop 'warna' karena Recharts menimpa prop 'fill'.
 function TitikSeri({ cx, cy, payload, warna, redup, terpilih, onKlik }) {
@@ -24,6 +28,7 @@ function TitikSeri({ cx, cy, payload, warna, redup, terpilih, onKlik }) {
 
 // seri: [{ nama, nilai: [angka per minggu] }]
 export default function GarisSeri({ mingguan, seri, warnaSeri, terpilihSeri = [], minggu, onPilihSeri, onPilihMinggu }) {
+  const [ref, lebar] = useLebar()
   const baris = barisMinggu(mingguan).map((r) => {
     seri.forEach((s, j) => {
       r['s' + j] = s.nilai[r.indeks]
@@ -31,11 +36,13 @@ export default function GarisSeri({ mingguan, seri, warnaSeri, terpilihSeri = []
     return r
   })
   const padat = baris.length > BATAS_PADAT_KECIL
+  // Grafik sempit (layar kecil): label cukup tanggal awal minggu, rentang lengkapnya tetap ada di tooltip
+  const ringkas = !padat && lebar > 0 && (lebar - 56) / baris.length < LEBAR_LABEL
   const mingguTerpilih = minggu != null ? baris[minggu] : null
-  if (baris.length === 0 || seri.length === 0) return <Kosong teks="Tidak ada dokumen pada periode dan filter ini" />
+  if (baris.length === 0 || seri.length === 0) return <div ref={ref}><Kosong teks="Tidak ada dokumen pada periode dan filter ini" /></div>
 
   return (
-    <div>
+    <div ref={ref}>
       <div className="mb-2 flex flex-wrap gap-1">
         {seri.map((s) => {
           const aktif = terpilihSeri.includes(s.nama)
@@ -71,7 +78,7 @@ export default function GarisSeri({ mingguan, seri, warnaSeri, terpilihSeri = []
               height={padat ? 76 : 46}
               tickLine={false}
               axisLine={{ stroke: '#cbd5e1' }}
-              tick={<TickMinggu data={baris} terpilih={minggu} onPilih={onPilihMinggu} padat={padat} />}
+              tick={<TickMinggu data={baris} terpilih={minggu} onPilih={onPilihMinggu} padat={padat} ringkas={ringkas} />}
             />
             <YAxis
               width={40}

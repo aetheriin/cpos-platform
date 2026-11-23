@@ -1,5 +1,6 @@
 // Dua baris: rentang tanggal dan tahun. Kalau minggunya banyak (padat), diputar miring.
-export default function TickMinggu({ x, y, payload, data, terpilih, onPilih, padat }) {
+// ringkas: hanya tanggal awal minggu, untuk grafik yang sempit.
+export default function TickMinggu({ x, y, payload, data, terpilih, onPilih, padat, ringkas }) {
   const w = data.find((d) => d.singkat === payload.value)
   const indeks = w?.indeks
   const aktif = terpilih === indeks
@@ -13,7 +14,7 @@ export default function TickMinggu({ x, y, payload, data, terpilih, onPilih, pad
       ) : (
         <>
           <text textAnchor="middle" x={0} y={0} dy={14} {...gaya}>
-            {payload.value}
+            {ringkas ? String(payload.value).split(' sd ')[0] : payload.value}
           </text>
           <text textAnchor="middle" x={0} y={0} dy={27} {...gaya}>
             {w?.tahun}

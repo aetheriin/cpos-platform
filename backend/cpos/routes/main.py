@@ -11,22 +11,20 @@ from utils.area import area_data, company_user
 from utils.db_admin import supplier_boleh
 from flask_login import login_required, current_user
 from utils.db_utils import (
-    periksa_tiket,
-    get_semua_supplier, get_semua_produk, get_history_produk, cari_transaksi_aktif,
-    cari_riwayat_driver_by_plat, generate_no_tiket,
+    get_semua_supplier, get_semua_produk, cari_transaksi_aktif,
+    cari_riwayat_driver_by_plat, 
     get_kendaraan_by_plat, get_supir_kendaraan, get_kontrak_kendaraan
 )
-from utils.serializers import serialisasi_tiket, serialisasi_driver
+from utils.serializers import serialisasi_driver
 from utils.db_blacklist import get_surat_blacklist
 from utils.audit_utils import catat_security_audit
 from utils.plat_utils import normalisasi_plat
 from utils import pengaturan
-from utils.hak_akses import boleh, boleh_lihat, izin, halaman as lihat_halaman, semua_menu, remah_menu
-from utils import log_aktivitas, koreksi_tiket, alur
-from utils.db_master import daftar_driver_aktif
+from utils.hak_akses import boleh, boleh_lihat, halaman as lihat_halaman, semua_menu, remah_menu
+from utils import alur
 from utils.db_jembatan import daftar_jembatan, jembatan_dipilih
 from utils.db_aktivitas import area_akun
-from utils import db_ascend
+from utils import db_ascend, db_ascend_split
 
 main_bp = Blueprint('main', __name__)
 
@@ -56,14 +54,30 @@ def _tab_awal():
 def weighbridge():
     """List = daftar tiket aktif per tahap (tanpa info bar & tab). Form = info bar + tab Security..Lab."""
     if request.args.get("view") != "form":
+        try:
+            nama_produk = {
+                str(p.get("nama_produk") or "").strip()
+                for p in db_ascend.daftar_produk_master_ascend()
+            }
+            nama_produk.update(
+                str(p.get("nama_produk") or "").strip()
+                for p in db_ascend.daftar_produk_tbs_luar_ascend()
+            )
+            produk_history_list = sorted(
+                (nama for nama in nama_produk if nama),
+                key=str.casefold,
+            )
+        except Exception:
+            current_app.logger.exception(
+                "Gagal memuat pilihan produk riwayat dari Ascend."
+            )
+            produk_history_list = []
         return render_template(
             "site/list.html",
             halaman="site",
             view="list",
-            produk_list=get_semua_produk(),
-            tahap_awal=_tab_awal(),
-            boleh_periksa=boleh("LIST", "setujui"),
-            boleh_koreksi=boleh("LIST", "ubah"),
+            produk_history_list=produk_history_list,
+            tahap_awal=_tab_awal()
         )
 
     # Letakkan di sini: setelah blok LIST, sebelum return render_template form
@@ -96,89 +110,36 @@ def weighbridge():
 @login_required
 @lihat(*MENU_OPERASI)
 def history_produk():
-    id_produk = request.args.get("id_produk", "")
-    rows = get_history_produk(int(id_produk) if id_produk.isdigit() else None, id_area=area_data(current_user.id))
-    return jsonify([{**r, "created_at": r["created_at"].strftime("%Y-%m-%d %H:%M"),
-                     "diperiksa_pada": r["diperiksa_pada"].strftime("%Y-%m-%d %H:%M") if r["diperiksa_pada"] else None}
-                    for r in rows])
+    nama_produk = (request.args.get("nama_produk") or "").strip() or None
 
-
-@main_bp.route("/api/tiket/<no_tiket>/koreksi")
-@login_required
-@izin("LIST", "ubah")
-def tiket_koreksi_data(no_tiket):
-    """Isi tiket sekarang + pilihan untuk form Ajukan Koreksi."""
-    t = koreksi_tiket.data_tiket(no_tiket, area_data(current_user.id))
-    if not t:
-        return jsonify({"error": "Tiket tidak ditemukan atau sudah dibatalkan."}), 404
-    return jsonify({"tiket": t, **_pilihan_koreksi(t)})
-
-
-def _pilihan_koreksi(t):
-    """Pilihan customer (PT pengguna), produk aktif, dan supir aktif (+ supir tiket sekarang)."""
-    pt = company_user(current_user.id)
-    supir = daftar_driver_aktif()
-    if t["id_driver"] not in {d["id_personel"] for d in supir}:
-        supir.append({"id_personel": t["id_driver"], "nama_personel": t["nama_driver"]})
-    return {"customer": [{"id": s.id_supplier, "nama": s.nama_supplier} for s in get_semua_supplier()
-                         if s.is_customer and supplier_boleh(s.id_supplier, pt)],
-            "produk": [{"id": p.id_produk, "nama": p.nama_produk} for p in get_semua_produk()],
-            "supir": [{"id": d["id_personel"], "nama": d["nama_personel"]}
-                      for d in supir]}
-
-
-@main_bp.route("/api/tiket/<no_tiket>/koreksi", methods=["POST"])
-@login_required
-@izin("LIST", "ubah")
-def tiket_koreksi_ajukan(no_tiket):
-    """Ajukan koreksi: hanya kolom yang berubah; berlaku setelah disetujui (hak Setujui di menu Daftar Tiket)."""
-    t = koreksi_tiket.data_tiket(no_tiket, area_data(current_user.id))
-    if not t:
-        return jsonify({"error": "Tiket tidak ditemukan atau sudah dibatalkan."}), 404
-    f = request.form
     try:
-        alasan = (f.get("alasan") or "").strip()
-        if len(alasan) < 5:
-            raise ValueError("Alasan koreksi wajib diisi (minimal 5 karakter).")
-        pilihan = _pilihan_koreksi(t)
-        ubah, nama = {}, {}
-        for kolom, kunci in (("id_supplier", "customer"), ("id_produk", "produk"), ("id_driver", "supir")):
-            teks = (f.get(kolom) or "").strip()
-            if not teks.isdigit():
-                continue
-            cocok = next((o for o in pilihan[kunci] if o["id"] == int(teks)), None)
-            if not cocok:
-                raise ValueError(f"Pilih {koreksi_tiket.KOLOM[kolom].lower()} dari daftar.")
-            if cocok["id"] != t[kolom]:
-                ubah[kolom], nama[kolom] = cocok["id"], cocok["nama"]
-        if (f.get("no_plat") or "").strip():
-            no_plat, error = normalisasi_plat(f.get("no_plat"))
-            if error:
-                raise ValueError(error)
-            k = get_kendaraan_by_plat(no_plat)
-            if not k or not k.is_active:
-                raise ValueError(f"Kendaraan {no_plat} belum terdaftar. Daftarkan dulu di Data Master › Kendaraan.")
-            if k.id_kendaraan != t["id_kendaraan"]:
-                ubah["id_kendaraan"], nama["id_kendaraan"] = k.id_kendaraan, k.no_plat
-        if not ubah:
-            raise ValueError("Tidak ada data yang diubah.")
-        status, penyetuju = koreksi_tiket.ajukan(t, ubah, nama, alasan, current_user.id)
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    if status == "DISETUJUI":
-        return jsonify({"message": f"Koreksi tiket {no_tiket} langsung berlaku karena belum ada jabatan yang berhak menyetujui."})
-    return jsonify({"message": f"Koreksi tiket {no_tiket} berhasil diajukan dan menunggu persetujuan {penyetuju}."})
+        ticket_ids = db_ascend_split.daftar_ticket_id_di_area(
+            area_data(current_user.id)
+        )
+        rows = db_ascend.daftar_riwayat_tiket_ascend(
+            ticket_ids,
+            nama_produk=nama_produk,
+            hari=7,
+            batas=500,
+        )
+    except Exception:
+        current_app.logger.exception(
+            "Gagal membaca riwayat tiket Ascend untuk area pengguna."
+        )
+        return jsonify({
+            "error": "Riwayat tiket Ascend belum dapat dimuat."
+        }), 503
 
-
-@main_bp.route("/api/tiket/<no_tiket>/periksa", methods=["POST"])
-@login_required
-@izin("LIST", "setujui")
-def tiket_periksa(no_tiket):
-    """Verifikasi tiket selesai (sudah diperiksa): pemeriksa & waktunya dicatat, tidak bisa diubah lagi."""
-    if not periksa_tiket(no_tiket, current_user.id, area_data(current_user.id)):
-        return jsonify({"error": "Tiket tidak ditemukan, belum selesai, atau sudah diperiksa."}), 400
-    log_aktivitas.catat("TIKET", "TIKET_DIPERIKSA", id_baris=no_tiket, user_id=current_user.id, ip=request.remote_addr)
-    return jsonify({"message": f"Tiket {no_tiket} berhasil ditandai sudah diperiksa."})
+    return jsonify([
+        {
+            **row,
+            "created_at": (
+                row["created_at"].strftime("%Y-%m-%d %H:%M")
+                if row.get("created_at") else None
+            ),
+        }
+        for row in rows
+    ])
 
 
 @main_bp.route("/api/tantangan-wajah")

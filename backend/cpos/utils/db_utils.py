@@ -728,35 +728,6 @@ def get_list_tiket_aktif(id_area=None):
         r["tahap"] = durasi_tahap(milik, milik[0]["sekarang"]) if milik else None
     return data
 
-def get_history_produk(id_produk=None, hari=7, batas=500, id_area=None):
-    """Halaman List: transaksi 7 hari terakhir, bisa disaring per produk."""
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        filter_produk = "AND t.ProductID = ?" if id_produk else ""
-        filter_area, param_area = _filter_area(id_area)
-        params = [-int(hari)] + ([int(id_produk)] if id_produk else []) + param_area
-        cursor.execute(f"""
-            SELECT TOP {int(batas)} t.TicketDate AS created_at, t.TicketNumber AS no_tiket, k.NoVehicle AS no_plat, s.SupplierName AS supplier, p.ProductName AS produk,
-                   t.WeightTypeCode AS jenis_transaksi, tb.Bruto AS berat_bruto, tb.Tara AS berat_tara, COALESCE(tb.Netto, t.SplitWeight) AS berat_netto,
-                   t.StatusCode AS status_alur, t.DONumber AS no_do, d.Nama AS supir, t.CheckDate AS diperiksa_pada, pr.Nama AS pemeriksa,
-                   -- lama truk di dalam: tiket dibuat Security s/d timbang terakhir (hanya tiket yang sudah selesai)
-                   CASE WHEN t.StatusCode IN ('SELESAI', 'REJECTED') THEN
-                        DATEDIFF(MINUTE, t.TicketDate, (SELECT MAX(pn.WeighDate) FROM Weighing pn WHERE pn.TicketNumber = t.TicketNumber))
-                   END AS lama_menit
-            FROM WeightBridge t
-            JOIN DetailVehicle k ON t.IDVehicle = k.IDVehicle
-            JOIN Supplier s ON t.SupplierID = s.SupplierID
-            JOIN Product p ON t.ProductID = p.ProductID
-            LEFT JOIN WeighingSummary tb ON tb.TicketNumber = t.TicketNumber
-            LEFT JOIN Users d ON d.UserID = t.DriverID
-            LEFT JOIN Users pr ON pr.UserID = t.CheckBy
-            WHERE t.TicketDate >= DATEADD(day, ?, CAST(GETDATE() AS DATE)) {filter_produk}{filter_area}
-            ORDER BY t.TicketDate DESC""", *params)
-        return _rows_to_dicts(cursor)
-    finally:
-        conn.close()
-
 def periksa_tiket(no_tiket, user_id, id_area=None):
     """Verifikasi tiket selesai (ERD WeightBridge.IsCheck / CheckDate). Hanya sekali; area mengikuti akses pengguna."""
     filter_area, param_area = _filter_area(id_area)

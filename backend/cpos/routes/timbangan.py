@@ -5,7 +5,6 @@ from utils.hak_akses import lihat, MENU_OPERASI
 from utils.area import area_data
 from flask_login import login_required, current_user
 from utils.serial_reader import baca_status, reset_deteksi_stabil, wajib_kembali_nol
-from utils.db_utils import get_history_timbangan_by_supplier
 from utils.hak_akses import izin
 from utils.db_jembatan import jembatan_dipilih
 from utils import db_ascend, db_ascend_split
