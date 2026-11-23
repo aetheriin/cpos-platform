@@ -1,21 +1,39 @@
 """Laporan PI & GT, sama dengan Excel PI GT db: GT dari SP gt_out (termasuk GT tanpa PI, mis. pindahan antar site),
-ditambah barang yang sudah PI tapi belum di-GT dari SP CheckStatItem."""
+ditambah barang yang sudah PI tapi belum di-GT dari SP CheckStatItem. Barang PI yang langsung dipakai (usage) tanpa GT
+dianggap selesai pada tanggal usage-nya; usage dilacak ke PI asalnya lewat PurchaseDetailID di IC_UsageDetails."""
+import logging
 from datetime import date
 
 import pandas as pd
 
 from inti import konfigurasi
 from inti.db import get_connection
-from inti.perusahaan import daftar_perusahaan
+from inti.perusahaan import daftar_perusahaan, lokasi_perusahaan
 from inti.sp import per_perusahaan
 
 SP_NAME = konfigurasi.SP_PI_GT
 SP_GT = konfigurasi.SP_GT_OUT
 SUMBER = konfigurasi.SUMBER_LAPORAN
+log = logging.getLogger(__name__)
 
 # Status (slicer Aging di Excel: Completed / InCompleted, ditambah PI yang belum di-GT). GT void dibuang.
-BELUM_GT, BELUM_DITERIMA, DITERIMA = "Belum GT", "GT belum diterima", "Diterima"
-URUTAN_STATUS = [BELUM_GT, BELUM_DITERIMA, DITERIMA]
+BELUM_GT, BELUM_DITERIMA, DITERIMA, USAGE = "Belum GT", "GT belum diterima", "Diterima", "Langsung usage"
+URUTAN_STATUS = [BELUM_GT, USAGE, BELUM_DITERIMA, DITERIMA]
+
+# Usage pertama tiap baris PI HO (PurchaseDetailID), hanya baca. {db} dari tabel company, sama dengan yang dipakai SP gt_out.
+_USAGE = """
+SELECT pis.PurchaseNumber, it.ItemCode, MIN(u.UsageDate) AS UsageDate, MIN(u.UsageNumber) AS UsageNumber,
+       MIN(w.WarehouseCode) AS UsageWarehouse, SUM(ud.Quantity) AS QtyUsage
+FROM {db}.IC_UsageDetails ud
+JOIN {db}.IC_Usages u ON u.UsageID = ud.UsageID
+JOIN {db}.ap_purchasedetails pid ON pid.PurchaseDetailID = COALESCE(ud.PurchaseDetailID, ud.SourcePurchaseDetailID)
+JOIN {db}.ap_purchases pis ON pis.PurchaseID = pid.PurchaseID
+LEFT JOIN {db}.IC_ITEMS it ON it.ItemID = pid.ItemID
+LEFT JOIN {db}.IC_Warehouses w ON w.WarehouseID = ud.WarehouseID
+WHERE pis.PurchaseNumber LIKE '%/PI/HO/%' AND pis.PurchaseDate >= ?
+  AND ISNULL(u.Void, 0) = 0 AND ISNULL(ud.DetailVoid, 0) = 0 AND ISNULL(pis.Void, 0) = 0
+GROUP BY pis.PurchaseNumber, it.ItemCode
+"""
 
 _GT_TEKS = {
     "comp": "COMPID", "gt_number": "MutationNumber", "dari_gudang": "FromWarehouse", "ke_gudang": "ToWarehouse", "gt_by": "CreatedBy",
@@ -44,16 +62,65 @@ def ambil_pi(mulai, perusahaan=None, kendali=None):
     return per_perusahaan(perusahaan, get_connection, f"EXEC {SP_NAME} ?, ?", lambda comp: (comp, mulai), kendali, boleh_kosong=True)
 
 
+def ambil_usage(mulai, kendali=None):
+    """Usage barang PI HO sejak `mulai` ('YYYYMMDD') per perusahaan. Gagal dibaca: laporan tetap jalan tanpa usage (dicatat di log)."""
+    bagian = []
+    for comp, server, db in lokasi_perusahaan(SUMBER):
+        if not server or not db:
+            continue
+        if not all(n.replace("_", "").isalnum() for n in (server, db)):
+            log.warning("Usage %s dilewati: nama server/database tidak valid (%s.%s)", comp, server, db)
+            continue
+        if kendali:
+            kendali.periksa()
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            if kendali:
+                kendali.daftarkan(cur)
+            cur.execute(_USAGE.format(db=f"[{server}].[{db}].dbo"), f"{mulai[:4]}-{mulai[4:6]}-{mulai[6:8]}")
+            kolom = [c[0] for c in cur.description]
+            bagian.append(pd.DataFrame.from_records(cur.fetchall(), columns=kolom).assign(comp=comp))
+        except Exception as e:
+            log.warning("Usage %s tidak terbaca, barang yang langsung di-usage tetap dihitung belum GT: %s", comp, e)
+        finally:
+            conn.close()
+    return pd.concat(bagian, ignore_index=True) if bagian else pd.DataFrame()
+
+
+def tandai_usage(pi, usage):
+    """Barang belum GT yang sudah di-usage: status Langsung usage, selesai pada tanggal usage (cocok per perusahaan, nomor PI, kode barang)."""
+    for k in ("usage_number", "gudang_usage"):
+        pi[k] = ""
+    pi["usage_date"] = pd.NaT
+    if pi.empty or usage.empty:
+        return pi
+    u = pd.DataFrame({"comp": _teks(usage["comp"]).str.upper(), "pi_number": _teks(usage["PurchaseNumber"]),
+                      "itemcode": _teks(usage["ItemCode"]), "_tgl": _tanggal(usage["UsageDate"]),
+                      "_no": _teks(usage["UsageNumber"]), "_gudang": _teks(usage["UsageWarehouse"])})
+    u = u.sort_values("_tgl").drop_duplicates(["comp", "pi_number", "itemcode"])
+    kunci = pi[["comp", "pi_number", "itemcode"]].assign(comp=pi["comp"].str.upper())
+    cocok = kunci.merge(u, on=["comp", "pi_number", "itemcode"], how="left")
+    ada = cocok["_tgl"].notna().to_numpy()
+    pi.loc[ada, "status"] = USAGE
+    pi.loc[ada, "usage_date"] = cocok.loc[ada, "_tgl"].to_numpy()
+    pi.loc[ada, "usage_number"] = cocok.loc[ada, "_no"].to_numpy()
+    pi.loc[ada, "gudang_usage"] = cocok.loc[ada, "_gudang"].to_numpy()
+    return pi
+
+
 def muat(mulai, akhir, kendali=None):
     """Pemuat untuk Gudang."""
     m, a = mulai.replace("-", ""), akhir.replace("-", "")
     raw_gt = ambil_gt(m, a, kendali)
     raw_pi = ambil_pi(m, kendali=kendali)
+    usage = ambil_usage(m, kendali)
     if kendali:
         kendali.periksa()
-    d = gabung(bersihkan_gt(raw_gt), bersihkan_pi(raw_pi))
+    d = gabung(bersihkan_gt(raw_gt), tandai_usage(bersihkan_pi(raw_pi), usage))
     d = d[d["tanggal"] <= pd.Timestamp(akhir)].reset_index(drop=True)
-    return d, {"baris_gt": int((d["status"] != BELUM_GT).sum()), "baris_pi_belum_gt": int((d["status"] == BELUM_GT).sum())}
+    return d, {"baris_gt": int(d["status"].isin([BELUM_DITERIMA, DITERIMA]).sum()), "baris_pi_belum_gt": int((d["status"] == BELUM_GT).sum()),
+               "baris_langsung_usage": int((d["status"] == USAGE).sum())}
 
 
 def _tanggal(seri):
@@ -143,8 +210,8 @@ def bersihkan_pi(raw, hari_ini=None):
 
 _SEMUA = ["comp", "status", "tanggal", "pr_number", "po_number", "pi_number", "pi_date", "pi_by", "peminta", "gt_number", "gt_date", "gt_by",
           "dari_gudang", "ke_gudang", "terima_date", "diterima_oleh", "lead_pengadaan", "lead_logistik", "umur_pi",
-          "itemcode", "itemname", "uom", "qty_pi", "qty_gt", "importance", "perlu_gt"]
-_TANGGAL_SEMUA = ("tanggal", "pi_date", "gt_date", "terima_date")
+          "itemcode", "itemname", "uom", "qty_pi", "qty_gt", "importance", "perlu_gt", "usage_number", "usage_date", "gudang_usage"]
+_TANGGAL_SEMUA = ("tanggal", "pi_date", "gt_date", "terima_date", "usage_date")
 _ANGKA_SEMUA = ("lead_pengadaan", "lead_logistik", "umur_pi", "qty_pi", "qty_gt")
 
 

@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, request, jsonify, Response
 from flask_login import login_required, current_user
 
 from utils.hak_akses import lihat, MENU_KENDARAAN, MENU_MASTER
-from utils import db_master as db, db_admin, alur, log_aktivitas, kolom_wajib, db_referensi as ref, db_kurs, db_ascend
+from utils import db_master as db, db_admin, alur, log_aktivitas, kolom_wajib, db_referensi as ref, db_kurs, db_tiket
 from utils.plat_utils import normalisasi_plat
 from utils.galat_isian import GalatIsian, isi_galat
 from utils.hak_akses import izin, boleh, boleh_lihat, halaman as lihat_halaman
@@ -117,20 +117,20 @@ def _catat(aksi, target, detail=None):
 @login_required
 @lihat(*MENU_MASTER)
 def mitra_daftar():
-    return jsonify(db_ascend.daftar_supplier_master_ascend())
+    return jsonify(db_tiket.daftar_supplier_master_tiket())
 
 
 @master_bp.route("/api/master/produk")
 @login_required
 @lihat(*MENU_MASTER)
 def produk_daftar():
-    return jsonify(db_ascend.daftar_produk_master_ascend())
+    return jsonify(db_tiket.daftar_produk_master_tiket())
 
 @master_bp.route("/api/master/produk/tbs-luar")
 @login_required
 @lihat(*MENU_MASTER)
 def produk_tbs_luar_daftar():
-    return jsonify(db_ascend.daftar_produk_tbs_luar_ascend())
+    return jsonify(db_tiket.daftar_produk_tbs_luar_tiket())
 
 @master_bp.route("/api/master/produk/simpan", methods=["POST"])
 @login_required
@@ -166,7 +166,7 @@ def produk_simpan():
         if qe_ratio is None:
             qe_ratio = 1
 
-        id_baru = db_ascend.simpan_produk_master_ascend(
+        id_baru = db_tiket.simpan_produk_master_tiket(
             id_produk,
             nama,
             state,

@@ -7,7 +7,7 @@ from flask_login import login_required, current_user
 from utils.serial_reader import baca_status, reset_deteksi_stabil, wajib_kembali_nol
 from utils.hak_akses import izin
 from utils.db_jembatan import jembatan_dipilih
-from utils import db_ascend, db_ascend_split
+from utils import db_tiket, db_tiket_pisah
 
 timbangan_bp = Blueprint('timbangan', __name__)
 
@@ -35,14 +35,14 @@ def timbang_reset():
 @lihat(*MENU_OPERASI)
 def timbang_data(no_tiket):
     try:
-        data = db_ascend.baca_berat_tiket_ascend(no_tiket)
+        data = db_tiket.baca_berat_tiket(no_tiket)
     except Exception:
         logging.exception(
-            "Gagal membaca berat tiket Ascend %s",
+            "Gagal membaca berat tiket Tiket %s",
             no_tiket,
         )
         return jsonify({
-            "error": "Berat tiket Ascend belum dapat dibaca."
+            "error": "Berat tiket Tiket belum dapat dibaca."
         }), 503
 
     if not data:
@@ -53,14 +53,14 @@ def timbang_data(no_tiket):
         })
 
     try:
-        rencana = db_ascend_split.baca_status_timbang_pending(no_tiket)
+        rencana = db_tiket_pisah.baca_status_timbang_pending(no_tiket)
     except Exception:
         logging.exception(
-            "Gagal membaca status pending tiket Ascend %s",
+            "Gagal membaca status pending tiket Tiket %s",
             no_tiket,
         )
         return jsonify({
-            "error": "Status timbang tiket Ascend belum dapat dibaca."
+            "error": "Status timbang tiket Tiket belum dapat dibaca."
         }), 503
 
     # Berat akhir pending tetap ditampilkan untuk keperluan penimbangan.
@@ -80,50 +80,50 @@ def timbang_data(no_tiket):
 @lihat(*MENU_OPERASI)
 def timbang_scan_qr():
     try:
-        tiket_ascend = db_ascend.cari_tiket_ascend_berdasarkan_no_tiket(
+        tiket = db_tiket.cari_tiket_berdasarkan_no_tiket(
             request.form.get("no_tiket", "").strip()
         )
     except Exception:
         logging.getLogger("weighbridge").exception(
-            "Gagal mencari tiket Ascend lewat scan QR"
+            "Gagal mencari tiket Tiket lewat scan QR"
         )
         return jsonify({
-            "error": "Tiket Ascend belum dapat diperiksa. Coba lagi."
+            "error": "Tiket Tiket belum dapat diperiksa. Coba lagi."
         }), 503
 
-    if tiket_ascend:
+    if tiket:
         return jsonify({
             "status": "ADA_TIKET",
-            "sumber": "ASCEND",
-            "no_tiket": tiket_ascend["no_tiket"],
-            "no_plat": tiket_ascend["no_plat"],
-            "no_do": tiket_ascend["no_do"],
-            "supplier": tiket_ascend["associate"],
-            "associate_id": tiket_ascend["associate_id"],
-            "produk": tiket_ascend["produk"],
-            "ticket_type": tiket_ascend["ticket_type"],
-            "jenis_transaksi": tiket_ascend["jenis_transaksi"],
+            "sumber": "TIKET",
+            "no_tiket": tiket["no_tiket"],
+            "no_plat": tiket["no_plat"],
+            "no_do": tiket["no_do"],
+            "supplier": tiket["associate"],
+            "associate_id": tiket["associate_id"],
+            "produk": tiket["produk"],
+            "ticket_type": tiket["ticket_type"],
+            "jenis_transaksi": tiket["jenis_transaksi"],
             "id_supplier": None,
             "driver": None,
         }), 200
     return jsonify({
-        "error": "Tiket Ascend tidak ditemukan atau sudah selesai."
+        "error": "Tiket Tiket tidak ditemukan atau sudah selesai."
     }), 404 
 
 HARI_HISTORY_MAKS = 30
 
 
-@timbangan_bp.route("/api/history-timbangan-ascend")
+@timbangan_bp.route("/api/history-timbangan-tiket")
 @login_required
 @lihat(*MENU_OPERASI)
-def history_ascend():
+def history_tiket():
     teks_associate = (request.args.get("associate_id") or "").strip()
     ticket_type = (request.args.get("ticket_type") or "").strip()
 
     if not teks_associate.isdigit():
-        return jsonify({"error": "Associate Ascend tidak valid."}), 400
+        return jsonify({"error": "Associate Tiket tidak valid."}), 400
     if ticket_type not in ("Produk", "TBSLuar"):
-        return jsonify({"error": "Jenis tiket Ascend tidak valid."}), 400
+        return jsonify({"error": "Jenis tiket Tiket tidak valid."}), 400
 
     tanggal = None
     if request.args.get("tanggal"):
@@ -150,10 +150,10 @@ def history_ascend():
         mulai = sampai - timedelta(days=7)
 
     try:
-        ticket_ids = db_ascend_split.daftar_ticket_id_di_area(
+        ticket_ids = db_tiket_pisah.daftar_ticket_id_di_area(
             area_data(current_user.id)
         )
-        rows = db_ascend.riwayat_timbang_associate(
+        rows = db_tiket.riwayat_timbang_associate(
             ticket_ids,
             int(teks_associate),
             ticket_type,
@@ -162,10 +162,10 @@ def history_ascend():
         )
     except Exception:
         logging.getLogger("weighbridge").exception(
-            "Gagal membaca riwayat timbang Ascend."
+            "Gagal membaca riwayat timbang Tiket."
         )
         return jsonify({
-            "error": "Riwayat timbang Ascend belum dapat dibaca."
+            "error": "Riwayat timbang Tiket belum dapat dibaca."
         }), 503
 
     return jsonify([
@@ -203,7 +203,7 @@ def timbang_simpan():
                                  f"(timbangan kosong / truk belum naik penuh)"}), 400
 
     try:
-        hasil = db_ascend.simpan_berat_tiket_ascend(
+        hasil = db_tiket.simpan_berat_tiket(
             no_tiket,
             status["berat"],
             str(current_user.id),
@@ -212,19 +212,19 @@ def timbang_simpan():
         return jsonify({"error": str(e)}), 409
     except Exception:
         logging.getLogger("weighbridge").exception(
-            "Gagal menyimpan timbang Ascend untuk tiket %s",
+            "Gagal menyimpan timbang Tiket untuk tiket %s",
             no_tiket,
         )
         return jsonify({
             "error": (
-                "Berat gagal disimpan ke Ascend. "
+                "Berat gagal disimpan ke Tiket. "
                 "Periksa status tiket sebelum mencoba lagi."
             )
         }), 503
 
     if hasil.get("step") == 2 and hasil.get("no_do2"):
         try:
-            db_ascend_split.simpan_pasangan_do2(
+            db_tiket_pisah.simpan_pasangan_do2(
                 hasil["ticket_id"],
                 hasil["ticket_no"],
                 hasil["no_do2"],
@@ -232,7 +232,7 @@ def timbang_simpan():
             )
         except Exception:
             logging.getLogger("weighbridge").exception(
-                "Split Ascend tersimpan, tetapi catatan pasangan DO2 gagal diperbarui."
+                "Split Tiket tersimpan, tetapi catatan pasangan DO2 gagal diperbarui."
             )
 
     wajib_kembali_nol(jembatan["id_jembatan"])
@@ -246,17 +246,17 @@ def timbang_simpan():
             "status": "MENUNGGU_DO2",
             "no_tiket": hasil["ticket_no"],
             "berat_netto": hasil["berat_netto"],
-            "tiket_split": [],
+            "tiket_pisah": [],
             "peringatan": [],
             "kelebihan_do": None,
         }), 202
 
     if hasil["step"] == 1:
         label = "Tara" if hasil["ticket_type"] == "Produk" else "Bruto"
-        pesan = f"Timbang pertama ({label}) tersimpan di Ascend."
+        pesan = f"Timbang pertama ({label}) tersimpan di Tiket."
     else:
         pesan = (
-            f"Timbang terakhir tersimpan di Ascend. "
+            f"Timbang terakhir tersimpan di Tiket. "
             f"Netto: {hasil['berat_netto']:,.0f} kg."
         )
 
@@ -264,6 +264,6 @@ def timbang_simpan():
         "message": pesan,
         "peringatan": [],
         "kelebihan_do": None,
-        "tiket_split": hasil.get("tiket_split", []),
+        "tiket_pisah": hasil.get("tiket_pisah", []),
     }), 200
     

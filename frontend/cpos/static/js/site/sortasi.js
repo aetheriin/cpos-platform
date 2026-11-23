@@ -21,7 +21,7 @@ window.addEventListener('platLookup', (e) => {
 
     if (
         data.status === 'ADA_TIKET' &&
-        data.sumber === 'ASCEND' &&
+        data.sumber === 'TIKET' &&
         tiketPunyaTahap(data, 'SORTASI')
     ) {
         noTiketSortasiAktif = data.no_tiket;
@@ -47,7 +47,7 @@ function hitungPotongan() {
 
 async function submitSortasi(btn) {
     if (!noTiketSortasiAktif) {
-        Notif.peringatan('Silakan pilih tiket Ascend terlebih dahulu');
+        Notif.peringatan('Silakan pilih tiket Tiket terlebih dahulu');
         return;
     }
 
@@ -106,5 +106,5 @@ async function muatHistorySortasi() {
             <td class="table-cell text-right">${kg(r.deduction_kg)}</td>
             <td class="table-cell">${escapeHtml(r.sortasi_by || '-')}</td>
         </tr>
-    `).join('') || barisKosong(7, 'Belum ada riwayat Sortasi Ascend');
+    `).join('') || barisKosong(7, 'Belum ada riwayat Sortasi Tiket');
 }

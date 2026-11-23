@@ -1,14 +1,14 @@
-"""Metadata sementara pasangan DO2 untuk tiket Ascend."""
+"""Metadata sementara pasangan DO2 untuk tiket."""
 from utils.db_utils import get_connection
 
 def simpan_pasangan_do2(ticket_id, ticket_no, no_do2, created_by=None):
-    """Catat tiket CPOS; tandai selesai split hanya jika DO2 nyata tersedia."""
+    """Catat tiket CPOS; tandai selesai pisah hanya jika DO2 nyata tersedia."""
     ticket_id = int(ticket_id)
     ticket_no = (ticket_no or "").strip()
     no_do2 = (no_do2 or "").strip().upper() or None
 
     if not ticket_no:
-        raise ValueError("Nomor tiket Ascend wajib diisi.")
+        raise ValueError("Nomor tiket wajib diisi.")
     if no_do2 is not None and len(no_do2) > 50:
         raise ValueError("Nomor DO kedua maksimal 50 karakter.")
 
@@ -19,12 +19,12 @@ def simpan_pasangan_do2(ticket_id, ticket_no, no_do2, created_by=None):
         cursor = koneksi.cursor()
         cursor.execute(
             """
-            UPDATE dbo.AscendTicketSplitPlan
+            UPDATE dbo.TiketRencanaPemisahan
             SET TicketNo = ?,
                 NoDO2 = COALESCE(?, NoDO2),
                 CreatedBy = COALESCE(?, CreatedBy),
                 PendingStatus = CASE
-                    WHEN ? IS NOT NULL THEN 'SELESAI_SPLIT'
+                    WHEN ? IS NOT NULL THEN 'SELESAI_PISAH'
                     ELSE PendingStatus
                 END,
                 PendingLastError = CASE
@@ -49,14 +49,14 @@ def simpan_pasangan_do2(ticket_id, ticket_no, no_do2, created_by=None):
         if cursor.rowcount == 0:
             cursor.execute(
                 """
-                INSERT INTO dbo.AscendTicketSplitPlan
+                INSERT INTO dbo.TiketRencanaPemisahan
                     (
                         TicketID, TicketNo, NoDO2, CreatedBy,
                         PendingStatus, PendingCompletedAt
                     )
                 VALUES (
                     ?, ?, ?, ?,
-                    CASE WHEN ? IS NOT NULL THEN 'SELESAI_SPLIT' ELSE NULL END,
+                    CASE WHEN ? IS NOT NULL THEN 'SELESAI_PISAH' ELSE NULL END,
                     CASE WHEN ? IS NOT NULL THEN SYSDATETIME() ELSE NULL END
                 )
                 """,
@@ -77,14 +77,14 @@ def simpan_pasangan_do2(ticket_id, ticket_no, no_do2, created_by=None):
 
 
 def ambil_pasangan_do2(ticket_id):
-    """Ambil DO2 yang dipasangkan ke tiket Ascend."""
+    """Ambil DO2 yang dipasangkan ke tiket."""
     koneksi = get_connection()
     try:
         cursor = koneksi.cursor()
         cursor.execute(
             """
             SELECT NoDO2
-            FROM dbo.AscendTicketSplitPlan
+            FROM dbo.TiketRencanaPemisahan
             WHERE TicketID = ?
             """,
             int(ticket_id),
@@ -95,7 +95,7 @@ def ambil_pasangan_do2(ticket_id):
         koneksi.close()
 
 def baca_status_timbang_pending(ticket_no):
-    """Ambil status timbang tertunda dari rencana split di Main."""
+    """Ambil status timbang tertunda dari rencana pisah di Main."""
     koneksi = get_connection()
     try:
         cursor = koneksi.cursor()
@@ -103,7 +103,7 @@ def baca_status_timbang_pending(ticket_no):
             """
             SELECT TicketID, NoDO2, PendingFinalScaleKg,
                    PendingStatus, PendingLastError
-            FROM dbo.AscendTicketSplitPlan
+            FROM dbo.TiketRencanaPemisahan
             WHERE TicketNo = ?
             """,
             (ticket_no or "").strip(),
@@ -125,13 +125,13 @@ def baca_status_timbang_pending(ticket_no):
         koneksi.close()
 
 def hapus_pasangan_do2(ticket_id):
-    """Hapus metadata pasangan setelah Ascend menyelesaikan split."""
+    """Hapus metadata pasangan setelah Tiket menyelesaikan pisah."""
     koneksi = get_connection()
     try:
         cursor = koneksi.cursor()
         cursor.execute(
             """
-            DELETE FROM dbo.AscendTicketSplitPlan
+            DELETE FROM dbo.TiketRencanaPemisahan
             WHERE TicketID = ?
             """,
             int(ticket_id),
@@ -157,7 +157,7 @@ def simpan_timbang_akhir_pending(
         cursor.execute(
             """
             SELECT PendingFinalScaleKg, PendingFinalAt, PendingFinalBy, PendingStatus
-            FROM dbo.AscendTicketSplitPlan WITH (UPDLOCK, HOLDLOCK)
+            FROM dbo.TiketRencanaPemisahan WITH (UPDLOCK, HOLDLOCK)
             WHERE TicketID = ?
             """,
             int(ticket_id),
@@ -166,7 +166,7 @@ def simpan_timbang_akhir_pending(
 
         if not baris:
             raise RuntimeError(
-                f"Rencana split TicketID {ticket_id} tidak ditemukan di Main."
+                f"Rencana pisah TicketID {ticket_id} tidak ditemukan di Main."
             )
 
         if baris[0] is not None:
@@ -185,7 +185,7 @@ def simpan_timbang_akhir_pending(
 
         cursor.execute(
             """
-            UPDATE dbo.AscendTicketSplitPlan
+            UPDATE dbo.TiketRencanaPemisahan
             SET PendingFinalScaleKg = ?,
                 PendingFinalAt = ?,
                 PendingFinalBy = ?,
@@ -233,7 +233,7 @@ def daftar_timbang_akhir_pending():
                 PendingFinalScaleKg AS berat_akhir,
                 PendingFinalAt AS waktu_timbang,
                 PendingFinalBy AS operator_id
-            FROM dbo.AscendTicketSplitPlan
+            FROM dbo.TiketRencanaPemisahan
             WHERE PendingStatus = 'MENUNGGU_DO2'
               AND PendingFinalScaleKg IS NOT NULL
             ORDER BY PendingFinalAt, TicketID
@@ -251,7 +251,7 @@ def catat_percobaan_timbang_pending(ticket_id, alasan):
         cursor = koneksi.cursor()
         cursor.execute(
             """
-            UPDATE dbo.AscendTicketSplitPlan
+            UPDATE dbo.TiketRencanaPemisahan
             SET PendingAttempts = ISNULL(PendingAttempts, 0) + 1,
                 PendingLastError = ?
             WHERE TicketID = ?
@@ -270,14 +270,14 @@ def catat_percobaan_timbang_pending(ticket_id, alasan):
 
 def selesaikan_timbang_pending(ticket_id, no_do2=None):
     no_do2 = (no_do2 or "").strip().upper()
-    status = "SELESAI_SPLIT" if no_do2 else "SELESAI_TANPA_SPLIT"
+    status = "SELESAI_PISAH" if no_do2 else "SELESAI_TANPA_PISAH"
 
     koneksi = get_connection()
     try:
         cursor = koneksi.cursor()
         cursor.execute(
             """
-            UPDATE dbo.AscendTicketSplitPlan
+            UPDATE dbo.TiketRencanaPemisahan
             SET NoDO2 = CASE WHEN ? <> '' THEN ? ELSE NoDO2 END,
                 PendingStatus = ?,
                 PendingLastError = NULL,
@@ -301,8 +301,8 @@ def selesaikan_timbang_pending(ticket_id, no_do2=None):
     finally:
         koneksi.close()
 
-def daftar_monitor_split():
-    """Daftar timbang pending/split untuk pemantauan tim DO/kontrak."""
+def daftar_monitor_pisah():
+    """Daftar timbang pending/pisah untuk pemantauan tim DO/kontrak."""
     koneksi = get_connection()
     try:
         cursor = koneksi.cursor()
@@ -318,11 +318,11 @@ def daftar_monitor_split():
                 PendingAttempts AS jumlah_percobaan,
                 PendingLastError AS pesan_error,
                 PendingCompletedAt AS waktu_selesai
-            FROM dbo.AscendTicketSplitPlan
+            FROM dbo.TiketRencanaPemisahan
             WHERE PendingStatus IN (
                 'MENUNGGU_DO2',
-                'SELESAI_SPLIT',
-                'SELESAI_TANPA_SPLIT'
+                'SELESAI_PISAH',
+                'SELESAI_TANPA_PISAH'
             )
             ORDER BY
                 COALESCE(PendingFinalAt, PendingCompletedAt) DESC,
@@ -336,7 +336,7 @@ def daftar_monitor_split():
 
 
 def daftar_ticket_id_di_area(id_area):
-    """ID tiket Ascend yang dibuat CPOS dalam cakupan area pengguna."""
+    """ID tiket yang dibuat CPOS dalam cakupan area pengguna."""
     koneksi = get_connection()
     try:
         cursor = koneksi.cursor()
@@ -345,7 +345,7 @@ def daftar_ticket_id_di_area(id_area):
             cursor.execute(
                 """
                 SELECT TicketID
-                FROM dbo.AscendTicketSplitPlan
+                FROM dbo.TiketRencanaPemisahan
                 WHERE ISNULL(PendingStatus, '') <> 'MENUNGGU_DO2'
                 """
             )
@@ -362,7 +362,7 @@ def daftar_ticket_id_di_area(id_area):
             cursor.execute(
                 f"""
                 SELECT p.TicketID
-                FROM dbo.AscendTicketSplitPlan p
+                FROM dbo.TiketRencanaPemisahan p
                 JOIN dbo.Users u ON u.UserID = p.CreatedBy
                 WHERE u.CompAreaID IN ({tanda_tanya})
                   AND ISNULL(p.PendingStatus, '') <> 'MENUNGGU_DO2'
@@ -385,7 +385,7 @@ def tiket_di_area(ticket_id, id_area):
             cursor.execute(
                 """
                 SELECT TOP (1) 1
-                FROM dbo.AscendTicketSplitPlan
+                FROM dbo.TiketRencanaPemisahan
                 WHERE TicketID = ?
                 """,
                 ticket_id,
@@ -403,7 +403,7 @@ def tiket_di_area(ticket_id, id_area):
             cursor.execute(
                 f"""
                 SELECT TOP (1) 1
-                FROM dbo.AscendTicketSplitPlan p
+                FROM dbo.TiketRencanaPemisahan p
                 JOIN dbo.Users u ON u.UserID = p.CreatedBy
                 WHERE p.TicketID = ?
                   AND u.CompAreaID IN ({tanda_tanya})
@@ -425,7 +425,7 @@ def daftar_ticket_id_lab_di_area(id_area):
         if id_area is None:
             cursor.execute("""
                 SELECT TicketID
-                FROM dbo.AscendTicketSplitPlan
+                FROM dbo.TiketRencanaPemisahan
             """)
         else:
             area = (
@@ -440,7 +440,7 @@ def daftar_ticket_id_lab_di_area(id_area):
             cursor.execute(
                 f"""
                 SELECT p.TicketID
-                FROM dbo.AscendTicketSplitPlan p
+                FROM dbo.TiketRencanaPemisahan p
                 JOIN dbo.Users u ON u.UserID = p.CreatedBy
                 WHERE u.CompAreaID IN ({tanda_tanya})
                 """,

@@ -43,7 +43,7 @@
             <h2 class="text-sm font-bold text-slate-900">Riwayat Penimbangan (7 Hari Terakhir)</h2>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-        <select id="filterProdukHistory" aria-label="Saring produk" data-simpan="produk_history_ascend" class="input-field w-52" data-on-change="muatHistoryProduk">
+        <select id="filterProdukHistory" aria-label="Saring produk" data-simpan="produk_history_tiket" class="input-field w-52" data-on-change="muatHistoryProduk">
             <option value="">Semua produk</option>
             {% for nama in produk_history_list %}<option value="{{ nama }}">{{ nama }}</option>{% endfor %}
         </select>

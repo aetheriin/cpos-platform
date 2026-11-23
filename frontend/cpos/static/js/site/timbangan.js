@@ -33,7 +33,7 @@ window.addEventListener('platLookup', (e) => {
             `${jenisTiket} · ${labelKode(data.jenis_transaksi)}`;
         document.getElementById('tbSupplier').value = data.supplier;
         document.getElementById('tbProduk').value = data.produk;
-        muatHistoryAscend(data.associate_id, data.ticket_type);
+        muatHistoryTiket(data.associate_id, data.ticket_type);
         muatDataTimbanganTersimpan(data.no_tiket);
     } else {
         sumberTiketAktif = null;
@@ -89,14 +89,14 @@ async function simpanHasilTimbangan(btn) {
         const angka = v => Number(v).toLocaleString('id-ID');
         Dialog.konfirmasi({ judul: `DO ${lebih.no_do} melebihi kuota`, teksYa: 'Buka Kelebihan DO', teksBatal: 'Tutup',
             pesan: `Kuota ${angka(lebih.kuota_kg)} kg, realisasi ${angka(lebih.realisasi_kg)} kg.\n` +
-                   `Kelebihan ${angka(lebih.kelebihan_kg)} kg menjadi tiket ${lebih.tiket_split} (truk yang sama).\n` +
-                   'Isi No. DO baru dari Ascend di menu Kelebihan DO.' })
+                   `Kelebihan ${angka(lebih.kelebihan_kg)} kg menjadi tiket ${lebih.tiket_pisah} (truk yang sama).\n` +
+                   'Isi No. DO baru dari Tiket di menu Kelebihan DO.' })
             .then(ok => { if (ok) window.location.href = '/kelebihan-do'; });
     }
 }
 
 async function muatDataTimbanganTersimpan(noTiket) {
-    const query = sumberTiketAktif === 'ASCEND' ? '?sumber=ASCEND' : '';
+    const query = sumberTiketAktif === 'TIKET' ? '?sumber=TIKET' : '';
     const data = await ambilJson(
         `/api/timbang/data/${encodeURIComponent(noTiket)}${query}`
     );
@@ -144,10 +144,10 @@ function resetTanggalTimbang() {
 }
 
 function muatHistoryTimbanganUlang() {
-    muatHistoryAscend(associateHistory, ticketTypeHistory);
+    muatHistoryTiket(associateHistory, ticketTypeHistory);
 }
 
-async function muatHistoryAscend(associateId, ticketType) {
+async function muatHistoryTiket(associateId, ticketType) {
     if (!associateId || !ticketType) return;
 
     associateHistory = associateId;
@@ -173,7 +173,7 @@ async function muatHistoryAscend(associateId, ticketType) {
     if (tanggal) params.set('tanggal', tanggal);
 
     const data = await ambilJson(
-        `/api/history-timbangan-ascend?${params.toString()}`
+        `/api/history-timbangan-tiket?${params.toString()}`
     );
     const tbody = document.getElementById('tabelHistoryTimbangan');
 

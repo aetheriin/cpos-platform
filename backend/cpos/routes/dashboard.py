@@ -159,14 +159,15 @@ def dashboard_arus():
 @login_required
 @izin_widget("security")
 def dashboard_security_data():
-    """Truk masuk / di dalam (area user; HO bisa ?area=<id>), tamu di dalam, blacklist terdeteksi hari ini."""
+    """Jumlah tamu di dalam area dan blacklist terdeteksi hari ini."""
     id_area = area_data(current_user.id)
+
     if id_area is None or isinstance(id_area, tuple):
         dipilih = request.args.get("area", type=int)
-        id_area = dipilih if dipilih and area_cocok(id_area, dipilih) else id_area
-    d = ringkas_security(id_area)
-    sekarang = datetime.now()
-    d["dalam"] = [{"no_tiket": r["no_tiket"], "no_plat": r["no_plat"], "supir": r["supir"], "customer": r["customer"],
-                   "produk": r["produk"], "status": r["status_alur"], "masuk": r["waktu_masuk"].strftime("%H:%M"),
-                   "menit": int((sekarang - r["waktu_masuk"]).total_seconds() // 60)} for r in d["dalam"]]
-    return jsonify(d)
+        id_area = (
+            dipilih
+            if dipilih and area_cocok(id_area, dipilih)
+            else id_area
+        )
+
+    return jsonify(ringkas_security(id_area))

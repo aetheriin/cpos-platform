@@ -2,7 +2,7 @@
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
 from utils.hak_akses import lihat, MENU_KONTRAK, halaman as lihat_halaman
-from utils import db_ascend
+from utils import db_tiket
 
 kontrak_bp = Blueprint("kontrak", __name__)
 
@@ -20,7 +20,7 @@ def _json_do(d):
             "ppn": bool(d.get("ppn")), "harga_termasuk_ppn": bool(d.get("harga_termasuk_ppn"))}
 
 def _json_kontrak(k):
-    """Ubah tanggal dari hasil query Ascend agar siap dikirim sebagai JSON."""
+    """Ubah tanggal dari hasil query Tiket agar siap dikirim sebagai JSON."""
     return {
         nama: _tgl(nilai) if hasattr(nilai, "strftime") else nilai
         for nama, nilai in k.items()
@@ -30,29 +30,29 @@ def _json_kontrak(k):
 @login_required
 @lihat_halaman("KONTRAK_DO")
 def kontrak_halaman():
-    supplier_ascend = db_ascend.daftar_supplier_master_ascend()
+    supplier_tiket = db_tiket.daftar_supplier_master_tiket()
 
     return render_template(
         "kontrak/kontrak.html",
         halaman="kontrak",
         boleh_ubah=False,
 
-        # Pilihan Associate dari Ascend
-        associate_produk_list=db_ascend.daftar_associate("Produk"),
-        associate_tbs_list=db_ascend.daftar_associate("TBSLuar"),
+        # Pilihan Associate dari Tiket
+        associate_produk_list=db_tiket.daftar_associate("Produk"),
+        associate_tbs_list=db_tiket.daftar_associate("TBSLuar"),
 
-        # Pilihan produk dari Ascend
-        produk_ascend_list=db_ascend.daftar_produk_master_ascend(),
-        produk_tbs_luar_list=db_ascend.daftar_produk_tbs_luar_ascend(),
+        # Pilihan produk dari Tiket
+        produk_tiket_list=db_tiket.daftar_produk_master_tiket(),
+        produk_tbs_luar_list=db_tiket.daftar_produk_tbs_luar_tiket(),
 
-        # Mill dan pengangkut Ascend
-        mill_list=db_ascend.daftar_mill(),
-        pengangkut_ascend_list=[
-            s for s in supplier_ascend
+        # Mill dan pengangkut Tiket
+        mill_list=db_tiket.daftar_mill(),
+        pengangkut_tiket_list=[
+            s for s in supplier_tiket
             if s["is_transport"] or s["is_expedition"]
         ],
 
-        # Nilai awal pajak dari data Ascend
+        # Nilai awal pajak dari data Tiket
         ppn_default_produk=0,
         ppn_default_tbs=11,
         pilihan_ppn=(0, 11),
@@ -65,7 +65,7 @@ def kontrak_halaman():
 def do_daftar():
     return jsonify([
         _json_do(d)
-        for d in db_ascend.daftar_kontrak_do_ascend(
+        for d in db_tiket.daftar_kontrak_do_tiket(
             request.args.get("cari", "")
         )
     ])
@@ -76,7 +76,7 @@ def do_daftar():
 def kontrak_daftar():
     return jsonify([
         _json_kontrak(k)
-        for k in db_ascend.daftar_kontrak_ascend(
+        for k in db_tiket.daftar_kontrak_tiket(
             request.args.get("cari", "")
         )
     ])

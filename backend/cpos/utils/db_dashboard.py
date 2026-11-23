@@ -7,30 +7,38 @@ WIDGET = {
     "harga": "Harga CPO, kernel, OER & biaya olah",
     "riwayat": "Riwayat harga",
     "arus": "Arus penimbangan & status jembatan timbang hari ini",
-    "security": "Truk masuk & di dalam area, tamu, blacklist terdeteksi hari ini",
+    "security": "Tamu di dalam area dan blacklist terdeteksi hari ini",
 }
 WIDGET_HARGA = {"harga", "riwayat"}       # widget yang memakai tombol Isi Harga (aksi Ubah menu dashboard)
 
 
 def ringkas_security(id_area):
-    """Dashboard Security: truk masuk hari ini & yang masih di dalam (logbook), tamu di dalam, blacklist terdeteksi hari ini."""
-    from datetime import date
+    """Ringkasan tamu di dalam area dan blacklist yang terdeteksi hari ini."""
     from utils.area_filter import sql_area
-    from utils.db_pos import logbook
     from utils.db_aktivitas import di_dalam
-    lb = logbook(id_area, date.today())
-    f_tamu, p_tamu = sql_area("CompAreaID", id_area)
+
+    f_area, p_area = sql_area("CompAreaID", id_area)
+    tamu = sum(
+        1 for data in di_dalam(id_area)
+        if data["kategori"] == "TAMU"
+    )
+
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        tamu = sum(1 for d in di_dalam(id_area) if d["kategori"] == "TAMU")
-        cursor.execute(f"SELECT COUNT(*) FROM BlacklistDetection WHERE DetectDate >= CAST(GETDATE() AS DATE){f_tamu}", *p_tamu)
+        cursor.execute(
+            f"""
+            SELECT COUNT(*)
+            FROM BlacklistDetection
+            WHERE DetectDate >= CAST(GETDATE() AS DATE){f_area}
+            """,
+            *p_area,
+        )
         blacklist = cursor.fetchone()[0]
     finally:
         conn.close()
-    return {"masuk": lb["masuk_hari_ini"], "di_dalam": len(lb["dalam"]), "keluar": len(lb["keluar"]), "tamu": tamu,
-            "blacklist": blacklist, "dalam": lb["dalam"]}
 
+    return {"tamu": tamu, "blacklist": blacklist}
 
 def arus_hari_ini(id_area=None):
     """Ringkasan penimbangan hari ini (id_area None = semua area): angka, distribusi per produk,

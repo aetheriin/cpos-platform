@@ -302,30 +302,43 @@ function tampilkanPosisiTruk(p, durasi = {}) {
 // ===== DASHBOARD SECURITY =====
 async function muatSecurity() {
     const area = document.getElementById('pilihAreaSecurity')?.value || '';
-    const r = await Api.get(`/api/dashboard/security${area ? `?area=${encodeURIComponent(area)}` : ''}`, { polling: true });
+    const r = await Api.get(
+        `/api/dashboard/security${area ? `?area=${encodeURIComponent(area)}` : ''}`,
+        { polling: true }
+    );
+
     const d = r.data;
     if (!d || d.error) return;
-    const kartu = (label, nilai, ket, ikon, warna) => `<div class="stat-card">
-        <div class="flex items-start justify-between"><p class="stat-label">${label}</p>
-            <span class="w-9 h-9 rounded-lg inline-flex items-center justify-center ${warna}"><i class="fa-solid ${ikon}"></i></span></div>
-        <p class="text-3xl font-bold font-mono text-slate-900">${nilai}</p><p class="text-xs text-slate-400 mt-1">${ket}</p></div>`;
-    // Dengan widget Arus di halaman yang sama, "Truk masuk hari ini" sudah tampil di sana (hitungan yang sama), jadi tidak diulang
-    const adaArus = WIDGET.has('arus');
-    const elRingkasSec = document.getElementById('ringkasSecurity');
-    elRingkasSec.className = `grid gap-4 mb-5 ${adaArus ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 xl:grid-cols-4'}`;
-    elRingkasSec.innerHTML =
-        (adaArus ? '' : kartu('Truk masuk hari ini', d.masuk, `${d.keluar} sudah keluar`, 'fa-truck', 'text-blue-600 bg-blue-50')) +
-        kartu('Truk masih di dalam', d.di_dalam, adaArus ? `belum dicatat keluar di pos · ${d.keluar} sudah keluar` : 'belum dicatat keluar',
-              'fa-warehouse', 'text-amber-600 bg-amber-50') +
-        kartu('Tamu di dalam', d.tamu, 'belum dicatat keluar', 'fa-id-card', 'text-emerald-600 bg-emerald-50') +
-        kartu('Blacklist terdeteksi', d.blacklist, 'hari ini', 'fa-ban', 'text-red-600 bg-red-50');
-    document.getElementById('jumlahDalam').textContent = `${d.di_dalam} truk`;
-    const lama = m => m >= 60 ? `${Math.floor(m / 60)} j ${m % 60} m` : `${m} m`;
-    document.getElementById('tabelDalam').innerHTML = d.dalam.map(t => `<tr class="hover:bg-slate-50">
-        <td class="table-cell font-mono font-semibold">${escapeHtml(t.no_plat)}</td><td class="table-cell">${escapeHtml(t.supir || '-')}</td>
-        <td class="table-cell">${escapeHtml(t.customer || '-')}</td><td class="table-cell">${escapeHtml(t.produk || '-')}</td>
-        <td class="table-cell">${badgeStatusTiket(t.status)}</td>
-        <td class="table-cell font-mono">${escapeHtml(t.masuk)}</td>
-        <td class="table-cell text-right font-mono ${t.menit >= 120 ? 'text-red-600 font-semibold' : ''}">${lama(t.menit)}</td></tr>`).join('')
-        || barisKosong(7, 'Tidak ada truk di dalam area');
+
+    const kartu = (label, nilai, keterangan, ikon, warna) => `
+        <div class="stat-card">
+            <div class="flex items-start justify-between">
+                <p class="stat-label">${label}</p>
+                <span class="w-9 h-9 rounded-lg inline-flex items-center justify-center ${warna}">
+                    <i class="fa-solid ${ikon}"></i>
+                </span>
+            </div>
+            <p class="text-3xl font-bold font-mono text-slate-900">${nilai}</p>
+            <p class="text-xs text-slate-400 mt-1">${keterangan}</p>
+        </div>`;
+
+    const ringkasan = document.getElementById('ringkasSecurity');
+    if (!ringkasan) return;
+
+    ringkasan.className = 'grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5';
+    ringkasan.innerHTML =
+        kartu(
+            'Tamu di dalam',
+            d.tamu || 0,
+            'belum dicatat keluar',
+            'fa-id-card',
+            'text-emerald-600 bg-emerald-50'
+        ) +
+        kartu(
+            'Blacklist terdeteksi',
+            d.blacklist || 0,
+            'hari ini',
+            'fa-ban',
+            'text-red-600 bg-red-50'
+        );
 }

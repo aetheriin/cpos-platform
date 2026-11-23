@@ -15,7 +15,7 @@ from utils.hak_akses import boleh, halaman as lihat_halaman, izin, remah_menu
 
 log = logging.getLogger(__name__)
 KODE = "FM_NETTO_SUMBER"
-MAKS_HARI = 62          # rentang terpanjang sekali tampil (SP membaca server Ascend per perusahaan)
+MAKS_HARI = 62          # rentang terpanjang sekali tampil (SP membaca server Tiket per perusahaan)
 MAKS_NETTO = 200000     # kg, batas wajar satu truk
 NAMA_BULAN = ("Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November",
               "Desember")
@@ -24,7 +24,7 @@ NAMA_BULAN = ("Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "A
 def _perusahaan():
     """Perusahaan ERP dalam cakupan data menu ini: [{kode, nama}]."""
     pt = company_user(current_user.id, KODE)
-    return [p for p in db.perusahaan_ascend() if pt is None or p["kode"] in pt]
+    return [p for p in db.perusahaan_tiket() if pt is None or p["kode"] in pt]
 
 
 def _tutup(tgl):
@@ -62,9 +62,9 @@ def _isian_json(r):
 def _status(t, isian, rusak):
     if isian:
         return "diisi"
-    if (t["split"] and (t["comp"], t["induk"]) in rusak) or t["sumber_ascend"] < 0:
+    if (t["split"] and (t["comp"], t["induk"]) in rusak) or t["sumber_tiket"] < 0:
         return "perlu_dicek"
-    return "perlu_diisi" if t["sumber_ascend"] == 0 else "dari_ascend"
+    return "perlu_diisi" if t["sumber_tiket"] == 0 else "dari_tiket"
 
 
 @bp.route("")
@@ -101,7 +101,7 @@ def api_tiket():
         daftar, gagal = db.tiket(kode_pt, mulai, akhir)
     except pyodbc.Error:
         log.exception("Gagal membaca tiket penjualan (dbo.TIKET_PENJUALAN)")
-        return jsonify({"error": "Tiket belum bisa dibaca dari Ascend. Coba lagi, atau hubungi IT bila masih gagal."}), 502
+        return jsonify({"error": "Tiket belum bisa dibaca dari Tiket. Coba lagi, atau hubungi IT bila masih gagal."}), 502
     for kode, e in gagal.items():
         log.error("dbo.TIKET_PENJUALAN gagal untuk %s: %s", kode, e)
     pesan, siap = None, True
@@ -111,13 +111,13 @@ def api_tiket():
         log.error("Tabel dbo.NettoSumberIsian belum ada: jalankan database/perubahan/029_netto_sumber.sql di database Main")
         isian, pesan, siap = {}, str(e), False
     hari_ini = date.today()
-    rusak = {(t["comp"], t["induk"]) for t in daftar if t["split"] and t["sumber_ascend"] < 0}
+    rusak = {(t["comp"], t["induk"]) for t in daftar if t["split"] and t["sumber_tiket"] < 0}
     data = []
     for t in sorted(daftar, key=lambda x: (x["tanggal"], x["comp"], x["tiket"]), reverse=True):
         terakhir = isian.get((t["comp"], t["tiket"]))
         isi = _isian_json(terakhir)
         data.append({**{k: t[k] for k in ("comp", "tiket", "split", "induk", "produk", "pembeli", "no_do", "kendaraan",
-                                          "netto", "sumber_ascend")},
+                                          "netto", "sumber_tiket")},
                      "tanggal": t["tanggal"].isoformat(), "isian": isi, "id_terakhir": terakhir["id"] if terakhir else 0,
                      "status": _status(t, isi, rusak), "terkunci": hari_ini >= _tutup(t["tanggal"])})
     return jsonify({"data": data, "siap": siap, "pesan": pesan,
@@ -133,7 +133,7 @@ def api_riwayat():
         return jsonify({"error": "Perusahaan di luar cakupan Anda."}), 403
     return jsonify([{"id": r["id"], "netto_sumber": None if r["netto_sumber"] is None else float(r["netto_sumber"]),
                      "referensi": r["referensi"] or "", "catatan": r["catatan"] or "", "oleh": r["oleh"] or "",
-                     "pada": _iso(r["pada"]), "netto_ascend": float(r["netto_ascend"])}
+                     "pada": _iso(r["pada"]), "netto_tiket": float(r["netto_tiket"])}
                     for r in db.riwayat(kode, no_tiket)])
 
 
@@ -188,9 +188,9 @@ def api_simpan():
         t = db.satu_tiket(kode, no_tiket, tgl)
     except pyodbc.Error:
         log.exception("Gagal membaca ulang tiket %s %s", kode, no_tiket)
-        return jsonify({"error": "Tiket belum bisa dibaca dari Ascend. Coba lagi sebentar."}), 502
+        return jsonify({"error": "Tiket belum bisa dibaca dari Tiket. Coba lagi sebentar."}), 502
     if t is None:
-        return jsonify({"error": "Tiket tidak ditemukan di Ascend pada tanggal itu. Muat ulang daftar tiket."}), 404
+        return jsonify({"error": "Tiket tidak ditemukan di Tiket pada tanggal itu. Muat ulang daftar tiket."}), 404
     if date.today() >= _tutup(t["tanggal"]) and not boleh(KODE, "setujui"):
         bulan = f"{NAMA_BULAN[t['tanggal'].month - 1]} {t['tanggal'].year}"
         return jsonify({"error": f"Bulan {bulan} sudah ditutup. Minta pemegang hak Setujui di menu Netto Sumber untuk mengubahnya."}), 403

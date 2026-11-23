@@ -411,7 +411,7 @@ KALIMAT = {
 LABEL_TINGKAT = {"tinggi": "Perlu tindakan", "sedang": "Perhatikan", "info": "Info"}
 
 
-def hitung(sumber, df, perusahaan=None, hari_ini=None, menu=None):
+def hitung(sumber, df, perusahaan=None, hari_ini=None, menu=None, potong=True):
     """-> daftar insight terurut (paling penting dulu), sudah dengan kalimatnya."""
     hari_ini = hari_ini or date.today()
     if perusahaan:
@@ -419,8 +419,14 @@ def hitung(sumber, df, perusahaan=None, hari_ini=None, menu=None):
     if df.empty:
         return []
     poin = [x for x in CEK_MENU.get(menu, CEK[sumber])(df, hari_ini) if x]
-    poin.sort(key=lambda x: -x["skor"])
     for x in poin:
         x["teks"] = KALIMAT[x["kode"]](x["data"])
+    return urutkan(poin) if potong else poin
+
+
+def urutkan(poin):
+    """Paling penting dulu, paling banyak MAKS_POIN, dengan label tingkatnya."""
+    poin = sorted(poin, key=lambda x: -x["skor"])[:MAKS_POIN]
+    for x in poin:
         x["label"] = LABEL_TINGKAT[x["tingkat"]]
-    return poin[:MAKS_POIN]
+    return poin

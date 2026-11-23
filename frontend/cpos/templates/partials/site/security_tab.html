@@ -5,13 +5,13 @@
             <span class="text-sm font-bold text-slate-900">Pendaftaran Tiket Kosong</span>
         </div>
 
-        <form id="formTiketAscend" class="p-5 space-y-4">
+        <form id="formTiket" class="p-5 space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <!-- Kolom kiri -->
                 <div class="space-y-4">
                     <div>
-                        <label class="field-label" for="ascendTicketType">Jenis Tiket</label>
-                        <select id="ascendTicketType" name="ticket_type" required class="input-field">
+                        <label class="field-label" for="tiketTicketType">Jenis Tiket</label>
+                        <select id="tiketTicketType" name="ticket_type" required class="input-field">
                             <option value="">-- Pilih --</option>
                             <option value="Produk">Produk · Penjualan</option>
                             <option value="TBSLuar">TBS Luar · Penerimaan</option>
@@ -20,51 +20,51 @@
 
                     <div>
                         <div class="mb-2 flex items-center justify-start gap-3">
-                            <label class="field-label mb-0" for="ascendNoDoChoice">
+                            <label class="field-label mb-0" for="tiketNoDoChoice">
                                 Nomor DO / SP
                             </label>
 
                             <label class="flex items-center gap-2 text-xs text-slate-600">
-                                <input id="ascendNoDoManualToggle" type="checkbox" class="rounded">
+                                <input id="tiketNoDoManualToggle" type="checkbox" class="rounded">
                                 Input manual
                             </label>
                         </div>
 
-                        <div id="ascendNoDoSelectWrap">
-                            <select id="ascendNoDoChoice" required class="input-field">
+                        <div id="tiketNoDoSelectWrap">
+                            <select id="tiketNoDoChoice" required class="input-field">
                                 <option value="">-- Pilih --</option>
                             </select>
                         </div>
 
-                        <div id="ascendNoDoManualWrap" class="hidden mt-2">
-                            <input type="text" id="ascendNoDoManual" maxlength="50"
+                        <div id="tiketNoDoManualWrap" class="hidden mt-2">
+                            <input type="text" id="tiketNoDoManual" maxlength="50"
                                 class="input-field uppercase"
                                 placeholder="Ketik nomor DO atau SP">
                         </div>
 
-                        <input type="hidden" id="ascendNoDoValue" name="no_do">
-                        <p id="ascendInfoDO" class="field-hint">
+                        <input type="hidden" id="tiketNoDoValue" name="no_do">
+                        <p id="tiketInfoDO" class="field-hint">
                             Pilih jenis tiket untuk mencari DO outstanding, atau centang input manual.
                         </p>
                     </div>
 
                     <div>
-                        <label class="field-label" for="ascendAssociate">Associate</label>
-                        <select id="ascendAssociate" name="associate_id" required class="input-field">
+                        <label class="field-label" for="tiketAssociate">Associate</label>
+                        <select id="tiketAssociate" name="associate_id" required class="input-field">
                             <option value="">-- Pilih --</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="field-label" for="ascendShipper">Shipper / Pengirim</label>
-                        <select id="ascendShipper" name="shipper_id" class="input-field">
+                        <label class="field-label" for="tiketShipper">Shipper / Pengirim</label>
+                        <select id="tiketShipper" name="shipper_id" class="input-field">
                             <option value="">-- Pilih --</option>
                         </select>
                     </div>                    
 
                     <div>
-                        <label class="field-label" for="ascendTanggal">Tanggal</label>
-                        <input id="ascendTanggal" name="tanggal" type="date" required class="input-field">
+                        <label class="field-label" for="tiketTanggal">Tanggal</label>
+                        <input id="tiketTanggal" name="tanggal" type="date" required class="input-field">
                     </div>
                 </div>
 
@@ -74,14 +74,14 @@
                     <div>
                         <label class="field-label">Supir Terakhir Truk</label>
 
-                        <div id="ascendSupirKartu"
+                        <div id="tiketSupirKartu"
                             class="border border-slate-200 rounded-lg p-4 flex items-center gap-4 bg-slate-50 min-h-24">
-                            <div id="ascendSupirFoto" class="info-photo-box">
+                            <div id="tiketSupirFoto" class="info-photo-box">
                                 <i class="fa-solid fa-user text-slate-300 text-3xl"></i>
                             </div>
 
                             <div class="min-w-0">
-                                <div id="ascendSupirTerakhir" class="text-sm text-slate-500">
+                                <div id="tiketSupirTerakhir" class="text-sm text-slate-500">
                                     Isi nomor kendaraan untuk melihat riwayat supir.
                                 </div>
                             </div>
@@ -89,38 +89,38 @@
                     </div>
 
                     <div>
-                        <label class="field-label" for="ascendProduk">Produk</label>
-                        <select id="ascendProduk" name="produk" required class="input-field">
+                        <label class="field-label" for="tiketProduk">Produk</label>
+                        <select id="tiketProduk" name="produk" required class="input-field">
                             <option value="">-- Pilih --</option>
                         </select>
                     </div>
 
                     <div>
                         <div class="mb-2 flex items-center justify-start gap-3">
-                            <label class="field-label mb-0" for="ascendVehicleNo">No. Kendaraan</label>
+                            <label class="field-label mb-0" for="tiketVehicleNo">No. Kendaraan</label>
 
                             <label class="flex items-center gap-2 text-xs text-slate-600">
-                                <input id="ascendVehicleManualToggle" type="checkbox" class="rounded">
+                                <input id="tiketVehicleManualToggle" type="checkbox" class="rounded">
                                 Input manual
                             </label>
                         </div>
 
-                        <div id="ascendVehicleSelectWrap">
-                            <select id="ascendVehicleNo" name="vehicle_no" required class="input-field">
+                        <div id="tiketVehicleSelectWrap">
+                            <select id="tiketVehicleNo" name="vehicle_no" required class="input-field">
                                 <option value="">-- Pilih Shipper dahulu --</option>
                             </select>
                         </div>
 
-                        <div id="ascendVehicleManualWrap" class="hidden">
-                            <input id="ascendVehicleManual" name="vehicle_no" type="text"
+                        <div id="tiketVehicleManualWrap" class="hidden">
+                            <input id="tiketVehicleManual" name="vehicle_no" type="text"
                                 maxlength="50" class="input-field uppercase"
                                 placeholder="Contoh: BM 9999 SAD" disabled>
                         </div>
                     </div>
 
                     <div>
-                        <label class="field-label" for="ascendMill">Mill</label>
-                        <select id="ascendMill" name="mill_id" required class="input-field">
+                        <label class="field-label" for="tiketMill">Mill</label>
+                        <select id="tiketMill" name="mill_id" required class="input-field">
                             <option value="">-- Pilih --</option>
                             {% for m in mill_list %}
                             <option value="{{ m.mill_id }}">{{ m.mill_id }}</option>
@@ -133,10 +133,10 @@
             </div>
 
             <div class="flex items-center gap-3">
-                <button id="btnBuatTiketAscend" type="submit" class="btn-primary">
+                <button id="btnBuatTiket" type="submit" class="btn-primary">
                     Buat Tiket
                 </button>
-                <span id="hasilTiketAscend" class="text-sm font-semibold text-emerald-700"></span>
+                <span id="hasilTiket" class="text-sm font-semibold text-emerald-700"></span>
             </div>
         </form>
     </div>

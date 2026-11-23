@@ -2,7 +2,7 @@
 from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
 
-from utils import db_cari, db_ascend, db_ascend_split
+from utils import db_cari, db_tiket, db_tiket_pisah
 from utils.area import area_data, company_user
 from utils.hak_akses import MENU_KENDARAAN, MENU_KONTRAK, MENU_OPERASI, MENU_ORANG, admin_required, boleh_lihat
 
@@ -44,12 +44,12 @@ def cari():
         return jsonify(hasil)
     
     if _boleh(MENU_OPERASI):
-        ticket_ids = db_ascend_split.daftar_ticket_id_di_area(
+        ticket_ids = db_tiket_pisah.daftar_ticket_id_di_area(
             area_data(current_user.id)
         )
         hasil["tiket"] = [
             _waktu(r)
-            for r in db_ascend.cari_tiket_ascend_global(kata, ticket_ids)
+            for r in db_tiket.cari_tiket_global(kata, ticket_ids)
         ]
 
     if _boleh(MENU_KONTRAK):

@@ -6,7 +6,7 @@ from flask import Flask, g, jsonify, request, redirect, session
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 from extensions import STATIC_DIR, TEMPLATE_DIR, login_manager
-from utils.ascend_pending import mulai_worker_timbang_pending
+from utils.tiket_tertunda import mulai_worker_timbang_pending
 from utils.auth import User
 from utils.db_utils import get_user_by_id
 from utils.serial_reader import mulai_pembacaan_serial

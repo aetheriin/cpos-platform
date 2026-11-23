@@ -11,7 +11,7 @@ from datetime import datetime
 from difflib import SequenceMatcher
 from pathlib import Path
 
-from . import insight, kamus, pengolah
+from . import insight, insight_laporan, kamus, pengolah
 from .pembaca import NAMA_BULAN, baca, lengkapi, normal
 from .pengolah import Memuat, TanpaAkses
 
@@ -72,8 +72,9 @@ def _arahkan(teks):
     return None
 
 
-def tanya(teks, lalu, ambil, perusahaan, pengguna, nama=None, menu=None, nama_menu=None):
-    """ambil(sumber) -> (DataFrame, info); bisa melempar Memuat / TanpaAkses. lalu: permintaan sebelumnya (dari layar)."""
+def tanya(teks, lalu, ambil, perusahaan, pengguna, nama=None, menu=None, nama_menu=None, dasbor=None):
+    """ambil(sumber) -> (DataFrame, info); bisa melempar Memuat / TanpaAkses. lalu: permintaan sebelumnya (dari layar).
+    dasbor(laporan_id, **filter) -> ringkasan dashboard laporan itu (untuk insight menu yang tidak punya data baris)."""
     teks = (teks or "").strip()[:300]
     id_jawaban = uuid.uuid4().hex[:12]
     arah = _arahkan(teks)
@@ -82,7 +83,7 @@ def tanya(teks, lalu, ambil, perusahaan, pengguna, nama=None, menu=None, nama_me
         lalu = None
     p = baca(arah or teks, perusahaan, menu=menu)
     p = lengkapi(p, lalu if isinstance(lalu, dict) else None)
-    hasil = _jawab(p, ambil, perusahaan, teks, nama, menu, nama_menu)
+    hasil = _jawab(p, ambil, perusahaan, teks, nama, menu, nama_menu, dasbor)
     hasil["id"] = id_jawaban
     if arah:
         hasil.setdefault("catatan", []).insert(0, f"Dibaca sebagai: \"{arah}\".")
@@ -93,7 +94,7 @@ def tanya(teks, lalu, ambil, perusahaan, pengguna, nama=None, menu=None, nama_me
     return hasil
 
 
-def _jawab(p, ambil, perusahaan, teks, nama=None, menu=None, nama_menu=None):
+def _jawab(p, ambil, perusahaan, teks, nama=None, menu=None, nama_menu=None, dasbor=None):
     m = p["maksud"]
     info_menu = kamus.MENU.get(menu or "", {})
     saran_menu = info_menu.get("saran") or kamus.CONTOH[:4]
@@ -101,10 +102,11 @@ def _jawab(p, ambil, perusahaan, teks, nama=None, menu=None, nama_menu=None):
         if not info_menu:
             return {"jenis": "obrolan", "teks": "Buka salah satu laporan dulu, nanti saya jelaskan isinya.", "saran": kamus.CONTOH[:4]}
         bisa = ("Angkanya bisa ditanyakan ke saya." if info_menu.get("sumber") else
-                "Angka di menu ini belum bisa ditanyakan ke saya, tapi istilahnya bisa.")
+                "Angka rincinya belum bisa ditanyakan ke saya, tapi hal yang perlu diperhatikan dan istilahnya bisa."
+                if menu in insight_laporan.CEK else "Angka di menu ini belum bisa ditanyakan ke saya, tapi istilahnya bisa.")
         return {"jenis": "obrolan", "teks": f"{nama_menu or 'Menu ini'}: {info_menu['isi']} {bisa}", "saran": saran_menu}
     if m == "insight":
-        return _insight(p, ambil, menu, nama_menu, info_menu, saran_menu)
+        return _insight(p, ambil, menu, nama_menu, info_menu, saran_menu, dasbor)
     # Pertanyaan tanpa ukuran di menu yang punya data ("per supplier", "yang belum"): pakai ukuran utama menu itu
     dari_menu = None
     if m in ("angka", "daftar") and not p.get("ukuran") and not p.get("status") and info_menu.get("ukuran"):
@@ -152,31 +154,43 @@ def _jawab(p, ambil, perusahaan, teks, nama=None, menu=None, nama_menu=None):
     return {"jenis": jenis, **hasil}
 
 
-def _insight(p, ambil, menu, nama_menu, info_menu, saran_menu):
+def _insight(p, ambil, menu, nama_menu, info_menu, saran_menu, dasbor=None):
     sumber = info_menu.get("sumber")
-    if not sumber:
-        return {"jenis": "teks", "teks": "Insight baru tersedia di menu Outstanding, Purchase Request, Purchase Order, dan Purchase Invoice. "
-                                         "Buka salah satunya, lalu tanya lagi.", "saran": saran_menu}
+    dari_dasbor = insight_laporan.CEK.get(menu) if dasbor else None
+    pakai_baris = sumber and (dari_dasbor is None or dari_dasbor[1])
+    if not pakai_baris and not dari_dasbor:
+        return {"jenis": "teks", "teks": "Insight belum tersedia di menu ini. Buka menu laporan lain, lalu tanya lagi.", "saran": saran_menu}
     try:
-        df, _ = ambil(sumber)
+        poin = []
+        if pakai_baris:
+            df, _ = ambil(sumber)
+            poin += insight.hitung(sumber, df, p.get("perusahaan"), menu=menu, potong=False)
+        if dari_dasbor:
+            poin += insight_laporan.hitung(menu, dasbor, p.get("perusahaan"))
     except Memuat as e:
         return {"jenis": "memuat", "teks": "Sedang mengambil data laporan dari server. Tunggu sebentar…", "sumber": e.sumber}
     except TanpaAkses as e:
-        nm = pengolah.NAMA_LAPORAN[kamus.SUMBER[e.sumber]["laporan"]]
+        lap = kamus.SUMBER[e.sumber]["laporan"] if e.sumber in kamus.SUMBER else e.sumber
+        nm = pengolah.NAMA_LAPORAN.get(lap) or nama_menu or "ini"
         return {"jenis": "teks", "teks": f"Akun Anda tidak punya akses ke laporan {nm}, jadi insight-nya tidak bisa saya hitung."}
-    poin = insight.hitung(sumber, df, p.get("perusahaan"), menu=menu)
+    poin = insight.urutkan(poin)
+    for x in poin:
+        x.setdefault("tindakan", insight_laporan.TINDAKAN.get(x["kode"]))
     lingkup = f" {', '.join(p['perusahaan'])}" if p.get("perusahaan") else ""
-    lap = kamus.SUMBER[sumber]["laporan"]
+    lap = kamus.SUMBER[sumber]["laporan"] if pakai_baris else None
     a = insight.AMBANG
-    catatan = [f"Yang ditampilkan hanya yang melewati ambang: umur lebih dari {a['umur_lama']} hari, perubahan {a['ubah'] * 100:.0f}% atau lebih, "
-               f"3 teratas memegang {a['penumpukan'] * 100:.0f}% atau lebih, atau {str(a['lambat']).replace('.', ',')} kali rata-rata."]
+    catatan = ([f"Yang ditampilkan hanya yang melewati ambang: umur lebih dari {a['umur_lama']} hari, perubahan {a['ubah'] * 100:.0f}% atau lebih, "
+                f"3 teratas memegang {a['penumpukan'] * 100:.0f}% atau lebih, atau {str(a['lambat']).replace('.', ',')} kali rata-rata."] if pakai_baris else [])
+    if dari_dasbor:
+        catatan.append("Dihitung dari data laporan ini dengan periode bawaannya, jadi ikut berubah saat datanya diperbarui.")
     if not poin:
         teks = f"Di {nama_menu or 'menu ini'}{lingkup} tidak ada yang melewati ambang saat ini."
     else:
         teks = f"Yang perlu diperhatikan di {nama_menu or 'menu ini'}{lingkup}, dari yang paling penting:"
     saran = [x for x in saran_menu if x != kamus.INSIGHT_SARAN][:3]
     return {"jenis": "insight", "teks": teks, "catatan": catatan,
-            "poin": [{"teks": x["teks"], "tingkat": x["tingkat"], "label": x["label"], "tanya": x["tanya"], "kode": x["kode"], "data": x["data"]}
+            "poin": [{"teks": x["teks"], "tingkat": x["tingkat"], "label": x["label"], "tanya": x["tanya"], "kode": x["kode"], "data": x["data"],
+                      "tindakan": x.get("tindakan")}
                      for x in poin],
-            "laporan": {"id": lap, "nama": pengolah.NAMA_LAPORAN[lap]}, "permintaan": {"maksud": "insight", "perusahaan": p.get("perusahaan")},
+            **({"laporan": {"id": lap, "nama": pengolah.NAMA_LAPORAN[lap]}} if lap else {}), "permintaan": {"maksud": "insight", "perusahaan": p.get("perusahaan")},
             "saran": saran}

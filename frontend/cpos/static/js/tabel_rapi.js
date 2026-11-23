@@ -94,7 +94,7 @@ function tandaUrut(tabel) {
         if (!ikon) return;
         const aktif = tabel._urut && tabel._urut.kolom === i;
         ikon.className = `ikon-urut fa-solid ${aktif ? (tabel._urut.arah > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort'}`;
-        th.setAttribute('aria-sort', aktif ? (tabel._urut.arah > 0 ? 'ascending' : 'descending') : 'none');
+        th.setAttribute('aria-sort', aktif ? (tabel._urut.arah > 0 ? 'tiketing' : 'descending') : 'none');
     });
 }
 

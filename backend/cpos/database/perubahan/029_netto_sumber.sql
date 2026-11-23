@@ -1,6 +1,6 @@
-/* Form Netto Sumber (modul CPOS modules/netto_sumber): isian netto sumber tiket penjualan Ascend yang kosong atau salah.
-   Tabel Ascend tidak diubah. Setiap simpan menambah baris baru, jadi riwayatnya utuh; yang berlaku baris terakhir per tiket.
-   NettoSumber NULL = isian dibatalkan, tiket kembali memakai angka Ascend. Laporan Tiket Penjualan (Analytics) membaca tabel ini.
+/* Form Netto Sumber (modul CPOS modules/netto_sumber): isian netto sumber tiket penjualan Tiket yang kosong atau salah.
+   Tabel Tiket tidak diubah. Setiap simpan menambah baris baru, jadi riwayatnya utuh; yang berlaku baris terakhir per tiket.
+   NettoSumber NULL = isian dibatalkan, tiket kembali memakai angka Tiket. Laporan Tiket Penjualan (Analytics) membaca tabel ini.
    Menu Forms › Netto Sumber (/netto-sumber). Hak di Admin › Hak Akses: Lihat, Tambah (isi tiket yang belum diisi),
    Ubah (ubah atau batalkan isian), Setujui (boleh mengubah isian bulan yang sudah ditutup). Aman dijalankan ulang. */
 SET NOCOUNT ON;
@@ -17,8 +17,8 @@ CREATE TABLE dbo.NettoSumberIsian (
     NettoSumber       DECIMAL(18, 2) NULL CONSTRAINT CK_NettoSumberIsian_Netto CHECK (NettoSumber IS NULL OR NettoSumber > 0),
     RefNo             NVARCHAR(50)   NULL,                  -- mis. nomor tiket timbang pihak lain
     Notes             NVARCHAR(500)  NULL,
-    NettoAscend       DECIMAL(18, 2) NOT NULL,              -- netto timbangan kita saat diisi
-    NettoSumberAscend DECIMAL(18, 2) NOT NULL,              -- netto sumber di Ascend saat diisi
+    NettoTiket       DECIMAL(18, 2) NOT NULL,              -- netto timbangan kita saat diisi
+    NettoSumberTiket DECIMAL(18, 2) NOT NULL,              -- netto sumber di Tiket saat diisi
     CreateBy          BIGINT         NOT NULL CONSTRAINT FK_NettoSumberIsian_User REFERENCES dbo.Users (UserID),
     CreateDate        DATETIME2(0)   NOT NULL CONSTRAINT DF_NettoSumberIsian_Create DEFAULT (SYSDATETIME())
 );

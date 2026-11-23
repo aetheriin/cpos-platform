@@ -15,7 +15,7 @@ window.addEventListener('platLookup', (e) => {
     const produk = String(data.produk || '').trim().toUpperCase();
     const tiketPks =
         data.status === 'ADA_TIKET' &&
-        data.sumber === 'ASCEND' &&
+        data.sumber === 'TIKET' &&
         data.ticket_type === 'Produk' &&
         ['CPO', 'PK', 'KERNEL'].includes(produk);
 
@@ -70,14 +70,14 @@ async function submitLab(btn) {
         () => kirimForm('/api/lab/simpan', formData)
     );
     if (tampilkanHasil(data)) {
-        muatAntrianLabAscend();
-        muatRiwayatLabAscend();
+        muatAntrianLabTiket();
+        muatRiwayatLabTiket();
     }
 }
 
-async function muatAntrianLabAscend() {
+async function muatAntrianLabTiket() {
     const data = await ambilJson('/api/lab/antrian');
-    const tbody = document.getElementById('tabelAntrianLabAscend');
+    const tbody = document.getElementById('tabelAntrianLabTiket');
 
     if (data.error) {
         tbody.innerHTML = barisGagal(8, data.error);
@@ -99,12 +99,12 @@ async function muatAntrianLabAscend() {
             <td class="table-cell text-right">${kg(r.tara)}</td>
             <td class="table-cell text-right">${kg(r.netto)}</td>
         </tr>
-    `).join('') || barisKosong(8, 'Tidak ada tiket yang menunggu input Lab di Ascend');
+    `).join('') || barisKosong(8, 'Tidak ada tiket yang menunggu input Lab di Tiket');
 }
 
-async function muatRiwayatLabAscend() {
+async function muatRiwayatLabTiket() {
     const data = await ambilJson('/api/lab/riwayat');
-    const tbody = document.getElementById('tabelRiwayatLabAscend');
+    const tbody = document.getElementById('tabelRiwayatLabTiket');
 
     if (data.error) {
         tbody.innerHTML = barisGagal(12, data.error);
@@ -130,7 +130,7 @@ async function muatRiwayatLabAscend() {
             <td class="table-cell">${escapeHtml(r.kcolor || '-')}</td>
             <td class="table-cell">${escapeHtml(r.lab_by || '-')}</td>
         </tr>
-    `).join('') || barisKosong(12, 'Belum ada hasil Lab tersimpan di Ascend');
+    `).join('') || barisKosong(12, 'Belum ada hasil Lab tersimpan di Tiket');
 }
 
 function bukaStandarMutu() {
@@ -170,8 +170,8 @@ async function muatHistoryStandar() {
 window.addEventListener('tabChange', e => {
     if (e.detail === 'lab') {
         muatHistoryStandar();
-        muatAntrianLabAscend();
-        muatRiwayatLabAscend();
+        muatAntrianLabTiket();
+        muatRiwayatLabTiket();
     }
 });
 

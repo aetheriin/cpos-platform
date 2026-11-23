@@ -663,8 +663,8 @@ CREATE TABLE dbo.WeightBridge (
     ScaleID             INT NULL CONSTRAINT FK_WB_Scale REFERENCES dbo.Scale (ScaleID),     -- jembatan timbang masuk
     CompAreaID          BIGINT NOT NULL CONSTRAINT FK_WB_Area REFERENCES dbo.CompanyArea (CompAreaID),        -- area akun Security
     FlowID              INT NULL CONSTRAINT FK_WB_Flow REFERENCES dbo.Flow (FlowID),                      -- alur tahap tiket (dari produk)
-    ParentTicketNumber  VARCHAR(50) NULL CONSTRAINT FK_WB_Parent REFERENCES dbo.WeightBridge (TicketNumber),  -- tiket split kelebihan DO
-    SplitWeight         DECIMAL(14, 2) NULL,                         -- netto tiket split (tanpa penimbangan sendiri)
+    ParentTicketNumber  VARCHAR(50) NULL CONSTRAINT FK_WB_Parent REFERENCES dbo.WeightBridge (TicketNumber),  -- tiket pisah kelebihan DO
+    SplitWeight         DECIMAL(14, 2) NULL,                         -- netto tiket pisah (tanpa penimbangan sendiri)
     CreateBy            BIGINT NOT NULL CONSTRAINT FK_WB_CreateBy REFERENCES dbo.Users (UserID),             -- security
     CheckDate           DATETIME NULL,                               -- verifikasi tiket selesai
     CheckBy             BIGINT NULL CONSTRAINT FK_WB_CheckBy REFERENCES dbo.Users (UserID),
@@ -775,7 +775,7 @@ LEFT JOIN dbo.Weighing w2 ON w2.TicketNumber = t.TicketNumber AND w2.WeighNo = 2
 LEFT JOIN dbo.Scale j ON j.ScaleID = t.ScaleID;
 GO
 
--- Kelebihan DO (migrasi 022): kelebihan netto di atas kuota kontrak -> tiket split + No. DO baru (Ascend)
+-- Kelebihan DO (migrasi 022): kelebihan netto di atas kuota kontrak -> tiket pisah + No. DO baru (Tiket)
 CREATE TABLE dbo.DOExcess (
     ExcessID           INT IDENTITY(1,1) PRIMARY KEY,
     TicketNumber       VARCHAR(50)    NOT NULL CONSTRAINT FK_DOExcess_WB REFERENCES dbo.WeightBridge (TicketNumber),

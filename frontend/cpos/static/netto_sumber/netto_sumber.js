@@ -12,7 +12,7 @@
     const STATUS = {
         perlu_diisi: ['Perlu diisi', WARNA_BADGE.oranye],
         perlu_dicek: ['Perlu dicek', WARNA_BADGE.merah],
-        dari_ascend: ['Dari Ascend', WARNA_BADGE.abu],
+        dari_tiket: ['Dari Tiket', WARNA_BADGE.abu],
         diisi: ['Diisi', WARNA_BADGE.hijau],
     };
 
@@ -30,7 +30,7 @@
     const tglDari = d => `${dua(d.getDate())}-${dua(d.getMonth() + 1)}-${d.getFullYear()}`;
     const tanggal = iso => tglDari(new Date(`${iso}T00:00:00`));
     const waktu = iso => { const d = new Date(iso); return `${tglDari(d)} ${dua(d.getHours())}:${dua(d.getMinutes())}`; };
-    const sumber = t => (t.isian ? t.isian.netto_sumber : t.sumber_ascend);
+    const sumber = t => (t.isian ? t.isian.netto_sumber : t.sumber_tiket);
     // Sama dengan _netto() di routes.py: 28340, 28.340, atau 28340,5. NaN bila bukan angka.
     function bacaAngka(teks) {
         let s = String(teks || '').replace(/\s/g, '');
@@ -59,7 +59,7 @@
 
     function baris(t, i) {
         const s = sumber(t);
-        const dicek = t.status === 'perlu_dicek';          // angka Ascend-nya tidak bisa dipakai, jadi selisihnya tidak dihitung
+        const dicek = t.status === 'perlu_dicek';          // angka Tiket-nya tidak bisa dipakai, jadi selisihnya tidak dihitung
         const beda = dicek ? null : selisih(t.netto, s);
         const [label, warna] = STATUS[t.status];
         const aksi = bisaUbah(t) ? (t.isian ? 'Ubah' : 'Isi') : 'Lihat';
@@ -93,7 +93,7 @@
         if (tampil.length) {
             tbody.innerHTML = tampil.map(baris).join('');
         } else if (!data.length) {
-            tbody.innerHTML = barisKosong(KOLOM, 'Tidak ada tiket CPO, PFAD, R.POME, RUCO, atau tiket split pada rentang ini.');
+            tbody.innerHTML = barisKosong(KOLOM, 'Tidak ada tiket CPO, PFAD, R.POME, RUCO, atau tiket pisah pada rentang ini.');
         } else {
             const teks = status === 'perlu_diisi' && !el('nsCari').value && !el('nsProduk').value
                 ? 'Semua tiket pada rentang ini sudah punya netto sumber.'
@@ -114,7 +114,7 @@
     function peringatan(res) {
         const pesan = [];
         if (res.pesan) pesan.push(res.pesan);
-        if (res.gagal && res.gagal.length) pesan.push(`Tiket PT ${res.gagal.join(', ')} belum bisa dibaca dari Ascend, jadi belum masuk daftar. Coba muat ulang halaman.`);
+        if (res.gagal && res.gagal.length) pesan.push(`Tiket PT ${res.gagal.join(', ')} belum bisa dibaca dari Tiket, jadi belum masuk daftar. Coba muat ulang halaman.`);
         el('nsPeringatan').textContent = pesan.join(' ');
         el('nsPeringatan').classList.toggle('hidden', !pesan.length);
     }
@@ -138,7 +138,7 @@
             return;
         }
         el('nsInfo').textContent = 'Memuat tiket…';
-        el('nsTabel').innerHTML = `<tr><td colspan="${KOLOM}" class="table-cell text-center py-10 text-sm text-slate-500">Memuat tiket dari Ascend…</td></tr>`;
+        el('nsTabel').innerHTML = `<tr><td colspan="${KOLOM}" class="table-cell text-center py-10 text-sm text-slate-500">Memuat tiket dari Tiket…</td></tr>`;
         const q = new URLSearchParams({ perusahaan: el('nsPerusahaan').value, mulai: el('nsMulai').value, akhir: el('nsAkhir').value });
         const res = await ambilJson(`/netto-sumber/api/tiket?${q}`);
         if (nomor !== nomorMuat) return;            // sudah ada permintaan yang lebih baru
@@ -166,7 +166,7 @@
     function dataTiket(t) {
         const isi = [['Perusahaan', t.comp], ['Tanggal', tanggal(t.tanggal)], ['Produk', t.produk], ['Pembeli', t.pembeli || '-'],
                      ['Nomor DO', t.no_do || '-'], ['Kendaraan', t.kendaraan || '-'], ['Netto timbangan', `${angka(t.netto)} kg`],
-                     ['Netto sumber Ascend', `${angka(t.sumber_ascend)} kg`]];
+                     ['Netto sumber Tiket', `${angka(t.sumber_tiket)} kg`]];
         return isi.map(([k, v]) => `<div class="min-w-0"><dt class="text-xs text-slate-500">${escapeHtml(k)}</dt>
             <dd class="font-medium text-slate-800 break-words${/kg$/.test(v) ? ' tabular-nums' : ''}">${escapeHtml(v)}</dd></div>`).join('');
     }
@@ -175,23 +175,23 @@
         if (!t.split) return null;
         const pecahan = data.filter(x => x.comp === t.comp && x.induk === t.induk);
         const lain = pecahan.filter(x => x.tiket !== t.tiket);
-        const rusak = pecahan.some(x => x.sumber_ascend < 0);
+        const rusak = pecahan.some(x => x.sumber_tiket < 0);
         const teks = [`Pecahan split dari ${t.induk}.`];
         if (rusak) {
-            teks.push('Netto sumber Ascend untuk tiket split ini salah: pecahan pertama berisi netto timbangan, pecahan berikutnya minus. Isi netto sumber tiap pecahan di sini.');
+            teks.push('Netto sumber Tiket untuk tiket pisah ini salah: pecahan pertama berisi netto timbangan, pecahan berikutnya minus. Isi netto sumber tiap pecahan di sini.');
         }
         lain.forEach(x => {
-            const s = x.isian ? `${angka(x.isian.netto_sumber)} kg (isian)` : (rusak || !x.sumber_ascend) ? 'belum ada' : `${angka(x.sumber_ascend)} kg`;
+            const s = x.isian ? `${angka(x.isian.netto_sumber)} kg (isian)` : (rusak || !x.sumber_tiket) ? 'belum ada' : `${angka(x.sumber_tiket)} kg`;
             teks.push(`${x.tiket}: netto ${angka(x.netto)} kg, netto sumber ${s}.`);
         });
         if (lain.length) teks.push(`Total netto semua pecahan ${angka(pecahan.reduce((n, x) => n + x.netto, 0))} kg.`);
         return teks;
     }
 
-    // Angka Ascend bisa dipakai bila lebih dari 0 dan bukan pecahan split yang salah (lihat infoPasangan)
-    function bisaPakaiAscend(t) {
-        if (!(t.sumber_ascend > 0)) return false;
-        return !(t.split && data.some(x => x.comp === t.comp && x.induk === t.induk && x.sumber_ascend < 0));
+    // Angka Tiket bisa dipakai bila lebih dari 0 dan bukan pecahan split yang salah (lihat infoPasangan)
+    function bisaPakaiTiket(t) {
+        if (!(t.sumber_tiket > 0)) return false;
+        return !(t.split && data.some(x => x.comp === t.comp && x.induk === t.induk && x.sumber_tiket < 0));
     }
 
     function perluCatatan() {
@@ -313,7 +313,7 @@
         const t = aktif;
         if (!t || !await Dialog.konfirmasi({
             judul: 'Batalkan isian?', teksYa: 'Batalkan isian', bahaya: true,
-            pesan: `Isian ${t.tiket} akan dibatalkan ${bisaPakaiAscend(t) ? `dan tiket kembali memakai netto sumber Ascend (${angka(t.sumber_ascend)} kg).` : 'dan tiket kembali tanpa netto sumber, karena angka Ascend-nya kosong atau salah.'} Riwayatnya tetap tersimpan.`,
+            pesan: `Isian ${t.tiket} akan dibatalkan ${bisaPakaiTiket(t) ? `dan tiket kembali memakai netto sumber Tiket (${angka(t.sumber_tiket)} kg).` : 'dan tiket kembali tanpa netto sumber, karena angka Tiket-nya kosong atau salah.'} Riwayatnya tetap tersimpan.`,
         })) return;
         await kirim(el('nsKembalikan'), { batalkan: '1', netto_sumber: '', referensi: '', catatan: '' });
     });

@@ -44,7 +44,7 @@ async function isiBeratInfoBar(noTiket, sumber = null) {
     );
     if (!noTiket) return;
 
-    const query = sumber === 'ASCEND' ? '?sumber=ASCEND' : '';
+    const query = sumber === 'TIKET' ? '?sumber=TIKET' : '';
     const tb = await ambilJson(
         `/api/timbang/data/${encodeURIComponent(noTiket)}${query}`
     );
@@ -123,7 +123,7 @@ function terapkanHasilLookup(data) {
         document.getElementById('infoSupplier').value = data.supplier || '';
         document.getElementById('infoProduk').value = data.produk || '';
         document.getElementById('infoJenis').value =
-            data.sumber === 'ASCEND'
+            data.sumber === 'TIKET'
                 ? (data.ticket_type === 'Produk'
                     ? 'Produk · Penjualan'
                     : 'TBS Luar · Pembelian')

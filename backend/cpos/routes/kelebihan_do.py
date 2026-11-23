@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
 
 from utils.hak_akses import izin, boleh, halaman as lihat_halaman
-from utils import db_ascend, db_ascend_split, notifikasi
+from utils import db_tiket, db_tiket_pisah, notifikasi
 from utils.area import area_data
 
 kelebihan_do_bp = Blueprint("kelebihan_do", __name__)
@@ -15,25 +15,25 @@ def halaman():
     return render_template(
         "kelebihan_do/kelebihan_do.html",
         halaman="kelebihan_do",
-        boleh_monitor_split=boleh("KONTRAK_DO", "lihat"),
+        boleh_monitor_pisah=boleh("KONTRAK_DO", "lihat"),
     )
 
 
-@kelebihan_do_bp.route("/api/kelebihan-do/ascend-split")
+@kelebihan_do_bp.route("/api/kelebihan-do/tiket-pisah")
 @login_required
 @izin("KONTRAK_DO", "lihat")
-def daftar_ascend_split():
-    rows = db_ascend_split.daftar_monitor_split()
+def daftar_tiket_pisah():
+    rows = db_tiket_pisah.daftar_monitor_pisah()
 
     for row in rows:
-        row["tiket_split"] = []
+        row["tiket_pisah"] = []
         row["no_do1"] = None
 
-        if row["status"] == "SELESAI_SPLIT":
-            hasil = db_ascend.baca_hasil_split_ascend(row["ticket_id"])
+        if row["status"] == "SELESAI_PISAH":
+            hasil = db_tiket.baca_hasil_pisah_tiket(row["ticket_id"])
             if hasil:
                 row["no_do1"] = hasil["no_do1"]
-                row["tiket_split"] = hasil["anak"]
+                row["tiket_pisah"] = hasil["anak"]
 
     return jsonify(rows)
 

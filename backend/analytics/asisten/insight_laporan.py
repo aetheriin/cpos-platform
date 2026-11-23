@@ -17,7 +17,8 @@ def _poin(kode, tingkat, skor, data, tanya=None):
 
 
 def _pct(x):
-    return f"{x * 100:.0f}%".replace(".", ",")
+    p = x * 100
+    return (f"{p:.1f}".replace(".", ",").removesuffix(",0") if 0 < abs(p) < 10 else f"{p:.0f}") + "%"
 
 
 def _des(x, n=1):
@@ -364,8 +365,8 @@ KALIMAT = {
                            f"Skor lebih ditentukan kategori daripada banyaknya kerja.",
     "pv_bobot": lambda d: f"Kategori {d['kategori']} (bobot {_des(d['bobot'])}) menyumbang {_pct(d['porsi_skor'])} skor dari hanya {_pct(d['porsi_dok'])} PV. "
                           f"Skor lebih ditentukan kategori daripada banyaknya kerja.",
-    "pvr_satu_orang": lambda d: f"{d['nama']} memegang {_pct(d['porsi'])} dari total skor ({_des(d['skor'])} poin).",
-    "pv_satu_orang": lambda d: f"{d['nama']} memegang {_pct(d['porsi'])} dari total skor ({_des(d['skor'])} poin).",
+    "pvr_satu_orang": lambda d: f"{d['nama']} memegang {_pct(d['porsi'])} dari total skor ({_des(d['skor'], 0)} poin).",
+    "pv_satu_orang": lambda d: f"{d['nama']} memegang {_pct(d['porsi'])} dari total skor ({_des(d['skor'], 0)} poin).",
     "pvr_pindah": lambda d: f"Beban kerja berpindah: rata-rata skor bulanan {d['naik']} naik dari {_des(d['naik_dari'], 0)} ke {_des(d['naik_ke'], 0)}, "
                             f"{d['turun']} turun dari {_des(d['turun_dari'], 0)} ke {_des(d['turun_ke'], 0)} (3 bulan pertama dibanding 3 bulan terakhir).",
     "pv_pindah": lambda d: f"Beban kerja berpindah: rata-rata skor bulanan {d['naik']} naik dari {_des(d['naik_dari'], 0)} ke {_des(d['naik_ke'], 0)}, "
@@ -387,9 +388,9 @@ KALIMAT = {
     "tbs_arah": lambda d: (f"Minggu terakhir {_ton(d['nilai'])}, {_arah(d['ubah'])} dari rata-rata {_ton(d['rata'])}"
                            + (f", tertinggi dalam {d['minggu']} minggu" if d["tertinggi"] else "")
                            + (f", dan sudah naik {d['beruntun']} minggu berturut-turut." if d["beruntun"] >= 3 else ".")),
-    "tbs_berhenti": lambda d: f"{_bil(d['jumlah'])} grup tidak mengirim sama sekali minggu ini, padahal biasanya rutin: "
+    "tbs_berhenti": lambda d: f"{_bil(d['jumlah'])} grup yang biasanya rutin tidak mengirim sama sekali minggu ini, antara lain "
                               + _daftar([f"{n} (biasanya {_ton(r)})" for n, r in d["grup"]]) + ".",
-    "tbs_turun": lambda d: f"{_bil(d['jumlah'])} grup turun di luar kebiasaan, terbesar " + _daftar([f"{n} ({_des(x, 0)}%)" for n, x in d["grup"]]) + ".",
+    "tbs_turun": lambda d: f"{_bil(d['jumlah'])} grup turun di luar kebiasaan, antara lain " + _daftar([f"{n} ({_des(x, 0)}%)" for n, x in d["grup"]]) + ".",
     "tbs_penyumbang": lambda d: f"Kenaikan terbesar dari {d['nama']} ({d['comp']}): {_ton(d['nilai'])}, naik {_des(d['persen'], 0)}% dari biasanya.",
     "tbs_harga_volume": lambda d: f"Tonase {_ton(d['netto'])} ({_arah(d['un'])}), harga rata-rata Rp {_bil(d['harga'])}/kg ({_arah(d['uh'])}), "
                                   f"dibanding 30 hari sebelumnya.",

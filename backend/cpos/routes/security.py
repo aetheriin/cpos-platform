@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 from utils.face_utils import (embedding_frontal, extract_embedding, extract_embedding_tunggal, embedding_to_binary,
                               cek_liveness, TANPA_TANTANGAN)
 from utils.plat_utils import normalisasi_plat
-from utils import pengaturan, verifikasi_state as verif, db_ascend, db_ascend_split
+from utils import pengaturan, verifikasi_state as verif, db_tiket, db_tiket_pisah
 from utils.db_blacklist import supplier_diblacklist
 from utils.db_organisasi import daftar_lokasi
 from utils.keamanan import id_pos
@@ -33,15 +33,15 @@ def list_tiket_aktif():
     area = area_data(current_user.id)
 
     try:
-        ticket_ids = db_ascend_split.daftar_ticket_id_di_area(area)
-        hasil = db_ascend.daftar_tiket_ascend_aktif(ticket_ids)
+        ticket_ids = db_tiket_pisah.daftar_ticket_id_di_area(area)
+        hasil = db_tiket.daftar_tiket_aktif(ticket_ids)
     except Exception:
         current_app.logger.exception(
-            "Gagal memuat daftar tiket Ascend untuk area %s",
+            "Gagal memuat daftar tiket Tiket untuk area %s",
             area,
         )
         return jsonify({
-            "error": "Daftar tiket Ascend belum dapat dimuat. Coba lagi."
+            "error": "Daftar tiket Tiket belum dapat dimuat. Coba lagi."
         }), 503
 
     for tiket in hasil:
@@ -62,30 +62,30 @@ def list_tiket_aktif():
 def history_driver():
     return jsonify(get_history_driver())
 
-@security_bp.route("/api/security/ascend/do")
+@security_bp.route("/api/security/tiket/do")
 @login_required
 @izin("FORM_SECURITY", "tambah")
-def ascend_daftar_do():
+def tiket_daftar_do():
     ticket_type = (request.args.get("ticket_type") or "").strip()
     try:
-        return jsonify(db_ascend.daftar_do(ticket_type))
+        return jsonify(db_tiket.daftar_do(ticket_type))
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
-@security_bp.route("/api/security/ascend/associate")
+@security_bp.route("/api/security/tiket/associate")
 @login_required
 @izin("FORM_SECURITY", "tambah")
-def ascend_daftar_associate():
+def tiket_daftar_associate():
     ticket_type = (request.args.get("ticket_type") or "").strip()
     try:
-        return jsonify(db_ascend.daftar_associate(ticket_type))
+        return jsonify(db_tiket.daftar_associate(ticket_type))
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
-@security_bp.route("/api/security/ascend/shipper-kendaraan")
+@security_bp.route("/api/security/tiket/shipper-kendaraan")
 @login_required
 @izin("FORM_SECURITY", "tambah")
-def ascend_shipper_kendaraan():
+def tiket_shipper_kendaraan():
     ticket_type = (request.args.get("ticket_type") or "").strip()
     teks_id_do = (request.args.get("id_do") or "").strip()
     teks_associate = (request.args.get("associate_id") or "").strip()
@@ -94,7 +94,7 @@ def ascend_shipper_kendaraan():
         id_do = int(teks_id_do) if teks_id_do else None
         associate_id = int(teks_associate) if teks_associate else None
 
-        return jsonify(db_ascend.daftar_shipper_kendaraan(
+        return jsonify(db_tiket.daftar_shipper_kendaraan(
             ticket_type,
             id_do=id_do,
             associate_id=associate_id,
@@ -134,7 +134,7 @@ def security_supir_terakhir():
 
     return jsonify({"driver": None})
 
-PRODUK_MANUAL_ASCEND = {
+PRODUK_MANUAL_TIKET = {
     "Produk": {
         "Cangkang", "CPKO", "CPO", "JanjangKosong", "Kernel", "PAO",
         "PFAD", "PKE", "POME", "R.POME", "RBD Palm Stearin",
@@ -146,7 +146,7 @@ PRODUK_MANUAL_ASCEND = {
     },
 }
 
-def mill_manual_ascend(ticket_type, produk):
+def mill_manual_tiket(ticket_type, produk):
     produk_key = " ".join((produk or "").strip().lower().split())
 
     refinery = {
@@ -179,10 +179,10 @@ def mill_manual_ascend(ticket_type, produk):
 
     return 250
 
-@security_bp.route("/api/security/ascend/buat-tiket", methods=["POST"])
+@security_bp.route("/api/security/tiket/buat-tiket", methods=["POST"])
 @login_required
 @izin("FORM_SECURITY", "tambah")
-def ascend_buat_tiket():
+def tiket_buat_tiket():
     f = request.form
 
     ticket_type = (f.get("ticket_type") or "").strip()
@@ -218,45 +218,45 @@ def ascend_buat_tiket():
     associate_id = int(teks_associate)
     mill_id = int(teks_mill)
 
-    # Tiket kosong dan tiket yang belum selesai di Ascend juga memblokir tiket baru.
+    # Tiket kosong dan tiket yang belum selesai di Tiket juga memblokir tiket baru.
     try:
-        tiket_aktif = db_ascend.cari_tiket_ascend_berdasarkan_plat(vehicle_no)
+        tiket_aktif = db_tiket.cari_tiket_berdasarkan_plat(vehicle_no)
     except Exception:
         current_app.logger.exception(
-            "Gagal memeriksa tiket Ascend untuk plat %s",
+            "Gagal memeriksa tiket Tiket untuk plat %s",
             vehicle_no,
         )
         return jsonify({
-            "error": "Status tiket Ascend belum dapat diperiksa. Coba lagi."
+            "error": "Status tiket Tiket belum dapat diperiksa. Coba lagi."
         }), 503
 
     if tiket_aktif:
         return jsonify({
             "error": (
-                f"Truk {vehicle_no} masih memiliki tiket Ascend "
+                f"Truk {vehicle_no} masih memiliki tiket Tiket "
                 f"{tiket_aktif['no_tiket']} yang belum selesai."
             )
         }), 409
 
-    daftar_ascend = db_ascend.daftar_do(ticket_type)
+    daftar_tiket = db_tiket.daftar_do(ticket_type)
 
     do_dipilih = next(
-        (r for r in daftar_ascend if r["no_do"].upper() == no_do),
+        (r for r in daftar_tiket if r["no_do"].upper() == no_do),
         None,
     )
 
     produk_manual_valid = produk.casefold() in {
         nama.casefold()
-        for nama in PRODUK_MANUAL_ASCEND.get(ticket_type, set())
+        for nama in PRODUK_MANUAL_TIKET.get(ticket_type, set())
     }
 
     produk_valid = (
-        any(r["produk"].casefold() == produk.casefold() for r in daftar_ascend)
+        any(r["produk"].casefold() == produk.casefold() for r in daftar_tiket)
         or produk_manual_valid
     )
 
     if not produk_valid:
-        return jsonify({"error": "Pilih Produk yang tersedia di Ascend."}), 400
+        return jsonify({"error": "Pilih Produk yang tersedia di Tiket."}), 400
 
     if do_dipilih:
         if (
@@ -271,20 +271,20 @@ def ascend_buat_tiket():
     else:
         associate_valid = any(
             int(a["associate_id"]) == associate_id
-            for a in db_ascend.daftar_associate(ticket_type)
+            for a in db_tiket.daftar_associate(ticket_type)
         )
         mill_valid = any(
             int(m["mill_id"]) == mill_id
-            for m in db_ascend.daftar_mill()
+            for m in db_tiket.daftar_mill()
         )
 
         if not associate_valid:
-            return jsonify({"error": "Pilih Associate dari daftar Ascend."}), 400
+            return jsonify({"error": "Pilih Associate dari daftar Tiket."}), 400
         if not mill_valid:
-            return jsonify({"error": "Pilih Mill dari daftar Ascend."}), 400
+            return jsonify({"error": "Pilih Mill dari daftar Tiket."}), 400
     
     try:
-        tiket = db_ascend.buat_tiket_kosong(
+        tiket = db_tiket.buat_tiket_kosong(
             ticket_type, produk, associate_id, vehicle_no,
             date_time_in, no_do, mill_id,
         )
@@ -292,7 +292,7 @@ def ascend_buat_tiket():
         return jsonify({"error": str(e)}), 400
 
     try:
-        db_ascend_split.simpan_pasangan_do2(
+        db_tiket_pisah.simpan_pasangan_do2(
             tiket["ticket_id"],
             tiket["ticket_no"],
             "",
@@ -300,19 +300,19 @@ def ascend_buat_tiket():
         )
     except Exception:
         current_app.logger.exception(
-            "Tiket Ascend %s berhasil dibuat, tetapi rencana DO2 gagal disimpan.",
+            "Tiket Tiket %s berhasil dibuat, tetapi rencana DO2 gagal disimpan.",
             tiket["ticket_no"],
         )
         return jsonify({
             "error": (
-                f"Tiket Ascend {tiket['ticket_no']} sudah dibuat, "
+                f"Tiket Tiket {tiket['ticket_no']} sudah dibuat, "
                 "tetapi status pasangan DO2 gagal disimpan. "
                 "Jangan buat ulang tiket ini; statusnya perlu diperiksa."
             )
         }), 503
 
     return jsonify({
-        "message": "Tiket kosong berhasil dibuat di Ascend.",
+        "message": "Tiket kosong berhasil dibuat di Tiket.",
         "no_tiket": tiket["ticket_no"],
         "ticket_id": tiket["ticket_id"],
     })

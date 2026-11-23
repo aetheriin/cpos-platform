@@ -1,4 +1,4 @@
-"""RekapIn: data request operator & kategori (schema rekap), tiket timbang (Ascend / CPOS). Harga harian di utils/harga.py.
+"""RekapIn: data request operator & kategori (schema rekap), tiket timbang (Tiket / CPOS). Harga harian di utils/harga.py.
 
 "Operator" = orang yang melakukan kesalahan: karyawan mana pun dalam cakupan data menu Request Operator (dbo.fn_UserMenuScope),
 jadi aturan sama dengan halaman CPOS lain. Persetujuan request memakai Alur Persetujuan CPOS (jenis REKAP_*)."""
@@ -55,7 +55,7 @@ def daftar_operator(id_user):
 
 # ===== Tiket timbang 7 hari terakhir =====
 def tiket_cpos(id_company, q=""):
-    """Cadangan bila koneksi ERP belum diisi: tiket di database CPOS sendiri. Kolom sama dengan tiket_ascend()."""
+    """Cadangan bila koneksi ERP belum diisi: tiket di database CPOS sendiri. Kolom sama dengan tiket()."""
     q = f"%{q.strip()}%"
     rows = _query("""SELECT TOP 50 t.TicketNumber AS TicketNo, t.TicketDate AS Tanggal, p.ProductName, v.NoVehicle AS VehicleNo,
                             d.Nama AS NamaSupir, s.Bruto, s.Tara, s.Netto, o.Nama AS Operator
@@ -84,8 +84,8 @@ KOLOM_TIKET = {"TicketNo": ("ticketno", "ticket_no", "ticketnumber"), "Tanggal":
                "Bruto": ("bruto",), "Tara": ("tara",), "Netto": ("netto",), "Operator": ("operator",)}
 
 
-def tiket_ascend(id_company, q=""):
-    """Tiket 7 hari terakhir dari Ascend: EXEC dbo.sp_GetTiketH7ByCompany <kode perusahaan> (sama dengan RekapIn lama).
+def tiket(id_company, q=""):
+    """Tiket 7 hari terakhir dari Tiket: EXEC dbo.sp_GetTiketH7ByCompany <kode perusahaan> (sama dengan RekapIn lama).
     Kode perusahaan CPOS = CompName di Main.dbo.Company. Nama kolom dirapikan seperti RekapIn lama."""
     from modules.rekapin import erp
     hasil, ada, q = [], set(), q.strip().casefold()

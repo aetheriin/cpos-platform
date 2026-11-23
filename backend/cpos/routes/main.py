@@ -19,10 +19,9 @@ from utils.audit_utils import catat_security_audit
 from utils.plat_utils import normalisasi_plat
 from utils import pengaturan
 from utils.hak_akses import boleh, boleh_lihat, halaman as lihat_halaman, semua_menu, remah_menu
-from utils import alur
 from utils.db_jembatan import daftar_jembatan, jembatan_dipilih
 from utils.db_aktivitas import area_akun
-from utils import db_ascend, db_ascend_split
+from utils import db_tiket, db_tiket_pisah
 
 main_bp = Blueprint('main', __name__)
 
@@ -55,11 +54,11 @@ def weighbridge():
         try:
             nama_produk = {
                 str(p.get("nama_produk") or "").strip()
-                for p in db_ascend.daftar_produk_master_ascend()
+                for p in db_tiket.daftar_produk_master_tiket()
             }
             nama_produk.update(
                 str(p.get("nama_produk") or "").strip()
-                for p in db_ascend.daftar_produk_tbs_luar_ascend()
+                for p in db_tiket.daftar_produk_tbs_luar_tiket()
             )
             produk_history_list = sorted(
                 (nama for nama in nama_produk if nama),
@@ -67,7 +66,7 @@ def weighbridge():
             )
         except Exception:
             current_app.logger.exception(
-                "Gagal memuat pilihan produk riwayat dari Ascend."
+                "Gagal memuat pilihan produk riwayat dari Tiket."
             )
             produk_history_list = []
         return render_template(
@@ -80,7 +79,7 @@ def weighbridge():
 
     # Letakkan di sini: setelah blok LIST, sebelum return render_template form
     try:
-        mill_list = db_ascend.daftar_mill()
+        mill_list = db_tiket.daftar_mill()
     except Exception:
         current_app.logger.exception("Gagal memuat Mill dari AS_WB_YBS")
         mill_list = []
@@ -111,10 +110,10 @@ def history_produk():
     nama_produk = (request.args.get("nama_produk") or "").strip() or None
 
     try:
-        ticket_ids = db_ascend_split.daftar_ticket_id_di_area(
+        ticket_ids = db_tiket_pisah.daftar_ticket_id_di_area(
             area_data(current_user.id)
         )
-        rows = db_ascend.daftar_riwayat_tiket_ascend(
+        rows = db_tiket.daftar_riwayat_tiket(
             ticket_ids,
             nama_produk=nama_produk,
             hari=7,
@@ -122,10 +121,10 @@ def history_produk():
         )
     except Exception:
         current_app.logger.exception(
-            "Gagal membaca riwayat tiket Ascend untuk area pengguna."
+            "Gagal membaca riwayat tiket Tiket untuk area pengguna."
         )
         return jsonify({
-            "error": "Riwayat tiket Ascend belum dapat dimuat."
+            "error": "Riwayat tiket Tiket belum dapat dimuat."
         }), 503
 
     return jsonify([
@@ -198,44 +197,44 @@ def api_plat_lookup():
                              ip_address=request.remote_addr)
 
     
-    # Cari Ascend lebih dulu agar tiket lokal aktif tidak menutupi tiket Ascend.
+    # Cari Tiket lebih dulu agar tiket lokal aktif tidak menutupi tiket Tiket.
     try:
-        tiket_ascend = db_ascend.cari_tiket_ascend_berdasarkan_plat(no_plat)
+        tiket = db_tiket.cari_tiket_berdasarkan_plat(no_plat)
     except Exception:
         current_app.logger.exception(
-            "Gagal mencari tiket Ascend untuk plat %s",
+            "Gagal mencari tiket Tiket untuk plat %s",
             no_plat,
         )
         return jsonify({
-            "error": "Tiket Ascend belum dapat diperiksa. Coba lagi beberapa saat."
+            "error": "Tiket Tiket belum dapat diperiksa. Coba lagi beberapa saat."
         }), 503
 
-    if tiket_ascend:
+    if tiket:
         associate = " · ".join(
             bagian for bagian in (
-                tiket_ascend["associate_code"],
-                tiket_ascend["associate_name"],
+                tiket["associate_code"],
+                tiket["associate_name"],
             )
             if bagian
         )
 
         return jsonify({
             "status": "ADA_TIKET",
-            "sumber": "ASCEND",
-            "no_tiket": tiket_ascend["no_tiket"],
-            "no_plat": tiket_ascend["no_plat"] or no_plat,
-            "no_do": tiket_ascend["no_do"],
+            "sumber": "TIKET",
+            "no_tiket": tiket["no_tiket"],
+            "no_plat": tiket["no_plat"] or no_plat,
+            "no_do": tiket["no_do"],
             "supplier": associate,
-            "associate_id": tiket_ascend["associate_id"],
-            "produk": tiket_ascend["produk"],
+            "associate_id": tiket["associate_id"],
+            "produk": tiket["produk"],
             "jenis_transaksi": (
                 "PENJUALAN"
-                if tiket_ascend["ticket_type"] == "Produk"
+                if tiket["ticket_type"] == "Produk"
                 else "PEMBELIAN"
             ),
-            "ticket_type": tiket_ascend["ticket_type"],
-            "mill_id": tiket_ascend["mill_id"],
-            "tanggal": tiket_ascend["tanggal"],
+            "ticket_type": tiket["ticket_type"],
+            "mill_id": tiket["mill_id"],
+            "tanggal": tiket["tanggal"],
             "driver": None,
             "kendaraan_blacklist": blacklist,
         }), 200
@@ -287,16 +286,16 @@ def qr_tiket(no_tiket):
 @lihat(*MENU_OPERASI)
 def cetak_tiket(no_tiket):
     try:
-        tiket = db_ascend.cari_tiket_ascend_berdasarkan_no_tiket(no_tiket)
+        tiket = db_tiket.cari_tiket_berdasarkan_no_tiket(no_tiket)
     except Exception:
         current_app.logger.exception(
-            "Gagal membaca tiket Ascend untuk cetak QR: %s",
+            "Gagal membaca tiket Tiket untuk cetak QR: %s",
             no_tiket,
         )
-        abort(503, "Data tiket Ascend belum dapat dibaca.")
+        abort(503, "Data tiket Tiket belum dapat dibaca.")
 
     if not tiket:
-        abort(404, "Tiket Ascend tidak ditemukan atau sudah selesai.")
+        abort(404, "Tiket Tiket tidak ditemukan atau sudah selesai.")
 
     data_cetak = {
         "no_tiket": tiket["no_tiket"],

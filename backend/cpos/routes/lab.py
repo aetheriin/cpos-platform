@@ -4,7 +4,7 @@ from utils.area import area_data
 from flask_login import login_required, current_user
 from utils.db_utils import (get_standar_mutu, update_standar_mutu, get_history_standar)
 from utils.hak_akses import izin
-from utils import db_ascend, db_ascend_split
+from utils import db_tiket, db_tiket_pisah
 
 lab_bp = Blueprint('lab', __name__)
 
@@ -46,29 +46,29 @@ def lab_standar_history():
 @lihat(*MENU_OPERASI)
 def lab_antrian():
     try:
-        ticket_ids = db_ascend_split.daftar_ticket_id_lab_di_area(
+        ticket_ids = db_tiket_pisah.daftar_ticket_id_lab_di_area(
             area_data(current_user.id)
         )
-        return jsonify(db_ascend.daftar_antrian_lab_ascend(ticket_ids))
+        return jsonify(db_tiket.daftar_antrian_lab_tiket(ticket_ids))
     except Exception:
-        current_app.logger.exception("Gagal membaca antrean Lab Ascend")
+        current_app.logger.exception("Gagal membaca antrean Lab Tiket")
         return jsonify({
-            "error": "Antrean Lab Ascend belum dapat dibaca."
+            "error": "Antrean Lab Tiket belum dapat dibaca."
         }), 503
 
 @lab_bp.route("/api/lab/riwayat")
 @login_required
 @lihat(*MENU_OPERASI)
-def lab_riwayat_ascend():
+def lab_riwayat_tiket():
     try:
-        ticket_ids = db_ascend_split.daftar_ticket_id_lab_di_area(
+        ticket_ids = db_tiket_pisah.daftar_ticket_id_lab_di_area(
             area_data(current_user.id)
         )
-        return jsonify(db_ascend.daftar_riwayat_lab_ascend(ticket_ids))
+        return jsonify(db_tiket.daftar_riwayat_lab_tiket(ticket_ids))
     except Exception:
-        current_app.logger.exception("Gagal membaca riwayat Lab Ascend")
+        current_app.logger.exception("Gagal membaca riwayat Lab Tiket")
         return jsonify({
-            "error": "Riwayat Lab Ascend belum dapat dibaca."
+            "error": "Riwayat Lab Tiket belum dapat dibaca."
         }), 503
 
 @lab_bp.route("/api/lab/simpan", methods=["POST"])
@@ -81,25 +81,25 @@ def lab_simpan():
     if not no_tiket:
         return jsonify({"error": "Tiket belum dipilih."}), 400
 
-    tiket = db_ascend.cari_tiket_ascend_berdasarkan_no_tiket(no_tiket)
+    tiket = db_tiket.cari_tiket_berdasarkan_no_tiket(no_tiket)
     if not tiket:
-        return jsonify({"error": "Tiket Ascend tidak ditemukan atau sudah selesai."}), 404
+        return jsonify({"error": "Tiket Tiket tidak ditemukan atau sudah selesai."}), 404
 
     produk = str(tiket.get("produk") or "").strip().upper()
     if tiket.get("ticket_type") != "Produk" or produk not in {"CPO", "PK", "KERNEL"}:
         return jsonify({
-            "error": "Lab Ascend saat ini hanya menerima produk CPO, PK, dan Kernel."
+            "error": "Lab Tiket saat ini hanya menerima produk CPO, PK, dan Kernel."
         }), 400
 
     id_tiket_induk = tiket.get("parent_ticket_id") or tiket.get("ticket_id")
-    if not id_tiket_induk or not db_ascend_split.tiket_di_area(
+    if not id_tiket_induk or not db_tiket_pisah.tiket_di_area(
         id_tiket_induk,
         area_data(current_user.id),
     ):
         return jsonify({"error": "Tiket tidak ditemukan pada area Anda."}), 404
 
     try:
-        hasil = db_ascend.simpan_hasil_lab_tiket_ascend(
+        hasil = db_tiket.simpan_hasil_lab_tiket(
             no_tiket,
             ffa=f.get("ffa") or None,
             suhu=f.get("suhu") or None,
@@ -113,16 +113,16 @@ def lab_simpan():
         return jsonify({"error": str(e)}), 400
     except Exception:
         current_app.logger.exception(
-            "Gagal menyimpan hasil Lab Ascend untuk tiket %s",
+            "Gagal menyimpan hasil Lab Tiket untuk tiket %s",
             no_tiket,
         )
         return jsonify({
-            "error": "Hasil Lab gagal disimpan ke Ascend. Periksa status tiket sebelum mencoba lagi."
+            "error": "Hasil Lab gagal disimpan ke Tiket. Periksa status tiket sebelum mencoba lagi."
         }), 503
 
     waktu_lab = hasil.get("lab_datetime")
     return jsonify({
-        "message": f"Hasil Lab {hasil['product']} berhasil disimpan ke Ascend.",
+        "message": f"Hasil Lab {hasil['product']} berhasil disimpan ke Tiket.",
         "no_tiket": hasil["ticket_no"],
         "lab_by": hasil["lab_by"],
         "lab_datetime": waktu_lab.isoformat() if waktu_lab else None,

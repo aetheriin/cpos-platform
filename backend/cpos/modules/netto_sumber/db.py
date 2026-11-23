@@ -31,7 +31,7 @@ def _tabel_belum_ada(e):
     return "nettosumberisian" in str(e).casefold() and ("invalid object" in str(e).casefold() or "42s02" in str(e).casefold())
 
 
-def perusahaan_ascend():
+def perusahaan_tiket():
     """Perusahaan ERP aktif yang tiketnya bisa dibaca SP (sama dengan daftar perusahaan laporan Analytics): [{kode, nama}]."""
     rows = _query("""SELECT RTRIM(CompID) AS kode, CompName AS nama, Status AS status FROM dbo.Company
                      WHERE CompType = 'CLOUD' AND ISNULL(LTRIM(RTRIM(CompAddr)), '') <> ''
@@ -54,7 +54,7 @@ def _tanggal(v):
 
 def _tiket_sp(kode, mulai, akhir):
     conn = get_connection()
-    conn.timeout = 120          # SP membaca server Ascend lewat server tertaut
+    conn.timeout = 120          # SP membaca server Tiket lewat server tertaut
     try:
         cur = conn.cursor()
         cur.execute(f"EXEC {SP} ?, ?, ?", kode, mulai, akhir)
@@ -76,7 +76,7 @@ def _tiket_sp(kode, mulai, akhir):
             "induk": _PECAHAN.sub("", tiket) if split else None,
             "produk": str(r.get("Produk") or "").strip(), "pembeli": str(r.get("Nama Pembeli") or "").strip(),
             "no_do": str(r.get("Nomor DO") or "").strip(), "kendaraan": str(r.get("No. Kendaraan") or "").strip(),
-            "netto": _angka(r.get("Netto")), "sumber_ascend": _angka(r.get("Netto Sumber")),
+            "netto": _angka(r.get("Netto")), "sumber_tiket": _angka(r.get("Netto Sumber")),
         })
     return hasil
 
@@ -97,13 +97,13 @@ def tiket(kode_pt, mulai, akhir):
 
 
 def satu_tiket(kode, no_tiket, tgl):
-    """Tiket dibaca ulang dari Ascend saat simpan, supaya angka pembanding tidak berasal dari browser."""
+    """Tiket dibaca ulang dari Tiket saat simpan, supaya angka pembanding tidak berasal dari browser."""
     return next((t for t in _tiket_sp(kode, tgl, tgl) if t["tiket"] == no_tiket), None)
 
 
 _KOLOM_ISIAN = """i.EntryID AS id, RTRIM(i.CompID) AS comp, i.TicketNo AS tiket, i.NettoSumber AS netto_sumber,
-                  i.RefNo AS referensi, i.Notes AS catatan, i.NettoAscend AS netto_ascend,
-                  i.NettoSumberAscend AS sumber_ascend, i.CreateDate AS pada, u.Nama AS oleh"""
+                  i.RefNo AS referensi, i.Notes AS catatan, i.NettoTiket AS netto_tiket,
+                  i.NettoSumberTiket AS sumber_tiket, i.CreateDate AS pada, u.Nama AS oleh"""
 
 
 def isian_terakhir(mulai, akhir):
@@ -146,10 +146,10 @@ def simpan(kode, t, netto_sumber, referensi, catatan, id_terakhir, id_user):
         if int(cur.fetchone()[0]) != int(id_terakhir or 0):
             raise SudahBerubah("Isian tiket ini baru saja diubah orang lain. Tutup lalu buka lagi tiketnya untuk melihat angka terbaru.")
         cur.execute("""INSERT INTO dbo.NettoSumberIsian (CompID, TicketType, TicketNo, TicketDate, NettoSumber, RefNo, Notes,
-                                                         NettoAscend, NettoSumberAscend, CreateBy)
+                                                         NettoTiket, NettoSumberTiket, CreateBy)
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     kode, JENIS, t["tiket"], t["tanggal"], netto_sumber, referensi or None, catatan or None,
-                    t["netto"], t["sumber_ascend"], id_user)
+                    t["netto"], t["sumber_tiket"], id_user)
         conn.commit()
     except pyodbc.Error as e:
         conn.rollback()

@@ -8,15 +8,15 @@
 {% block tab_header %}
     {{ judul_halaman(
         'Pemantauan Split Tiket',
-        'Status timbang akhir dan alokasi DO yang dibaca dari Ascend',
+        'Status timbang akhir dan alokasi DO yang dibaca dari Tiket',
         'fa-code-branch'
     ) }}
 {% endblock %}
 
 {% block tab_content %}
-    {% if boleh_monitor_split %}
+    {% if boleh_monitor_pisah %}
     <div class="section-box">
-        {{ section_header('monitor-split-ascend', 'Pemantauan Split Tiket Ascend') }}
+        {{ section_header('monitor-split-tiket', 'Pemantauan Split Tiket Tiket') }}
 
         <div class="section-body overflow-x-auto">
             <table class="w-full text-left text-sm">
@@ -27,11 +27,11 @@
                         <th class="table-cell">DO1</th>
                         <th class="table-cell">DO2</th>
                         <th class="table-cell text-right">Berat timbang akhir</th>
-                        <th class="table-cell">Alokasi tiket Ascend</th>
+                        <th class="table-cell">Alokasi tiket Tiket</th>
                         <th class="table-cell">Status / keterangan</th>
                     </tr>
                 </thead>
-                <tbody id="tabelAscendSplit"
+                <tbody id="tabelTiketPisah"
                        class="divide-y divide-slate-100"></tbody>
             </table>
         </div>

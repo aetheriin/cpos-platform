@@ -4,7 +4,7 @@
 {% block info_bar %}{% endblock %}
 {% block info_bar_script %}{% endblock %}
 {% block tab_header %}
-{% call judul_halaman('Netto Sumber', 'Isi netto sumber tiket penjualan yang kosong atau salah di Ascend. Angkanya dipakai laporan Tiket Penjualan.', 'fa-scale-balanced') %}{% endcall %}
+{% call judul_halaman('Netto Sumber', 'Isi netto sumber tiket penjualan yang kosong atau salah di Tiket. Angkanya dipakai laporan Tiket Penjualan.', 'fa-scale-balanced') %}{% endcall %}
 {% endblock %}
 
 {% block tab_content %}
@@ -38,7 +38,7 @@
             </div>
         </div>
         <div id="nsStatus" class="mt-4 flex flex-wrap gap-2" role="group" aria-label="Saring status">
-            {% for kunci, label in [('perlu_diisi', 'Perlu diisi'), ('perlu_dicek', 'Perlu dicek'), ('dari_ascend', 'Dari Ascend'), ('diisi', 'Diisi'), ('', 'Semua')] %}
+            {% for kunci, label in [('perlu_diisi', 'Perlu diisi'), ('perlu_dicek', 'Perlu dicek'), ('dari_tiket', 'Dari Tiket'), ('diisi', 'Diisi'), ('', 'Semua')] %}
             <button type="button" class="chip{% if kunci == 'perlu_diisi' %} chip-active{% endif %}" data-status="{{ kunci }}"
                     aria-pressed="{{ 'true' if kunci == 'perlu_diisi' else 'false' }}">{{ label }} <span class="font-mono" data-jumlah="{{ kunci }}">-</span></button>
             {% endfor %}

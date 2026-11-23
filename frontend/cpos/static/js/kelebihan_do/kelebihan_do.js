@@ -1,15 +1,15 @@
-document.addEventListener('DOMContentLoaded', muatMonitorSplitAscend);
+document.addEventListener('DOMContentLoaded', muatMonitorSplitTiket);
 
-async function muatMonitorSplitAscend() {
-    const tbody = document.getElementById('tabelAscendSplit');
+async function muatMonitorSplitTiket() {
+    const tbody = document.getElementById('tabelTiketPisah');
     if (!tbody) return;
 
-    const rows = await ambilJson('/api/kelebihan-do/ascend-split');
+    const rows = await ambilJson('/api/kelebihan-do/tiket-pisah');
 
     if (!Array.isArray(rows)) {
         tbody.innerHTML = barisGagal(
             7,
-            rows?.error || 'Data pemantauan split Ascend gagal dimuat.'
+            rows?.error || 'Data pemantauan split Tiket gagal dimuat.'
         );
         return;
     }
@@ -23,7 +23,7 @@ async function muatMonitorSplitAscend() {
     };
 
     const alokasi = row => {
-        const anak = row.tiket_split || [];
+        const anak = row.tiket_pisah || [];
         if (!anak.length) return '-';
 
         return anak.map(t => `
@@ -38,11 +38,11 @@ async function muatMonitorSplitAscend() {
     tbody.innerHTML = rows.map(row => {
         const status = row.status === 'MENUNGGU_DO2'
             ? 'Menunggu DO2'
-            : row.status === 'SELESAI_SPLIT'
+            : row.status === 'SELESAI_PISAH'
                 ? 'Split selesai'
                 : 'Selesai tanpa split';
 
-        const do2 = row.status === 'SELESAI_SPLIT'
+        const do2 = row.status === 'SELESAI_PISAH'
             ? row.no_do2 || '-'
             : '-';
 
@@ -75,6 +75,6 @@ async function muatMonitorSplitAscend() {
         `;
     }).join('') || barisKosong(
         7,
-        'Belum ada tiket pending atau hasil split Ascend'
+        'Belum ada tiket pending atau hasil split Tiket'
     );
 }

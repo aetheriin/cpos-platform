@@ -126,7 +126,7 @@ def api_operator():
 def _cari_tiket(id_company, q):
     """Tiket ERP (dbo.sp_GetTiketH7ByCompany); bila prosedur itu tidak ada di database ERP, tiket CPOS sendiri."""
     try:
-        return db.tiket_ascend(id_company, q)
+        return db.tiket(id_company, q)
     except pyodbc.Error as e:
         if "could not find stored procedure" not in str(e).lower():
             raise

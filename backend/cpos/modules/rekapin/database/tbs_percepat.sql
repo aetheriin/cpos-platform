@@ -1,4 +1,4 @@
-/* Laporan Pembelian TBS lebih cepat: data Ascend diambil sekali lewat linked server ke tabel sementara #P,
+/* Laporan Pembelian TBS lebih cepat: data Tiket diambil sekali lewat linked server ke tabel sementara #P,
    lalu semua perhitungan membaca #P. Sebelumnya bagian itu dijalankan 2-3 kali per prosedur. Rumus dan hasil tidak berubah.
    Jalankan di database Main. */
 USE Main;
@@ -58,7 +58,7 @@ BEGIN
     SET @DynamicSQL = N'
 
     
-    /* Data Ascend diambil sekali lewat linked server; semua perhitungan di bawah membaca #P */
+    /* Data Tiket diambil sekali lewat linked server; semua perhitungan di bawah membaca #P */
     SELECT p.PURCHASEID, p.PURCHASEDATE, pd.DETAILID, pd.LINETOTAL, pd.NETTO, pd.PRICEPERKG,
            sup.SupplierName, st.SUPPLIERTYPECODE, bg.BUSINESSGROUPNAME
       INTO #P
@@ -571,7 +571,7 @@ BEGIN
     SET @DynamicSQL = N'
 
     
-    /* Data Ascend diambil sekali lewat linked server; semua perhitungan di bawah membaca #P */
+    /* Data Tiket diambil sekali lewat linked server; semua perhitungan di bawah membaca #P */
     SELECT p.PURCHASEID, p.PURCHASEDATE, pd.DETAILID, pd.LINETOTAL, pd.NETTO, pd.PRICEPERKG,
            sup.SupplierName, st.SUPPLIERTYPECODE, bg.BUSINESSGROUPNAME
       INTO #P
@@ -913,7 +913,7 @@ BEGIN
     SET @DynamicSQL = N'
 
     
-    /* Data Ascend diambil sekali lewat linked server; semua perhitungan di bawah membaca #P */
+    /* Data Tiket diambil sekali lewat linked server; semua perhitungan di bawah membaca #P */
     SELECT p.PURCHASEID, p.PURCHASEDATE, pd.DETAILID, pd.LINETOTAL, pd.NETTO, pd.PRICEPERKG,
            sup.SupplierName, st.SUPPLIERTYPECODE, bg.BUSINESSGROUPNAME
       INTO #P

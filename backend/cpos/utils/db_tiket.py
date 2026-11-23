@@ -1,9 +1,9 @@
-"""Koneksi dan operasi tiket Ascend (database AS_WB_YBS)."""
+"""Koneksi dan operasi tiket (database AS_WB_YBS)."""
 import pyodbc
 
 from datetime import datetime
 from decimal import Decimal
-from utils import db_ascend_split
+from utils import db_tiket_pisah
 from utils.koneksi_lain import connection_string
 
 
@@ -14,7 +14,7 @@ def _koneksi():
     return koneksi
 
 def _kunci_dan_cari_tiket_aktif(cursor, vehicle_no):
-    """Kunci proses per plat, lalu cari tiket Ascend yang belum selesai."""
+    """Kunci proses per plat, lalu cari tiket yang belum selesai."""
     plat_normal = "".join(
         karakter
         for karakter in vehicle_no.upper().strip()
@@ -51,7 +51,7 @@ def _kunci_dan_cari_tiket_aktif(cursor, vehicle_no):
         WHERE REPLACE(REPLACE(REPLACE(UPPER(LTRIM(RTRIM(VehicleNo))), ' ', ''), '-', ''), '.', '')
             = ?
           AND ISNULL([Void], 0) = 0
-          AND ISNULL([Splitted], 0) = 0
+          AND ISNULL([Pemisahanted], 0) = 0
           AND (ISNULL([Step], 0) < 2 OR DateTimeOut IS NULL)
         ORDER BY TicketID ASC
         """,
@@ -68,8 +68,8 @@ def _baris_hasil(cursor):
     nama_kolom = [kolom[0] for kolom in cursor.description]
     return [dict(zip(nama_kolom, baris)) for baris in cursor.fetchall()]
 
-def daftar_supplier_master_ascend():
-    """Daftar supplier Ascend beserta tipe supplier."""
+def daftar_supplier_master_tiket():
+    """Daftar supplier Tiket beserta tipe supplier."""
     koneksi = _koneksi()
     try:
         cursor = koneksi.cursor()
@@ -133,8 +133,8 @@ def daftar_supplier_master_ascend():
     finally:
         koneksi.close()
 
-def daftar_produk_master_ascend():
-    """Daftar produk dari master Ascend."""
+def daftar_produk_master_tiket():
+    """Daftar produk dari master Tiket."""
     koneksi = _koneksi()
     try:
         cursor = koneksi.cursor()
@@ -177,8 +177,8 @@ def daftar_produk_master_ascend():
     finally:
         koneksi.close()
 
-def daftar_produk_tbs_luar_ascend():
-    """Nama produk yang pernah digunakan pada tiket TBS Luar Ascend."""
+def daftar_produk_tbs_luar_tiket():
+    """Nama produk yang pernah digunakan pada tiket TBS Luar Tiket."""
     koneksi = _koneksi()
     try:
         cursor = koneksi.cursor()
@@ -210,7 +210,7 @@ def daftar_produk_tbs_luar_ascend():
     finally:
         koneksi.close()
 
-def simpan_produk_master_ascend(
+def simpan_produk_master_tiket(
     product_id,
     product_name,
     state,
@@ -237,7 +237,7 @@ def simpan_produk_master_ascend(
             )
             akun = cursor.fetchone()
             if not akun:
-                raise ValueError("Produk Ascend tidak ditemukan.")
+                raise ValueError("Produk Tiket tidak ditemukan.")
             sales_account_id = int(akun[0] or 0)
             oa_account_id = int(akun[1] or 0)
         else:
@@ -255,7 +255,7 @@ def simpan_produk_master_ascend(
             product_id,
         )
         if cursor.fetchone():
-            raise ValueError(f"Produk {product_name} sudah ada di Ascend.")
+            raise ValueError(f"Produk {product_name} sudah ada di Tiket.")
 
         cursor.execute(
             """
@@ -287,7 +287,7 @@ def simpan_produk_master_ascend(
 
         hasil = _baris_hasil(cursor)
         if not hasil or int(hasil[0]["product_id"] or 0) <= 0:
-            raise ValueError("Ascend tidak berhasil menyimpan produk.")
+            raise ValueError("Tiket tidak berhasil menyimpan produk.")
 
         koneksi.commit()
         return int(hasil[0]["product_id"])
@@ -297,8 +297,8 @@ def simpan_produk_master_ascend(
     finally:
         koneksi.close()
 
-def cari_tiket_ascend_berdasarkan_plat(no_plat):
-    """Cari tiket Ascend terbaru berdasarkan nomor plat."""
+def cari_tiket_berdasarkan_plat(no_plat):
+    """Cari tiket terbaru berdasarkan nomor plat."""
     koneksi = _koneksi()
     try:
         cursor = koneksi.cursor()
@@ -317,7 +317,7 @@ def cari_tiket_ascend_berdasarkan_plat(no_plat):
             WHERE REPLACE(REPLACE(REPLACE(UPPER(LTRIM(RTRIM(VehicleNo))), ' ', ''), '-', ''), '.', '')
                 = REPLACE(REPLACE(REPLACE(UPPER(?), ' ', ''), '-', ''), '.', '')
             AND ISNULL([Void], 0) = 0
-            AND ISNULL([Splitted], 0) = 0
+            AND ISNULL([Pemisahanted], 0) = 0
             AND (ISNULL([Step], 0) < 2 OR DateTimeOut IS NULL)
             ORDER BY TicketID ASC
             """,
@@ -370,8 +370,8 @@ def cari_tiket_ascend_berdasarkan_plat(no_plat):
     finally:
         koneksi.close()
 
-def cari_tiket_ascend_berdasarkan_no_tiket(no_tiket):
-    """Cari tiket Ascend yang masih berjalan berdasarkan nomor tiket."""
+def cari_tiket_berdasarkan_no_tiket(no_tiket):
+    """Cari tiket yang masih berjalan berdasarkan nomor tiket."""
     koneksi = _koneksi()
     try:
         cursor = koneksi.cursor()
@@ -383,7 +383,7 @@ def cari_tiket_ascend_berdasarkan_no_tiket(no_tiket):
             FROM dbo.PALM_Tickets
             WHERE TicketNo = ?
               AND ISNULL([Void], 0) = 0
-              AND ISNULL([Splitted], 0) = 0
+              AND ISNULL([Pemisahanted], 0) = 0
               AND (ISNULL([Step], 0) < 2 OR DateTimeOut IS NULL)
             ORDER BY TicketID DESC
             """,
@@ -441,8 +441,8 @@ def cari_tiket_ascend_berdasarkan_no_tiket(no_tiket):
     finally:
         koneksi.close()
 
-def daftar_antrian_lab_ascend(ticket_ids):
-    """Baca antrean Lab Ascend dan batasi hasil ke TicketID area CPOS."""
+def daftar_antrian_lab_tiket(ticket_ids):
+    """Baca antrean Lab Tiket dan batasi hasil ke TicketID area CPOS."""
     ticket_ids = {int(ticket_id) for ticket_id in (ticket_ids or [])}
     if not ticket_ids:
         return []
@@ -485,8 +485,8 @@ def daftar_antrian_lab_ascend(ticket_ids):
     finally:
         koneksi.close()
 
-def daftar_riwayat_lab_ascend(ticket_ids, batas=100):
-    """Baca hasil Lab tersimpan dari tiket induk Ascend yang boleh dilihat area."""
+def daftar_riwayat_lab_tiket(ticket_ids, batas=100):
+    """Baca hasil Lab tersimpan dari tiket induk Tiket yang boleh dilihat area."""
     ticket_ids = sorted({int(ticket_id) for ticket_id in (ticket_ids or [])})
     if not ticket_ids:
         return []
@@ -569,8 +569,8 @@ def daftar_riwayat_lab_ascend(ticket_ids, batas=100):
     finally:
         koneksi.close()
 
-def daftar_riwayat_sortasi_ascend(ticket_ids, batas=100):
-    """Baca riwayat Sortasi dari tiket Ascend sesuai cakupan TicketID."""
+def daftar_riwayat_sortasi_tiket(ticket_ids, batas=100):
+    """Baca riwayat Sortasi dari tiket sesuai cakupan TicketID."""
     ticket_ids = sorted({int(i) for i in (ticket_ids or [])})
     if not ticket_ids:
         return []
@@ -633,8 +633,8 @@ def daftar_riwayat_sortasi_ascend(ticket_ids, batas=100):
     finally:
         koneksi.close()
 
-def daftar_riwayat_tiket_ascend(ticket_ids, nama_produk=None, hari=7, batas=500):
-    """Riwayat tiket induk Ascend yang termasuk area CPOS."""
+def daftar_riwayat_tiket(ticket_ids, nama_produk=None, hari=7, batas=500):
+    """Riwayat tiket induk Tiket yang termasuk area CPOS."""
     ticket_ids = sorted({int(i) for i in (ticket_ids or [])})
     if not ticket_ids:
         return []
@@ -756,8 +756,8 @@ def daftar_riwayat_tiket_ascend(ticket_ids, nama_produk=None, hari=7, batas=500)
     finally:
         koneksi.close()
 
-def daftar_tiket_ascend_aktif(ticket_ids):
-    """Ambil tiket Ascend aktif yang ID-nya sudah dibatasi oleh cakupan area CPOS."""
+def daftar_tiket_aktif(ticket_ids):
+    """Ambil tiket aktif yang ID-nya sudah dibatasi oleh cakupan area CPOS."""
     ticket_ids = sorted({int(ticket_id) for ticket_id in (ticket_ids or [])})
     if not ticket_ids:
         return []
@@ -793,7 +793,7 @@ def daftar_tiket_ascend_aktif(ticket_ids):
                    AND s.SupplierID = t.AssociateID
                 WHERE t.TicketID IN ({tanda_tanya})
                   AND ISNULL(t.Void, 0) = 0
-                  AND ISNULL(t.Splitted, 0) = 0
+                  AND ISNULL(t.Pemisahanted, 0) = 0
                   AND (ISNULL(t.[Step], 0) < 2 OR t.DateTimeOut IS NULL)
                 """,
                 *bagian,
@@ -834,8 +834,8 @@ def daftar_tiket_ascend_aktif(ticket_ids):
     finally:
         koneksi.close()
 
-def cari_tiket_ascend_global(kata, ticket_ids, batas=8):
-    """Cari tiket Ascend yang TicketID-nya sudah dibatasi berdasarkan area CPOS."""
+def cari_tiket_global(kata, ticket_ids, batas=8):
+    """Cari tiket yang TicketID-nya sudah dibatasi berdasarkan area CPOS."""
     kata = (kata or "").strip()
     ticket_ids = sorted({int(i) for i in (ticket_ids or [])})
 
@@ -919,8 +919,8 @@ def cari_tiket_ascend_global(kata, ticket_ids, batas=8):
     finally:
         koneksi.close()
 
-def baca_berat_tiket_ascend(no_tiket):
-    """Baca berat Ascend sesuai tahap timbang tiket."""
+def baca_berat_tiket(no_tiket):
+    """Baca berat Tiket sesuai tahap timbang tiket."""
     koneksi = _koneksi()
     try:
         cursor = koneksi.cursor()
@@ -930,7 +930,7 @@ def baca_berat_tiket_ascend(no_tiket):
             FROM dbo.PALM_Tickets
             WHERE TicketNo = ?
               AND ISNULL([Void], 0) = 0
-              AND ISNULL([Splitted], 0) = 0
+              AND ISNULL([Pemisahanted], 0) = 0
             ORDER BY TicketID DESC
             """,
             no_tiket,
@@ -964,10 +964,10 @@ def baca_berat_tiket_ascend(no_tiket):
     finally:
         koneksi.close()
 
-def simpan_hasil_lab_tiket_ascend( no_tiket, ffa=None, suhu=None,
+def simpan_hasil_lab_tiket( no_tiket, ffa=None, suhu=None,
     ulage=None, pct_air=None, pct_kotoran=None, kcolor=None, operator=None,
 ):
-    """Simpan pengukuran Lab pada tiket induk Ascend lewat USP_PALM_Tickets_Update."""
+    """Simpan pengukuran Lab pada tiket induk Tiket lewat USP_PALM_Tickets_Update."""
     no_tiket = (no_tiket or "").strip()
     if not no_tiket:
         raise ValueError("Nomor tiket wajib diisi.")
@@ -1012,12 +1012,12 @@ def simpan_hasil_lab_tiket_ascend( no_tiket, ffa=None, suhu=None,
         )
         row = cursor.fetchone()
         if not row:
-            raise ValueError("Tiket Ascend tidak ditemukan atau sudah dibatalkan.")
+            raise ValueError("Tiket Tiket tidak ditemukan atau sudah dibatalkan.")
 
         kolom = [item[0] for item in cursor.description]
         tiket = {nama.casefold(): row[i] for i, nama in enumerate(kolom)}
 
-        # Hasil satu muatan split disimpan sekali pada tiket induk.
+        # Hasil satu muatan pisah disimpan sekali pada tiket induk.
         parent_id = int(tiket.get("parentticketid") or 0)
         if parent_id:
             cursor.execute(
@@ -1031,7 +1031,7 @@ def simpan_hasil_lab_tiket_ascend( no_tiket, ffa=None, suhu=None,
             )
             row_induk = cursor.fetchone()
             if not row_induk:
-                raise ValueError("Tiket induk Ascend untuk hasil Lab tidak ditemukan.")
+                raise ValueError("Tiket induk Tiket untuk hasil Lab tidak ditemukan.")
             kolom = [item[0] for item in cursor.description]
             tiket = {nama.casefold(): row_induk[i] for i, nama in enumerate(kolom)}
 
@@ -1039,7 +1039,7 @@ def simpan_hasil_lab_tiket_ascend( no_tiket, ffa=None, suhu=None,
         produk = str(tiket.get("productname") or "").strip().upper()
 
         if jenis != "Produk" or produk not in {"CPO", "PK", "KERNEL"}:
-            raise ValueError("Lab Ascend saat ini hanya menerima produk CPO, PK, dan Kernel.")
+            raise ValueError("Lab Tiket saat ini hanya menerima produk CPO, PK, dan Kernel.")
 
         # Ubah hanya hasil Lab yang dikirim; nilai timbang, DO, dan field tiket lain dipertahankan.
         for kunci, nilai in (
@@ -1104,7 +1104,7 @@ def simpan_hasil_lab_tiket_ascend( no_tiket, ffa=None, suhu=None,
 
         if tidak_tersedia:
             raise RuntimeError(
-                "Data tiket Ascend tidak cukup untuk menyimpan hasil Lab: "
+                "Data tiket tidak cukup untuk menyimpan hasil Lab: "
                 + ", ".join(tidak_tersedia)
             )
 
@@ -1125,7 +1125,7 @@ def simpan_hasil_lab_tiket_ascend( no_tiket, ffa=None, suhu=None,
         )
         tersimpan = cursor.fetchone()
         if not tersimpan:
-            raise RuntimeError("Hasil Lab tidak ditemukan saat membaca balik tiket Ascend.")
+            raise RuntimeError("Hasil Lab tidak ditemukan saat membaca balik tiket.")
 
         ffa_db, suhu_db, ulage_db, air_db, kotoran_db, warna_db, lab_by_db, lab_at_db = tersimpan
 
@@ -1140,12 +1140,12 @@ def simpan_hasil_lab_tiket_ascend( no_tiket, ffa=None, suhu=None,
                 nilai_db is None
                 or abs(Decimal(str(nilai_db)) - harapan) > Decimal("0.01")
             ):
-                raise RuntimeError(f"Nilai {nama} yang tersimpan di Ascend tidak sesuai.")
+                raise RuntimeError(f"Nilai {nama} yang tersimpan di Tiket tidak sesuai.")
 
         if warna is not None and str(warna_db or "").strip() != warna:
-            raise RuntimeError("Warna yang tersimpan di Ascend tidak sesuai.")
+            raise RuntimeError("Warna yang tersimpan di Tiket tidak sesuai.")
         if not lab_by_db or lab_at_db is None:
-            raise RuntimeError("Audit petugas/waktu Lab belum tersimpan di Ascend.")
+            raise RuntimeError("Audit petugas/waktu Lab belum tersimpan di Tiket.")
 
         koneksi.commit()
         return {
@@ -1168,7 +1168,7 @@ def simpan_hasil_lab_tiket_ascend( no_tiket, ffa=None, suhu=None,
     finally:
         koneksi.close()
 
-def simpan_hasil_sortasi_tiket_ascend(
+def simpan_hasil_sortasi_tiket(
     no_tiket,
     deduction_kg=None,
     mentah=None,
@@ -1179,7 +1179,7 @@ def simpan_hasil_sortasi_tiket_ascend(
     brondolan=None,
     operator=None,
 ):
-    """Simpan Deduction dan grading langsung pada tiket Ascend."""
+    """Simpan Deduction dan grading langsung pada tiket."""
     no_tiket = (no_tiket or "").strip()
     operator_login = str(operator or "").strip()[:30]
 
@@ -1223,14 +1223,14 @@ def simpan_hasil_sortasi_tiket_ascend(
             FROM dbo.PALM_Tickets WITH (UPDLOCK, HOLDLOCK)
             WHERE TicketNo = ?
               AND ISNULL(Void, 0) = 0
-              AND ISNULL(Splitted, 0) = 0
+              AND ISNULL(Pemisahanted, 0) = 0
             ORDER BY TicketID DESC
             """,
             no_tiket,
         )
         row = cursor.fetchone()
         if not row:
-            raise ValueError("Tiket Ascend tidak ditemukan atau sudah selesai.")
+            raise ValueError("Tiket Tiket tidak ditemukan atau sudah selesai.")
 
         kolom = [item[0] for item in cursor.description]
         tiket = {nama.casefold(): row[i] for i, nama in enumerate(kolom)}
@@ -1277,7 +1277,7 @@ def simpan_hasil_sortasi_tiket_ascend(
             if include_kg_reject else Decimal("0")
         )
 
-        # CheckNetto Ascend: Bruto - Tara/Timbang3 - Deduction + KgReject.
+        # CheckNetto Tiket: Bruto - Tara/Timbang3 - Deduction + KgReject.
         tiket["netto"] = bruto - tara_netto - deduction_tersimpan + kg_reject
 
         cursor.execute(
@@ -1330,7 +1330,7 @@ def simpan_hasil_sortasi_tiket_ascend(
 
         if tidak_tersedia:
             raise RuntimeError(
-                "Data tiket Ascend tidak cukup untuk update Sortasi: "
+                "Data tiket tidak cukup untuk update Sortasi: "
                 + ", ".join(tidak_tersedia)
             )
 
@@ -1351,7 +1351,7 @@ def simpan_hasil_sortasi_tiket_ascend(
         )
         tersimpan = cursor.fetchone()
         if not tersimpan:
-            raise RuntimeError("Hasil Sortasi tidak ditemukan saat membaca balik Ascend.")
+            raise RuntimeError("Hasil Sortasi tidak ditemukan saat membaca balik Tiket.")
 
         deduction_db, netto_db, *grading_db = tersimpan
         harapan_deduction = Decimal(str(tiket.get("deduction") or 0))
@@ -1361,7 +1361,7 @@ def simpan_hasil_sortasi_tiket_ascend(
             or abs(Decimal(str(deduction_db)) - harapan_deduction)
             > Decimal("0.01")
         ):
-            raise RuntimeError("Deduction yang tersimpan di Ascend tidak sesuai.")
+            raise RuntimeError("Deduction yang tersimpan di Tiket tidak sesuai.")
 
         netto_harapan = Decimal(str(tiket.get("netto") or 0))
         if (
@@ -1384,7 +1384,7 @@ def simpan_hasil_sortasi_tiket_ascend(
                 or abs(Decimal(str(nilai_db)) - Decimal(str(harapan)))
                 > Decimal("0.01")
             ):
-                raise RuntimeError("Nilai grading yang tersimpan di Ascend tidak sesuai.")
+                raise RuntimeError("Nilai grading yang tersimpan di Tiket tidak sesuai.")
 
         koneksi.commit()
         return {
@@ -1402,9 +1402,9 @@ def simpan_hasil_sortasi_tiket_ascend(
 def riwayat_timbang_associate(
     ticket_ids, associate_id, ticket_type, mulai, sampai
 ):
-    """Riwayat timbang Ascend dalam cakupan tiket CPOS."""
+    """Riwayat timbang Tiket dalam cakupan tiket CPOS."""
     if ticket_type not in ("Produk", "TBSLuar"):
-        raise ValueError("Jenis tiket Ascend tidak valid.")
+        raise ValueError("Jenis tiket tidak valid.")
 
     ticket_ids = sorted({int(i) for i in (ticket_ids or [])})
     if not ticket_ids:
@@ -1480,13 +1480,13 @@ def riwayat_timbang_associate(
     finally:
         koneksi.close()
         
-def baca_hasil_split_ascend(ticket_id):
+def baca_hasil_pisah_tiket(ticket_id):
     koneksi = _koneksi()
     try:
         cursor = koneksi.cursor()
         cursor.execute(
             """
-            SELECT SPDO, [Step], DateTimeOut, Splitted, Void
+            SELECT SPDO, [Step], DateTimeOut, Pemisahanted, Void
             FROM dbo.PALM_Tickets
             WHERE TicketID = ?
             """,
@@ -1521,15 +1521,15 @@ def baca_hasil_split_ascend(ticket_id):
             "no_do1": str(induk[0] or "").strip(),
             "step": int(induk[1] or 0),
             "datetimeout": induk[2],
-            "splitted": bool(induk[3]),
+            "pisahted": bool(induk[3]),
             "void": bool(induk[4]),
             "anak": anak,
         }
     finally:
         koneksi.close()
 
-def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
-    """Simpan timbang ke Ascend melalui USP_PALM_Tickets_Update."""
+def simpan_berat_tiket(no_tiket, berat_kg, operator, waktu_timbang=None):
+    """Simpan timbang ke Tiket melalui USP_PALM_Tickets_Update."""
     koneksi = _koneksi()
     try:
         cursor = koneksi.cursor()
@@ -1541,7 +1541,7 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
             FROM dbo.PALM_Tickets WITH (UPDLOCK, HOLDLOCK)
             WHERE TicketNo = ?
               AND ISNULL([Void], 0) = 0
-              AND ISNULL([Splitted], 0) = 0
+              AND ISNULL([Pemisahanted], 0) = 0
               AND (ISNULL([Step], 0) < 2 OR DateTimeOut IS NULL)
             ORDER BY TicketID DESC
             """,
@@ -1549,7 +1549,7 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
         )
         row = cursor.fetchone()
         if not row:
-            raise ValueError("Tiket Ascend tidak ditemukan atau sudah selesai.")
+            raise ValueError("Tiket Tiket tidak ditemukan atau sudah selesai.")
 
         kolom = [item[0] for item in cursor.description]
         tiket = {nama.casefold(): row[i] for i, nama in enumerate(kolom)}
@@ -1644,22 +1644,22 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
             alasan_pending = None
 
             try:
-                do1 = _baca_do_produk_ascend(no_do1)
+                do1 = _baca_do_produk_tiket(no_do1)
             except Exception as e:
                 do1 = None
                 alasan_pending = (
-                    f"Data DO pertama Ascend belum dapat dibaca: {e}"
+                    f"Data DO pertama Tiket belum dapat dibaca: {e}"
                 )
 
             if not alasan_pending:
                 if not do1:
                     alasan_pending = (
-                        "DO pertama tidak ditemukan di Ascend; "
+                        "DO pertama tidak ditemukan di Tiket; "
                         "menunggu data DO dapat dipastikan."
                     )
                 elif do1["void"]:
                     raise ValueError(
-                        "DO pertama sudah dibatalkan di Ascend. "
+                        "DO pertama sudah dibatalkan di Tiket. "
                         "Tiket perlu diperiksa sebelum timbang akhir disimpan."
                     )
                 else:
@@ -1672,7 +1672,7 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
 
                     if netto_final > sisa_do1:
                         try:
-                            do2 = cari_pasangan_do2_ascend(
+                            do2 = cari_pasangan_do2_tiket(
                                 "Produk",
                                 no_do1,
                             )
@@ -1689,16 +1689,16 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
                                     "menunggu DO2 yang cocok."
                                 )
                             elif sisa_do1 > 0:
-                                # Masih ada bagian untuk DO1: minta Ascend split.
+                                # Masih ada bagian untuk DO1: minta Tiket pisah.
                                 spdo2 = do2["no_do"]
                             else:
                                 # DO1 habis: seluruh tiket diarahkan ke DO2.
-                                # Tidak meminta Ascend membuat anak dengan netto 0.
+                                # Tidak meminta Tiket membuat anak dengan netto 0.
                                 tiket["spdo"] = do2["no_do"]
                                 tiket["deliveryorderid"] = int(do2["id_do"])
 
             if alasan_pending:
-                pending = db_ascend_split.simpan_timbang_akhir_pending(
+                pending = db_tiket_pisah.simpan_timbang_akhir_pending(
                     int(nilai("TicketID")),
                     berat,
                     now,
@@ -1715,13 +1715,13 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
                     "pending_do2": True,
                     "pending_status": pending["status"],
                     "no_do2": None,
-                    "tiket_split": [],
+                    "tiket_pisah": [],
                     "berat_bruto": float(bruto),
                     "berat_tara": float(tara),
                     "berat_netto": float(bruto - tara),
                 }
 
-        # Ambil parameter prosedur Ascend; kirim nilai yang tersedia di baris tiket.
+        # Ambil parameter prosedur Tiket; kirim nilai yang tersedia di baris tiket.
         cursor.execute(
             """
             SELECT name
@@ -1766,7 +1766,7 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
 
         if tidak_tersedia:
             raise RuntimeError(
-                "Kolom tiket tidak cukup untuk mengisi parameter wajib Ascend: "
+                "Kolom tiket tidak cukup untuk mengisi parameter wajib Tiket: "
                 + ", ".join(tidak_tersedia)
             )
 
@@ -1776,11 +1776,11 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
         )
         cursor.execute(sql, *nilai_parameter)
         ticket_id_induk = int(nilai("TicketID"))
-        tiket_split = []
+        tiket_pisah = []
 
         # Untuk timbang biasa, pastikan nilai benar-benar sudah tertulis
         # di PALM_Tickets sebelum transaksi di-commit.
-        # Kasus split diperiksa lewat validasi dua tiket pecahan di bawah.
+        # Kasus pisah diperiksa lewat validasi dua tiket pecahan di bawah.
         if not spdo2:
             cursor.execute(
                 """
@@ -1818,17 +1818,17 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
 
             if int(step_db or 0) != step_baru:
                 raise RuntimeError(
-                    "Step tiket Ascend tidak sama dengan tahap timbang yang dikirim."
+                    "Step tiket tidak sama dengan tahap timbang yang dikirim."
                 )
 
             if not berat_sesuai(bruto_db, bruto):
                 raise RuntimeError(
-                    "Nilai Bruto yang tersimpan di Ascend tidak sesuai."
+                    "Nilai Bruto yang tersimpan di Tiket tidak sesuai."
                 )
 
             if not berat_sesuai(tara_db, tara):
                 raise RuntimeError(
-                    "Nilai Tara yang tersimpan di Ascend tidak sesuai."
+                    "Nilai Tara yang tersimpan di Tiket tidak sesuai."
                 )
 
             if step_baru == 2:
@@ -1836,13 +1836,13 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
 
                 if not berat_sesuai(netto_db, netto_harapan):
                     raise RuntimeError(
-                        "Nilai Netto yang tersimpan di Ascend tidak sesuai."
+                        "Nilai Netto yang tersimpan di Tiket tidak sesuai."
                     )
 
                 if deduction_harapan is not None:
                     if not berat_sesuai(deduction_db, deduction_harapan):
                         raise RuntimeError(
-                            "Nilai Deduction yang tersimpan di Ascend tidak sesuai."
+                            "Nilai Deduction yang tersimpan di Tiket tidak sesuai."
                         )
 
                 if datetime_out_db is None:
@@ -1856,7 +1856,7 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
 
                 if spdo_tersimpan.casefold() != spdo_harapan.casefold():
                     raise RuntimeError(
-                        "Nomor DO tiket yang tersimpan di Ascend tidak sesuai."
+                        "Nomor DO tiket yang tersimpan di Tiket tidak sesuai."
                     )
 
         if spdo2:
@@ -1871,7 +1871,7 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
                 ticket_id_induk,
             )
 
-            tiket_split = [
+            tiket_pisah = [
                 {
                     "ticket_id": int(row[0]),
                     "no_tiket": str(row[1] or "").strip(),
@@ -1882,27 +1882,27 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
                 for row in cursor.fetchall()
             ]
 
-            if len(tiket_split) != 2:
+            if len(tiket_pisah) != 2:
                 raise RuntimeError(
-                    "Ascend menerima permintaan split, tetapi tidak "
+                    "Tiket menerima permintaan pisah, tetapi tidak "
                     "mengembalikan tepat dua tiket pecahan."
                 )
 
             do_pecahan = {
                 baris["no_do"].casefold()
-                for baris in tiket_split
+                for baris in tiket_pisah
             }
             if do_pecahan != {
                 str(nilai("SPDO", "") or "").strip().casefold(),
                 spdo2.strip().casefold(),
             }:
                 raise RuntimeError(
-                    "DO pada tiket pecahan Ascend tidak cocok dengan DO1 dan DO2."
+                    "DO pada tiket pecahan Tiket tidak cocok dengan DO1 dan DO2."
                 )
 
             netto_pecahan = sum(
                 Decimal(str(baris["berat_netto"]))
-                for baris in tiket_split
+                for baris in tiket_pisah
             )
             netto_awal = Decimal(str(tiket["netto"] or 0))
 
@@ -1918,7 +1918,7 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
             "ticket_id": int(nilai("TicketID")),
             "ticket_no": no_tiket,
             "no_do2": spdo2 or None,
-            "tiket_split": tiket_split,
+            "tiket_pisah": tiket_pisah,
             "berat_bruto": float(bruto) if step_baru == 2 or ticket_type == "TBSLuar" else None,
             "berat_tara": float(tara) if step_baru == 2 or ticket_type == "Produk" else None,
             "berat_netto": float(tiket["netto"]) if step_baru == 2 else None,
@@ -1931,7 +1931,7 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
         koneksi.close()
 
 def daftar_do(ticket_type):
-    """DO outstanding beserta nama Associate dari database Ascend."""
+    """DO outstanding beserta nama Associate dari database Tiket."""
     if ticket_type == "Produk":
         prosedur = "EXEC dbo.USP_PALM_DeliveryOrders_QueryOutstandingForWB"
         nama_do = "DeliveryOrderNumber"
@@ -2038,8 +2038,8 @@ def daftar_do(ticket_type):
         return hasil
     finally:
         koneksi.close()
-def daftar_kontrak_ascend(cari="", batas=500):
-    """Daftar Kontrak Produk dan Kontrak Pembelian TBS Luar dari Ascend."""
+def daftar_kontrak_tiket(cari="", batas=500):
+    """Daftar Kontrak Produk dan Kontrak Pembelian TBS Luar dari Tiket."""
     cari = (cari or "").strip()
     pola = f"%{cari}%"
     batas = max(1, min(int(batas), 1000))
@@ -2185,7 +2185,7 @@ def daftar_kontrak_ascend(cari="", batas=500):
     finally:
         koneksi.close()
         
-def daftar_kontrak_do_ascend(cari="", batas=500):
+def daftar_kontrak_do_tiket(cari="", batas=500):
     """Daftar DO Produk dan TBS Luar untuk halaman Kontrak & DO."""
     cari = (cari or "").strip()
     pola = f"%{cari}%"
@@ -2424,8 +2424,8 @@ def daftar_kontrak_do_ascend(cari="", batas=500):
     finally:
         koneksi.close()
 
-def _baca_do_produk_ascend(no_do):
-    """Baca DO Produk Ascend, termasuk DO yang outstanding-nya sudah nol."""
+def _baca_do_produk_tiket(no_do):
+    """Baca DO Produk Tiket, termasuk DO yang outstanding-nya sudah nol."""
     no_do = (no_do or "").strip()
     if not no_do:
         return None
@@ -2476,19 +2476,19 @@ def _baca_do_produk_ascend(no_do):
         "closed": bool(row[10]),
     }
 
-def cari_pasangan_do2_ascend(ticket_type, no_do1):
+def cari_pasangan_do2_tiket(ticket_type, no_do1):
     """Cari DO2 outstanding untuk DO Produk yang kontraknya sama."""
     if ticket_type != "Produk":
-        raise ValueError("Split DO hanya berlaku untuk tiket Produk.")
+        raise ValueError("Pemisahan DO hanya berlaku untuk tiket Produk.")
 
-    do1 = _baca_do_produk_ascend(no_do1)
+    do1 = _baca_do_produk_tiket(no_do1)
     if not do1:
         raise ValueError(
-            "DO pertama tidak ditemukan di database Ascend."
+            "DO pertama tidak ditemukan di database Tiket."
         )
     if do1["void"]:
         raise ValueError(
-            "DO pertama sudah dibatalkan di Ascend."
+            "DO pertama sudah dibatalkan di Tiket."
         )
 
     kontrak1 = do1["contract_no"].strip().casefold()
@@ -2523,7 +2523,7 @@ def cari_pasangan_do2_ascend(ticket_type, no_do1):
     return kandidat[0]
 
 def daftar_associate(ticket_type):
-    """Daftar Associate dari Ascend, beserta kode dan nama."""
+    """Daftar Associate dari Tiket, beserta kode dan nama."""
     if ticket_type == "Produk":
         sql = """
             SELECT CustomerID, CustomerCode, CustomerName
@@ -2562,7 +2562,7 @@ def buat_tiket_kosong(ticket_type, produk, associate_id, vehicle_no,
         tiket_aktif = _kunci_dan_cari_tiket_aktif(cursor, vehicle_no)
         if tiket_aktif:
             raise ValueError(
-                f"Truk {vehicle_no} masih memiliki tiket Ascend "
+                f"Truk {vehicle_no} masih memiliki tiket "
                 f"{str(tiket_aktif[0]).strip()} yang belum selesai."
             )
         cursor.execute(
@@ -2598,10 +2598,10 @@ def buat_tiket_kosong(ticket_type, produk, associate_id, vehicle_no,
 
         if ticket_id is None:
             raise RuntimeError(
-                "Prosedur Ascend tidak mengembalikan nilai RETURN sebagai TicketID."
+                "Prosedur Tiket tidak mengembalikan nilai RETURN sebagai TicketID."
             )
         if ticket_id <= 0:
-            raise ValueError(f"Ascend mengembalikan TicketID {ticket_id}.")
+            raise ValueError(f"Tiket mengembalikan TicketID {ticket_id}.")
 
         cursor.execute(
             """
@@ -2621,7 +2621,7 @@ def buat_tiket_kosong(ticket_type, produk, associate_id, vehicle_no,
         waktu_tersimpan = tiket[1]
         if waktu_tersimpan is None:
             raise RuntimeError(
-                f"DateTimeIn tiket {tiket[0]} belum tersimpan di Ascend."
+                f"DateTimeIn tiket {tiket[0]} belum tersimpan di Tiket."
             )
 
         selisih_detik = abs(

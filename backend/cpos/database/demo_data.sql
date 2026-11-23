@@ -262,7 +262,7 @@ SELECT t.no, CASE t.st WHEN 'VOID' THEN 'VOID' ELSE 'REJECT' END,
        DATEADD(MINUTE, -t.menit + 60, GETDATE())
 FROM @t t WHERE t.st IN ('VOID', 'REJECTED');
 
--- Kelebihan DO: DO-TBS-002 kuota 15.000 kg, tiket netto 19.900 kg -> lebih 4.900 kg jadi tiket split
+-- Kelebihan DO: DO-TBS-002 kuota 15.000 kg, tiket netto 19.900 kg -> lebih 4.900 kg jadi tiket pisah
 DECLARE @tLebih VARCHAR(50) = 'PKS-' + FORMAT(DATEADD(DAY, -1, @hari), 'yyMMdd') + '-013';
 DECLARE @doLebih INT = (SELECT DeliveryOrderID FROM dbo.DeliveryOrder WHERE DONumber = 'DO-TBS-002');
 INSERT INTO dbo.WeightBridge (TicketNumber, TicketDate, WeightTypeCode, SupplierID, ProductID, IDVehicle, DriverID, TransportMode, StatusCode,
@@ -274,7 +274,7 @@ INSERT INTO dbo.DOExcess (TicketNumber, SplitTicketNumber, DeliveryOrderID, Quot
 VALUES (@tLebih, @tLebih + '-S1', @doLebih, 15000, 19900, 19900, 4900, 'MENUNGGU', @areaPT);
 INSERT INTO dbo.Notification (MenuCode, CompAreaID, Title, Message, Link)
 VALUES ('KELEBIHAN_DO', @areaPT, N'DO DO-TBS-002 melebihi kuota 4.900 kg',
-        N'Tiket ' + @tLebih + N': kelebihan 4.900 kg menjadi tiket ' + @tLebih + N'-S1. Isi No. DO baru dari Ascend.', '/kelebihan-do');
+        N'Tiket ' + @tLebih + N': kelebihan 4.900 kg menjadi tiket ' + @tLebih + N'-S1. Isi No. DO baru dari Tiket.', '/kelebihan-do');
 
 -- Pos Security saja (tanpa timbang): satu kendaraan masih di dalam
 INSERT INTO dbo.WeightBridge (TicketNumber, TicketDate, WeightTypeCode, SupplierID, ProductID, IDVehicle, DriverID, TransportMode, StatusCode,

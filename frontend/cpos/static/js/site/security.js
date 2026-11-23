@@ -279,12 +279,12 @@ async function toggleRekamWajah(konteks) {
 // Modal yang sama dipakai dari form tiket ('tiket') dan dari menu Update Truk ('kendaraan')
 let konteksTambahSupir = 'tiket';
 
-function bukaGantiSupirAscend() {
-    const manual = document.getElementById('ascendVehicleManualToggle').checked;
+function bukaGantiSupirTiket() {
+    const manual = document.getElementById('tiketVehicleManualToggle').checked;
     const plat = (
         manual
-            ? document.getElementById('ascendVehicleManual').value
-            : document.getElementById('ascendVehicleNo').value
+            ? document.getElementById('tiketVehicleManual').value
+            : document.getElementById('tiketVehicleNo').value
     ).trim().toUpperCase();
 
     if (!plat) {
@@ -292,7 +292,7 @@ function bukaGantiSupirAscend() {
         return;
     }
 
-    window.platGantiSupirAscend = plat;
+    window.platGantiSupirTiket = plat;
 
     document.getElementById('cariNik').value = '';
     document.getElementById('hasilCariNik').classList.add('hidden');
@@ -307,12 +307,12 @@ function bukaGantiSupirAscend() {
 
 function bukaTambahSupir(konteks) {
     konteksTambahSupir = konteks;
-    if (konteks === 'ascend') {
-        const manual = document.getElementById('ascendVehicleManualToggle').checked;
+    if (konteks === 'tiket') {
+        const manual = document.getElementById('tiketVehicleManualToggle').checked;
         const plat = (
             manual
-                ? document.getElementById('ascendVehicleManual').value
-                : document.getElementById('ascendVehicleNo').value
+                ? document.getElementById('tiketVehicleManual').value
+                : document.getElementById('tiketVehicleNo').value
         ).trim().toUpperCase();
 
         if (!plat) {
@@ -320,7 +320,7 @@ function bukaTambahSupir(konteks) {
             return;
         }
 
-        window.platTambahSupirAscend = plat;
+        window.platTambahSupirTiket = plat;
     }
     if (konteks === 'kendaraan') {
         if (!pastikanTrukDipilih()) return;
@@ -345,9 +345,9 @@ async function simpanSupirBaru(btn) {
                                     'Memeriksa wajah...');
     if (tampilkanHasil(data)) {
         closeModal('modalTambahSupir');
-        if (konteksTambahSupir === 'ascend') {
+        if (konteksTambahSupir === 'tiket') {
             const link = await kirimForm('/api/kendaraan/supir/tambah', {
-                no_plat: window.platTambahSupirAscend,
+                no_plat: window.platTambahSupirTiket,
                 id_driver: data.id_driver,
                 is_utama: '1',
             });
@@ -360,8 +360,8 @@ async function simpanSupirBaru(btn) {
                 return;
             }
 
-            await muatSupirTerakhirAscend();
-            window.platTambahSupirAscend = null;
+            await muatSupirTerakhirTiket();
+            window.platTambahSupirTiket = null;
             return;
         }
         if (konteksTambahSupir === 'kendaraan') {      // dari modal Update -> tab Supir Truk
@@ -459,8 +459,8 @@ async function cariSupirByNik(inputEl) {
 async function pakaiSupirIni() {
     if (!driverHasilCari) return;
 
-    if (window.platGantiSupirAscend) {
-        const plat = window.platGantiSupirAscend;
+    if (window.platGantiSupirTiket) {
+        const plat = window.platGantiSupirTiket;
 
         const data = await kirimForm('/api/kendaraan/supir/tambah', {
             no_plat: plat,
@@ -470,9 +470,9 @@ async function pakaiSupirIni() {
 
         if (!tampilkanHasil(data)) return;
 
-        window.platGantiSupirAscend = null;
+        window.platGantiSupirTiket = null;
         tutupModalUpdate();
-        await muatSupirTerakhirAscend();
+        await muatSupirTerakhirTiket();
         return;
     }
 
@@ -613,11 +613,11 @@ function cetakQR() {
     bukaHalamanCetak(qrTiketAktif);
 }
 
-// ===== FORM TIKET KOSONG ASCEND =====
-let daftarDOAscend = [];
-let daftarShipperAscend = [];
+// ===== FORM TIKET KOSONG =====
+let daftarDOTiket = [];
+let daftarShipperTiket = [];
 
-const MILL_MANUAL_ASCEND = {
+const MILL_MANUAL_TIKET = {
     produk: {
         cpo: 1034,
         janjangkosong: 1034,
@@ -633,10 +633,10 @@ const MILL_MANUAL_ASCEND = {
     },
 };
 
-function terapkanMillManualAscend() {
-    const jenis = document.getElementById('ascendTicketType').value.toLowerCase();
-    const produk = document.getElementById('ascendProduk').value.trim().toLowerCase();
-    const mill = document.getElementById('ascendMill');
+function terapkanMillManualTiket() {
+    const jenis = document.getElementById('tiketTicketType').value.toLowerCase();
+    const produk = document.getElementById('tiketProduk').value.trim().toLowerCase();
+    const mill = document.getElementById('tiketMill');
 
     if (!jenis || !produk) {
         mill.disabled = false;
@@ -646,8 +646,8 @@ function terapkanMillManualAscend() {
     let millId = 250; // PKS sebagai tujuan bawaan
     if (produk === 'kernel') {
         millId = 1035;
-    } else if (MILL_MANUAL_ASCEND[jenis]?.[produk]) {
-        millId = MILL_MANUAL_ASCEND[jenis][produk];
+    } else if (MILL_MANUAL_TIKET[jenis]?.[produk]) {
+        millId = MILL_MANUAL_TIKET[jenis][produk];
     }
 
     mill.value = String(millId);
@@ -655,13 +655,13 @@ function terapkanMillManualAscend() {
 }
 
 async function muatShipperKendaraan(doData = null) {
-    const jenis = document.getElementById('ascendTicketType').value;
-    const shipper = document.getElementById('ascendShipper');
-    const kendaraan = document.getElementById('ascendVehicleNo');
+    const jenis = document.getElementById('tiketTicketType').value;
+    const shipper = document.getElementById('tiketShipper');
+    const kendaraan = document.getElementById('tiketVehicleNo');
 
-    daftarShipperAscend = [];
-    isiPilihanAscend(shipper, [], x => x.shipper_id, x => x.shipper_name);
-    isiPilihanAscend(kendaraan, [], x => x.vehicle_no, x => x.vehicle_no);
+    daftarShipperTiket = [];
+    isiPilihanTiket(shipper, [], x => x.shipper_id, x => x.shipper_name);
+    isiPilihanTiket(kendaraan, [], x => x.vehicle_no, x => x.vehicle_no);
 
     if (!jenis) return;
 
@@ -671,31 +671,31 @@ async function muatShipperKendaraan(doData = null) {
     }
 
     const data = await ambilJson(
-        `/api/security/ascend/shipper-kendaraan?${params.toString()}`
+        `/api/security/tiket/shipper-kendaraan?${params.toString()}`
     );
 
     if (data.error) {
-        document.getElementById('ascendInfoDO').textContent = data.error;
+        document.getElementById('tiketInfoDO').textContent = data.error;
         return;
     }
 
-    daftarShipperAscend = data;
-    isiPilihanAscend(
+    daftarShipperTiket = data;
+    isiPilihanTiket(
         shipper,
-        daftarShipperAscend,
+        daftarShipperTiket,
         x => x.shipper_id,
         x => x.shipper_name
     );
 }
 
-function pilihShipperAscend() {
-    const shipperId = document.getElementById('ascendShipper').value;
-    const shipper = daftarShipperAscend.find(
+function pilihShipperTiket() {
+    const shipperId = document.getElementById('tiketShipper').value;
+    const shipper = daftarShipperTiket.find(
         x => String(x.shipper_id) === shipperId
     );
 
-    isiPilihanAscend(
-        document.getElementById('ascendVehicleNo'),
+    isiPilihanTiket(
+        document.getElementById('tiketVehicleNo'),
         shipper ? shipper.vehicles : [],
         x => x.vehicle_no,
         x => x.driver_name
@@ -712,7 +712,7 @@ function tanggalLokalHariIni() {
     return `${tahun}-${bulan}-${hari}`;
 }
 
-function isiPilihanAscend(select, daftar, nilai, label) {
+function isiPilihanTiket(select, daftar, nilai, label) {
     const pilihanAwal = select.querySelector('option[value=""]');
     select.replaceChildren(pilihanAwal || new Option('-- Pilih --', ''));
 
@@ -723,31 +723,31 @@ function isiPilihanAscend(select, daftar, nilai, label) {
     select.value = '';
 }
  
-async function muatDOAscend() {
-    const jenis = document.getElementById('ascendTicketType').value;
-    document.getElementById('ascendShipper').required = jenis === 'Produk';
-    const info = document.getElementById('ascendInfoDO');
-    const pilihanDO = document.getElementById('ascendNoDoChoice');
-    const manualWrap = document.getElementById('ascendNoDoManualWrap');
-    const manualInput = document.getElementById('ascendNoDoManual');
-    const noDO = document.getElementById('ascendNoDoValue');
-    const associate = document.getElementById('ascendAssociate');
-    const produk = document.getElementById('ascendProduk');
+async function muatDOTiket() {
+    const jenis = document.getElementById('tiketTicketType').value;
+    document.getElementById('tiketShipper').required = jenis === 'Produk';
+    const info = document.getElementById('tiketInfoDO');
+    const pilihanDO = document.getElementById('tiketNoDoChoice');
+    const manualWrap = document.getElementById('tiketNoDoManualWrap');
+    const manualInput = document.getElementById('tiketNoDoManual');
+    const noDO = document.getElementById('tiketNoDoValue');
+    const associate = document.getElementById('tiketAssociate');
+    const produk = document.getElementById('tiketProduk');
 
-    daftarDOAscend = [];
+    daftarDOTiket = [];
     pilihanDO.replaceChildren(new Option('-- Pilih --', ''));
-    document.getElementById('ascendNoDoManualToggle').checked = false;
-    document.getElementById('ascendNoDoSelectWrap').classList.remove('hidden');
+    document.getElementById('tiketNoDoManualToggle').checked = false;
+    document.getElementById('tiketNoDoSelectWrap').classList.remove('hidden');
     pilihanDO.required = true;
     manualWrap.classList.add('hidden');
     manualInput.required = false;
     manualInput.value = '';
     noDO.value = '';
 
-    isiPilihanAscend(associate, [], x => x.id, x => x.nama);
-    isiPilihanAscend(produk, [], x => x.id, x => x.nama);
+    isiPilihanTiket(associate, [], x => x.id, x => x.nama);
+    isiPilihanTiket(produk, [], x => x.id, x => x.nama);
     if (jenis === 'TBSLuar') {
-        isiPilihanAscend(
+        isiPilihanTiket(
             produk,
             [{ id: 'TBS', nama: 'TBS' }],
             x => x.id,
@@ -755,8 +755,8 @@ async function muatDOAscend() {
         );
     }
 
-    document.getElementById('ascendMill').value = '';
-    document.getElementById('ascendMill').disabled = false; 
+    document.getElementById('tiketMill').value = '';
+    document.getElementById('tiketMill').disabled = false; 
 
     if (!jenis) {
         info.textContent = 'Pilih jenis tiket untuk mencari DO outstanding.';
@@ -764,9 +764,9 @@ async function muatDOAscend() {
     }
 
 
-    info.textContent = 'Memuat DO outstanding dari Ascend…';
+    info.textContent = 'Memuat DO outstanding dari Tiket…';
     const data = await ambilJson(
-        `/api/security/ascend/do?ticket_type=${encodeURIComponent(jenis)}`
+        `/api/security/tiket/do?ticket_type=${encodeURIComponent(jenis)}`
     );
 
     if (data.error) {
@@ -774,10 +774,10 @@ async function muatDOAscend() {
         return;
     }
 
-    daftarDOAscend = data;
+    daftarDOTiket = data;
 
     const dataAssociate = await ambilJson(
-        `/api/security/ascend/associate?ticket_type=${encodeURIComponent(jenis)}`
+        `/api/security/tiket/associate?ticket_type=${encodeURIComponent(jenis)}`
     );
 
     if (dataAssociate.error) {
@@ -819,10 +819,10 @@ async function muatDOAscend() {
     const daftarProduk = [...namaProduk]
         .map(nama => ({ id: nama, nama }));
 
-    isiPilihanAscend(
+    isiPilihanTiket(
         associate, daftarAssociate, x => x.id, x => x.nama
     );
-    isiPilihanAscend(
+    isiPilihanTiket(
         produk, daftarProduk, x => x.id, x => x.nama
     );
 
@@ -831,23 +831,23 @@ async function muatDOAscend() {
         : 'Tidak ada DO outstanding. Kamu masih bisa mengetik nomor secara manual.';
 }
 
-function pilihInfoDOAscend() {
-    const pilihan = document.getElementById('ascendNoDoChoice');
-    const manualWrap = document.getElementById('ascendNoDoManualWrap');
-    const manualInput = document.getElementById('ascendNoDoManual');
-    const noDO = document.getElementById('ascendNoDoValue');
-    const info = document.getElementById('ascendInfoDO');
+function pilihInfoDOTiket() {
+    const pilihan = document.getElementById('tiketNoDoChoice');
+    const manualWrap = document.getElementById('tiketNoDoManualWrap');
+    const manualInput = document.getElementById('tiketNoDoManual');
+    const noDO = document.getElementById('tiketNoDoValue');
+    const info = document.getElementById('tiketInfoDO');
 
-    if (document.getElementById('ascendNoDoManualToggle').checked) {
+    if (document.getElementById('tiketNoDoManualToggle').checked) {
         manualWrap.classList.remove('hidden');
         manualInput.required = true;
         manualInput.focus();
         noDO.value = manualInput.value.trim().toUpperCase();
-        info.textContent = 'Ketik Nomor DO / SP. Associate dan Produk tetap harus dipilih dari Ascend.';
-        document.getElementById('ascendAssociate').disabled = false;
-        document.getElementById('ascendProduk').disabled = false;
-        document.getElementById('ascendMill').disabled = false;
-        terapkanMillManualAscend();
+        info.textContent = 'Ketik Nomor DO / SP. Associate dan Produk tetap harus dipilih dari Tiket.';
+        document.getElementById('tiketAssociate').disabled = false;
+        document.getElementById('tiketProduk').disabled = false;
+        document.getElementById('tiketMill').disabled = false;
+        terapkanMillManualTiket();
         muatShipperKendaraan();
         return;
     }
@@ -855,26 +855,26 @@ function pilihInfoDOAscend() {
     manualWrap.classList.add('hidden');
     manualInput.required = false;
 
-    const d = daftarDOAscend.find(x => x.no_do === pilihan.value);
+    const d = daftarDOTiket.find(x => x.no_do === pilihan.value);
     if (!d) {
         noDO.value = '';
-        document.getElementById('ascendAssociate').disabled = false;
-        document.getElementById('ascendProduk').disabled = false;
-        document.getElementById('ascendMill').disabled = false;
-        terapkanMillManualAscend();
+        document.getElementById('tiketAssociate').disabled = false;
+        document.getElementById('tiketProduk').disabled = false;
+        document.getElementById('tiketMill').disabled = false;
+        terapkanMillManualTiket();
         return;
     }
 
     noDO.value = d.no_do;
-    document.getElementById('ascendAssociate').value = String(d.associate_id);
-    document.getElementById('ascendProduk').value = d.produk;
+    document.getElementById('tiketAssociate').value = String(d.associate_id);
+    document.getElementById('tiketProduk').value = d.produk;
     muatShipperKendaraan(d);
-    document.getElementById('ascendMill').value =   
+    document.getElementById('tiketMill').value =   
         d.mill_id == null ? '' : String(d.mill_id);
 
-    document.getElementById('ascendAssociate').disabled = true;
-    document.getElementById('ascendProduk').disabled = true;
-    document.getElementById('ascendMill').disabled = true;
+    document.getElementById('tiketAssociate').disabled = true;
+    document.getElementById('tiketProduk').disabled = true;
+    document.getElementById('tiketMill').disabled = true;
 
     const labelAssociate = d.associate_name
         ? `${d.associate_name} · ID ${d.associate_id}`
@@ -884,8 +884,8 @@ function pilihInfoDOAscend() {
 }
 
 function filterDOUntukAssociate() {
-    const associate = document.getElementById('ascendAssociate');
-    const pilihanDO = document.getElementById('ascendNoDoChoice');
+    const associate = document.getElementById('tiketAssociate');
+    const pilihanDO = document.getElementById('tiketNoDoChoice');
 
     Array.from(pilihanDO.options).forEach(option => {
         if (!option.value) {
@@ -893,7 +893,7 @@ function filterDOUntukAssociate() {
             return;
         }
 
-        const doData = daftarDOAscend.find(d => d.no_do === option.value);
+        const doData = daftarDOTiket.find(d => d.no_do === option.value);
 
         option.hidden = Boolean(
             associate.value &&
@@ -902,7 +902,7 @@ function filterDOUntukAssociate() {
         );
     });
 
-    const doTerpilih = daftarDOAscend.find(
+    const doTerpilih = daftarDOTiket.find(
         d => d.no_do === pilihanDO.value
     );
 
@@ -912,13 +912,13 @@ function filterDOUntukAssociate() {
         String(doTerpilih.associate_id) !== associate.value
     ) {
         pilihanDO.value = '';
-        document.getElementById('ascendNoDoValue').value = '';
+        document.getElementById('tiketNoDoValue').value = '';
     }
 }
 
-const formTiketAscend = document.getElementById('formTiketAscend');
-if (formTiketAscend) {
-    const inputTanggal = document.getElementById('ascendTanggal');
+const formTiket = document.getElementById('formTiket');
+if (formTiket) {
+    const inputTanggal = document.getElementById('tiketTanggal');
     const hariIni = tanggalLokalHariIni();
 
     const tanggalBesok = new Date();
@@ -933,21 +933,21 @@ if (formTiketAscend) {
     inputTanggal.max = besok;
     inputTanggal.value = hariIni;
 
-    document.getElementById('ascendShipper')
-        .addEventListener('change', pilihShipperAscend);
+    document.getElementById('tiketShipper')
+        .addEventListener('change', pilihShipperTiket);
 
-    document.getElementById('ascendVehicleNo')
-        .addEventListener('change', muatSupirTerakhirAscend);
+    document.getElementById('tiketVehicleNo')
+        .addEventListener('change', muatSupirTerakhirTiket);
     
-    document.getElementById('ascendVehicleManualToggle')
+    document.getElementById('tiketVehicleManualToggle')
         .addEventListener('change', e => {
             const manual = e.target.checked;
-            const pilihan = document.getElementById('ascendVehicleNo');
-            const input = document.getElementById('ascendVehicleManual');
+            const pilihan = document.getElementById('tiketVehicleNo');
+            const input = document.getElementById('tiketVehicleManual');
 
-            document.getElementById('ascendVehicleSelectWrap')
+            document.getElementById('tiketVehicleSelectWrap')
                 .classList.toggle('hidden', manual);
-            document.getElementById('ascendVehicleManualWrap')
+            document.getElementById('tiketVehicleManualWrap')
                 .classList.toggle('hidden', !manual);
 
             pilihan.disabled = manual;
@@ -955,63 +955,63 @@ if (formTiketAscend) {
             input.disabled = !manual;
             input.required = manual;
 
-            muatSupirTerakhirAscend();
+            muatSupirTerakhirTiket();
         });
 
-    document.getElementById('ascendVehicleManual')
+    document.getElementById('tiketVehicleManual')
         .addEventListener('blur', e => {
             e.target.value = e.target.value.trim().toUpperCase();
-            muatSupirTerakhirAscend();
+            muatSupirTerakhirTiket();
         });
 
-    document.getElementById('ascendTicketType')
-        .addEventListener('change', muatDOAscend);
+    document.getElementById('tiketTicketType')
+        .addEventListener('change', muatDOTiket);
 
-    document.getElementById('ascendNoDoChoice')
-        .addEventListener('change', pilihInfoDOAscend);
+    document.getElementById('tiketNoDoChoice')
+        .addEventListener('change', pilihInfoDOTiket);
     
-    document.getElementById('ascendNoDoManualToggle')
+    document.getElementById('tiketNoDoManualToggle')
         .addEventListener('change', e => {
             const manual = e.target.checked;
-            const pilihan = document.getElementById('ascendNoDoChoice');
-            const manualWrap = document.getElementById('ascendNoDoManualWrap');
+            const pilihan = document.getElementById('tiketNoDoChoice');
+            const manualWrap = document.getElementById('tiketNoDoManualWrap');
 
-            document.getElementById('ascendNoDoSelectWrap')
+            document.getElementById('tiketNoDoSelectWrap')
                 .classList.toggle('hidden', manual);
 
             pilihan.value = '';
             pilihan.required = !manual;
-            document.getElementById('ascendNoDoManual').required = manual;
+            document.getElementById('tiketNoDoManual').required = manual;
             pilihan.dispatchEvent(new Event('change'));
         });
 
-    document.getElementById('ascendProduk')
-        .addEventListener('change', terapkanMillManualAscend);
+    document.getElementById('tiketProduk')
+        .addEventListener('change', terapkanMillManualTiket);
 
-    document.getElementById('ascendNoDoManual')
+    document.getElementById('tiketNoDoManual')
         .addEventListener('input', e => {
-            document.getElementById('ascendNoDoValue').value =
+            document.getElementById('tiketNoDoValue').value =
                 e.target.value.trim().toUpperCase();
         });
 
-    document.getElementById('ascendAssociate')
+    document.getElementById('tiketAssociate')
         .addEventListener('change', filterDOUntukAssociate);
 
-    formTiketAscend.addEventListener('submit', async e => {
+    formTiket.addEventListener('submit', async e => {
         e.preventDefault();
 
-        const tombol = document.getElementById('btnBuatTiketAscend');
-        const hasil = document.getElementById('hasilTiketAscend');
+        const tombol = document.getElementById('btnBuatTiket');
+        const hasil = document.getElementById('hasilTiket');
         tombol.disabled = true;
-        hasil.textContent = 'Membuat tiket di Ascend...';
+        hasil.textContent = 'Membuat tiket di Tiket...';
 
-        const payload = new FormData(formTiketAscend);
-        payload.set('associate_id', document.getElementById('ascendAssociate').value);
-        payload.set('produk', document.getElementById('ascendProduk').value);
-        payload.set('mill_id', document.getElementById('ascendMill').value);
+        const payload = new FormData(formTiket);
+        payload.set('associate_id', document.getElementById('tiketAssociate').value);
+        payload.set('produk', document.getElementById('tiketProduk').value);
+        payload.set('mill_id', document.getElementById('tiketMill').value);
 
         const data = await kirimForm(
-            '/api/security/ascend/buat-tiket',
+            '/api/security/tiket/buat-tiket',
             payload
         );
 
@@ -1024,27 +1024,27 @@ if (formTiketAscend) {
         }
 
         const noTiketBerhasil = data.no_tiket;
-        formTiketAscend.reset();
+        formTiket.reset();
 
-        document.getElementById('ascendNoDoSelectWrap').classList.remove('hidden');
-        document.getElementById('ascendNoDoManualWrap').classList.add('hidden');
-        document.getElementById('ascendNoDoValue').value = '';
-        document.getElementById('ascendNoDoChoice').required = true;
-        document.getElementById('ascendNoDoManual').required = false;
+        document.getElementById('tiketNoDoSelectWrap').classList.remove('hidden');
+        document.getElementById('tiketNoDoManualWrap').classList.add('hidden');
+        document.getElementById('tiketNoDoValue').value = '';
+        document.getElementById('tiketNoDoChoice').required = true;
+        document.getElementById('tiketNoDoManual').required = false;
 
-        document.getElementById('ascendVehicleSelectWrap').classList.remove('hidden');
-        document.getElementById('ascendVehicleManualWrap').classList.add('hidden');
-        document.getElementById('ascendVehicleNo').disabled = false;
-        document.getElementById('ascendVehicleNo').required = true;
-        document.getElementById('ascendVehicleManual').disabled = true;
-        document.getElementById('ascendVehicleManual').required = false;
+        document.getElementById('tiketVehicleSelectWrap').classList.remove('hidden');
+        document.getElementById('tiketVehicleManualWrap').classList.add('hidden');
+        document.getElementById('tiketVehicleNo').disabled = false;
+        document.getElementById('tiketVehicleNo').required = true;
+        document.getElementById('tiketVehicleManual').disabled = true;
+        document.getElementById('tiketVehicleManual').required = false;
 
-        document.getElementById('ascendAssociate').disabled = false;
-        document.getElementById('ascendProduk').disabled = false;
-        document.getElementById('ascendMill').disabled = false;
-        document.getElementById('ascendTanggal').value = tanggalLokalHariIni();
+        document.getElementById('tiketAssociate').disabled = false;
+        document.getElementById('tiketProduk').disabled = false;
+        document.getElementById('tiketMill').disabled = false;
+        document.getElementById('tiketTanggal').value = tanggalLokalHariIni();
 
-        await muatDOAscend();
+        await muatDOTiket();
         await muatShipperKendaraan();
 
         hasil.className = 'text-sm font-semibold text-emerald-700';
@@ -1052,25 +1052,25 @@ if (formTiketAscend) {
             });
 }
 
-let permintaanSupirAscend = 0;
+let permintaanSupirTiket = 0;
 
-function tampilkanTombolTambahSupirAscend(tampil) {
-    document.getElementById('btnTambahSupirAscend')
+function tampilkanTombolTambahSupirTiket(tampil) {
+    document.getElementById('btnTambahSupirTiket')
         ?.classList.toggle('hidden', !tampil);
 }
 
-function tampilkanTombolGantiSupirAscend(tampil) {
-    document.getElementById('btnGantiSupirAscend')
+function tampilkanTombolGantiSupirTiket(tampil) {
+    document.getElementById('btnGantiSupirTiket')
         ?.classList.toggle('hidden', !tampil);
 }
 
-async function muatSupirTerakhirAscend() {
-    const idManual = document.getElementById('ascendVehicleManualToggle');
-    const inputManual = document.getElementById('ascendVehicleManual');
-    const inputPilihan = document.getElementById('ascendVehicleNo');
-    const hasil = document.getElementById('ascendSupirTerakhir');
-    const foto = document.getElementById('ascendSupirFoto');
-    const nomorPermintaan = ++permintaanSupirAscend;
+async function muatSupirTerakhirTiket() {
+    const idManual = document.getElementById('tiketVehicleManualToggle');
+    const inputManual = document.getElementById('tiketVehicleManual');
+    const inputPilihan = document.getElementById('tiketVehicleNo');
+    const hasil = document.getElementById('tiketSupirTerakhir');
+    const foto = document.getElementById('tiketSupirFoto');
+    const nomorPermintaan = ++permintaanSupirTiket;
 
     const tampilkanFotoKosong = () => {
         foto.innerHTML = '<i class="fa-solid fa-user text-slate-300 text-3xl"></i>';
@@ -1081,16 +1081,16 @@ async function muatSupirTerakhirAscend() {
     ).trim().toUpperCase();
 
     if (!plat) {
-        tampilkanTombolTambahSupirAscend(false);
-        tampilkanTombolGantiSupirAscend(false);
+        tampilkanTombolTambahSupirTiket(false);
+        tampilkanTombolGantiSupirTiket(false);
         hasil.textContent = 'Isi nomor kendaraan untuk melihat riwayat supir.';
         return;
     }
 
     tampilkanFotoKosong();
     hasil.textContent = `Mencari riwayat supir untuk ${plat}...`;
-    tampilkanTombolTambahSupirAscend(false);
-    tampilkanTombolGantiSupirAscend(false);
+    tampilkanTombolTambahSupirTiket(false);
+    tampilkanTombolGantiSupirTiket(false);
 
     try {
         const data = await ambilJson(
@@ -1098,7 +1098,7 @@ async function muatSupirTerakhirAscend() {
         );
 
         // Abaikan hasil lama jika plat sudah diganti saat pencarian berlangsung.
-        if (nomorPermintaan !== permintaanSupirAscend) return;
+        if (nomorPermintaan !== permintaanSupirTiket) return;
 
         if (data.error) {
             hasil.textContent = data.error;
@@ -1106,13 +1106,13 @@ async function muatSupirTerakhirAscend() {
         }
 
         if (!data.driver) {
-            tampilkanTombolTambahSupirAscend(true);
-            tampilkanTombolGantiSupirAscend(false);
+            tampilkanTombolTambahSupirTiket(true);
+            tampilkanTombolGantiSupirTiket(false);
             hasil.textContent = `Belum ada riwayat supir untuk ${plat}.`;
             return;
         }
 
-        tampilkanTombolTambahSupirAscend(false);
+        tampilkanTombolTambahSupirTiket(false);
         const d = data.driver;
         const aman = nilai => escapeHtml(String(nilai ?? '-'));
         const tanggalSIM = d.sim_berlaku_sampai
@@ -1140,7 +1140,7 @@ async function muatSupirTerakhirAscend() {
                     : ''}
             </div>`;
     } catch (error) {
-        if (nomorPermintaan !== permintaanSupirAscend) return;
+        if (nomorPermintaan !== permintaanSupirTiket) return;
 
         tampilkanFotoKosong();
         hasil.textContent = 'Gagal memuat riwayat supir. Coba ubah atau pilih ulang nomor kendaraan.';

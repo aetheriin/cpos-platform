@@ -551,9 +551,30 @@ def tanya_asisten(perm: PertanyaanAsisten, user=Depends(pengguna_saat_ini)):
         ds = _batasi_pt(ds, _pt_boleh(user, lap.id))
         return ds.df, {"mulai": ds.mulai, "akhir": ds.akhir, "dimuat_pada": ds.dimuat_pada.isoformat(timespec="seconds")}
 
+    def dasbor(laporan_id, **filt):
+        """Ringkasan dashboard laporan dengan periode bawaan, sama dengan yang tampil di halaman (dipakai ulang dari cache data itu)."""
+        lap = LAPORAN[laporan_id]
+        if lap.id not in user["laporan"]:
+            raise asisten.TanpaAkses(lap.id)
+        p = gudang.mulai_muat(lap.id, *_periode_bawaan(lap), lap.pemuat, pemilik)
+        if p.status == "gagal":
+            raise HTTPException(503, f"Data laporan {lap.nama} gagal dimuat: {p.pesan}")
+        ds = gudang.ambil(p.data_id) if p.status == "selesai" else None
+        if ds is None:
+            raise asisten.Memuat(lap.id)
+        ds = _batasi_pt(ds, _pt_boleh(user, lap.id))
+        f = {k: sorted(set(v)) for k, v in filt.items() if k in lap.filter_didukung and v}
+        kunci = ("dashboard", None, "None", "None", tuple((k, tuple(v)) for k, v in sorted(f.items())))
+        hasil = ds.hasil.get(kunci)
+        if hasil is None:
+            hasil = lap.bangun(ds, 5, None, f)
+            if len(ds.hasil) < 300:
+                ds.hasil[kunci] = hasil
+        return hasil
+
     menu = perm.menu if perm.menu in LAPORAN else None
     hasil = asisten.tanya(perm.teks, perm.lalu, ambil, _perusahaan_dikenal(), user["username"], (user.get("nama") or user["username"]).split()[0].title(),
-                          menu, LAPORAN[menu].nama if menu else None)
+                          menu, LAPORAN[menu].nama if menu else None, dasbor)
     if hasil.get("jenis") != "memuat":
         log.info("Asisten %s: %r -> %s", user["username"], perm.teks[:120], hasil.get("jenis"))
     return hasil

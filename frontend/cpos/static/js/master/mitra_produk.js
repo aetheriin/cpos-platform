@@ -52,7 +52,7 @@ async function muatMitra() {
                 <td class="table-cell">${badgeAktif(s.is_active)}</td>
                 <td class="table-cell">${escapeHtml(s.created_at || '-')}</td>
             </tr>`;
-    }).join('') || barisKosong(7, 'Belum ada Supplier Ascend');
+    }).join('') || barisKosong(7, 'Belum ada Supplier Tiket');
 
     saringBaris('tabelMitra', document.getElementById('cariMitra').value);
 }
@@ -127,7 +127,7 @@ async function muatProduk() {
                     </button>` : ''}
             </td>
         </tr>
-    `).join('') || barisKosong(7, 'Belum ada produk Ascend');
+    `).join('') || barisKosong(7, 'Belum ada produk Tiket');
 }
 
 function pilihJenisProdukMaster(jenis) {
@@ -142,7 +142,7 @@ function pilihJenisProdukMaster(jenis) {
         ?.classList.toggle('btn-primary', isTbsLuar);
     document.getElementById('filterTbsLuarMaster')
         ?.classList.toggle('btn-secondary', !isTbsLuar);
-    document.getElementById('btnTambahProdukAscend')
+    document.getElementById('btnTambahProdukTiket')
         ?.classList.toggle('hidden', isTbsLuar);
 
     muatProduk();
@@ -169,7 +169,7 @@ function bukaProduk(id) {
     if (perluDo) perluDo.checked = Boolean(p?.req_do);
 
     document.getElementById('judulModalProduk').textContent =
-        p ? 'Ubah Produk Ascend' : 'Tambah Produk Ascend';
+        p ? 'Ubah Produk Tiket' : 'Tambah Produk Tiket';
 
     openModal('modalProduk');
     document.getElementById('prodNama').focus();
