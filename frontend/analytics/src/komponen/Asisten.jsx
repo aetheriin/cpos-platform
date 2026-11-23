@@ -286,7 +286,7 @@ export default function Asisten({ laporan, menu, onBukaLaporan }) {
 
   // Rekomendasi diambil tiap panel dibuka di menu baru. Pindah menu di tengah percakapan: konteks lama dilepas dan rekomendasi menu
   // baru ditampilkan sebagai penanda di percakapan, supaya jelas jawaban berikutnya mengikuti menu itu.
-  const [saran, setSaran] = useState({ menu: undefined, saran: CONTOH, ada_data: true })
+  const [saran, setSaran] = useState({ menu: undefined, saran: [], ada_data: true })
   const menuTerakhir = useRef(bawaan ? bawaan.menu : menu)
   useEffect(() => {
     if (!buka || saran.menu === menu) return undefined
@@ -444,8 +444,8 @@ export default function Asisten({ laporan, menu, onBukaLaporan }) {
             {pesan.length === 0 && (
               <div className="space-y-3 text-sm text-slate-700">
                 <p>Saya terminal kecil untuk catatan laporan di server kantor. Ketik dengan kalimat biasa, lalu lanjutkan dengan "per supplier" atau "kalau YBS?" untuk mengubah jawabannya.</p>
-                <p className="text-xs font-medium text-slate-600">{namaMenu ? `Coba tanya soal ${namaMenu}:` : 'Coba tanya:'}</p>
-                <SaranMenu saran={saran} onTanya={tanya} />
+                {saran.menu === menu && <p className="text-xs font-medium text-slate-600">{namaMenu ? `Coba tanya soal ${namaMenu}:` : 'Coba tanya:'}</p>}
+                {saran.menu === menu && <SaranMenu saran={saran} onTanya={tanya} />}
                 {!saran.ada_data && (
                   <p className="text-xs text-slate-600">Angka di menu ini belum bisa saya hitung, tapi istilahnya bisa ditanyakan. Untuk angka, buka Outstanding, Purchase Request, Purchase Order, atau Purchase Invoice.</p>
                 )}

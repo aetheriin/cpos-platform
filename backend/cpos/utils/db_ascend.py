@@ -2,7 +2,7 @@
 import pyodbc
 
 from datetime import datetime
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 from utils import db_ascend_split
 from utils.koneksi_lain import connection_string
 
