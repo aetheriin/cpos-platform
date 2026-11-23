@@ -81,7 +81,8 @@ def _lambat(df, kol, kol_nilai, kode, tanya, data_lain=None):
     """Kelompok (buyer, supplier, perusahaan) yang rata-ratanya jauh di atas rata-rata keseluruhan."""
     d = df[df[kol_nilai].notna()]
     d = d.assign(**{kol: d[kol].fillna("").astype(str).str.split(", ")}).explode(kol)
-    d = d[d[kol].str.strip() != ""]
+    # nama kosong atau hanya bentuk usaha (data master belum lengkap) tidak disebut sebagai pelaku
+    d = d[~d[kol].str.strip().str.upper().str.strip(". ").isin(["", "PT", "CV", "LTD", "TBK", "UD", "-"])]
     umum = d[kol_nilai].mean()
     if d.empty or not umum or umum < 1:
         return None
@@ -279,13 +280,19 @@ def _pr_out(df, hari_ini):
     out = df[df["status"].isin(["Belum PO", "PO sebagian"])]
     if out.empty:
         return hasil
-    dok = out.groupby(["comp", "prnumber"]).agg(umur=("umur", "max"), setuju=("approve_date", lambda s: s.notna().any())).reset_index()
+    dok = out.groupby(["comp", "prnumber"]).agg(umur=("umur", "max"), setuju=("approve_date", lambda s: s.notna().any()),
+                                                tgl=("pr_date", "min")).reset_index()
     n = len(dok)
     basi = dok[dok["umur"] > AMBANG["basi"]]
     if not basi.empty:
         porsi = len(basi) / n
+        pt = basi["comp"].value_counts()
+        bulan = pd.to_datetime(basi.loc[basi["comp"] == pt.index[0], "tgl"]).dt.month.value_counts()
+        hasil = [x for x in hasil if x["kode"] != "pr_belum_po"]   # sudah tercakup, hindari dua poin yang mirip
         hasil.append(_poin("pr_out_basi", "tinggi" if porsi >= 0.25 else "sedang", 60 + porsi * 100,
-                           {"dokumen": len(basi), "porsi": porsi, "batas": AMBANG["basi"]}, "Daftar PR belum PO terlama"))
+                           {"dokumen": len(basi), "porsi": porsi, "batas": AMBANG["basi"], "median": float(dok["umur"].median()),
+                            "rata": float(dok["umur"].mean()), "pt": str(pt.index[0]), "pt_n": int(pt.iloc[0]),
+                            "bulan": [NAMA_BULAN[int(b) - 1] for b in bulan.index[:2]]}, "Daftar PR belum PO terlama"))
     belum_setuju = dok[~dok["setuju"]]
     if not belum_setuju.empty:
         hasil.append(_poin("pr_out_belum_setuju", "sedang", len(belum_setuju) / n * 50,
@@ -311,6 +318,7 @@ def _po_out(df, hari_ini):
     if not basi.empty:
         nb = _dok(basi, "po_number")
         porsi = nb / len(dok)
+        hasil = [x for x in hasil if x["kode"] != "po_belum_pi"]
         hasil.append(_poin("po_out_basi", "tinggi" if porsi >= 0.25 else "sedang", 60 + porsi * 100,
                            {"dokumen": nb, "porsi": porsi, "nilai": float(basi.loc[basi["rupiah"], "_sisa"].sum()), "batas": AMBANG["basi"]},
                            "Daftar PO belum PI terlama"))
@@ -394,14 +402,19 @@ KALIMAT = {
                               f"dari rata-rata 3 bulan sebelumnya ({fmt(d['dulu'], 'hari')}).",
     "pi_pt_lambat": lambda d: f"PI di {d['nama']} rata-rata {fmt(d['rata'], 'hari')} sampai jadi PVR, "
                               f"{_kali(d['kali'])} kali rata-rata semua perusahaan ({fmt(d['umum'], 'hari')}).",
-    "pr_out_basi": lambda d: f"{_bil(d['dokumen'])} PR ({_pct(d['porsi'])}) sudah lebih dari {d['batas']} hari belum jadi PO. "
-                             f"Kalau barangnya sudah tidak dibutuhkan, PR ini sebaiknya ditutup supaya daftar outstanding bersih.",
+    "pr_out_basi": lambda d: (f"{_bil(d['dokumen'])} PR ({_pct(d['porsi'])}) sudah lebih dari {d['batas']} hari belum jadi PO"
+                              + (f", {_bil(d['pt_n'])} di antaranya milik {d['pt']}"
+                                 + (f" yang sebagian besar dibuat {' dan '.join(d['bulan'])}" if d.get("bulan") else "") if d.get("pt") else "")
+                              + "."
+                              + (f" Rata-rata umur {_bil(round(d['rata']))} hari terlihat tinggi karena PR lama ini, padahal separuh PR "
+                                 f"outstanding umurnya di bawah {_bil(round(d['median']))} hari." if d.get("median") is not None
+                                 and d["rata"] > d["median"] * 2 else "")),
     "pr_out_belum_setuju": lambda d: f"{_bil(d['dokumen'])} PR outstanding ({_pct(d['porsi'])}) belum disetujui, jadi Purchasing belum bisa "
                                      f"membuat PO. Yang paling lama menunggu {_bil(d['terlama'])} hari.",
     "pr_out_pt": lambda d: f"{_pct(d['porsi'])} PR yang belum PO ada di {d['nama']} ({_bil(d['nilai'])} PR).",
-    "pr_out_sebagian": lambda d: f"{_bil(d['dokumen'])} PR baru sebagian qty-nya dibuatkan PO; sisanya masih menunggu.",
+    "pr_out_sebagian": lambda d: f"{_bil(d['dokumen'])} PR baru sebagian jumlahnya dibuatkan PO, sisanya masih menunggu.",
     "po_out_basi": lambda d: f"{_bil(d['dokumen'])} PO yang belum atau baru sebagian jadi PI ({_pct(d['porsi'])}) sudah lebih dari {d['batas']} hari, sisa nilainya "
-                             f"{rp(d['nilai'])}. Cek ke supplier apakah barang masih akan dikirim, atau PO-nya perlu ditutup.",
+                             f"{rp(d['nilai'])}.",
     "po_out_sebagian": lambda d: f"{_bil(d['dokumen'])} PO baru sebagian ditagih (PI sebagian). Sisa barang yang belum di-PI senilai {rp(d['nilai'])}.",
     "po_out_supplier": lambda d: f"3 supplier memegang {_pct(d['porsi'])} sisa nilai PO yang belum PI: {_sebut_atas(d['atas'], 'rp')}.",
     "po_out_pembuat": lambda d: f"{_pct(d['porsi'])} PO yang belum PI lebih dari {d['batas']} hari dibuat oleh {d['nama']} "

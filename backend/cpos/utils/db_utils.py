@@ -7,6 +7,9 @@ import extensions  # noqa: F401  (memuat backend\.env)
 from config import get_connection_string
 from utils.cache import cache_ttl
 
+# Kolom area tiket pada tabel WeightBridge (alias t).
+AREA_TIKET = "t.CompAreaID"
+
 
 # Connection pooling ODBC: koneksi yang di-close() dikembalikan ke pool, bukan diputus.
 # Harus di-set sebelum koneksi pertama dibuat.

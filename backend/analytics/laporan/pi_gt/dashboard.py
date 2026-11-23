@@ -31,14 +31,12 @@ KOLOM_DETAIL = [
     ("dari_gudang", "Dari Gudang", "teks"), ("ke_gudang", "Ke Gudang", "teks"),
     ("terima_date", "Tgl Diterima", "tanggal"), ("diterima_oleh", "Diterima Oleh", "teks"),
     ("lead_logistik", "Logistics Lead Time (hari)", "angka"), ("lead_pengadaan", "Procurement Lead Time (hari)", "angka"),
-    ("usage_number", "No. Usage", "teks"), ("usage_date", "Tgl Usage", "tanggal"), ("gudang_usage", "Gudang Usage", "teks"),
     ("itemcode", "Kode Barang", "teks"), ("itemname", "Nama Barang", "teks"), ("uom", "UOM", "teks"),
     ("qty_pi", "Qty PI", "angka"), ("qty_gt", "Qty GT", "angka"), ("importance", "Importance", "teks"),
     ("pr_number", "No. PR", "teks"), ("po_number", "No. PO", "teks"),
 ]
-KOLOM_CARI = ["comp", "pi_number", "gt_number", "gt_by", "pi_by", "pr_number", "po_number", "itemcode", "itemname", "dari_gudang", "ke_gudang",
-              "usage_number"]
-JENIS_DETAIL = {"outstanding": "Outstanding akhir", "gt": "GT", "belum_diterima": "GT belum diterima", "usage": "Langsung usage"}
+KOLOM_CARI = ["comp", "pi_number", "gt_number", "gt_by", "pi_by", "pr_number", "po_number", "itemcode", "itemname", "dari_gudang", "ke_gudang"]
+JENIS_DETAIL = {"outstanding": "Outstanding akhir", "gt": "GT", "belum_diterima": "GT belum diterima"}
 
 
 def _urut(nilai, acuan):
@@ -109,8 +107,7 @@ def bangun(df, dari, sampai, bulan=None, filt=None):
         "gt_per_pembuat": U.gt_per(gt_semua_pembuat, "gt_by", tampil_pembuat, daftar),
         "durasi_rute": U.durasi_per(dalam, ["dari_gudang", "ke_gudang"], "lead_logistik"),
         "durasi_perusahaan": U.durasi_per(U.gt_dalam(gt_semua_comp, ws, we), "comp", "lead_pengadaan"),
-        "jumlah": {"outstanding": len(out), "gt": len(dalam), "belum_diterima": int(U.mask_belum_diterima(gt, we).sum()),
-                   "usage": int(((pi["gt_number"] == "") & (pi["usage_date"] >= ws) & (pi["usage_date"] <= we)).sum())},
+        "jumlah": {"outstanding": len(out), "gt": len(dalam), "belum_diterima": int(U.mask_belum_diterima(gt, we).sum())},
         "pilihan": {**pilihan, "pembuat_semua": pilihan["pembuat"]},
     }
 
@@ -124,10 +121,8 @@ def detail(df, jenis, dari, sampai, bulan=None, filt=None, cari=None, urut=None,
         t, urut_awal, arah_awal = pi[U.mask_outstanding(pi, we)], "umur", "desc"
     elif jenis == "gt":
         t, urut_awal, arah_awal = U.gt_dalam(gt, ws, we), "gt_date", "desc"
-    elif jenis == "belum_diterima":
-        t, urut_awal, arah_awal = gt[U.mask_belum_diterima(gt, we)], "gt_date", "asc"
     else:
-        t, urut_awal, arah_awal = pi[(pi["gt_number"] == "") & (pi["usage_date"] >= ws) & (pi["usage_date"] <= we)], "usage_date", "desc"
+        t, urut_awal, arah_awal = gt[U.mask_belum_diterima(gt, we)], "gt_date", "asc"
     t = t.assign(umur=(we - t["pi_date"]).dt.days.where(t["pi_date"].notna())).reset_index(drop=True)
     hasil = susun(t, KOLOM_DETAIL, KOLOM_CARI, cari, urut, arah, urut_awal, arah_awal, halaman, ukuran, pembanding="gt_number")
     return {"jenis": jenis, "judul": JENIS_DETAIL[jenis], "periode": {"mulai": tgl(ws), "akhir": tgl(we)}, **hasil}

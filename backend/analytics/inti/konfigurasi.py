@@ -116,7 +116,6 @@ KAS_PARALEL = angka("KAS_PARALEL", 6)                   # perusahaan yang diambi
 KAS_TOP_MITRA = angka("KAS_TOP_MITRA", 10)
 
 # ---------- Penerimaan TBS ----------
-SP_PI_GT = nama_sp("SP_PI_GT", "dbo.CheckStatItem")              # PI yang belum di-GT
 SP_GT_OUT = nama_sp("SP_GT_OUT", "dbo.gt_out")                    # semua GT, sama dengan query di Excel PI GT db
 PVR_TABEL_BOBOT = nama_sp("PVR_TABEL_BOBOT", "dbo.Bobot_PVR")     # kolom Kategori, Bobot
 OUTSTANDING_SP = nama_sp("OUTSTANDING_SP", "dbo.R_OUTSTANDING_ARAP")   # laporan Outstanding; SQL di backend/database/outstanding_sp.sql
@@ -145,8 +144,6 @@ TBS_HARI_SKALA = angka("TBS_HARI_SKALA", 14)                       # skala forec
 TBS_INTERVAL = float(teks("TBS_INTERVAL", "0.8"))                 # interval kepercayaan forecast
 TBS_UJI_MINGGU = angka("TBS_UJI_MINGGU", 12)
 TBS_UJI_MIN = angka("TBS_UJI_MIN", 4)                              # kurang dari ini, interval tidak ditampilkan
-# Sudah tidak dipakai; tetap divalidasi supaya .env lama tetap sah
-TBS_SIMULASI = teks("TBS_SIMULASI", "Turun 5%:0.95,Normal:1,Naik 10%:1.1")
 TBS_TOP_SUPPLIER = angka("TBS_TOP_SUPPLIER", 10)
 TBS_TOP_TIPE = angka("TBS_TOP_TIPE", 10)
 TBS_TOP_TIPE_HARGA = angka("TBS_TOP_TIPE_HARGA", 10)
@@ -167,21 +164,6 @@ TIKET_PENJUALAN_HARI_LALU = angka("TIKET_PENJUALAN_HARI_LALU", 31)  # ikut diamb
 TIKET_PENJUALAN_TOP = angka("TIKET_PENJUALAN_TOP", 10)             # baris peringkat produk dan pengangkut
 
 
-def _simulasi(teks_env):
-    hasil = []
-    for bagian in teks_env.split(","):
-        nama, _, nilai = bagian.rpartition(":")
-        try:
-            hasil.append((nama.strip(), float(nilai)))
-        except ValueError:
-            raise KonfigurasiSalah(f"TBS_SIMULASI harus seperti 'Turun 5%:0.95,Normal:1', tetapi ada {bagian!r}. Perbaiki di backend/.env.") from None
-    if not hasil or any(not n or v <= 0 for n, v in hasil):
-        raise KonfigurasiSalah(f"TBS_SIMULASI tidak sah: {teks_env!r}. Perbaiki di backend/.env.")
-    return hasil
-
-
-TBS_SIMULASI_DAFTAR = _simulasi(TBS_SIMULASI)
-
 # ---------- Akun dan role ----------
 
 # ---------- Batas laporan ----------
@@ -194,4 +176,3 @@ SIMPAN_PEKERJAAN_DETIK = angka("SIMPAN_PEKERJAAN_DETIK", 3600)
 # Lebih lama dari itu, sesi lain memuat ulang dari SQL. 0 = tiap sesi selalu memuat sendiri.
 DATA_SEGAR_MENIT = angka("DATA_SEGAR_MENIT", 15, minimum=0)
 MAKS_BARIS_EKSPOR = angka("MAKS_BARIS_EKSPOR", 100_000)   # batas berkas Excel sendiri 1.048.576 baris
-

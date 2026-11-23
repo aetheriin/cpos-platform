@@ -27,7 +27,7 @@
 {% elif kode_aktif %}{% set menu_aktif = kode_aktif %}
 {% else %}{% set menu_aktif = {'dashboard': 'DASHBOARD', 'kontrak': 'KONTRAK_DO',
                                'master': 'MASTER', 'blacklist': 'BLACKLIST', 'visitor': 'KUNJUNGAN',
-                               'kelebihan_do': 'KELEBIHAN_DO'1}.get(halaman) %}{% endif %}
+                               'kelebihan_do': 'KELEBIHAN_DO'}.get(halaman) %}{% endif %}
 <div class="app-shell">
 
     {% include "partials/layout/sidebar.html" %}

@@ -179,12 +179,12 @@ def _insight(p, ambil, menu, nama_menu, info_menu, saran_menu, dasbor=None):
     lingkup = f" {', '.join(p['perusahaan'])}" if p.get("perusahaan") else ""
     lap = kamus.SUMBER[sumber]["laporan"] if pakai_baris else None
     a = insight.AMBANG
-    catatan = ([f"Yang ditampilkan hanya yang melewati ambang: umur lebih dari {a['umur_lama']} hari, perubahan {a['ubah'] * 100:.0f}% atau lebih, "
+    catatan = ([f"Hanya hal yang cukup menonjol yang ditampilkan: umur lebih dari {a['umur_lama']} hari, perubahan {a['ubah'] * 100:.0f}% atau lebih, "
                 f"3 teratas memegang {a['penumpukan'] * 100:.0f}% atau lebih, atau {str(a['lambat']).replace('.', ',')} kali rata-rata."] if pakai_baris else [])
     if dari_dasbor:
-        catatan.append("Dihitung dari data laporan ini dengan periode bawaannya, jadi ikut berubah saat datanya diperbarui.")
+        catatan.append("Dihitung dari data laporan ini dengan periode bawaannya, jadi selalu mengikuti data terbaru.")
     if not poin:
-        teks = f"Di {nama_menu or 'menu ini'}{lingkup} tidak ada yang melewati ambang saat ini."
+        teks = f"Di {nama_menu or 'menu ini'}{lingkup} belum ada hal yang menonjol saat ini."
     else:
         teks = f"Yang perlu diperhatikan di {nama_menu or 'menu ini'}{lingkup}, dari yang paling penting:"
     saran = [x for x in saran_menu if x != kamus.INSIGHT_SARAN][:3]

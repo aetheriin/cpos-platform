@@ -148,9 +148,10 @@ def _kpi(laporan, awalan):
         if total_skor and total_dok:
             k = max(kat, key=lambda k: (k["skor"] / total_skor) / (k["pvr"] / total_dok))
             porsi_skor, porsi_dok = k["skor"] / total_skor, k["pvr"] / total_dok
-            if porsi_skor >= 0.2 and porsi_skor >= 3 * porsi_dok:
+            rendah = min(kat, key=lambda k: k["bobot"] or 0)
+            if porsi_skor >= 0.2 and porsi_skor >= 1.5 * porsi_dok:
                 hasil.append(_poin(f"{awalan}_bobot", "sedang", 50, {"kategori": k["nama"], "bobot": k["bobot"], "porsi_skor": porsi_skor,
-                                                                    "porsi_dok": porsi_dok}))
+                                                                    "porsi_dok": porsi_dok, "rendah": rendah["nama"], "bobot_rendah": rendah["bobot"]}))
         r = d.get("rekap") or {}
         orang, nilai, bulan = r.get("pembuat", []), r.get("nilai", []), r.get("bulan", [])
         total = sum(r.get("total_pembuat", []) or [0])
@@ -335,6 +336,12 @@ CEK = {
 }
 
 
+def _setara(d, dok):
+    if not d.get("bobot_rendah") or d["rendah"] == d["kategori"] or d["bobot"] < 2 * d["bobot_rendah"]:
+        return ""
+    return f" Satu {dok} {d['kategori']} bernilai sama dengan {_des(d['bobot'] / d['bobot_rendah'], 0)} {dok} {d['rendah']}."
+
+
 def _daftar(xs):
     return ", ".join(xs[:-1]) + f", dan {xs[-1]}" if len(xs) > 2 else " dan ".join(xs)
 
@@ -346,25 +353,26 @@ KALIMAT = {
                               f"PO yang selesai {_pct(d['selesai'])}" + (f", bulan lalu {_pct(d['selesai_lalu'])}." if d.get("selesai_lalu") else "."),
     "alur_pr_lambat": lambda d: f"Minggu {d['label']} ada {_bil(d['masuk'])} PR baru tapi hanya {_bil(d['keluar'])} PO dibuat.",
     "alur_po_lambat": lambda d: f"Minggu {d['label']} ada {_bil(d['masuk'])} PO baru tapi hanya {_bil(d['keluar'])} PI dibuat.",
-    "alur_pr_kategori": lambda d: (f"PR outstanding tanpa kategori naik dari {_bil(d['awal'])} ke {_bil(d['akhir'])} baris." if d["kategori"] == "(kosong)" else
-                                   f"Outstanding kategori {d['kategori']} naik dari {_bil(d['awal'])} ke {_bil(d['akhir'])} baris."),
-    "alur_po_kategori": lambda d: (f"PO outstanding tanpa kategori naik dari {_bil(d['awal'])} ke {_bil(d['akhir'])} baris." if d["kategori"] == "(kosong)" else
-                                   f"Outstanding kategori {d['kategori']} naik dari {_bil(d['awal'])} ke {_bil(d['akhir'])} baris."),
+    "alur_pr_kategori": lambda d: (f"PR outstanding tanpa kategori naik dari {_bil(d['awal'])} ke {_bil(d['akhir'])} barang." if d["kategori"] == "(kosong)" else
+                                   f"Outstanding kategori {d['kategori']} naik dari {_bil(d['awal'])} ke {_bil(d['akhir'])} barang."),
+    "alur_po_kategori": lambda d: (f"PO outstanding tanpa kategori naik dari {_bil(d['awal'])} ke {_bil(d['akhir'])} barang." if d["kategori"] == "(kosong)" else
+                                   f"Outstanding kategori {d['kategori']} naik dari {_bil(d['awal'])} ke {_bil(d['akhir'])} barang."),
     "spend_besar": lambda d: f"{_bil(d['po'])} PO di atas Rp 500 juta ({_pct(d['pct_po'])} dari jumlah PO) memegang {_pct(d['pct_nilai'])} nilai belanja.",
     "spend_kecil": lambda d: f"{_bil(d['po'])} PO ({_pct(d['pct_po'])}) bernilai di bawah Rp 5 juta, totalnya hanya {rp(d['nilai'])} "
                              f"({_pct(d['pct_nilai'])} dari nilai belanja).",
-    "spend_lonjak": lambda d: f"Nilai PO {d['bulan']} {rp(d['nilai'])}, {_des(d['kali'])} kali nilai tengah bulanan.",
+    "spend_lonjak": lambda d: f"Nilai PO {d['bulan']} {rp(d['nilai'])}, {_des(d['kali'])} kali bulan biasa.",
     "spend_tahun": lambda d: f"Jumlah PO {d['kini']} sampai bulan ini {_bil(d['a'])}, {_des(d['kali'])} kali periode yang sama {d['lalu']} ({_bil(d['b'])}).",
     "gt_tumpuk": lambda d: f"Barang yang sudah di-PI lebih dari {d['ambang']} hari tapi belum di-GT naik dari {_bil(d['awal'])} ({d['bulan_awal']}) "
-                           f"ke {_bil(d['akhir'])}. Di {d['lebih']} dari {d['bulan']} bulan, PI lebih banyak daripada GT.",
+                           f"ke {_bil(d['akhir'])}. " + ("Setiap bulan" if d['lebih'] == d['bulan'] else f"Di {d['lebih']} dari {d['bulan']} bulan")
+                           + ", jumlah PI lebih banyak daripada GT, jadi tumpukannya terus naik.",
     "gt_pembuat": lambda d: f"{d['nama']} membuat {_pct(d['porsi'])} GT ({_bil(d['jumlah'])} dari {_bil(d['total'])}).",
-    "gt_rute": lambda d: f"Rute {d['rute']} rata-rata {_des(d['rata'])} hari dari GT sampai diterima (nilai tengah {_des(d['median'])} hari, "
+    "gt_rute": lambda d: f"Rute {d['rute'].replace(' → ', ' ke ')} rata-rata {_des(d['rata'])} hari dari GT sampai diterima (separuhnya lebih dari {_des(d['median'])} hari, "
                          f"{_bil(d['gt'])} GT). Rute lain umumnya {_des(d['lain'])} hari.",
     "gt_belum_diterima": lambda d: d["teks"],
     "pvr_bobot": lambda d: f"Kategori {d['kategori']} (bobot {_des(d['bobot'])}) menyumbang {_pct(d['porsi_skor'])} skor dari hanya {_pct(d['porsi_dok'])} PVR. "
-                           f"Skor lebih ditentukan kategori daripada banyaknya kerja.",
+                           f"Skor lebih ditentukan kategori daripada banyaknya kerja." + _setara(d, "PVR"),
     "pv_bobot": lambda d: f"Kategori {d['kategori']} (bobot {_des(d['bobot'])}) menyumbang {_pct(d['porsi_skor'])} skor dari hanya {_pct(d['porsi_dok'])} PV. "
-                          f"Skor lebih ditentukan kategori daripada banyaknya kerja.",
+                          f"Skor lebih ditentukan kategori daripada banyaknya kerja." + _setara(d, "PV"),
     "pvr_satu_orang": lambda d: f"{d['nama']} memegang {_pct(d['porsi'])} dari total skor ({_des(d['skor'], 0)} poin).",
     "pv_satu_orang": lambda d: f"{d['nama']} memegang {_pct(d['porsi'])} dari total skor ({_des(d['skor'], 0)} poin).",
     "pvr_pindah": lambda d: f"Beban kerja berpindah: rata-rata skor bulanan {d['naik']} naik dari {_des(d['naik_dari'], 0)} ke {_des(d['naik_ke'], 0)}, "
@@ -451,6 +459,8 @@ TINDAKAN = {
     "po_out_pembuat": "Alihkan PO lama ini ke buyer yang aktif, atau tutup yang sudah tidak berlaku.",
     "po_supplier_lambat": "Bahas jadwal pengiriman dengan supplier ini, atau evaluasi suppliernya.",
     "pr_out_belum_setuju": "Kirim pengingat ke pemberi persetujuan.",
+    "pr_out_basi": "Tinjau bersama Purchasing dan peminta, lalu tutup PR yang sudah tidak dibutuhkan.",
+    "po_out_basi": "Tanyakan ke supplier apakah barang masih akan dikirim, kalau tidak tutup PO-nya.",
     "pr_out_pt": "Cek bersama perusahaan ini PR mana yang masih dibutuhkan.",
     "po_out_supplier": "Pantau jadwal pengiriman dari supplier ini.",
     "pi_belum_pvr": "Ajukan PVR untuk PI yang sudah lama.",

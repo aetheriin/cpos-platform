@@ -29,7 +29,6 @@ const TAB = [
   { kunci: 'outstanding', nama: 'Menunggu GT', ket: (h) => `Barang yang di-PI di HO untuk gudang lain dan belum dibuatkan GT per ${tglLengkap(h.periode.akhir)}. Yang paling lama di atas.` },
   { kunci: 'gt', nama: 'GT dibuat', ket: (h) => `Barang di GT yang dibuat ${tglLengkap(h.periode.mulai)} sampai ${tglLengkap(h.periode.akhir)}, yang terbaru di atas.` },
   { kunci: 'belum_diterima', nama: 'GT belum diterima', ket: (h) => `GT yang barangnya belum dicatat diterima di gudang tujuan per ${tglLengkap(h.periode.akhir)}. Yang paling lama di atas.` },
-  { kunci: 'usage', nama: 'Langsung usage', ket: (h) => `Barang PI HO untuk gudang lain yang langsung dipakai tanpa GT, dengan usage ${tglLengkap(h.periode.mulai)} sampai ${tglLengkap(h.periode.akhir)}. Nomor usage dan gudangnya ada di kolom kanan.` },
 ]
 
 const satu = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 })

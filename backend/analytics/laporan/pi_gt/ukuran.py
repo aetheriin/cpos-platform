@@ -20,12 +20,10 @@ def _durasi(seri):
 # ---------- Alur per periode. pi: baris yang punya PI. gt: baris GT (dengan atau tanpa PI). ----------
 
 def mask_outstanding(pi, t, sebelum=False):
-    """PI yang belum di-GT pada tanggal t (akhir hari t). sebelum=True: pada awal hari t (untuk outstanding awal).
-    Barang yang langsung di-usage tanpa GT selesai pada tanggal usage-nya."""
-    keluar = pi["gt_date"].fillna(pi["usage_date"]) if "usage_date" in pi else pi["gt_date"]
+    """PI yang belum di-GT pada tanggal t (akhir hari t). sebelum=True: pada awal hari t (untuk outstanding awal)."""
     if sebelum:
-        return (pi["pi_date"] < t) & (keluar.isna() | (keluar >= t))
-    return (pi["pi_date"] <= t) & (keluar.isna() | (keluar > t))
+        return (pi["pi_date"] < t) & (pi["gt_date"].isna() | (pi["gt_date"] >= t))
+    return (pi["pi_date"] <= t) & (pi["gt_date"].isna() | (pi["gt_date"] > t))
 
 
 def outstanding_awal(pi, mulai):
