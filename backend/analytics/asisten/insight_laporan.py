@@ -336,6 +336,33 @@ CEK = {
 }
 
 
+_BULAN = {"Jan": "Januari", "Feb": "Februari", "Mar": "Maret", "Apr": "April", "Mei": "Mei", "May": "Mei", "Jun": "Juni", "Jul": "Juli",
+          "Agu": "Agustus", "Agt": "Agustus", "Aug": "Agustus", "Sep": "September", "Okt": "Oktober", "Oct": "Oktober", "Nov": "November",
+          "Des": "Desember", "Dec": "Desember"}
+
+
+def _bulan(label):
+    """'Apr 26' -> 'April 2026'; label lain dibiarkan."""
+    b, _, t = str(label).partition(" ")
+    return f"{_BULAN.get(b, b)} {'20' + t if len(t) == 2 else t}".strip()
+
+
+def _minggu(label):
+    """'13-11 sd 19-11' -> '13 sampai 19 November'."""
+    import re
+    m = re.fullmatch(r"(\d{1,2})-(\d{1,2}) sd (\d{1,2})-(\d{1,2})", str(label).strip())
+    if not m:
+        return str(label).replace(" sd ", " sampai ")
+    a, ba, b, bb = m.groups()
+    bln = lambda x: ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober",
+                     "November", "Desember"][int(x) - 1]
+    return f"{int(a)} sampai {int(b)} {bln(bb)}" if ba == bb else f"{int(a)} {bln(ba)} sampai {int(b)} {bln(bb)}"
+
+
+def _ringan(x):
+    return "lebih ringan" if x < 0 else "lebih berat"
+
+
 def _setara(d, dok):
     if not d.get("bobot_rendah") or d["rendah"] == d["kategori"] or d["bobot"] < 2 * d["bobot_rendah"]:
         return ""
@@ -351,8 +378,8 @@ KALIMAT = {
                               f"PR yang selesai {_pct(d['selesai'])}" + (f", bulan lalu {_pct(d['selesai_lalu'])}." if d.get("selesai_lalu") else "."),
     "alur_po_naik": lambda d: f"PO outstanding naik {_pct(d['ubah'])} dalam periode ini ({_bil(d['awal'])} jadi {_bil(d['akhir'])}). "
                               f"PO yang selesai {_pct(d['selesai'])}" + (f", bulan lalu {_pct(d['selesai_lalu'])}." if d.get("selesai_lalu") else "."),
-    "alur_pr_lambat": lambda d: f"Minggu {d['label']} ada {_bil(d['masuk'])} PR baru tapi hanya {_bil(d['keluar'])} PO dibuat.",
-    "alur_po_lambat": lambda d: f"Minggu {d['label']} ada {_bil(d['masuk'])} PO baru tapi hanya {_bil(d['keluar'])} PI dibuat.",
+    "alur_pr_lambat": lambda d: f"Minggu {_minggu(d['label'])} ada {_bil(d['masuk'])} PR baru tapi hanya {_bil(d['keluar'])} PO dibuat.",
+    "alur_po_lambat": lambda d: f"Minggu {_minggu(d['label'])} ada {_bil(d['masuk'])} PO baru tapi hanya {_bil(d['keluar'])} PI dibuat.",
     "alur_pr_kategori": lambda d: (f"PR outstanding tanpa kategori naik dari {_bil(d['awal'])} ke {_bil(d['akhir'])} barang." if d["kategori"] == "(kosong)" else
                                    f"Outstanding kategori {d['kategori']} naik dari {_bil(d['awal'])} ke {_bil(d['akhir'])} barang."),
     "alur_po_kategori": lambda d: (f"PO outstanding tanpa kategori naik dari {_bil(d['awal'])} ke {_bil(d['akhir'])} barang." if d["kategori"] == "(kosong)" else
@@ -360,9 +387,9 @@ KALIMAT = {
     "spend_besar": lambda d: f"{_bil(d['po'])} PO di atas Rp 500 juta ({_pct(d['pct_po'])} dari jumlah PO) memegang {_pct(d['pct_nilai'])} nilai belanja.",
     "spend_kecil": lambda d: f"{_bil(d['po'])} PO ({_pct(d['pct_po'])}) bernilai di bawah Rp 5 juta, totalnya hanya {rp(d['nilai'])} "
                              f"({_pct(d['pct_nilai'])} dari nilai belanja).",
-    "spend_lonjak": lambda d: f"Nilai PO {d['bulan']} {rp(d['nilai'])}, {_des(d['kali'])} kali bulan biasa.",
+    "spend_lonjak": lambda d: f"Nilai PO {_bulan(d['bulan'])} {rp(d['nilai'])}, {_des(d['kali'])} kali bulan biasa.",
     "spend_tahun": lambda d: f"Jumlah PO {d['kini']} sampai bulan ini {_bil(d['a'])}, {_des(d['kali'])} kali periode yang sama {d['lalu']} ({_bil(d['b'])}).",
-    "gt_tumpuk": lambda d: f"Barang yang sudah di-PI lebih dari {d['ambang']} hari tapi belum di-GT naik dari {_bil(d['awal'])} ({d['bulan_awal']}) "
+    "gt_tumpuk": lambda d: f"Barang yang sudah di-PI lebih dari {d['ambang']} hari tapi belum di-GT naik dari {_bil(d['awal'])} ({_bulan(d['bulan_awal'])}) "
                            f"ke {_bil(d['akhir'])}. " + ("Setiap bulan" if d['lebih'] == d['bulan'] else f"Di {d['lebih']} dari {d['bulan']} bulan")
                            + ", jumlah PI lebih banyak daripada GT, jadi tumpukannya terus naik.",
     "gt_pembuat": lambda d: f"{d['nama']} membuat {_pct(d['porsi'])} GT ({_bil(d['jumlah'])} dari {_bil(d['total'])}).",
@@ -382,10 +409,10 @@ KALIMAT = {
     "pvr_tanpa_kategori": lambda d: f"{_bil(d['jumlah'])} PVR tanpa kategori tidak ikut dinilai.",
     "pv_tanpa_kategori": lambda d: f"{_bil(d['jumlah'])} PV tanpa kategori tidak ikut dinilai.",
     "wb_banyak": lambda d: f"{_pct(d['porsi'])} timbangan {d['jenis']} ditandai berisiko ({_bil(d['berisiko'])} dari {_bil(d['transaksi'])}), "
-                           f"rata-rata selisih tara {_bil(d['selisih'])} kg. Tanda sebanyak ini sulit ditindaklanjuti satu per satu.",
+                           f"rata-rata taranya {_bil(abs(d['selisih']))} kg {_ringan(d['selisih'])} dari pembandingnya. Tanda sebanyak ini sulit ditindaklanjuti satu per satu.",
     "wb_satu_mitra": lambda d: f"Di {d['jenis']}, {d['nama']} menyumbang {_pct(d['tara'] / d['tara_total'])} peringatan tara "
-                               f"({_bil(d['tara'])} dari {_bil(d['tara_total'])}); {_pct(d['persen'])} transaksinya ditandai.",
-    "wb_kendaraan": lambda d: f"Kendaraan {d['kendaraan']} rata-rata selisih tara {_bil(d['rata'])} kg dalam {_bil(d['jumlah'])} timbangan {d['jenis']}. "
+                               f"({_bil(d['tara'])} dari {_bil(d['tara_total'])}). {_pct(d['persen'])} transaksinya ditandai.",
+    "wb_kendaraan": lambda d: f"Kendaraan {d['kendaraan']} rata-rata taranya {_bil(abs(d['rata']))} kg {_ringan(d['rata'])} dari pembandingnya dalam {_bil(d['jumlah'])} timbangan {d['jenis']}. "
                               f"Ada {_bil(d['banyak'])} kendaraan dengan selisih lebih dari 3 ton.",
     "wb_durasi": lambda d: f"{d['nama']} paling sering timbang lebih dari 3 jam di {d['jenis']} ({_bil(d['durasi'])} kali).",
     "tk_pengangkut": lambda d: f"{d['nama']} mengangkut {_pct(d['persen'])} netto ({_ton(d['netto'])} dalam {_bil(d['rit'])} rit).",
@@ -398,7 +425,7 @@ KALIMAT = {
                            + (f", dan sudah naik {d['beruntun']} minggu berturut-turut." if d["beruntun"] >= 3 else ".")),
     "tbs_berhenti": lambda d: f"{_bil(d['jumlah'])} grup yang biasanya rutin tidak mengirim sama sekali minggu ini, antara lain "
                               + _daftar([f"{n} (biasanya {_ton(r)})" for n, r in d["grup"]]) + ".",
-    "tbs_turun": lambda d: f"{_bil(d['jumlah'])} grup turun di luar kebiasaan, antara lain " + _daftar([f"{n} ({_des(x, 0)}%)" for n, x in d["grup"]]) + ".",
+    "tbs_turun": lambda d: f"{_bil(d['jumlah'])} grup turun di luar kebiasaan, antara lain " + _daftar([f"{n} (turun {_des(abs(x), 0)}%)" for n, x in d["grup"]]) + ".",
     "tbs_penyumbang": lambda d: f"Kenaikan terbesar dari {d['nama']} ({d['comp']}): {_ton(d['nilai'])}, naik {_des(d['persen'], 0)}% dari biasanya.",
     "tbs_harga_volume": lambda d: f"Tonase {_ton(d['netto'])} ({_arah(d['un'])}), harga rata-rata Rp {_bil(d['harga'])}/kg ({_arah(d['uh'])}), "
                                   f"dibanding 30 hari sebelumnya.",
@@ -433,6 +460,12 @@ TINDAKAN = {
     "pv_bobot": "Tinjau ulang bobot kategori sebelum skor dipakai untuk menilai orang.",
     "pvr_pindah": "Bandingkan rata-rata per bulan aktif, bukan skor setahun, untuk orang yang baru masuk atau pindah tugas.",
     "pv_pindah": "Bandingkan rata-rata per bulan aktif, bukan skor setahun, untuk orang yang baru masuk atau pindah tugas.",
+    "pvr_satu_orang": "Lihat juga jumlah dokumen dan bulan aktifnya, karena skor tinggi bisa datang dari kategori berbobot besar.",
+    "pv_satu_orang": "Lihat juga jumlah dokumen dan bulan aktifnya, karena skor tinggi bisa datang dari kategori berbobot besar.",
+    "tk_pembeli": "Cari pembeli tambahan supaya tidak bergantung pada sedikit pembeli.",
+    "kas_konsentrasi": "Pantau jadwal pembayaran dari pembeli ini karena penerimaan sangat bergantung padanya.",
+    "tbs_penyumbang": "Pastikan mutu buah dari grup ini tetap terjaga saat kirimannya naik.",
+    "kas_saldo": "Sesuaikan jadwal pembayaran besar dengan hari saldo rendah.",
     "pvr_tanpa_kategori": "Lengkapi kategorinya supaya ikut dinilai.",
     "pv_tanpa_kategori": "Lengkapi kategorinya supaya ikut dinilai.",
     "wb_banyak": "Tinjau cara pembanding tara (misalnya tara yang umum per kendaraan dalam 90 hari) supaya yang ditandai tinggal daftar pendek.",
@@ -452,6 +485,7 @@ TINDAKAN = {
     "pi_tanpa_pvr": "Tetapkan kapan pembayaran boleh tanpa PVR, lalu periksa sampelnya.",
     "piutang_satu": "Pantau jatuh tempo customer ini lebih ketat.",
     "piutang_lama_mitra": "Prioritaskan penagihan customer ini.",
+    "hutang_tua": "Urutkan pembayaran dari yang paling lama, dan cek dokumen yang mungkin sudah dibayar tapi belum dicatat.",
     "hutang_setahun": "Rekonsiliasi atau bersihkan saldo lama ini.",
     "mitra_dua_arah": "Pertimbangkan kompensasi hutang dan piutang dengan persetujuan kedua pihak.",
     "hutang_tua_belum_pvr": "Ajukan PVR untuk hutang lama ini atau pastikan memang ditahan.",
