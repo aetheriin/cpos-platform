@@ -1,17 +1,11 @@
+import logging
+
 from flask import Blueprint, request, jsonify
-from utils.hak_akses import lihat, MENU_OPERASI
-from utils.area import area_data
 from flask_login import login_required, current_user
-from utils.db_utils import simpan_sortasi, get_history_umum, cari_transaksi_aktif
-from utils.hak_akses import izin
-from utils import alur
-
-
-def _tahap_ada(trx, kode):
-    """Tahap ini ada di alur tiket; tiket lama tanpa alur memakai kategori produk."""
-    if trx.id_alur:
-        return alur.punya_tahap(trx.id_alur, kode)
-    return trx.kategori == ("TBS" if kode == "SORTASI" else "PRODUK_PKS")
+from utils.hak_akses import lihat, MENU_OPERASI, izin
+from utils.area import area_data
+from utils.db_utils import get_history_umum
+from utils import db_ascend, db_ascend_split
 
 sortasi_bp = Blueprint('sortasi', __name__)
 
@@ -19,26 +13,77 @@ sortasi_bp = Blueprint('sortasi', __name__)
 @login_required
 @izin('FORM_SORTASI', 'tambah')
 def sortasi_simpan():
-    no_tiket = request.form.get("no_tiket")
+    no_tiket = (request.form.get("no_tiket") or "").strip()
     if not no_tiket:
-        return jsonify({"error": "Tiket belum dipilih"}), 400
-    trx = cari_transaksi_aktif(no_tiket=no_tiket)
-    if trx is None:
-        return jsonify({"error": "Tiket tidak ditemukan, sudah selesai, atau ditolak"}), 404
-    # Alur dinamis: sortasi saat tahapnya ditunggu (boleh diisi ulang selama tiket berjalan); tiket lama: setelah timbang 1
-    dinamis, pesan = alur.cek_tahap(no_tiket, "SORTASI", boleh_ulang=True)
-    if pesan:
-        return jsonify({"error": pesan}), 400
-    if not dinamis and not _tahap_ada(trx, "SORTASI"):
-        return jsonify({"error": "Sortasi tidak ada di alur tiket ini (lihat Admin › Alur Tiket)"}), 400
-    if not dinamis and trx.status_alur not in ('TIMBANG_1', 'TIMBANG_2'):
-        return jsonify({"error": "Sortasi dilakukan setelah timbang pertama"}), 400
-    v = {k: float(request.form.get(k) or 0) for k in ['mentah', 'busuk', 'tangkai', 'sampah', 'matang', 'brondolan']}
-    persen, kg = simpan_sortasi(no_tiket, v['mentah'], v['busuk'], v['tangkai'], v['sampah'],
-                                v['matang'], v['brondolan'], request.form.get("catatan", ""), current_user.id)
-    rincian = f"{kg} kg" if kg is not None else "kg dihitung dari netto saat timbang kedua"
-    return jsonify({"message": f"Sortasi berhasil disimpan. Potongan {persen}% ({rincian})",
-                    "total_persen_potongan": persen, "total_potongan_kg": kg}), 200
+        return jsonify({"error": "Tiket belum dipilih."}), 400
+
+    tiket = db_ascend.cari_tiket_ascend_berdasarkan_no_tiket(no_tiket)
+    if not tiket:
+        return jsonify({
+            "error": "Tiket Ascend tidak ditemukan atau sudah selesai."
+        }), 404
+
+    if (
+        tiket.get("ticket_type") != "TBSLuar"
+        or (tiket.get("produk") or "").strip().casefold() != "tbs"
+    ):
+        return jsonify({
+            "error": "Sortasi hanya tersedia untuk tiket TBS Luar produk TBS."
+        }), 400
+
+    berat = db_ascend.baca_berat_tiket_ascend(no_tiket)
+    if not berat or berat.get("berat_bruto") is None:
+        return jsonify({
+            "error": "Timbang pertama harus tersimpan sebelum sortasi."
+        }), 409
+
+    nilai = {
+        nama: request.form.get(nama) or 0
+        for nama in (
+            "mentah", "busuk", "tangkai",
+            "sampah", "matang", "brondolan",
+        )
+    }
+
+    try:
+        db_ascend_split.simpan_sortasi_tiket_ascend(
+            tiket["ticket_id"],
+            no_tiket,
+            nilai["mentah"],
+            nilai["busuk"],
+            nilai["tangkai"],
+            nilai["sampah"],
+            nilai["matang"],
+            nilai["brondolan"],
+            request.form.get("catatan", ""),
+            current_user.id,
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception:
+        logging.getLogger("weighbridge").exception(
+            "Gagal menyimpan sortasi tiket Ascend %s",
+            no_tiket,
+        )
+        return jsonify({
+            "error": "Sortasi gagal disimpan. Periksa statusnya sebelum mencoba lagi."
+        }), 503
+
+    total_persen = round(
+        float(nilai["mentah"])
+        + float(nilai["tangkai"])
+        + float(nilai["sampah"]),
+        2,
+    )
+
+    return jsonify({
+        "message": (
+            f"Sortasi tersimpan. Potongan {total_persen}% "
+            "akan dihitung dari Netto saat timbang terakhir."
+        ),
+        "total_persen_potongan": total_persen,
+        "total_potongan_kg": None,
+    }), 200
 
 @sortasi_bp.route("/api/history/sortasi")
 @login_required

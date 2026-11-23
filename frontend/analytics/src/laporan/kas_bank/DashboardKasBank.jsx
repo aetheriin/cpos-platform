@@ -36,7 +36,7 @@ function LawanTransaksi({ mitra, satuan, terpilih, onPilih }) {
         {[['keluar', 'Out'], ['masuk', 'In']].map(([k, nama]) => (
           <button key={k} type="button" role="radio" aria-checked={arah === k} onClick={() => setArah(k)}
             className={'rounded-md px-3 py-1 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ' +
-              (arah === k ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800')}>
+              (arah === k ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:text-slate-900')}>
             {nama}
           </button>
         ))}
@@ -180,7 +180,7 @@ function PilihBulan({ bulan, filter, onUbah }) {
   const i = bulan.indexOf(nilai)   // bulan terbaru lebih dulu
   const lama = i >= 0 ? bulan[i + 1] : undefined
   const baru = i > 0 ? bulan[i - 1] : undefined
-  const tombol = 'grid h-8 w-8 place-items-center text-slate-600 hover:bg-slate-100 disabled:text-slate-300 disabled:hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500'
+  const tombol = 'grid h-8 w-8 pointer-coarse:h-11 pointer-coarse:w-11 place-items-center text-slate-600 hover:bg-slate-100 disabled:text-slate-300 disabled:hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500'
   return (
     <div className="inline-flex items-stretch divide-x divide-slate-200 rounded-md border border-slate-300 bg-white">
       <button type="button" className={tombol + ' rounded-l-md'} disabled={!lama} onClick={() => pilih(lama)} aria-label="Bulan sebelumnya" title={lama && namaBulan(lama)}>
@@ -229,7 +229,7 @@ export default function DashboardKasBank({ dataId, onDataHilang }) {
         <KepalaLaporan judul="Bank Statement" data={data} aktif={aktif} onLepas={lepas} onReset={reset} panelTerbuka={panel} onTogglePanel={togglePanel} />
 
         {galat && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Laporan tidak bisa dimuat: {galat.message}</div>}
-        {!data && !galat && <MemuatLaporan teks="Memuat mutasi bank..." />}
+        {!data && !galat && <MemuatLaporan teks="Memuat mutasi bank…" />}
 
         {data && (
           <div className="flex flex-wrap items-center gap-3">

@@ -46,3 +46,8 @@ export function pasangLaporAktif() {
 export function keLoginCpos() {
   window.top.location.href = '/login'
 }
+
+// Akun yang ditolak Analytics kembali ke halaman awal CPOS miliknya (Super Admin ke /admin)
+export function keBerandaCpos() {
+  window.top.location.href = '/'
+}

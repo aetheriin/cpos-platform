@@ -43,11 +43,11 @@ function PengalihJenis({ jenis, jumlah, terpilih, onUbah }) {
       onClick={onClick}
       className={
         'flex items-baseline gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ' +
-        (aktif ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800')
+        (aktif ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:text-slate-900')
       }
     >
       {label}
-      {n != null && <span className={'text-xs tabular-nums ' + (aktif ? 'text-slate-500' : 'text-slate-400')}>{angka.format(n)}</span>}
+      {n != null && <span className={'text-xs tabular-nums ' + 'text-slate-600'}>{angka.format(n)}</span>}
     </button>
   )
   return (
@@ -102,11 +102,11 @@ export default function DashboardPalm({ dataId, onDataHilang }) {
   return (
     <div className="flex items-start gap-4">
       <div className="min-w-0 flex-1 space-y-4">
-        <KepalaLaporan judul="Weighbridge Fraud Early Detector" data={data} aktif={aktif} onLepas={lepas} onReset={reset} panelTerbuka={panel} onTogglePanel={togglePanel} />
+        <KepalaLaporan judul="Weighbridge Fraud Analysis" data={data} aktif={aktif} onLepas={lepas} onReset={reset} panelTerbuka={panel} onTogglePanel={togglePanel} />
         {data && <PengalihJenis jenis={data.pilihan.transaksi ?? KOSONG} jumlah={data.jumlah_jenis ?? {}} terpilih={filter.transaksi ?? KOSONG} onUbah={(v) => ubah({ transaksi: v, ...SEMBUNYI_PER_JENIS[v.length === 1 ? v[0] : ''] })} />}
 
         {galat && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Grafik tidak bisa dimuat: {galat.message}</div>}
-        {!data && !galat && <MemuatLaporan teks="Memuat grafik timbangan..." />}
+        {!data && !galat && <MemuatLaporan teks="Memuat grafik timbangan…" />}
 
         {data && (
           <div className={memuat ? 'space-y-4 opacity-60 transition-opacity' : 'space-y-4 transition-opacity'}>
@@ -120,37 +120,39 @@ export default function DashboardPalm({ dataId, onDataHilang }) {
                 info="transaksi dengan indikator WARNING"
               />
               <Kartu judul="Rata-rata Selisih Tara" nilai={`${angka2.format(kpi.rata_selisih_tara)} kg`} info="selisih tara aktual dari tara historis tertinggi kendaraannya" banding={bandingKpi(kpi.rata_selisih_tara, data.banding, (k) => k.rata_selisih_tara)} />
-              <Kartu judul="Rata-rata Potongan" nilai={`${angka2.format(kpi.rata_potongan)} kg`} info="potongan per transaksi" banding={bandingKpi(kpi.rata_potongan, data.banding, (k) => k.rata_potongan)} />
+              {/* Potongan (grading) biasanya hanya ada di pembelian TBS; di Penjualan yang nilainya nol kartu ini tidak berisi apa-apa */}
+              {!(jenisTerpilih.length === 1 && jenisTerpilih[0] === 'Penjualan' && !kpi.rata_potongan) && <Kartu judul="Rata-rata Potongan" nilai={`${angka2.format(kpi.rata_potongan)} kg`} info="potongan per transaksi" banding={bandingKpi(kpi.rata_potongan, data.banding, (k) => k.rata_potongan)} />}
             </GridKartu>
 
             <KisiGrafik>
               <Petak padat="lg:order-1 lg:col-span-8">
                 <KartuGrafik
                   judul="Tren Harian Transaksi Berisiko" perbesar
-                  petunjuk={tren.length > 0 ? `${tglLengkap(tren[0].hari)} sampai ${tglLengkap(tren.at(-1).hari)}` : null}
+                  petunjuk={tren.length > 0 ? `${tglLengkap(tren[0].hari)} sampai ${tglLengkap(tren.at(-1).hari)}. Klik tanggal untuk memfilter.` : null}
                 >
                   <TrenHarian data={tren} indikator={data.indikator} terpilih={terpilih('tanggal')} onPilih={pilih.tanggal} />
                 </KartuGrafik>
               </Petak>
 
               <Petak panjang="md:col-span-10 lg:col-span-4" padat="lg:order-2 lg:col-span-4">
-                <KartuGrafik judul="Indikator Risiko">
+                <KartuGrafik judul="Indikator Risiko" petunjuk="Jumlah transaksi tiap indikator risiko. Klik indikator untuk memfilter.">
                   <BatangRisiko data={data.risiko} terpilih={terpilih('risiko')} onPilih={pilih.risiko} />
                 </KartuGrafik>
               </Petak>
               <Petak panjang="md:col-span-10 lg:col-span-6" padat="lg:order-3 lg:col-span-6">
-                <KartuGrafik judul="Selisih Tara per Kendaraan" petunjuk="Rata-rata selisih dari tara historis tertinggi, yang paling menyimpang lebih dulu">
+                <KartuGrafik judul="Selisih Tara per Kendaraan" petunjuk="Rata-rata selisih dari tara historis tertinggi, yang paling menyimpang lebih dulu. Klik kendaraan untuk memfilter.">
                   <BatangKendaraan data={data.tara_kendaraan} terpilih={terpilih('kendaraan')} onPilih={pilih.kendaraan} />
                 </KartuGrafik>
               </Petak>
 
               <Petak panjang="md:col-span-10 lg:col-span-4" padat="lg:order-5 lg:col-span-5">
-                <KartuGrafik judul="Pelanggar Berulang" petunjuk="WARNING terbanyak; persentase menunjukkan seberapa sering dari semua transaksinya">
+                <KartuGrafik judul="Pelanggar Berulang" petunjuk="WARNING terbanyak; persentase menunjukkan seberapa sering dari semua transaksinya. Klik nama untuk memfilter.">
                   <PelanggarBerulang data={data.pelanggar} terpilih={pelanggarTerpilih} onPilih={pilih.pelanggar} mitra={mitraPelanggar} />
                 </KartuGrafik>
               </Petak>
               <Petak panjang="md:col-span-10 lg:col-span-6" padat="lg:order-6 lg:col-span-7">
-                <KartuGrafik judul={mitra === 'customer' ? 'Indikator Risiko per Customer' : 'Indikator Risiko per Supplier'}>
+                <KartuGrafik judul={mitra === 'customer' ? 'Indikator Risiko per Customer' : 'Indikator Risiko per Supplier'}
+                  petunjuk={`Transaksi berisiko tiap ${mitra}, dipecah per indikator. Klik batang untuk memfilter ${mitra} dan indikatornya.`}>
                   <BatangRisikoSupplier
                     risiko_supplier={data.risiko_supplier}
                     indikator={data.indikator}
@@ -166,7 +168,7 @@ export default function DashboardPalm({ dataId, onDataHilang }) {
 
               {/* Urutan padat: grafik berpasangan dengan grafik (kendaraan + sebaran tara), daftar dengan daftar (pelanggar + supplier), peta operator paling bawah */}
               <Petak padat="lg:order-7 lg:col-span-12">
-                <KartuGrafik judul="Operator per Jam Masuk" petunjuk="Angka: transaksi WARNING. Makin pekat, makin tinggi persentase berisiko pada jam itu">
+                <KartuGrafik judul="Operator per Jam Masuk" petunjuk="Angka: transaksi WARNING. Makin pekat, makin tinggi persentase berisiko pada jam itu. Klik sel, operator, atau jam untuk memfilter.">
                   <PetaOperatorJam
                     data={data.operator_jam}
                     operatorTerpilih={terpilih('operator')}
@@ -179,7 +181,7 @@ export default function DashboardPalm({ dataId, onDataHilang }) {
               </Petak>
 
               <Petak padat="lg:order-4 lg:col-span-6">
-                <KartuGrafik judul="Durasi Timbang vs Selisih Tara" perbesar petunjuk="Satu titik satu transaksi. Garis putus-putus: ambang WARNING">
+                <KartuGrafik judul="Durasi Timbang vs Selisih Tara" perbesar petunjuk="Satu titik satu transaksi. Garis putus-putus: ambang WARNING. Klik titik untuk memfilter tiket itu.">
                   <SebaranTara
                     sebaran={data.sebaran}
                     indikator={data.indikator}

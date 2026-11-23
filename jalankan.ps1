@@ -10,6 +10,8 @@ $PortAnalytics = 8001
 $PortDeteksi = 8000
 $JalankanDeteksi = $false
 New-Item -ItemType Directory -Force $log | Out-Null
+# Cache Python (.pyc) disimpan di PC ini, bukan di __pycache__ folder bersama: tiap PC punya versi Python sendiri
+$env:PYTHONPYCACHEPREFIX = Join-Path $lokal 'pycache'
 $Host.UI.RawUI.WindowTitle = 'CPOS Platform'
 
 function Cari-Python {

@@ -8,7 +8,7 @@ const satu = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 1, maximumF
 // Garis kecil harga harian. Skala per baris (min..maks tipe itu) supaya naik-turunnya terlihat; hari tanpa pembelian memutus garis.
 function Garis({ harga, warna }) {
   const nilai = harga.map((h) => h.harga).filter((v) => v != null)
-  if (nilai.length === 0) return <span className="text-xs text-slate-400">tidak ada pembelian</span>
+  if (nilai.length === 0) return <span className="text-xs text-slate-500">tidak ada pembelian</span>
   const min = Math.min(...nilai), maks = Math.max(...nilai), rentang = maks - min || 1
   const x = (i) => (harga.length > 1 ? (i / (harga.length - 1)) * 100 : 50)
   const y = (v) => 26 - ((v - min) / rentang) * 22

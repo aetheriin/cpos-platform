@@ -4,6 +4,7 @@
 !**/.env.example
 !**/.env.contoh
 **/__pycache__/
+**/.pytest_cache/
 **/venv/
 **/.venv/
 backend/cpos/logs/

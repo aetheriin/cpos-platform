@@ -19,7 +19,7 @@
     tombol.addEventListener('click', () => {
         tombol.disabled = true;
         tombol.innerHTML =
-            '<i class="fa-solid fa-rotate fa-spin"></i> Memuat...';
+            '<i class="fa-solid fa-rotate fa-spin"></i> Memuat…';
 
         const url = new URL(window.location.href);
         url.searchParams.set('muat_ulang', '1');

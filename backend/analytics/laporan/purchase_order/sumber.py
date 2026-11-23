@@ -1,4 +1,4 @@
-"""Laporan Purchase Orders: tiap baris PO beserta PI yang dibuat darinya. Data dari SP yang sama dengan laporan PO & PI
+"""Laporan Purchase Order: tiap baris PO beserta PI yang dibuat darinya. Data dari SP yang sama dengan laporan PO & PI
 (po_pi/sumber.py: ambil_data, bersihkan) ditambah harga PO (harga_po.py), tanpa periode pembanding. Di sini dijadikan satu baris per
 baris PO dan diberi status tindak lanjut."""
 from concurrent.futures import ThreadPoolExecutor

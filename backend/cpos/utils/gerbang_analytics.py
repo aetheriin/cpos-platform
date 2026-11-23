@@ -10,6 +10,7 @@ import json
 import mimetypes
 import os
 from pathlib import Path
+from urllib.parse import quote
 
 import requests
 
@@ -27,6 +28,11 @@ _sesi = requests.Session()
 log = logging.getLogger("weighbridge")
 # Pesan untuk pengguna; penyebab teknisnya (backend mati, frontend belum dibangun) dicatat di log untuk IT
 PESAN_TIDAK_BISA = "Laporan sedang tidak bisa dibuka. Coba lagi beberapa saat. Bila masih sama, hubungi IT."
+# /analytics tidak melewati header keamanan CPOS (utils/keamanan.py), jadi dipasang di sini. Script hanya dari file sendiri;
+# frame-ancestors 'self' karena laporan dibuka dalam bingkai halaman CPOS (/an/<id>).
+CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; "
+       "connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'")
+HEADER_AMAN = [("X-Content-Type-Options", "nosniff"), ("X-Frame-Options", "SAMEORIGIN"), ("Referrer-Policy", "same-origin")]
 
 
 def pasang(app_cpos):
@@ -46,6 +52,11 @@ def pasang(app_cpos):
 
 
 def _teruskan(environ, start_response, path):
+    # /analytics/api/../docs akan dirapikan jadi /docs di backend, jadi alamat dengan . atau .. ditolak di sini
+    if any(bagian in (".", "..") for bagian in path.split("/")):
+        pesan = json.dumps({"detail": "Tidak ditemukan"}).encode()
+        start_response("404 Not Found", [("Content-Type", "application/json"), ("Content-Length", str(len(pesan)))] + HEADER_AMAN)
+        return [pesan]
     header = {k[5:].replace("_", "-").title(): v for k, v in environ.items() if k.startswith("HTTP_")}
     for k in ("CONTENT_TYPE", "CONTENT_LENGTH"):
         if environ.get(k):
@@ -56,7 +67,8 @@ def _teruskan(environ, start_response, path):
     header["X-Forwarded-For"] = _ip_browser(environ)
     panjang = int(environ.get("CONTENT_LENGTH") or 0)
     isi = environ["wsgi.input"].read(panjang) if panjang else None
-    url = BACKEND + path + ("?" + environ["QUERY_STRING"] if environ.get("QUERY_STRING") else "")
+    # PATH_INFO sudah di-decode; dikodekan ulang supaya %3F atau %23 di alamat tidak berubah jadi awal query
+    url = BACKEND + quote(path.encode("latin-1"), safe="/") + ("?" + environ["QUERY_STRING"] if environ.get("QUERY_STRING") else "")
     try:
         r = _sesi.request(environ["REQUEST_METHOD"], url, headers=header, data=isi, stream=True, allow_redirects=False,
                           timeout=(5, WAKTU_TUNGGU))
@@ -65,7 +77,7 @@ def _teruskan(environ, start_response, path):
         pesan = json.dumps({"detail": PESAN_TIDAK_BISA}).encode()
         start_response("502 Bad Gateway", [("Content-Type", "application/json"), ("Content-Length", str(len(pesan)))])
         return [pesan]
-    start_response(f"{r.status_code} {r.reason}", [(k, v) for k, v in r.raw.headers.items() if k.lower() not in _LEWATI])
+    start_response(f"{r.status_code} {r.reason}", [(k, v) for k, v in r.raw.headers.items() if k.lower() not in _LEWATI] + HEADER_AMAN)
     return _alirkan(r)
 
 
@@ -100,5 +112,5 @@ def _berkas(start_response, sisa):
     simpan = "public, max-age=31536000, immutable" if "assets" in berkas.parts else "no-cache"
     data = berkas.read_bytes()
     start_response("200 OK", [("Content-Type", jenis), ("Content-Length", str(len(data))), ("Cache-Control", simpan),
-                              ("X-Frame-Options", "SAMEORIGIN"), ("X-Content-Type-Options", "nosniff")])
+                              ("Content-Security-Policy", CSP)] + HEADER_AMAN)
     return [data]

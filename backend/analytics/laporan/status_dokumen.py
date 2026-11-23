@@ -1,5 +1,5 @@
 """Kerangka laporan "status tindak lanjut dokumen" (model laporan Purchase Invoice): satu baris per baris dokumen, kartu ringkasan, dan
-tabel per status. Dipakai laporan Purchase Request (PR -> PO) dan Purchase Orders (PO -> PI).
+tabel per status. Dipakai laporan Purchase Request (PR -> PO) dan Purchase Order (PO -> PI).
 
 Tiap laporan cukup menyebut kolom tanggal dokumen, urutan status, tab tabel (status yang masuk, urutan bawaan, kolom), dan fungsi kartu."""
 from dataclasses import dataclass

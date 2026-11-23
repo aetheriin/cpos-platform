@@ -20,9 +20,26 @@ function setUrlParam(key, value) {
 // Layar lebar: menu samping disembunyikan / ditampilkan. Layar tablet (< 1280px): laci di atas isi (CSS .sidebar-buka).
 const LAYAR_TABLET = window.matchMedia('(max-width: 1279px)');
 
+// Menu yang tertutup (laci di tablet, atau disembunyikan di layar lebar) dilewati Tab dan pembaca layar
+function aturSidebarTertutup() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    const tutup = LAYAR_TABLET.matches ? !sidebar.classList.contains('sidebar-buka') : sidebar.classList.contains('sidebar-collapsed');
+    if (tutup && sidebar.contains(document.activeElement)) document.querySelector('.topbar [data-on-click="toggleSidebar"]')?.focus();
+    sidebar.inert = tutup;
+    if (!tutup && LAYAR_TABLET.matches && document.activeElement?.closest('.topbar')) sidebar.querySelector('a[href], button')?.focus();
+}
+document.addEventListener('DOMContentLoaded', aturSidebarTertutup);
+LAYAR_TABLET.addEventListener('change', aturSidebarTertutup);
+// Laci tablet tertutup dengan Esc
+document.addEventListener('keydown', e => {
+    const sidebar = document.getElementById('sidebar');
+    if (e.key === 'Escape' && !e.defaultPrevented && LAYAR_TABLET.matches && sidebar?.classList.contains('sidebar-buka')) toggleSidebar();
+});
+
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
-    if (!LAYAR_TABLET.matches) { sidebar.classList.toggle('sidebar-collapsed'); return; }
+    if (!LAYAR_TABLET.matches) { sidebar.classList.toggle('sidebar-collapsed'); aturSidebarTertutup(); return; }
     const buka = !sidebar.classList.contains('sidebar-buka');
     sidebar.classList.toggle('sidebar-buka', buka);
     let latar = document.getElementById('sidebarLatar');
@@ -33,6 +50,7 @@ function toggleSidebar() {
         latar.addEventListener('click', toggleSidebar);
         sidebar.insertAdjacentElement('afterend', latar);
     } else if (!buka && latar) latar.remove();
+    aturSidebarTertutup();
 }
 
 // Sidebar: menu Lv2 dropdown (punya bagian Lv3) yang dibuka / ditutup diingat di browser ini.

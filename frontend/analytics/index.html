@@ -6,14 +6,8 @@
     <link rel="stylesheet" href="/fonts/fonts.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dashboard Analytics</title>
-    <script>
-      try {
-        // Bawaan sama dengan CPOS (terang), bukan tema browser, supaya isi laporan tidak berbeda dari sidebar CPOS
-        document.documentElement.dataset.tema = localStorage.getItem('tema') === 'gelap' ? 'gelap' : 'terang'
-      } catch (e) {
-        document.documentElement.dataset.tema = 'terang'
-      }
-    </script>
+    <!-- Tema dipasang sebelum halaman tampil. File sendiri, karena halaman Analytics tidak menjalankan script di dalam HTML -->
+    <script src="/tema.js"></script>
   </head>
   <body>
     <div id="root"></div>

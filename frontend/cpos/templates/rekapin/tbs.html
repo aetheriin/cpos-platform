@@ -13,7 +13,7 @@
 {% endif %}
 {% endblock %}
 {% block tab_content %}
-{% set periode_teks = tgl(awal) if lap.periode == 'daily' else tgl(awal) ~ ' — ' ~ tgl(akhir) %}
+{% set periode_teks = tgl(awal) if lap.periode == 'daily' else tgl(awal) ~ ' s/d ' ~ tgl(akhir) %}
 <form method="get" class="filter-bar">
   {% if lap.periode != 'daily' %}<div><label class="field-label" for="tbsCompany">Perusahaan</label>
     <select id="tbsCompany" name="company" class="input-field w-64" required>{% for c in company %}<option value="{{ c.id_company }}"{% if c.id_company == pilih %} selected{% endif %}>{{ c.id_company }} · {{ c.nama }}</option>{% endfor %}</select></div>
@@ -84,7 +84,7 @@
         {% else %}
           {% for k in tb.headers %}{% set v = row.get(k) %}
           {% if k|upper == 'ATTENSI' %}
-          <td class="text-center">{% if v %}<span class="badge-status {{ 'bg-emerald-100 text-emerald-700' if v|string|upper|trim == 'NAIK' else ('bg-red-100 text-red-700' if v|string|upper|trim == 'TURUN' else 'bg-slate-200 text-slate-600') }}">{{ v }}</span>{% else %}—{% endif %}</td>
+          <td class="text-center">{% if v %}<span class="badge-status {{ 'bg-emerald-100 text-emerald-700' if v|string|upper|trim == 'NAIK' else ('bg-red-100 text-red-700' if v|string|upper|trim == 'TURUN' else 'bg-slate-200 text-slate-600') }}">{{ v }}</span>{% else %}-{% endif %}</td>
           {% else %}
           <td class="{{ 'tbs-angka' if k in tb.angka else ('whitespace-nowrap' if jenis == 'weekly') }}">{{ tgl(nilai(v, k, row, tb.kind)) }}</td>
           {% endif %}

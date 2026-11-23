@@ -3,7 +3,7 @@
 <div class="section-box">
     {% call section_header('daftar-menu', 'Susunan Menu') %}
     <div class="flex items-center gap-2" data-henti-klik>
-        <input type="search" id="cariMenuKelola" class="input-field py-1.5 w-56" placeholder="Cari menu atau kode..." data-on-input="tampilMenuKelola">
+        <input type="search" id="cariMenuKelola" aria-label="Cari menu" class="input-field py-1.5 w-56" placeholder="Cari menu atau kode..." data-on-input="tampilMenuKelola">
         <button type="button" class="btn-secondary py-1.5" data-on-click="muatUlang" data-arg="$el|muatMenuKelola" title="Muat ulang"><i class="fa-solid fa-rotate"></i></button>
         <button type="button" class="btn-primary py-1.5" data-on-click="bukaMenuKelola"><i class="fa-solid fa-plus mr-1"></i> Tambah Menu</button>
     </div>

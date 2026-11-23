@@ -30,7 +30,7 @@ function DurasiBatang({ data, terpilih = [], onPilih, kosong }) {
                 <span className="flex items-baseline justify-between gap-2">
                   <span className="min-w-0 truncate">
                     <span className={aktif ? 'font-semibold text-slate-900' : 'text-slate-700'}>{d.nama}</span>
-                    <span className="ml-1.5 text-slate-400">{angka.format(d.gt)} GT</span>
+                    <span className="ml-1.5 text-slate-500">{angka.format(d.gt)} GT</span>
                   </span>
                   <span className="shrink-0 tabular-nums text-slate-600">
                     rata-rata {satu.format(d.rata)} <span className="text-slate-500">· nilai tengah {satu.format(d.median)} hari</span>

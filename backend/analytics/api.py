@@ -86,7 +86,8 @@ async def _siklus_hidup(_app):
         penyapu.cancel()
 
 
-app = FastAPI(title="Dashboard API", lifespan=_siklus_hidup)
+# Tanpa /docs, /redoc, /openapi.json: peta API tidak boleh terbuka untuk yang belum login
+app = FastAPI(title="Dashboard API", lifespan=_siklus_hidup, docs_url=None, redoc_url=None, openapi_url=None)
 @app.middleware("http")
 async def tanpa_cache(request, call_next):
     """Jawaban /api/ tidak boleh tertinggal di cache perangkat setelah keluar."""
@@ -112,6 +113,11 @@ def pengguna_saat_ini(request: Request = None):
         raise HTTPException(503, "CPOS tidak dapat dihubungi untuk memeriksa login. Coba lagi sebentar atau hubungi administrator.")
     if not data:
         raise HTTPException(401, "Sesi CPOS berakhir. Silakan masuk lagi di CPOS.")
+    if "_ditolak" in data:
+        if data["_ditolak"] == "KHUSUS_ADMIN":
+            raise HTTPException(403, "Akun Super Admin hanya untuk mengelola sistem, jadi tidak membuka laporan. "
+                                     "Masuk dengan akun yang punya akses laporan.")
+        raise HTTPException(403, data["_pesan"] or "Akun ini tidak bisa membuka laporan Analytics saat ini.")
     pemilik = f"cpos:{data.get('sid') or data['username']}"
     _cpos_terakhir[pemilik] = time.monotonic()
     company = data.get("company")
@@ -423,7 +429,7 @@ _LABEL_FILTER = {"perusahaan": "Perusahaan", "kategori": "Kategori", "buyer": "B
 def _tanggal(teks):
     """'2026-10-15' -> '15/10/2026'; teks lain apa adanya."""
     try:
-        return date.fromisoformat(str(teks)[:10]).strftime("%d/%m/%Y")
+        return date.fromisoformat(str(teks)[:10]).strftime("%d-%m-%Y")
     except ValueError:
         return str(teks)
 
@@ -464,7 +470,7 @@ def ekspor_detail(
         ("Laporan", lap.nama),
         ("Tabel", hasil.get("judul") or jenis),
         ("Data tanggal", f"{_tanggal(ds.mulai)} s/d {_tanggal(ds.akhir)}"),
-        ("Dimuat pada", ds.dimuat_pada.strftime("%d/%m/%Y %H:%M")),
+        ("Dimuat pada", ds.dimuat_pada.strftime("%d-%m-%Y %H:%M")),
         ("Jendela tabel", f"{_tanggal(periode['mulai'])} s/d {_tanggal(periode['akhir'])}" if periode else None),
         ("Filter tanggal", f"{_tanggal(dari)} s/d {_tanggal(sampai)}" if dari else None),
         *[(label.get(n, n), ", ".join(v)) for n, v in f.items()],
@@ -475,7 +481,7 @@ def ekspor_detail(
         ("Baris sebelum pencarian", hasil["total_semua"] if hasil.get("cari") else None),
         ("Catatan", f"Dibatasi {ekspor.MAKS_BARIS:,} baris dari {total:,} baris yang cocok. Persempit dengan filter atau pencarian." if total > len(baris) else None),
         ("Diekspor oleh", f"{user['nama']} ({user['username']})"),
-        ("Diekspor pada", datetime.now().strftime("%d/%m/%Y %H:%M")),
+        ("Diekspor pada", datetime.now().strftime("%d-%m-%Y %H:%M")),
     ]
     if lap.id == "cash_flow" and jenis == "rekap_giro":
         awal, akhir = periode["mulai"][:7].replace("-", ""), periode["akhir"][:7].replace("-", "")

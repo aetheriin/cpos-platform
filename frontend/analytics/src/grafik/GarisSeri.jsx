@@ -2,6 +2,7 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Too
 import { angka, barisMinggu, BATAS_PADAT_KECIL, jedaLabel } from '../lib/data'
 import TickMinggu from './TickMinggu'
 import { ANIMASI, DURASI_ANIMASI } from './animasi'
+import { Kosong } from '../komponen/Keadaan'
 
 // Memakai nama prop 'warna' karena Recharts menimpa prop 'fill'.
 function TitikSeri({ cx, cy, payload, warna, redup, terpilih, onKlik }) {
@@ -31,6 +32,7 @@ export default function GarisSeri({ mingguan, seri, warnaSeri, terpilihSeri = []
   })
   const padat = baris.length > BATAS_PADAT_KECIL
   const mingguTerpilih = minggu != null ? baris[minggu] : null
+  if (baris.length === 0 || seri.length === 0) return <Kosong teks="Tidak ada dokumen pada periode dan filter ini" />
 
   return (
     <div>

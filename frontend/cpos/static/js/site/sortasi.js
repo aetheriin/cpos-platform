@@ -10,7 +10,7 @@ window.addEventListener('platLookup', (e) => {
     hitungPotongan();
     if (data.status === 'ADA_TIKET' && tiketPunyaTahap(data, 'SORTASI')) {
         noTiketSortasiAktif = data.no_tiket;
-        ambilJson(`/api/timbang/data/${data.no_tiket}`).then(tb => {
+        ambilJson(`/api/timbang/data/${data.no_tiket}?sumber=ASCEND`).then(tb => {
             if (tb.error) { Notif.gagal(tb.error); return; }
             // Potongan dihitung dari netto (berat buah saja, tanpa truk)
             beratAcuanSortasi = tb.berat_netto;

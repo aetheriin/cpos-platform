@@ -281,7 +281,7 @@ function aturAliasBlacklist() {
 
 async function muatJalurBlacklist(kategori) {
     const el = document.getElementById('blJalur');
-    el.textContent = 'Memuat...';
+    el.textContent = 'Memuat…';
     const data = await ambilJson(`/api/blacklist/jalur?jenis=BLACKLIST_TAMBAH&kategori=${encodeURIComponent(kategori || '')}`);
     if (data.error) { el.textContent = data.error; return; }
     el.textContent = data.tahap.length ? data.tahap.map((n, i) => `${i + 1}. ${n}`).join('  →  ')

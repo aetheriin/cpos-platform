@@ -19,7 +19,7 @@ export default function KepalaLaporan({ judul, data, aktif, onLepas, onReset, pa
           {data && (
             <p className="text-sm text-slate-500">
               {rentangTgl(data.periode.mulai, data.periode.akhir)}
-              {data.banding && <span className="text-slate-400"> · dibanding {rentangTgl(data.banding.mulai, data.banding.akhir)}</span>}
+              {data.banding && <span> · dibanding {rentangTgl(data.banding.mulai, data.banding.akhir)}</span>}
             </p>
           )}
         </div>
@@ -34,7 +34,7 @@ export default function KepalaLaporan({ judul, data, aktif, onLepas, onReset, pa
               key={`${jenis}:${nilai ?? ''}`}
               type="button"
               aria-label={`Lepas filter ${teks}`}
-              className="max-w-full truncate rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs hover:bg-slate-100"
+              className="max-w-full truncate rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs hover:bg-slate-100 pointer-coarse:min-h-11"
               onClick={() => onLepas(jenis, nilai)}
             >
               {teks} ×

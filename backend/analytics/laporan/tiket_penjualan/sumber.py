@@ -2,10 +2,12 @@
 
 SP membaca PALM_Tickets tiap perusahaan lewat server tertaut (tabel company). Nama pengangkutan adalah kolom Contractor di tiket (isian
 "Nama Pengangkutan" di layar timbangan Ascend). Tiket split diwakili pecahannya oleh SP (Nomor DO hanya ada di pecahan); induknya tidak ikut."""
+import logging
 import re
 from datetime import date, timedelta
 
 import pandas as pd
+import pyodbc
 
 from inti import konfigurasi
 from inti.db import get_connection
@@ -13,6 +15,7 @@ from inti.nama import seragam
 from inti.perusahaan import daftar_perusahaan
 from inti.sp import per_perusahaan
 
+log = logging.getLogger(__name__)
 SP_NAME = konfigurasi.SP_TIKET_PENJUALAN
 SUMBER = konfigurasi.SUMBER_TIKET_PENJUALAN
 
@@ -66,9 +69,38 @@ def muat(mulai, akhir, kendali=None):
     raw = ambil_data(awal, akhir, kendali=kendali)
     if kendali:
         kendali.periksa()
-    d = bersihkan(raw)
+    d = pakai_isian(bersihkan(raw), awal, akhir)
     d["lalu"] = d["tgl"] < pd.Timestamp(mulai)
     return d, {"baris_sp": int((~d["lalu"]).sum())}
+
+
+def pakai_isian(d, mulai, akhir):
+    """Netto sumber dari form Netto Sumber di CPOS (dbo.NettoSumberIsian, isian terakhir per tiket) menggantikan angka Ascend.
+    Tabel belum dibuat (029_netto_sumber.sql) -> angka Ascend apa adanya."""
+    if d.empty:
+        return d
+    tepi = timedelta(days=7)
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("""SELECT RTRIM(i.CompID), RTRIM(i.TicketNo), i.NettoSumber FROM dbo.NettoSumberIsian i
+                       WHERE i.TicketType = 'JUAL' AND i.TicketDate BETWEEN ? AND ?
+                         AND i.EntryID = (SELECT MAX(x.EntryID) FROM dbo.NettoSumberIsian x
+                                          WHERE x.CompID = i.CompID AND x.TicketType = i.TicketType AND x.TicketNo = i.TicketNo)""",
+                    date.fromisoformat(str(mulai)[:10]) - tepi, date.fromisoformat(str(akhir)[:10]) + tepi)
+        isian = {(c, t): float(n) for c, t, n in cur.fetchall() if n is not None}
+    except pyodbc.Error as e:
+        if "nettosumberisian" not in str(e).casefold():
+            raise
+        log.warning("Tabel dbo.NettoSumberIsian belum ada; netto sumber Tiket Penjualan memakai angka Ascend")
+        return d
+    finally:
+        conn.close()
+    if isian:
+        nilai = pd.Series([isian.get(k) for k in zip(d["comp"], d["tiket"])], index=d.index, dtype=float)
+        ada = nilai.notna()
+        d.loc[ada, "netto_sumber"] = nilai[ada]
+    return d
 
 
 def bersihkan(raw):

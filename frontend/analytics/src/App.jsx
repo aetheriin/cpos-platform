@@ -5,7 +5,7 @@ import KembaliKeAtas from './komponen/KembaliKeAtas'
 import TandaMemuat from './komponen/TandaMemuat'
 import { IkonBulan, IkonKunci, IkonMatahari, IkonMenu } from './komponen/Ikon'
 import Sidebar from './komponen/Sidebar'
-import { keLoginCpos, SEMATAN } from './lib/cpos'
+import { keBerandaCpos, keLoginCpos, SEMATAN } from './lib/cpos'
 import { hariIni, salam } from './lib/data'
 import { idDariAlamat, pindahAlamat } from './lib/rute'
 import { useTema } from './lib/tema'
@@ -38,6 +38,7 @@ export default function App() {
   const [pengguna, setPengguna] = useState(null)
   const [cek, setCek] = useState(true)
   const [pesanLogin, setPesanLogin] = useState('')
+  const [ditolak, setDitolak] = useState('') // sesi CPOS masih berlaku, tapi akun ini tidak boleh membuka Analytics (server menjawab 403)
   const [merek, setMerek] = useState('')
   const [pesanAlamat, setPesanAlamat] = useState('')
   const sudahOtomatis = useRef(false)
@@ -67,6 +68,7 @@ export default function App() {
         if (st.value.nama && typeof document !== 'undefined') document.title = st.value.nama
       }
       if (saya.status === 'fulfilled') setPengguna(saya.value)
+      else if (saya.reason?.status === 403) setDitolak(saya.reason.message)
       setCek(false)
     })
   }, [])
@@ -133,7 +135,21 @@ export default function App() {
 
   const catatStatus = useCallback((id, st) => setStatus((s) => (s[id] === st ? s : { ...s, [id]: st })), [])
 
-  if (cek) return <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Memuat...</div>
+  if (cek) return <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Memuat…</div>
+  if (!pengguna && ditolak) {
+    return (
+      <section role="status" className="mx-auto mt-16 max-w-md rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+        <span aria-hidden="true" className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+          <IkonKunci className="h-6 w-6" />
+        </span>
+        <h1 className="mt-4 text-lg font-semibold">Akun ini tidak bisa membuka laporan</h1>
+        <p className="mt-1 text-sm text-slate-600">{ditolak}</p>
+        <button type="button" onClick={keBerandaCpos} className="mt-5 rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800">
+          Kembali ke CPOS
+        </button>
+      </section>
+    )
+  }
   if (!pengguna) {
     return (
       <section role="status" className="mx-auto mt-16 max-w-md rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">

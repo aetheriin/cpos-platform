@@ -63,7 +63,7 @@ export function BarAtas({ dataset, onGanti, onSegarkan, segar = null, onBatalSeg
           {onSegarkan && (
             <button type="button" onClick={onSegarkan} disabled={Boolean(segar)} title="Ambil ulang data periode ini" className={tombolBar}>
               <IkonSegarkan className={'h-3.5 w-3.5 ' + (segar ? 'animate-spin' : '')} />
-              {segar ? 'Memuat ulang...' : 'Muat ulang data'}
+              {segar ? 'Memuat ulang…' : 'Muat ulang data'}
             </button>
           )}
           <button type="button" onClick={onGanti} disabled={Boolean(segar)} className={tombolBar}>

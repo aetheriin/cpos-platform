@@ -764,7 +764,7 @@ async function muatDOAscend() {
     }
 
 
-    info.textContent = 'Memuat DO outstanding dari Ascend...';
+    info.textContent = 'Memuat DO outstanding dari Ascend…';
     const data = await ambilJson(
         `/api/security/ascend/do?ticket_type=${encodeURIComponent(jenis)}`
     );

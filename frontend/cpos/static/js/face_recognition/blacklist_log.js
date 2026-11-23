@@ -62,7 +62,7 @@ function tampilTimelineLog() {
     if (!t) {
         judul.textContent = 'Pilih orang / kendaraan';
         document.getElementById('logKunjungan').textContent = '';
-        wadah.innerHTML = '<p class="text-slate-400">Tidak ada data.</p>';
+        wadah.innerHTML = '<p class="text-slate-500">Belum ada data</p>';
         return;
     }
     judul.textContent = `${t.nama} · ${document.getElementById('logTanggal').value.split('-').reverse().join('-')}`;

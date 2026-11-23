@@ -319,9 +319,17 @@ def _asal_pr(t, comp, kode, no):
     return t.merge(asal, on=["no_dok", "kode_barang"], how="left"), True, None
 
 
-def _tabel_rinci(t, kolom, judul):
-    return {"judul": judul, "kolom": [{"kunci": k, "judul": j, "tipe": tp} for k, j, tp in kolom],
-            "baris": [{k: nilai(r.get(k), tp) for k, _, tp in kolom} for r in t.to_dict("records")]}
+def _tabel_rinci(t, kolom, judul, buka=None):
+    hasil = {"judul": judul, "kolom": [{"kunci": k, "judul": j, "tipe": tp} for k, j, tp in kolom],
+             "baris": [{k: nilai(r.get(k), tp) for k, _, tp in kolom} for r in t.to_dict("records")]}
+    if buka:
+        hasil["buka"] = buka
+    return hasil
+
+
+def _buka_dokumen(jenis, comp, dari_baris):
+    """Baris tabel rincian yang bisa dibuka (klik ganda) ke rincian dokumennya: kunci = comp + kolom dari_baris, judul = No. dokumen."""
+    return {"jenis": jenis, "kunci": {"comp": comp}, "dari_baris": list(dari_baris), "judul": "no_dok"}
 
 
 def rincian(df, ds, jenis, kunci, filt=None):
@@ -342,8 +350,8 @@ def rincian(df, ds, jenis, kunci, filt=None):
         if tambah:
             kolom = kolom + [("no_pr", "No. PR", "teks"), ("tgl_pr", "Tanggal PR", "tanggal"), ("pembuat_pr", "PR Dibuat Oleh", "teks"),
                              ("ket_asal", "Keterangan", "teks")]
-        return {"kecil": f"Supplier PO · {comp}", "judul": mitra, "bagian": bagian, "tabel": [_tabel_rinci(t, kolom, "Item PO yang belum diterima")],
-                "catatan": catatan}
+        return {"kecil": f"Supplier PO · {comp}", "judul": mitra, "bagian": bagian,
+                "tabel": [_tabel_rinci(t, kolom, "Item PO yang belum diterima", _buka_dokumen("po", comp, ["no_dok"]))], "catatan": catatan}
     if jenis in ("supplier", "customer"):
         asal = "hutang" if jenis == "supplier" else "piutang"
         mitra = str(kunci.get("mitra") or "")
@@ -352,7 +360,7 @@ def rincian(df, ds, jenis, kunci, filt=None):
         bagian = _isian(ringkas, [("Ringkasan", [("dokumen", "Dokumen outstanding", "angka"), ("sisa_rp", "Sisa", "angka"),
                                                  ("tertua", "Dokumen tertua", "tanggal"), ("umur", "Aging terlama (hari)", "angka")])])
         return {"kecil": f"{'Supplier' if asal == 'hutang' else 'Customer'} · {comp}", "judul": mitra, "bagian": bagian,
-                "tabel": [_tabel_rinci(t, _KOLOM_DOK[asal], "Dokumen yang belum lunas")]}
+                "tabel": [_tabel_rinci(t, _KOLOM_DOK[asal], "Dokumen yang belum lunas", _buka_dokumen(asal, comp, ["no_dok", "sumber"]))]}
     no = str(kunci.get("no_dok") or "")
     t = d[(d["jenis"] == jenis) & (d["comp"] == comp) & (d["no_dok"] == no)]
     if jenis in ARAP:

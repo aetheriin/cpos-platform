@@ -4,6 +4,7 @@ import { angka, barisMinggu, BATAS_PADAT, jedaLabel } from '../lib/data'
 import { Bar, CartesianGrid, Cell, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { LEGENDA } from './legenda'
 import { ANIMASI, DURASI_ANIMASI } from './animasi'
+import { Kosong } from '../komponen/Keadaan'
 
 // Titik pada garis. Memakai nama prop 'warna' karena Recharts menimpa prop 'fill'.
 function Titik({ cx, cy, payload, warna, terpilih, onPilih }) {
@@ -27,6 +28,7 @@ export default function WeeklyChart({ data, minggu, onPilihMinggu, garis = GARIS
   const baris = barisMinggu(data)
   const padat = baris.length > BATAS_PADAT
   const opasitas = (indeks) => (minggu != null && minggu !== indeks ? 0.3 : 1)
+  if (baris.length === 0) return <Kosong teks="Tidak ada dokumen pada periode dan filter ini" />
 
   return (
     <div className="h-full min-h-64 w-full">

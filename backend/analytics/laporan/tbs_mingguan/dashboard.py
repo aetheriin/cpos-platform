@@ -151,7 +151,7 @@ def detail(df, jenis, ds, filt=None, cari=None, urut=None, arah=None, halaman=1,
     filt = _rapikan(pilihan, filt or {})
     minggu, dinilai, riwayat, d, _ = _persiapan(df, filt, ds)
     baris = _baris_tabel(d, minggu, dinilai, riwayat, filt["grup"])
-    judul = lambda m: f"{m['awal'].strftime('%d/%m')} sd {m['akhir'].strftime('%d/%m/%Y')}"
+    judul = lambda m: f"{m['awal'].strftime('%d-%m')} sd {m['akhir'].strftime('%d-%m-%Y')}"
     kolom = [("comp", "Perusahaan", "teks"), ("kategori", "Kategori", "teks"), ("tipe", "Jenis Kebun", "teks"), ("grup", "Grup", "teks")]
     kolom += [(f"m{i}", judul(m), "angka") for i, m in enumerate(minggu) if m["minggu"] != dinilai]
     kolom += [("sd", "Std Dev", "angka"), ("rata", "Mean", "angka"), ("selisih", "Difference", "angka")]

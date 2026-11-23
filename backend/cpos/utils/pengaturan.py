@@ -54,6 +54,11 @@ DEFINISI = {
                               "Plat yang sama tidak dicatat lagi selama jeda ini (supaya satu kendaraan tidak tercatat tiap detik)"),
     "PLAT_JENDELA_GERBANG_DETIK": ("Jendela pemasangan kamera gerbang (detik)", "Deteksi Plat", "int", "60", 10, 600,
                                    "Bacaan plat yang sama dari kamera-kamera satu gerbang dalam jendela ini digabung menjadi satu kejadian; arah masuk/keluar ditentukan dari kamera yang membaca lebih dulu"),
+    "NETTO_SUMBER_TUTUP_TANGGAL": ("Tanggal tutup bulan", "Netto Sumber", "int", "10", 1, 28,
+                                   "Isian netto sumber tiket bulan lalu terkunci mulai tanggal ini. Pemegang hak Setujui di menu "
+                                   "Netto Sumber tetap bisa mengubahnya"),
+    "NETTO_SUMBER_BATAS_PERSEN": ("Batas selisih tanpa catatan (%)", "Netto Sumber", "float", "1", 0, 100,
+                                  "Bila netto sumber berbeda dari netto timbangan lebih dari persen ini, catatan wajib diisi"),
 }
 
 # Operasional, boleh berbeda per area (migrasi 014). Sisanya keamanan: global.

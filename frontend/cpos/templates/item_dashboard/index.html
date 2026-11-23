@@ -4,34 +4,53 @@
 {% block info_bar %}{% endblock %}
 {% block info_bar_script %}{% endblock %}
 {% block tab_header %}
-{% call judul_halaman('Item Category Analysis', 'Analisis item dan kategori', 'fa-chart-pie') %}{% endcall %}
+{# Ikon sama dengan ikon menu di sidebar (fa-boxes-stacked) #}
+{% call judul_halaman('Item Category Analysis', '10 teratas per perusahaan: stok, order, pemakaian, dan biaya', 'fa-boxes-stacked') %}{% endcall %}
 {% endblock %}
 
 {% block tab_content %}
-<div id="itemDashboard" class="relative" data-api="{{ url_for('item_dashboard.api_item') }}" aria-busy="true">
-    <div class="section-box p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p id="statusItemDashboard" class="text-sm text-slate-500" role="status">Memuat analisis item…</p>
-        <button id="refreshItemDashboard" type="button" class="btn-secondary btn-sm">
-            <i class="fa-solid fa-rotate-right"></i> Muat ulang
-        </button>
+{# Alur memuat sama dengan Analytics: pemuatan pertama menampilkan kartu di tengah; setelah data tampil, muat ulang dan ganti periode
+   berjalan di bar atas sementara data lama tetap terlihat. #}
+<div id="itemDashboard" data-api="{{ url_for('item_dashboard.api_item') }}" aria-busy="true">
+    <div id="barItemDashboard" class="hidden section-box px-3 py-2 mb-4 flex flex-wrap items-center justify-between gap-2 text-sm">
+        <span id="periodeItemDashboard" class="text-slate-600"></span>
+        <span class="inline-flex flex-wrap items-center gap-2">
+            <span id="progresItemDashboard" class="hidden text-xs text-slate-500">
+                <span id="teksProgresItem" role="status"></span> <span id="detikProgresItem" class="tabular-nums" aria-hidden="true"></span>
+            </span>
+            <button id="batalItemDashboard" type="button" class="hidden btn-secondary btn-sm">Batalkan</button>
+            <button id="refreshItemDashboard" type="button" class="btn-secondary btn-sm" title="Ambil ulang data periode ini">
+                <i class="fa-solid fa-rotate-right" aria-hidden="true"></i> <span>Muat ulang data</span>
+            </button>
+            <button id="gantiPeriodeItem" type="button" class="btn-secondary btn-sm">
+                <i class="fa-regular fa-calendar" aria-hidden="true"></i> Ganti periode
+            </button>
+        </span>
     </div>
-    <div id="errorItemDashboard" class="hidden mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert"></div>
-    <section id="grafikSetItemDashboard" class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 mb-4" aria-label="Grafik hasil analisis"></section>
-    <section class="section-box overflow-hidden">
+    <div id="pesanUlangItem" class="hidden mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+        <span><strong>Data belum diperbarui:</strong> <span id="isiPesanUlangItem"></span> <span>Data lama tetap ditampilkan.</span></span>
+        <span class="inline-flex gap-2">
+            <button id="cobaUlangItem" type="button" class="btn-secondary btn-sm">Coba lagi</button>
+            <button id="tutupPesanItem" type="button" class="btn-secondary btn-sm">Tutup</button>
+        </span>
+    </div>
+    <section id="layarItemDashboard" class="section-box mx-auto mt-6 max-w-lg p-6 text-center"></section>
+    <section id="grafikSetItemDashboard" class="hidden grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 mb-4" aria-label="Grafik hasil analisis"></section>
+    <section id="tabelRincianItem" class="hidden section-box overflow-hidden scroll-mt-4" aria-labelledby="judulTabelItemDashboard">
         <div class="p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
             <div>
-                <h2 class="font-bold text-slate-800">Data Analisis Item</h2>
+                <h2 id="judulTabelItemDashboard" class="font-bold text-slate-800" tabindex="-1">Rincian</h2>
                 <p id="infoTabelItemDashboard" class="text-xs text-slate-500 mt-1"></p>
             </div>
             <div class="flex flex-wrap gap-2">
-                <select id="pilihHasilItemDashboard" class="input-field py-1.5" aria-label="Pilih hasil analisis"></select>
+                <select id="pilihHasilItemDashboard" class="input-field py-1.5" aria-label="Pilih hasil yang ditampilkan di tabel"></select>
                 <select id="filterPerusahaanItem" class="input-field py-1.5" aria-label="Filter perusahaan">
                     <option value="">Semua perusahaan</option>
                 </select>
                 <select id="filterKategoriItem" class="input-field py-1.5" aria-label="Filter kategori">
                     <option value="">Semua kategori</option>
                 </select>
-                <input id="cariItemDashboard" type="search" class="input-field py-1.5" placeholder="Cari data…" aria-label="Cari data item">
+                <input id="cariItemDashboard" type="search" class="input-field py-1.5" placeholder="Cari di tabel…" aria-label="Cari di tabel">
             </div>
         </div>
         <div class="overflow-x-auto">
@@ -40,7 +59,8 @@
                 <tbody id="bodyTabelItemDashboard" class="divide-y divide-slate-100"></tbody>
             </table>
         </div>
-        <div class="p-3 border-t border-slate-100 flex items-center justify-between gap-3 text-xs text-slate-500">
+        {# Hanya tampil bila baris lebih dari satu halaman (50 baris) #}
+        <div id="kakiTabelItemDashboard" class="hidden p-3 border-t border-slate-100 flex items-center justify-between gap-3 text-xs text-slate-500">
             <span id="halamanTabelItemDashboard"></span>
             <div class="flex gap-2">
                 <button id="sebelumItemDashboard" type="button" class="btn-secondary btn-sm">Sebelumnya</button>
@@ -48,22 +68,36 @@
             </div>
         </div>
     </section>
-    <div id="popupMemuatItemDashboard" class="hidden absolute inset-0 z-10 items-center justify-center bg-slate-900/40 p-4" role="status" aria-live="polite" aria-labelledby="judulMemuatItemDashboard">
-        <div class="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 text-center shadow-xl">
-            <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" aria-hidden="true"></div>
-            <h2 id="judulMemuatItemDashboard" class="mt-4 font-semibold text-slate-800">Sedang memuat data item</h2>
-            <p id="waktuMemuatItemDashboard" class="mt-1 text-sm text-slate-600" role="status" aria-live="polite">0 detik</p>
-        </div>
-    </div>
-    <div id="popupWaktuItemDashboard" class="hidden fixed bottom-5 right-5 z-50 max-w-sm rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-lg" role="status" aria-live="polite">
-        <div class="flex items-start justify-between gap-4">
-            <p id="pesanWaktuItemDashboard" class="text-sm text-slate-700"></p>
-            <button id="tutupPopupWaktuItemDashboard" type="button" class="text-slate-500 hover:text-slate-800" aria-label="Tutup notifikasi">&times;</button>
-        </div>
-    </div>
 </div>
 {% endblock %}
 
+{% block modals %}
+<div id="modalPeriodeItem" class="modal-overlay"><div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="judulPeriodeItem">
+    <div class="modal-header">
+        <h3 id="judulPeriodeItem" class="font-bold">Ganti periode</h3>
+        <button type="button" class="aturan-tombol shrink-0" data-on-click="closeModal" data-arg="modalPeriodeItem" title="Tutup" aria-label="Tutup"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </div>
+    <form id="formPeriodeItem" class="p-6 space-y-4" novalidate>
+        <p class="text-sm text-slate-600">Pilih rentang tanggal data yang ingin ditarik. Stok tidak ikut periode, selalu stok saat ini.</p>
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="field-label" for="mulaiPeriodeItem">Dari tanggal</label>
+                <input id="mulaiPeriodeItem" type="date" class="input-field" aria-describedby="infoPeriodeItem">
+            </div>
+            <div>
+                <label class="field-label" for="akhirPeriodeItem">Sampai tanggal</label>
+                <input id="akhirPeriodeItem" type="date" class="input-field" aria-describedby="infoPeriodeItem">
+            </div>
+        </div>
+        <p id="infoPeriodeItem" class="min-h-5 text-xs text-slate-500" aria-live="polite"></p>
+        <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+            <button type="button" class="btn-secondary" data-on-click="closeModal" data-arg="modalPeriodeItem">Batal</button>
+            <button id="muatPeriodeItem" type="submit" class="btn-primary">Muat data</button>
+        </div>
+    </form>
+</div></div>
+{% endblock %}
+
 {% block extra_scripts %}
-<script defer src="{{ url_for('static', filename='item_dashboard/dashboard.js', v='20261116b') }}"></script>
+<script defer src="{{ url_for('static', filename='item_dashboard/dashboard.js') }}"></script>
 {% endblock %}

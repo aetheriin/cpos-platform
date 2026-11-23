@@ -11,7 +11,7 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
   const [terbuka, setTerbuka] = useState(true)
   const acuan = hasil ? tab.find((t) => t.kunci === jenis)?.ket(hasil) ?? '' : ''
   const { dari, sampai } = hasil ? rentangBaris(hasil.halaman, hasil.ukuran, hasil.total) : { dari: 0, sampai: 0 }
-  // Export Excel memuat semua baris yang cocok, paling banyak maks_ekspor (dikirim server); sisanya dipotong
+  // Unduh Excel memuat semua baris yang cocok, paling banyak maks_ekspor (dikirim server); sisanya dipotong
   const dipotong = hasil && hasil.maks_ekspor != null && hasil.total > hasil.maks_ekspor
   const jumlahEkspor = hasil ? (hasil.maks_ekspor != null ? Math.min(hasil.total, hasil.maks_ekspor) : hasil.total) : 0
 
@@ -83,7 +83,7 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
 
       {dipotong && (
         <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
-          Export Excel dibatasi {angka.format(hasil.maks_ekspor)} baris pertama dari {angka.format(hasil.total)} baris. Persempit dengan filter atau pencarian.
+          Unduh Excel dibatasi {angka.format(hasil.maks_ekspor)} baris pertama dari {angka.format(hasil.total)} baris. Persempit dengan filter atau pencarian.
         </p>
       )}
       {galatEkspor && (
@@ -92,7 +92,7 @@ export function PanelDetail({ judul = 'Tabel Detail', tab, jenis, onJenis, jumla
         </div>
       )}
       {galat && <div className="mb-2"><GalatHalaman galat={galat} onUlang={onUlang} sedang={memuat} /></div>}
-      {!hasil && !galat && <Memuat teks="Memuat tabel..." />}
+      {!hasil && !galat && <Memuat teks="Memuat tabel…" />}
 
       {hasil && (
         <div className={memuat ? 'opacity-60 transition-opacity' : 'transition-opacity'}>

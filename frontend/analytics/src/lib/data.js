@@ -43,8 +43,8 @@ export function itemDonat(daftar, batas, terpilih) {
 }
 
 // iso: 'YYYY-MM-DD'
-export const tgl = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
-export const tglLengkap = (iso) => `${tgl(iso)}/${iso.slice(0, 4)}`
+export const tgl = (iso) => `${iso.slice(8, 10)}-${iso.slice(5, 7)}`
+export const tglLengkap = (iso) => `${tgl(iso)}-${iso.slice(0, 4)}`
 
 // "18 Sep – 21 Okt 2026"; tahun awal hanya ditulis kalau beda dengan tahun akhir. Satu hari: "14 Nov 2026".
 const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
@@ -52,7 +52,7 @@ const tglBulan = (iso) => `${Number(iso.slice(8, 10))} ${BULAN[Number(iso.slice(
 export const rentangTgl = (mulai, akhir) =>
   mulai === akhir ? `${tglBulan(akhir)} ${akhir.slice(0, 4)}` : `${tglBulan(mulai)}${mulai.slice(0, 4) === akhir.slice(0, 4) ? '' : ` ${mulai.slice(0, 4)}`} – ${tglBulan(akhir)} ${akhir.slice(0, 4)}`
 
-export const labelSingkat = (w) => `${tgl(w.mulai)}-${tgl(w.akhir)}`
+export const labelSingkat = (w) => `${tgl(w.mulai)} sd ${tgl(w.akhir)}`
 
 export const tahunRentang = (w) => {
   const a = w.mulai.slice(0, 4)

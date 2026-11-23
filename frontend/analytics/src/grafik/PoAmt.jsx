@@ -2,6 +2,7 @@ import { Bar, BarChart, CartesianGrid, ComposedChart, Legend, Line, LineChart, R
 import { angka } from '../lib/data'
 import { LEGENDA } from './legenda'
 import { ANIMASI, DURASI_ANIMASI } from './animasi'
+import { Kosong } from '../komponen/Keadaan'
 
 // Warna teks mengikuti tema lewat currentColor
 const sumbu = { tickLine: false, axisLine: false, tick: { fontSize: 11, fill: 'currentColor' } }
@@ -16,14 +17,15 @@ export const rupiahPendek = (v) => (v >= 1e9 ? `${satu.format(v / 1e9)} M` : v >
 // '10JT - 50JT' menjadi '10-50 jt' supaya label tidak bertabrakan di petak sempit
 const labelPendek = (k) => k.replace('JT - ', '-').replace('JT', ' jt')
 
-function Kanvas({ children }) {
+function Kanvas({ kosong = false, children }) {
+  if (kosong) return <Kosong teks="Tidak ada PO pada periode dan filter ini" />
   return <div className="h-64 text-slate-700"><ResponsiveContainer width="100%" height="100%">{children}</ResponsiveContainer></div>
 }
 
 // Batang PO dan garis nilai per kategori, seperti TOTAL PO VS TOTAL NET PO (%) di Excel. Satu sumbu karena keduanya persen.
 export function PoNilaiPersen({ data, onPilih }) {
   return (
-    <Kanvas>
+    <Kanvas kosong={data.length === 0}>
       <ComposedChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 0 }} onClick={(e) => e?.activeLabel && onPilih?.(e.activeLabel, e)}>
         <CartesianGrid vertical={false} stroke="#94a3b8" strokeOpacity={0.25} />
         <XAxis dataKey="nama" {...sumbu} interval={0} tickFormatter={labelPendek} />
@@ -40,7 +42,7 @@ export function PoNilaiPersen({ data, onPilih }) {
 // Jumlah PO dan nilainya, seperti TOTAL PO VS TOTAL NET PO di Excel. Satuan berbeda, jadi dua sumbu; nilai diringkas supaya sumbu kanan sempit.
 export function PoNilai({ data, onPilih }) {
   return (
-    <Kanvas>
+    <Kanvas kosong={data.length === 0}>
       <ComposedChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }} onClick={(e) => e?.activeLabel && onPilih?.(e.activeLabel, e)}>
         <CartesianGrid yAxisId="po" vertical={false} stroke="#94a3b8" strokeOpacity={0.25} />
         <XAxis dataKey="nama" {...sumbu} interval={0} tickFormatter={labelPendek} />
@@ -64,7 +66,7 @@ const warnaTahun = (i, n) => WARNA_TAHUN[WARNA_TAHUN.length - n + i] ?? WARNA_TA
 export function BandingTahun({ data, ukuran, format }) {
   const { tahun, baris } = data
   return (
-    <Kanvas>
+    <Kanvas kosong={baris.length === 0}>
       <BarChart data={baris} barGap={1} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
         <CartesianGrid vertical={false} stroke="#94a3b8" strokeOpacity={0.25} />
         <XAxis dataKey="bulan" {...sumbu} interval={0} />
@@ -80,7 +82,7 @@ export function BandingTahun({ data, ukuran, format }) {
 // Satu garis bulan berjalan untuk kategori yang dipilih
 export function SeriBulan({ data, kunci, nama, format }) {
   return (
-    <Kanvas>
+    <Kanvas kosong={data.length === 0}>
       <LineChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 0 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="label" {...sumbu} minTickGap={32} />

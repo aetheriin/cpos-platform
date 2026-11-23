@@ -15,8 +15,9 @@ async function muatPerangkat() {
     const t = data.timbangan;
     const elT = document.getElementById('statTimbangan');
     elT.textContent = `${t.terhubung} / ${t.jumlah}`;
-    elT.className = `stat-value ${t.jumlah && t.terhubung === t.jumlah ? 'text-emerald-600' : 'text-red-600'}`;
-    document.getElementById('statTimbanganInfo').textContent = 'Port serial yang sedang dibaca server';
+    // Merah hanya kalau ada jembatan aktif yang terputus; tanpa jembatan aktif tidak ada yang salah
+    elT.className = `stat-value ${!t.jumlah ? 'text-slate-500' : t.terhubung === t.jumlah ? 'text-emerald-600' : 'text-red-600'}`;
+    document.getElementById('statTimbanganInfo').textContent = t.jumlah ? 'Port serial yang sedang dibaca server' : 'Belum ada jembatan timbang yang aktif';
     tampilkanJembatan(data.jembatan || []);
     document.getElementById('statJumlahPos').textContent = daftarPos.length;
     document.getElementById('statPosAktif').textContent = `${daftarPos.filter(p => p.is_active).length} aktif`;
@@ -124,7 +125,8 @@ function tampilkanJembatan(data) {
             : st.terhubung ? ['ONLINE', 'text-emerald-700 bg-emerald-50 border-emerald-200'] : ['TERPUTUS', 'text-red-700 bg-red-50 border-red-200'];
         const live = st && st.terhubung ? `${escapeHtml(st.berat)} kg${st.siap_kunci ? ' · stabil' : ''}`
             : `<span class="font-sans font-normal text-slate-400" title="${escapeHtml((st && st.error) || '')}">${st ? 'tidak terhubung' : '-'}</span>`;
-        return `<div class="rounded-xl border border-slate-200 p-5${j.is_active ? '' : ' opacity-60'}">
+        // Nonaktif ditandai label NONAKTIF dan garis putus-putus; tulisan tidak dipudarkan supaya tetap terbaca
+        return `<div class="rounded-xl border p-5 ${j.is_active ? 'border-slate-200' : 'border-dashed border-slate-300'}">
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <p class="font-bold text-slate-900">${escapeHtml(j.kode)} · ${escapeHtml(j.nama)}</p>
@@ -164,7 +166,7 @@ function bukaJembatan(id) {
 function aturModeJembatan() {
     const agen = document.getElementById('jtMode').value === 'AGEN';
     document.getElementById('jtPortHint').textContent = agen
-        ? 'COM di PC jembatan (lihat Device Manager › Ports di PC itu)'
+        ? 'COM di PC jembatan (lihat Device Manager › Ports di PC itu). Agen memakai token pos yang areanya sama dengan jembatan ini.'
         : 'COM di PC server ini, atau socket://IP:PORT untuk alat serial-to-LAN';
     document.getElementById('jtPolaBox').classList.toggle('hidden', document.getElementById('jtFormat').value !== 'POLA');
 }

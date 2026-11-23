@@ -54,7 +54,7 @@ async function muatPengajuan() {
 
 function kartuPengajuan(p) {
     const riwayat = p.riwayat.map(r => `<li><span class="font-mono text-slate-400">${escapeHtml(r.waktu)}</span> ·
-        ${escapeHtml(LABEL_AKSI[r.aksi] || r.aksi)}${r.langkah ? ` (langkah ${r.langkah})` : ''} oleh ${escapeHtml(r.oleh)}${r.catatan ? ` — ${escapeHtml(r.catatan)}` : ''}</li>`).join('');
+        ${escapeHtml(LABEL_AKSI[r.aksi] || r.aksi)}${r.langkah ? ` (langkah ${r.langkah})` : ''} oleh ${escapeHtml(r.oleh)}${r.catatan ? ` · catatan: ${escapeHtml(r.catatan)}` : ''}</li>`).join('');
     const jenisBahaya = p.jenis === 'BLACKLIST_TAMBAH';
     const rincian = (p.rincian || []).map(r => `<li><span class="text-slate-500">${escapeHtml(r.label)}:</span>
         <span class="line-through text-red-600">${escapeHtml(r.lama || '-')}</span> → <span class="text-emerald-700 font-semibold">${escapeHtml(r.baru || '-')}</span></li>`).join('');

@@ -2,7 +2,7 @@
 import pyodbc
 
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from utils import db_ascend_split
 from utils.koneksi_lain import connection_string
 
@@ -1157,6 +1157,7 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
         tara = Decimal(str(nilai("Tara", 0) or 0))
         now = waktu_timbang or datetime.now()
         spdo2 = ""
+        deduction_harapan = None
 
         if step == 0:
             if ticket_type == "Produk":
@@ -1189,6 +1190,76 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
             step_baru = 2
             date_time_out = now
             tiket["netto"] = bruto - tara
+
+            nama_produk = str(nilai("ProductName", "") or "").strip().casefold()
+            if ticket_type == "TBSLuar" and nama_produk == "tbs":
+                deduction_lama = Decimal(
+                    str(nilai("Deduction", 0) or 0)
+                )
+                deduction_sortasi = Decimal("0")
+
+                sortasi = db_ascend_split.ambil_sortasi_tiket_ascend(
+                    int(nilai("TicketID"))
+                )
+
+                if sortasi:
+                    total_persen = (
+                        Decimal(str(sortasi["mentah"] or 0))
+                        + Decimal(str(sortasi["tangkai"] or 0))
+                        + Decimal(str(sortasi["sampah"] or 0))
+                    ).quantize(
+                        Decimal("0.01"),
+                        rounding=ROUND_HALF_UP,
+                    )
+
+                    # Sama dengan rumus CPOS: potongan dihitung dari Bruto - Tara.
+                    netto_sebelum_potongan = bruto - tara
+                    deduction_sortasi = (
+                        netto_sebelum_potongan
+                        * total_persen
+                        / Decimal("100")
+                    ).quantize(
+                        Decimal("0.01"),
+                        rounding=ROUND_HALF_UP,
+                    )
+
+                if deduction_sortasi > 0:
+                    cursor.execute(
+                        """
+                        SELECT dbo.UDF_SH_Settings_GetAsBit(
+                            'PALM_Tickets.FixDeduction.LBPI_ES', 0
+                        )
+                        """
+                    )
+                    if bool(cursor.fetchone()[0]):
+                        raise ValueError(
+                            "Setting khusus Ascend mengubah Deduction setelah "
+                            "simpan. Potongan sortasi CPOS belum bisa diterapkan "
+                            "dengan aman pada konfigurasi ini."
+                        )
+
+                cursor.execute(
+                    """
+                    SELECT dbo.UDF_SH_Settings_GetAsBit(
+                        'PALM_Tickets.IncludeKgRejectInNetto', 0
+                    )
+                    """
+                )
+                include_kg_reject = bool(cursor.fetchone()[0])
+                kg_reject = (
+                    Decimal(str(nilai("KgReject", 0) or 0))
+                    if include_kg_reject else Decimal("0")
+                )
+
+                timbang3 = Decimal(str(nilai("Timbang3", 0) or 0))
+                tara_untuk_netto = timbang3 if timbang3 > 0 else tara
+
+                deduction_harapan = deduction_lama + deduction_sortasi
+                tiket["deduction"] = deduction_harapan
+                tiket["netto"] = (
+                    bruto - tara_untuk_netto
+                    - deduction_harapan + kg_reject
+                )
 
         tiket["bruto"] = bruto
         tiket["tara"] = tara
@@ -1340,7 +1411,7 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
         if not spdo2:
             cursor.execute(
                 """
-                SELECT Bruto, Tara, Netto, [Step], DateTimeOut, SPDO
+                SELECT Bruto, Tara, Netto, [Step], DateTimeOut, SPDO, Deduction
                 FROM dbo.PALM_Tickets
                 WHERE TicketID = ?
                 """,
@@ -1353,7 +1424,15 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
                     "Tiket tidak ditemukan saat memeriksa hasil simpan timbang."
                 )
 
-            bruto_db, tara_db, netto_db, step_db, datetime_out_db, spdo_db = tersimpan
+            (
+                bruto_db,
+                tara_db,
+                netto_db,
+                step_db,
+                datetime_out_db,
+                spdo_db,
+                deduction_db,
+            ) = tersimpan
             toleransi_kg = Decimal("0.01")
 
             def berat_sesuai(nilai_db, nilai_harapan):
@@ -1386,6 +1465,12 @@ def simpan_berat_tiket_ascend(no_tiket, berat_kg, operator, waktu_timbang=None):
                     raise RuntimeError(
                         "Nilai Netto yang tersimpan di Ascend tidak sesuai."
                     )
+
+                if deduction_harapan is not None:
+                    if not berat_sesuai(deduction_db, deduction_harapan):
+                        raise RuntimeError(
+                            "Nilai Deduction yang tersimpan di Ascend tidak sesuai."
+                        )
 
                 if datetime_out_db is None:
                     raise RuntimeError(

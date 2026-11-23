@@ -100,7 +100,7 @@ export default function Sidebar({ nama = '', laporan, aktif, status, onPilih, ta
           <p className="px-3 text-sm text-slate-500">Tidak ada menu yang bisa diakses.</p>
         ) : (
           <>
-            {laporan === null && <p className="px-3 text-sm text-slate-500">Memuat daftar...</p>}
+            {laporan === null && <p className="px-3 text-sm text-slate-500">Memuat daftar…</p>}
             {grup.map((g) => (
               <Grup key={g.nama} judul={g.nama} terlipat={terlipat.includes(g.nama)} onLipat={() => lipat(g.nama)} berisiAktif={g.laporan.some((l) => l.id === aktif)}>
                 {g.laporan.map((l) =>

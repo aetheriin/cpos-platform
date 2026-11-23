@@ -61,10 +61,10 @@ async function muatRequest() {
             <td class="table-cell font-semibold">${escapeHtml(r.operator)}<div class="text-xs font-normal text-slate-400">${escapeHtml(r.id_company || '')}</div></td>
             <td class="table-cell">${badge(r.kategori, WARNA_BADGE.abu)}</td>
             <td class="table-cell"><span class="font-mono">${escapeHtml(r.tiket)}</span>${infoTiket(r.info_tiket || {})}</td>
-            <td class="table-cell text-slate-600 max-w-48">${escapeHtml(r.catatan || '—')}</td>
-            <td class="table-cell text-slate-600">${escapeHtml(r.catatan_aksi || '—')}${r.aksi_oleh ? `<div class="text-[11px] text-slate-400">${escapeHtml(r.aksi_oleh)}</div>` : ''}</td>
+            <td class="table-cell text-slate-600 max-w-48">${escapeHtml(r.catatan || '-')}</td>
+            <td class="table-cell text-slate-600">${escapeHtml(r.catatan_aksi || '-')}${r.aksi_oleh ? `<div class="text-[11px] text-slate-400">${escapeHtml(r.aksi_oleh)}</div>` : ''}</td>
             <td class="table-cell">${badge(t(STATUS_RK[r.status][0]), STATUS_RK[r.status][1])}${proses}</td>
-            <td class="table-cell text-right whitespace-nowrap space-x-2">${tombol || '<span class="text-xs text-slate-400">—</span>'}</td></tr>`;
+            <td class="table-cell text-right whitespace-nowrap space-x-2">${tombol || '<span class="text-xs text-slate-400">-</span>'}</td></tr>`;
     }).join('') || barisKosong(9, 'Belum ada request');
     hitungPilihan();
 }
@@ -160,7 +160,7 @@ function pilihTiket(no, info) {
     kotak.classList.toggle('hidden', !no);
     kotak.innerHTML = no ? `<p class="text-sm font-semibold text-slate-900">${t('Tiket')} ${escapeHtml(no)}</p>
         <dl class="mt-2 grid grid-cols-2 gap-x-6 gap-y-2">${RINCIAN_TIKET.map(([label, k]) => `<div>
-            <dt class="text-[11px] text-slate-400">${t(label)}</dt><dd class="text-sm text-slate-800">${escapeHtml((info || {})[k] || '—')}</dd></div>`).join('')}</dl>` : '';
+            <dt class="text-[11px] text-slate-400">${t(label)}</dt><dd class="text-sm text-slate-800">${escapeHtml((info || {})[k] || '-')}</dd></div>`).join('')}</dl>` : '';
     document.getElementById('rkDaftarTiket').classList.add('hidden');
 }
 

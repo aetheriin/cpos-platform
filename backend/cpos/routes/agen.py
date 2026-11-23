@@ -4,11 +4,12 @@ import io
 import os
 import zipfile
 
-from flask import Blueprint, request, jsonify, send_file
+from flask import Blueprint, g, request, jsonify, send_file
 from flask_login import login_required
 
 from extensions import BASE_DIR
-from utils.keamanan import perangkat_atau_login
+from utils import kiosk
+from utils.keamanan import khusus_perangkat, log_keamanan
 from utils.db_jembatan import get_jembatan
 from utils.serial_reader import terima_dari_agen, konfigurasi
 
@@ -24,6 +25,11 @@ def _jembatan_agen(id_jembatan):
     j = get_jembatan(id_jembatan)
     if j is None or not j["is_active"]:
         return None, (jsonify({"error": f"Jembatan id {id_jembatan} tidak ada / nonaktif"}), 404)
+    # Token pos hanya berlaku untuk jembatan di area pos itu; token bersama .env (cara lama) berlaku untuk semua
+    if g.pos_kiosk != "*" and kiosk.area_pos(g.pos_kiosk) != j["id_comp_area"]:
+        log_keamanan("KIOSK_DITOLAK", f"pos={g.pos_kiosk} bukan area jembatan {j['kode']}")
+        return None, (jsonify({"error": f"Pos {g.pos_kiosk} tidak di area jembatan {j['kode']}. Samakan area pos di "
+                                        "Admin › Perangkat / Kios, atau pakai token pos di area itu."}), 403)
     if j["mode"] != "AGEN":
         return None, (jsonify({"error": f"Jembatan {j['kode']} memakai mode Lokal. Ubah sumber data ke "
                                         "'Agen di PC jembatan' di Admin › Perangkat / Kios."}), 409)
@@ -31,7 +37,7 @@ def _jembatan_agen(id_jembatan):
 
 
 @agen_bp.route("/api/agen/jembatan/<int:id_jembatan>/konfigurasi")
-@perangkat_atau_login
+@khusus_perangkat
 def agen_konfigurasi(id_jembatan):
     j, salah = _jembatan_agen(id_jembatan)
     if salah:
@@ -43,7 +49,7 @@ def agen_konfigurasi(id_jembatan):
 
 
 @agen_bp.route("/api/agen/jembatan/<int:id_jembatan>/data", methods=["POST"])
-@perangkat_atau_login
+@khusus_perangkat
 def agen_data(id_jembatan):
     j, salah = _jembatan_agen(id_jembatan)
     if salah:

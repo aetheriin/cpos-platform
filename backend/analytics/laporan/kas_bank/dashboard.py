@@ -202,7 +202,7 @@ def _saldo_bank(saldo, giro, awal, uang=None):
     t = t.fillna(0)   # hari sebelum transaksi pertama rekening: saldonya 0, bukan kosong
     pembuka = pd.DataFrame([awal.reindex(akun).fillna(0).values], columns=t.columns[:-1])
     pembuka["total"] = pembuka.sum(axis=1, min_count=1)
-    t.insert(0, "hari", t.index.strftime("%d/%m/%Y"))
+    t.insert(0, "hari", t.index.strftime("%d-%m-%Y"))
     rata.insert(0, "hari", "Rata-rata")
     pembuka.insert(0, "hari", AWAL)
     t = pd.concat([pembuka, t, rata], ignore_index=True)

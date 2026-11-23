@@ -44,7 +44,7 @@ export default function DashboardTbs({ dataId, onDataHilang }) {
         <KepalaLaporan judul="Forecast Penerimaan TBS" data={data} aktif={aktif} onLepas={lepas} onReset={reset} panelTerbuka={panel} onTogglePanel={togglePanel} />
 
         {galat && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Grafik tidak bisa dimuat: {galat.message}</div>}
-        {!data && !galat && <MemuatLaporan teks="Memuat penerimaan TBS..." />}
+        {!data && !galat && <MemuatLaporan teks="Memuat penerimaan TBS…" />}
 
         {data && (
           <div className={memuat ? 'space-y-4 opacity-60 transition-opacity' : 'space-y-4 transition-opacity'}>
@@ -64,17 +64,17 @@ export default function DashboardTbs({ dataId, onDataHilang }) {
 
             {/* Urutan padat: forecast dan rata-rata per hari di baris pertama, tiga peringkat di baris kedua, harga per tipe paling bawah */}
             <KisiGrafik>
-              <Petak padat="lg:order-1 lg:col-span-8">
+              <Petak padat="lg:order-1 lg:col-span-12 xl:col-span-8">
                 <KartuGrafik
                   judul="Netto & Forecast" perbesar
-                  petunjuk={tren.length > 0 ? `${tglLengkap(tren[0].hari)} sampai ${tglLengkap(tren.at(-1).hari)}${fc ? `, lalu ${fc.hari.length} hari ke depan` : ''}` : null}
+                  petunjuk={tren.length > 0 ? `${tglLengkap(tren[0].hari)} sampai ${tglLengkap(tren.at(-1).hari)}${fc ? `, lalu ${fc.hari.length} hari ke depan` : ''}. Klik tanggal untuk memfilter.` : null}
                 >
                   <TrenForecast tren={tren} forecast={fc} terpilih={terpilih('tanggal')} onPilih={pilih.tanggal} />
                 </KartuGrafik>
               </Petak>
 
-              <Petak panjang="md:col-span-10 lg:col-span-4" padat="lg:order-3 lg:col-span-4">
-                <KartuGrafik judul="Netto per Tipe" petunjuk="Angka kanan: harga rata-rata">
+              <Petak panjang="md:col-span-10 lg:col-span-4" padat="lg:order-3 lg:col-span-6 xl:col-span-4">
+                <KartuGrafik judul="Netto per Tipe" petunjuk="Angka kanan: harga rata-rata. Klik tipe untuk memfilter.">
                   <BatangPeringkat
                     data={data.per_tipe.data}
                     terpilih={terpilih('tipe')}
@@ -83,14 +83,14 @@ export default function DashboardTbs({ dataId, onDataHilang }) {
                   />
                 </KartuGrafik>
               </Petak>
-              <Petak panjang="md:col-span-10 lg:col-span-6" padat="lg:order-6 lg:col-span-12">
-                <KartuGrafik judul="Harga per Tipe" petunjuk="Rp/kg tertimbang per hari">
+              <Petak panjang="md:col-span-10 lg:col-span-6" padat="lg:order-7 lg:col-span-12 xl:order-6">
+                <KartuGrafik judul="Harga per Tipe" petunjuk="Rp/kg tertimbang per hari. Klik tipe untuk memfilter.">
                   <HargaTipe data={data.harga_tipe} mulai={tren[0]?.hari ?? data.tren_mulai} akhir={tren.at(-1)?.hari ?? data.periode.akhir} terpilih={terpilih('tipe')} onPilih={pilih.tipe} />
                 </KartuGrafik>
               </Petak>
 
-              <Petak panjang="md:col-span-10 lg:col-span-5" padat="lg:order-4 lg:col-span-4">
-                <KartuGrafik judul="Supplier Teratas">
+              <Petak panjang="md:col-span-10 lg:col-span-5" padat="lg:order-4 lg:col-span-6 xl:col-span-4">
+                <KartuGrafik judul="Supplier Teratas" petunjuk="Netto per supplier. Klik supplier untuk memfilter.">
                   <BatangPeringkat
                     data={data.per_supplier.data}
                     terpilih={terpilih('supplier')}
@@ -100,8 +100,8 @@ export default function DashboardTbs({ dataId, onDataHilang }) {
                   />
                 </KartuGrafik>
               </Petak>
-              <Petak panjang="md:col-span-10 lg:col-span-5" padat="lg:order-5 lg:col-span-4">
-                <KartuGrafik judul="Business Group">
+              <Petak panjang="md:col-span-10 lg:col-span-5" padat="lg:order-5 lg:col-span-6 xl:col-span-4">
+                <KartuGrafik judul="Business Group" petunjuk="Netto per business group. Klik grup untuk memfilter.">
                   <BatangPeringkat
                     data={data.per_grup.data}
                     terpilih={terpilih('grup')}
@@ -112,8 +112,8 @@ export default function DashboardTbs({ dataId, onDataHilang }) {
                 </KartuGrafik>
               </Petak>
 
-              <Petak padat="lg:order-2 lg:col-span-4">
-                <KartuGrafik judul="Rata-rata per Hari" petunjuk="Hari tanpa pembelian tidak dihitung">
+              <Petak padat="lg:order-6 lg:col-span-6 xl:order-2 xl:col-span-4">
+                <KartuGrafik judul="Rata-rata per Hari" petunjuk="Hari tanpa pembelian tidak dihitung. Klik hari untuk memfilter.">
                   <RataHari data={data.per_hari_minggu} terpilih={terpilih('hari_minggu')} onPilih={pilih.hari} />
                 </KartuGrafik>
               </Petak>

@@ -11,22 +11,12 @@
     {% include "partials/layout/bahasa.html" %}
 </head>
 {# Halaman error bergaya logo CPOS: angka kode dengan "0" diganti tanda logo (cincin C + tetes minyak),
-   garis sirkuit & daun sawit samar di latar. Judul per kode; pesan rinci dari utils/web_setup.py. #}
+   daun sawit samar di latar. Judul per kode; pesan rinci dari utils/web_setup.py. #}
 {% set judul = {403: 'Akses Ditolak', 404: 'Halaman Tidak Ditemukan', 401: 'Sesi Berakhir', 413: 'File Terlalu Besar'}.get(kode, 'Terjadi Kesalahan') %}
 {% set teks_kode = kode | string %}
 <body class="hal-error font-sans antialiased min-h-screen flex flex-col">
-    {# ===== latar: sirkuit kiri-kanan, daun sawit di sudut ===== #}
+    {# latar: daun sawit di sudut #}
     <svg class="hal-error-latar" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <g class="sirkuit" fill="none" stroke-width="1.5">
-            <path d="M0 330 H260 l30 30 H430"/><path d="M0 370 H220 l30 30 H400"/><path d="M0 410 H300 l-30 30 H120"/>
-            <path d="M0 470 H250 l30 -30 H380"/><path d="M60 520 H330 l30 30 H420"/>
-            <path d="M1440 330 H1180 l-30 30 H1010"/><path d="M1440 370 H1220 l-30 30 H1040"/><path d="M1440 410 H1140 l30 30 H1320"/>
-            <path d="M1440 470 H1190 l-30 -30 H1060"/><path d="M1380 520 H1110 l-30 30 H1020"/>
-        </g>
-        <g class="sirkuit-titik">
-            <circle cx="430" cy="360" r="4"/><circle cx="400" cy="400" r="4"/><circle cx="120" cy="440" r="4"/><circle cx="380" cy="440" r="4"/><circle cx="420" cy="550" r="4"/>
-            <circle cx="1010" cy="360" r="4"/><circle cx="1040" cy="400" r="4"/><circle cx="1320" cy="440" r="4"/><circle cx="1060" cy="440" r="4"/><circle cx="1020" cy="550" r="4"/>
-        </g>
         <g class="daun">
             <path d="M1440 0 C1300 40 1180 140 1120 300 C1220 190 1330 120 1440 100 Z"/>
             <path d="M1440 120 C1330 150 1240 220 1190 330 C1270 260 1350 220 1440 210 Z"/>

@@ -1,4 +1,4 @@
-"""Jendela rincian satu PR, PO, atau PI untuk laporan Purchase Request, Purchase Orders, dan Purchase Invoice.
+"""Jendela rincian satu PR, PO, atau PI untuk laporan Purchase Request, Purchase Order, dan Purchase Invoice.
 
 Isi diambil dari SP rincian (RINCIAN_SP) yang juga dipakai laporan Outstanding, jadi bentuk dan aturannya sama."""
 from inti.filter import FilterTidakValid

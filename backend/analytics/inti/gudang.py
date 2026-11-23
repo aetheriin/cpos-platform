@@ -27,6 +27,7 @@ PESAN_BATAL = "Pemuatan dibatalkan."
 PESAN_ERP = "Koneksi ke Ascend terputus. Coba lagi nanti."
 PESAN_LOGIN_ERP = "Akses ke Ascend ditolak. Hubungi tim IT."
 PESAN_DATABASE = "Server laporan tidak bisa dihubungi. Coba lagi nanti."
+PESAN_LOGIN = "Akses ke server laporan ditolak. Hubungi tim IT."
 PESAN_AKSES = "Laporan ini belum bisa dibuka. Hubungi tim IT."
 PESAN_LAMA = "Terlalu lama memuat. Coba rentang tanggal lebih pendek."
 PESAN_KOSONG = "Tidak ada data di tanggal ini."
@@ -49,7 +50,7 @@ def pesan_galat(e):
     if "18456" in t or "login failed" in t:
         # Login yang ditolak bukan akun aplikasi (DB_USER) berarti akun linked server ke ERP, mis. password-nya diganti di ERP
         akun_app = os.environ.get("DB_USER", "").strip().lower()
-        return PESAN_DATABASE if akun_app and f"'{akun_app}'" in t else PESAN_LOGIN_ERP
+        return PESAN_LOGIN if akun_app and f"'{akun_app}'" in t else PESAN_LOGIN_ERP
     if jaringan or "4060" in t:
         return PESAN_DATABASE
     if "permission" in t or "(229)" in t or "could not find stored procedure" in t or "belum ada di database main" in t:

@@ -62,7 +62,7 @@ def bangun(data, dari, sampai, minggu=None, comp=None, kategori=None, buyer=None
     """data: seluruh baris yang dimuat, termasuk baris `lalu` untuk perbandingan."""
     df, lalu = bagi(data)
     daftar, ws, we = _periode(dari, sampai, minggu)
-    label = [f"{s:%d/%m} - {e:%d/%m}" for s, e in daftar]
+    label = [f"{s:%d-%m} sd {e:%d-%m}" for s, e in daftar]
     perusahaan, buyers, daftar_kategori, daftar_umur = _pilihan(df)
     comp = _kanonik(comp, perusahaan, "perusahaan")
     buyer = _kanonik(buyer, buyers + ["(kosong)"], "buyer")

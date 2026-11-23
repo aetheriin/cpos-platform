@@ -28,7 +28,7 @@ export function GalatHalaman({ galat, onUlang, sedang = false }) {
 
 const batang = 'block animate-pulse rounded bg-slate-400/20'
 
-export function Memuat({ teks = 'Memuat data...' }) {
+export function Memuat({ teks = 'Memuat data…' }) {
   return (
     <div role="status" className="space-y-3 py-4">
       <p className="text-sm text-slate-500">{teks}</p>
@@ -40,7 +40,7 @@ export function Memuat({ teks = 'Memuat data...' }) {
 }
 
 // Kerangka kartu dan grafik selama laporan pertama kali diambil, supaya tidak tampil area kosong
-export function MemuatLaporan({ teks = 'Memuat laporan...' }) {
+export function MemuatLaporan({ teks = 'Memuat laporan…' }) {
   return (
     <div role="status" className="space-y-3">
       <p className="text-sm text-slate-500">{teks}</p>

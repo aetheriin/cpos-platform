@@ -8,9 +8,10 @@ function Peringkat({ data, terpilih = [], onPilih, warna = '#0369a1', kosong = n
   const maks = Math.max(...data.map((d) => Math.abs(d.nilai)), 1)
   const adaPilihan = terpilih.length > 0
   const adaKanan = data.some((d) => d.kanan)
-  // Kolom nama selebar nama terpanjang (maks 40%), supaya batang tidak jauh dari nama yang pendek
+  // Kolom nama selebar nama terpanjang (maks 40%), supaya batang tidak jauh dari nama yang pendek.
+  // Kolom batang minimal selebar angkanya: di kartu sempit nama yang dipotong, angka tidak menimpa kolom kanan.
   const panjang = Math.max(...data.map((d) => String(d.nama).length))
-  const kolom = `minmax(0, min(40%, ${panjang + 1}ch)) minmax(0, 1fr)` + (adaKanan ? ' auto' : '')
+  const kolom = `minmax(0, min(40%, ${panjang + 1}ch)) minmax(max-content, 1fr)` + (adaKanan ? ' auto' : '')
   return (
     <div className="flex h-full flex-col">
       {/* Satu baris per nama (nama | batang + angka) supaya peringkat 10 nama tidak memakan banyak tempat; nama panjang dipotong, lengkapnya saat disorot */}

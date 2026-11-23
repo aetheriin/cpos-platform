@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const tampil = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`
+const tampil = (iso) => `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`
 
 // Dua isian tanggal untuk memilih ulang rentang di dalam data yang sudah dimuat (min..maks, 'YYYY-MM-DD'). Rentang baru dipakai begitu kedua
 // tanggal sah dan urut; selama belum sah, rentang lama tetap berlaku dan alasannya ditulis di bawah isian.

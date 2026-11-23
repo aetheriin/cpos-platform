@@ -15,7 +15,7 @@ const WARNA_STATUS = {
   'PV tanggal ke depan': 'bg-emerald-100 text-emerald-800',
   'Belum RV': 'bg-red-100 text-red-800',
   'RV sebagian': 'bg-amber-100 text-amber-800',
-  // Tindak lanjut Purchase Request, Purchase Orders, dan Purchase Invoice: belum = perlu tindakan, sebagian = berjalan, sudah = selesai
+  // Tindak lanjut Purchase Request, Purchase Order, dan Purchase Invoice: belum = perlu tindakan, sebagian = berjalan, sudah = selesai
   'Belum PO': 'bg-red-100 text-red-800',
   'PO sebagian': 'bg-amber-100 text-amber-800',
   'Sudah PO': 'bg-emerald-100 text-emerald-800',

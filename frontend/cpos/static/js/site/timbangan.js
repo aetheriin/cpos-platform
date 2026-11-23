@@ -53,7 +53,7 @@ const pollingBerat = new Poller(async () => {
     const el = document.getElementById('beratLiveDisplay');
     const st = r.data && r.data.berat !== undefined ? r.data : null;     // status putus tetap berisi data + sebabnya
     const putus = !st || !st.terhubung;
-    el.textContent = st ? Number(st.berat).toLocaleString('id-ID') : '—';
+    el.textContent = st ? Number(st.berat).toLocaleString('id-ID') : '-';
     el.parentElement.classList.toggle('opacity-40', putus);          // koneksi timbangan / server terputus
     // Status: putus (dengan sebab), belum kembali ke 0 setelah simpan, di bawah berat minimum, bergerak, atau stabil siap disimpan
     const ket = document.getElementById('statusBeratLive');

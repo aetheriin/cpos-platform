@@ -262,16 +262,71 @@ def lihat(*kode_menu):
     return dekorator
 
 
+# ===== Menu Admin untuk non-admin =====
+# Tiap halaman Admin punya menu sendiri di grup G_ADMIN (database/perubahan/031_menu_admin.sql). Non-admin yang diberi
+# hak Lihat boleh membuka halamannya; perubahan (selain GET) butuh hak Ubah. Menu admin dikenali dari kodenya, bukan dari
+# induknya, supaya tidak bisa "dibebaskan" dengan memindahkannya ke grup lain di Kelola Menu.
+GRUP_ADMIN = "G_ADMIN"
+KODE_HALAMAN_ADMIN = {k: f"ADM_{k.upper()}" for k in (
+    "users", "menu", "hak_akses", "persetujuan", "alur_tiket", "organisasi", "sesi", "void", "jadwal", "pengaturan",
+    "perangkat", "log", "audit", "kesehatan")}
+# Awalan API -> halaman Admin pemakainya (lihat static/js/admin/<halaman>.js)
+_API_ADMIN = (("users", "users"), ("cari", "users"), ("akses", "hak_akses"), ("level", "hak_akses"), ("menu", "menu"),
+              ("organisasi", "organisasi"), ("alur-persetujuan", "persetujuan"), ("alur-tiket", "alur_tiket"),
+              ("sesi", "sesi"), ("tiket", "void"), ("jadwal", "jadwal"), ("pengaturan", "pengaturan"),
+              ("kolom-wajib", "pengaturan"), ("perangkat", "perangkat"), ("jembatan", "perangkat"),
+              ("deteksi-plat", "perangkat"), ("log-keamanan", "log"), ("audit", "audit"), ("kesehatan", "kesehatan"))
+
+
+def menu_admin(kode):
+    """True untuk grup Admin dan menu halaman Admin: hanya admin yang boleh mengatur hak dan susunannya."""
+    return kode == GRUP_ADMIN or str(kode or "").startswith("ADM_")
+
+
+def halaman_admin_dari_path(path):
+    """'/admin/users' atau '/api/admin/users/3/ubah' -> 'users'; None bila bukan halaman Admin yang dikenal."""
+    bagian = (path or "").strip("/").split("/")
+    if len(bagian) >= 2 and bagian[0] == "admin":
+        return bagian[1] if bagian[1] in KODE_HALAMAN_ADMIN else None
+    if len(bagian) >= 3 and bagian[:2] == ["api", "admin"]:
+        return next((h for awalan, h in _API_ADMIN if bagian[2] == awalan), None)
+    return None
+
+
+def halaman_admin_terbuka(user=None):
+    """Halaman Admin yang boleh dibuka user, urut KODE_HALAMAN_ADMIN. Admin: semua."""
+    user = user or current_user
+    if getattr(user, "is_admin", False):
+        return list(KODE_HALAMAN_ADMIN)
+    return [h for h, kode in KODE_HALAMAN_ADMIN.items() if boleh_lihat(kode, user)]
+
+
+def boleh_admin(path, metode, user=None):
+    """Area Admin: admin selalu boleh; non-admin perlu Lihat di menu halamannya, dan Ubah untuk perubahan (selain GET)."""
+    user = user or current_user
+    if not getattr(user, "is_authenticated", False):
+        return False
+    if getattr(user, "is_admin", False):
+        return True
+    if path.rstrip("/") == "/admin":
+        return bool(halaman_admin_terbuka(user))
+    h = halaman_admin_dari_path(path)
+    if h is None:
+        return False
+    kode = KODE_HALAMAN_ADMIN[h]
+    return boleh_lihat(kode, user) if metode in ("GET", "HEAD", "OPTIONS") else boleh(kode, "ubah", user=user)
+
+
 def admin_required(f):
-    """Halaman / API Admin: hanya level is_admin."""
+    """Halaman / API Admin: admin, atau non-admin dengan hak menu halaman Admin itu (boleh_admin)."""
     @wraps(f)
     def wrapped(*args, **kwargs):
         if not current_user.is_authenticated:
             return jsonify({"error": "Belum login"}), 401
-        if not current_user.is_admin:
+        if not boleh_admin(request.path, request.method):
             from utils.keamanan import log_keamanan
             log_keamanan("AKSES_DITOLAK", f"level {current_user.role} ke {f.__name__}")
-            return jsonify({"error": "Khusus Admin"}), 403
+            return jsonify({"error": "Anda tidak punya hak untuk halaman Admin ini"}), 403
         return f(*args, **kwargs)
     return wrapped
 

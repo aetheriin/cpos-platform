@@ -70,7 +70,7 @@ function PelanggarBerulang({ data, terpilih, onPilih, mitra = ['supplier'] }) {
                   </td>
                   <td className="py-1.5 pl-2 text-right tabular-nums leading-tight text-slate-600">
                     <span className="block">{persen(d.persen)}</span>
-                    <span className="block text-xs text-slate-400">dari {angka.format(d.total)}</span>
+                    <span className="block text-xs text-slate-500">dari {angka.format(d.total)}</span>
                   </td>
                 </tr>
               )

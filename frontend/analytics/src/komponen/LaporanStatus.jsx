@@ -18,7 +18,7 @@ const satu = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 })
 export { rupiah, rupiahPenuh }
 export const hari = (x) => (x == null ? 'belum ada' : `${satu.format(x)} hari`)
 
-// Laporan status tindak lanjut dokumen (model Purchase Invoice), dipakai Purchase Request dan Purchase Orders.
+// Laporan status tindak lanjut dokumen (model Purchase Invoice), dipakai Purchase Request dan Purchase Order.
 // kartu(kpi) -> [{judul, nilai, catatan, info}]; tabel: [{judul, tab: [{kunci, nama, ket}]}]
 // kolomNomor: kolom nomor dokumen di baris tabel; klik ganda baris membuka rincian dokumen itu
 export default function LaporanStatus({ laporanId, judul, teksTanggal, kartu, tabel, filterTambahan = [], kolomNomor, dataId, onDataHilang }) {

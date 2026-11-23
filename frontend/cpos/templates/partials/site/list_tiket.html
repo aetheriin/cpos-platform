@@ -3,7 +3,7 @@
     <div class="flex flex-col lg:flex-row lg:items-center gap-3">
         <div class="relative flex-1">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-            <input type="text" id="searchTiket" placeholder="Cari No. Tiket, plat, supir, customer, atau No. DO..." class="input-field pl-9"
+            <input type="text" id="searchTiket" aria-label="Cari tiket" placeholder="Cari No. Tiket, plat, supir, customer, atau No. DO..." class="input-field pl-9"
                    data-on-input="saringTabel" data-arg="$value">
         </div>
         <div id="chipTahap" class="seg" data-awal="{{ tahap_awal }}">
@@ -14,7 +14,7 @@
         </div>
     </div>
     <div class="flex items-center justify-between gap-3 text-xs text-slate-500 pt-3 mt-3 border-t border-slate-100">
-        <span id="infoJumlahTiket">Memuat...</span>
+        <span id="infoJumlahTiket">Memuat…</span>
         <span id="infoTotalNetto" class="font-mono"></span>
     </div>
 </div>
@@ -43,7 +43,7 @@
             <h2 class="text-sm font-bold text-slate-900">Riwayat Penimbangan (7 Hari Terakhir)</h2>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-        <select id="filterProdukHistory" data-simpan="produk_history" class="input-field w-52" data-on-change="muatHistoryProduk">
+        <select id="filterProdukHistory" aria-label="Saring produk" data-simpan="produk_history" class="input-field w-52" data-on-change="muatHistoryProduk">
             <option value="">Semua produk</option>
             {% for p in produk_list %}<option value="{{ p.id_produk }}">{{ p.nama_produk }}</option>{% endfor %}
         </select>

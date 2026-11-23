@@ -66,7 +66,7 @@ def daily_report_table(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
     details = [
         _table_row(
             **{
-                "JENIS HARGA": _report_row_value(row, "CATEGORY") or "—",
+                "JENIS HARGA": _report_row_value(row, "CATEGORY") or "-",
                 "HARGA TBS + SPSI": _report_row_value(row, "HARGA_TBS_SPSI"),
                 "HARGA CPO": _report_row_value(row, "HARGA_CPO"),
                 "PERSENTASE": _report_number(_report_row_value(row, "PERSENTASE")) * 100,
@@ -199,9 +199,9 @@ def weekly_report_table(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
         )
         values: dict[str, Any] = {
             "NO": number,
-            "KATEGORI": identity[2] or "—",
-            "JENIS KEBUN": identity[0] or "—",
-            "GRUP": identity[1] or "—",
+            "KATEGORI": identity[2] or "-",
+            "JENIS KEBUN": identity[0] or "-",
+            "GRUP": identity[1] or "-",
         }
         gabungkan_rsi = (
             str(identity[0] or "").strip().upper() == "RSI"
@@ -269,9 +269,9 @@ def monthly_report_tables(
             detail_rows.append(_table_row(
                 **{
                     "NO": number,
-                    "JENIS KEBUN": _report_row_value(row, "JENIS_KEBUN") or _report_row_value(row, "JENIS KEBUN") or "—",
-                    "GRUP": _report_row_value(row, "GROUP") or _report_row_value(row, "GRUP") or "—",
-                    "KATEGORI": _report_row_value(row, "KATEGORI") or "—",
+                    "JENIS KEBUN": _report_row_value(row, "JENIS_KEBUN") or _report_row_value(row, "JENIS KEBUN") or "-",
+                    "GRUP": _report_row_value(row, "GROUP") or _report_row_value(row, "GRUP") or "-",
+                    "KATEGORI": _report_row_value(row, "KATEGORI") or "-",
                     period_headers[0]: _report_row_value(row, "TONASE_KG", "TONASE KG"),
                     "_row_type": "detail",
                     "_percent_columns": (),
@@ -297,9 +297,9 @@ def monthly_report_tables(
         for number, identity in enumerate(identity_order, start=1):
             values: dict[str, Any] = {
                 "NO": number,
-                "JENIS KEBUN": identity[0] or "—",
-                "GRUP": identity[1] or "—",
-                "KATEGORI": identity[2] or "—",
+                "JENIS KEBUN": identity[0] or "-",
+                "GRUP": identity[1] or "-",
+                "KATEGORI": identity[2] or "-",
                 "_row_type": "detail",
                 "_percent_columns": (),
             }
@@ -399,7 +399,7 @@ def monthly_report_tables(
 
 def tbs_report_value(value: Any, column: str, row: dict[str, Any], kind: str) -> str:
     if value is None:
-        return "—"
+        return "-"
     if isinstance(value, (int, float)) or hasattr(value, "as_tuple"):
         number = float(value)
         if column in row.get("_percent_columns", ()):
@@ -426,15 +426,15 @@ def tbs_attensi_class(value: Any) -> str:
 
 def web_date_format(value: Any) -> str:
     if value is None:
-        return "—"
+        return "-"
     if isinstance(value, datetime):
-        return value.strftime("%d/%m/%Y")
+        return value.strftime("%d-%m-%Y")
     if isinstance(value, date):
-        return value.strftime("%d/%m/%Y")
+        return value.strftime("%d-%m-%Y")
     text = str(value)
     if len(text) >= 10 and text[4:5] == "-" and text[7:8] == "-":
         try:
-            return date.fromisoformat(text[:10]).strftime("%d/%m/%Y")
+            return date.fromisoformat(text[:10]).strftime("%d-%m-%Y")
         except ValueError:
             return text
     return text

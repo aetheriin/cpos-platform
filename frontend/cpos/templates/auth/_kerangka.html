@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
     {% include "partials/layout/bahasa.html" %}
 </head>
-<body class="font-sans antialiased bg-slate-50 min-h-screen flex items-center justify-center p-4 sm:p-8">
+<body class="font-sans antialiased bg-slate-50 min-h-screen flex flex-col items-center justify-center p-4 sm:p-8">
     <div class="w-full max-w-4xl grid md:grid-cols-5 bg-white rounded-2xl border border-slate-200 shadow-xl shadow-slate-200/60 overflow-hidden">
 
         {# Panel merek (gaya panel indikator gelap di Stasiun Timbang) #}
@@ -42,7 +42,8 @@
             {% block isi %}{% endblock %}
         </div>
     </div>
-    <p class="fixed bottom-4 inset-x-0 text-center text-xs text-slate-400">CPOS · Centralized Palm Oil System</p>
+    {# Ikut alur halaman (bukan menempel di bawah layar), supaya tidak menutupi tombol Masuk di HP atau saat keyboard terbuka #}
+    <p class="mt-6 text-center text-xs text-slate-400">CPOS · Centralized Palm Oil System</p>
     <script src="{{ url_for('static', filename='js/lihat_password.js') }}"></script>
     {% block skrip %}{% endblock %}
 </body>

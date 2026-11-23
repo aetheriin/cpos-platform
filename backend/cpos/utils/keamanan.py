@@ -183,8 +183,8 @@ def pasang_sesi_idle(app):
 
 
 # ===== AREA ADMIN =====
-# ADMIN (super admin) hanya mengelola sistem: halaman lain tidak terbuka untuknya,
-# dan halaman admin hanya untuk ADMIN.
+# ADMIN (super admin) hanya mengelola sistem: halaman lain tidak terbuka untuknya.
+# Halaman admin untuk ADMIN, dan untuk non-admin yang diberi hak menu halaman itu (hak_akses.boleh_admin).
 PATH_UMUM = ("/static/", "/favicon.ico", "/login", "/logout", "/api/sesi/perpanjang", "/health", "/ganti-password", "/agen/unduh")
 
 
@@ -200,9 +200,15 @@ def pasang_batas_admin(app):
         admin = current_user.is_admin
         if admin == _area_admin(request.path):
             return None
+        # Non-admin dengan hak menu halaman Admin (Admin › Hak Akses, grup Admin) boleh membuka halaman itu
+        if not admin:
+            from utils.hak_akses import boleh_admin
+            if boleh_admin(request.path, request.method):
+                return None
         log_keamanan("AKSES_DITOLAK", f"level {current_user.role} ke {request.path}")
         if request.path.startswith("/api/"):
-            return jsonify({"error": "Akses ditolak untuk level Anda"}), 403
+            # kode KHUSUS_ADMIN dibaca Analytics supaya Super Admin tidak diberi tahu "sesi berakhir"
+            return jsonify({"error": "Akses ditolak untuk level Anda", **({"kode": "KHUSUS_ADMIN"} if admin else {})}), 403
         if admin:
             return redirect("/admin")
         abort(403)
@@ -245,29 +251,26 @@ def pasang_blok_upload_publik(app):
             abort(404)
 
 
-# ===== TOKEN PERANGKAT (kiosk kamera) =====
-def _token_valid():
+# ===== TOKEN PERANGKAT (agen timbang di PC jembatan) =====
+def _pos_dari_token():
+    """ID pos yang tokennya cocok (Admin > Perangkat / Kios), "*" untuk token bersama KIOSK_TOKEN di .env (cara lama), atau None.
+    Tanpa token selalu ditolak, juga dari PC server sendiri: di belakang Caddy semua permintaan datang dari 127.0.0.1."""
     kiriman = request.headers.get("X-Kiosk-Token", "")
-    # 1) Token per pos dari Admin > Perangkat / Kios
     if kiosk.token_cocok(id_pos(), kiriman):
-        return True
-    # 2) Token bersama di .env (cara lama)
+        return id_pos()
     token = os.getenv("KIOSK_TOKEN", "")
-    if token:
-        return hmac.compare_digest(token, kiriman)
-    # 3) Tanpa token sama sekali: hanya kiosk di PC yang sama dengan server yang diizinkan
-    return request.remote_addr in ("127.0.0.1", "::1")
+    if token and hmac.compare_digest(token.encode(), kiriman.encode()):
+        return "*"
+    return None
 
 
-def perangkat_atau_login(f):
-    """Endpoint kiosk: boleh dipanggil user yang login ATAU kiosk yang membawa X-Kiosk-Token benar."""
+def khusus_perangkat(f):
+    """Hanya perangkat yang membawa X-Kiosk-Token benar; g.pos_kiosk = pos pemilik token ("*" = token bersama).
+    Sesi browser tidak berlaku, karena endpoint perangkat dibebaskan dari token CSRF (app.py)."""
     @wraps(f)
     def wrapped(*args, **kwargs):
-        if current_user.is_authenticated:
-            g.dari_kiosk = False
-            return f(*args, **kwargs)
-        if _token_valid():
-            g.dari_kiosk = True
+        g.pos_kiosk = _pos_dari_token()
+        if g.pos_kiosk:
             kiosk.catat_terlihat(id_pos(), request.remote_addr)
             return f(*args, **kwargs)
         log_keamanan("KIOSK_DITOLAK", request.path)

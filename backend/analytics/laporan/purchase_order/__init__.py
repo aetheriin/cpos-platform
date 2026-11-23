@@ -1,4 +1,4 @@
-"""Laporan Purchase Orders: PO yang belum, sebagian, dan sudah dibuatkan PI (tabel saja, model laporan Purchase Invoice)."""
+"""Laporan Purchase Order: PO yang belum, sebagian, dan sudah dibuatkan PI (tabel saja, model laporan Purchase Invoice)."""
 from inti.laporan import Laporan
 
 from .. import rincian_dokumen
@@ -31,7 +31,7 @@ def _kpi(d):
 
 
 _L = LaporanStatus(
-    nama="Purchase Orders", kol_tanggal="cd", urutan_status=URUTAN_STATUS, kpi=_kpi, pembanding="po_number",
+    nama="Purchase Order", kol_tanggal="cd", urutan_status=URUTAN_STATUS, kpi=_kpi, pembanding="po_number",
     dim={"kategori": ("category", "Kategori"), "supplier": ("supplier_name", "Supplier"), "pembuat": ("creator", "Dibuat oleh")},
     kolom_cari=["comp", "po_number", "supplier_code", "supplier_name", "itemcode", "itemname", "category", "creator", "pi_number"],
     tab={
@@ -43,7 +43,7 @@ _L = LaporanStatus(
 
 LAPORAN = Laporan(
     id="purchase_order",
-    nama="Purchase Orders",
+    nama="Purchase Order",
     grup="Reports",
     deskripsi="PO yang belum, sebagian, dan sudah dibuatkan PI.",
     pemuat=muat,

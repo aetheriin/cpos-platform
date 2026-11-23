@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% from "partials/layout/_macros.html" import judul_halaman %}
+{% block title %}Netto Sumber · CPOS{% endblock %}
+{% block info_bar %}{% endblock %}
+{% block info_bar_script %}{% endblock %}
+{% block tab_header %}
+{% call judul_halaman('Netto Sumber', 'Isi netto sumber tiket penjualan yang kosong atau salah di Ascend. Angkanya dipakai laporan Tiket Penjualan.', 'fa-scale-balanced') %}{% endcall %}
+{% endblock %}
+
+{% block tab_content %}
+<div id="nettoSumber" data-hak="{{ hak|tojson|forceescape }}" data-batas="{{ batas }}" data-maks-hari="{{ maks_hari }}">
+    <div id="nsPeringatan" class="hidden mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="alert"></div>
+
+    <div class="section-box p-4 mb-4">
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5 items-end">
+            <div>
+                <label class="field-label" for="nsPerusahaan">Perusahaan</label>
+                <select id="nsPerusahaan" class="input-field">
+                    {% if perusahaan|length > 1 %}<option value="">Semua perusahaan</option>{% endif %}
+                    {% for p in perusahaan %}<option value="{{ p.kode }}">{{ p.kode }}{% if p.nama and p.nama != p.kode %} · {{ p.nama }}{% endif %}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="field-label" for="nsMulai">Dari</label>
+                <input id="nsMulai" type="date" class="input-field" value="{{ mulai }}">
+            </div>
+            <div>
+                <label class="field-label" for="nsAkhir">Sampai</label>
+                <input id="nsAkhir" type="date" class="input-field" value="{{ akhir }}">
+            </div>
+            <div>
+                <label class="field-label" for="nsProduk">Produk</label>
+                <select id="nsProduk" class="input-field"><option value="">Semua produk</option></select>
+            </div>
+            <div>
+                <label class="field-label" for="nsCari">Cari</label>
+                <input id="nsCari" type="search" class="input-field" placeholder="Tiket, pembeli, DO, kendaraan">
+            </div>
+        </div>
+        <div id="nsStatus" class="mt-4 flex flex-wrap gap-2" role="group" aria-label="Saring status">
+            {% for kunci, label in [('perlu_diisi', 'Perlu diisi'), ('perlu_dicek', 'Perlu dicek'), ('dari_ascend', 'Dari Ascend'), ('diisi', 'Diisi'), ('', 'Semua')] %}
+            <button type="button" class="chip{% if kunci == 'perlu_diisi' %} chip-active{% endif %}" data-status="{{ kunci }}"
+                    aria-pressed="{{ 'true' if kunci == 'perlu_diisi' else 'false' }}">{{ label }} <span class="font-mono" data-jumlah="{{ kunci }}">-</span></button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <section class="section-box overflow-hidden" aria-labelledby="nsJudulTabel">
+        <div class="p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+            <h2 id="nsJudulTabel" class="font-bold text-slate-800">Daftar tiket</h2>
+            <p id="nsInfo" class="text-xs text-slate-500" role="status">Memuat tiket…</p>
+        </div>
+        {# relative: teks sr-only di dalam tabel ikut terpotong wadah gulir, tidak melebarkan halaman #}
+        <div class="relative overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="table-header-row"><tr>
+                    <th class="table-cell">Tanggal</th>
+                    <th class="table-cell" data-kolom-pt>PT</th>
+                    <th class="table-cell">No. Tiket</th>
+                    <th class="table-cell">Produk</th>
+                    <th class="table-cell">Pembeli</th>
+                    <th class="table-cell text-right !whitespace-normal">Netto timbangan (kg)</th>
+                    <th class="table-cell text-right !whitespace-normal">Netto sumber (kg)</th>
+                    <th class="table-cell text-right !whitespace-normal">Selisih (kg)</th>
+                    <th class="table-cell">Status</th>
+                    <th class="table-cell"><span class="sr-only">Aksi</span></th>
+                </tr></thead>
+                <tbody id="nsTabel" class="divide-y divide-slate-100" data-per-halaman="50" data-judul-ekspor="Netto Sumber"></tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block modals %}
+<div id="modalNettoSumber" class="modal-overlay"><div class="modal-box sm:max-w-lg" role="dialog" aria-modal="true" aria-labelledby="nsJudul">
+    <div class="modal-header">
+        <div class="min-w-0">
+            <h3 id="nsJudul" class="font-bold font-mono break-all"></h3>
+            <p id="nsSubjudul" class="text-xs text-slate-500"></p>
+        </div>
+        <button type="button" class="aturan-tombol shrink-0" data-on-click="closeModal" data-arg="modalNettoSumber" title="Tutup" aria-label="Tutup"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </div>
+    <div class="p-6 space-y-4">
+        <dl id="nsDataTiket" class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm"></dl>
+        <p id="nsPasangan" class="hidden rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600"></p>
+        <p id="nsKunci" class="hidden rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"></p>
+        <form id="nsForm" class="space-y-3" novalidate>
+            <div>
+                <label class="field-label" for="nsNilai">Netto sumber (kg)</label>
+                <input id="nsNilai" type="text" inputmode="decimal" autocomplete="off" class="input-field font-mono" placeholder="Contoh: 28.340" aria-describedby="nsSelisih">
+                <p id="nsSelisih" class="mt-1 text-xs text-slate-500" aria-live="polite"></p>
+            </div>
+            <div>
+                <label class="field-label" for="nsReferensi">Nomor referensi <span class="text-slate-400 font-normal">(opsional)</span></label>
+                <input id="nsReferensi" type="text" maxlength="50" class="input-field" placeholder="Nomor tiket timbang pihak lain">
+            </div>
+            <div>
+                <label class="field-label" for="nsCatatan">Catatan <span id="nsCatatanTanda" class="text-slate-400 font-normal">(opsional)</span></label>
+                <textarea id="nsCatatan" rows="2" maxlength="500" class="input-field" aria-describedby="nsCatatanGalat"></textarea>
+                <p id="nsCatatanGalat" class="mt-1 text-xs text-red-700"></p>
+            </div>
+        </form>
+        <details id="nsRiwayatBox" class="rounded-lg border border-slate-200 px-3 py-2">
+            <summary class="cursor-pointer text-sm font-semibold text-slate-700">Riwayat isian</summary>
+            <ol id="nsRiwayat" class="mt-2 space-y-2 text-xs text-slate-600"></ol>
+        </details>
+    </div>
+    <div class="px-6 pb-6 flex flex-wrap items-center gap-2">
+        <button type="button" id="nsKembalikan" class="btn-secondary hidden">Batalkan isian</button>
+        <div class="ml-auto flex gap-2">
+            <button type="button" id="nsTutup" class="btn-secondary" data-on-click="closeModal" data-arg="modalNettoSumber">Batal</button>
+            <button type="submit" id="nsSimpan" form="nsForm" class="btn-primary">Simpan</button>
+        </div>
+    </div>
+</div></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script defer src="{{ url_for('static', filename='netto_sumber/netto_sumber.js') }}"></script>
+{% endblock %}

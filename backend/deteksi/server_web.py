@@ -25,155 +25,251 @@ from anpr.pengaturan_db import baca_pengaturan, info_kamera
 from baca_plat import SumberFile, gambar_bacaan
 
 MAKS_RIWAYAT = 50
+# Huruf Plus Jakarta Sans disalin dari CPOS (static/vendor/fonts) supaya tampilan sama
+FOLDER_FONT = FOLDER_PROYEK / "font"
+FONT = {f"plus-jakarta-sans-latin-{w}-normal.woff2" for w in (400, 500, 600, 700)}
 
 HALAMAN = """<!doctype html>
 <html lang="id"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CPOS - Deteksi Plat Sawit</title>
+<title>Deteksi Plat</title>
+<script>
+// Tema sama dengan CPOS: localStorage 'tema' = 'terang' / 'gelap', bawaan terang
+try { if (localStorage.getItem('tema') === 'gelap') document.documentElement.classList.add('dark'); } catch (e) {}
+</script>
 <style>
- body{font-family:Segoe UI,Arial,sans-serif;margin:0;background:#111;color:#eee}
- header{padding:10px 16px;background:#1b1b1b;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #333}
- .tabs{display:flex;gap:10px}
- .tabs button{background:#2a2a2a;color:#ccc;border:none;padding:8px 16px;cursor:pointer;border-radius:4px;font-weight:600}
- .tabs button.aktif{background:#06B6D4;color:#fff}
- .konten{display:none;padding:16px}
- .konten.aktif{display:block}
- 
- /* Grid Kamera */
- .kontrol-grid{margin-bottom:16px;display:flex;gap:10px;align-items:center}
- .kontrol-grid button{background:#222;color:#eee;border:1px solid #444;padding:6px 14px;cursor:pointer;border-radius:4px}
- #area-kamera{display:grid;gap:12px;align-content:start}
- .grid-1{grid-template-columns: 1fr;}
- .grid-4{grid-template-columns: repeat(2, 1fr);}
- .grid-banyak{grid-template-columns: repeat(3, 1fr);}
- figure{margin:0;background:#000;border-radius:6px;overflow:hidden;border:1px solid #333}
- figure img{width:100%;display:block}
- figcaption{font-size:13px;color:#06B6D4;padding:6px 10px;background:#181818;font-weight:600}
-
- /* Tabel & Form */
- table{width:100%;border-collapse:collapse;font-size:14px;background:#1b1b1b;border-radius:6px;overflow:hidden}
- th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #333}
- th{color:#06B6D4;font-weight:600;background:#222}
- tr:hover{background:#252525}
- input, select{padding:8px 12px;background:#222;color:#fff;border:1px solid #444;border-radius:4px;width:100%;box-sizing:border-box;margin-bottom:12px}
- .btn-form{background:#06B6D4;color:#111;border:none;padding:10px 16px;cursor:pointer;font-weight:bold;border-radius:4px;width:100%}
- .btn-excel{background:#1D6F42;color:#fff;border:none;padding:10px 20px;cursor:pointer;border-radius:4px;text-decoration:none;display:inline-block;font-weight:600}
- .btn-excel:hover{background:#155231}
+@font-face{font-family:'Plus Jakarta Sans';font-weight:400;font-display:swap;src:url('/font/plus-jakarta-sans-latin-400-normal.woff2') format('woff2')}
+@font-face{font-family:'Plus Jakarta Sans';font-weight:500;font-display:swap;src:url('/font/plus-jakarta-sans-latin-500-normal.woff2') format('woff2')}
+@font-face{font-family:'Plus Jakarta Sans';font-weight:600;font-display:swap;src:url('/font/plus-jakarta-sans-latin-600-normal.woff2') format('woff2')}
+@font-face{font-family:'Plus Jakarta Sans';font-weight:700;font-display:swap;src:url('/font/plus-jakarta-sans-latin-700-normal.woff2') format('woff2')}
+/* Warna dari CPOS (tailwind-source.css): utama-600/700, skala slate, latar kartu gelap #121a2b */
+:root{--latar:#f8fafc;--kartu:#fff;--garis:#e2e8f0;--garis-lembut:#f1f5f9;--teks:#1e293b;--teks-kuat:#0f172a;--teks-redup:#475569;
+  --utama:#127cbf;--utama-tua:#0d66a0;--utama-lembut:#ecf6fd;--kepala:#f8fafc;--hijau:#059669;--hijau-teks:#047857;--merah:#b91c1c;color-scheme:light}
+html.dark{--latar:#0b1120;--kartu:#121a2b;--garis:#253046;--garis-lembut:#1a2335;--teks:#e2e8f0;--teks-kuat:#f1f5f9;--teks-redup:#94a3b8;
+  --utama:#127cbf;--utama-tua:#0d66a0;--utama-lembut:#0f2440;--kepala:#1a2335;--hijau:#10b981;--hijau-teks:#6ee7b7;--merah:#fca5a5;color-scheme:dark}
+*{box-sizing:border-box}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;margin:0;background:var(--latar);color:var(--teks);font-size:14px}
+header{background:var(--kartu);border-bottom:1px solid var(--garis);padding:12px 20px;display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center}
+h1{margin:0;font-size:18px;font-weight:700;color:var(--teks-kuat)}
+h2{margin:0 0 4px;font-size:15px;font-weight:700;color:var(--teks-kuat)}
+.redup{color:var(--teks-redup);font-size:12px}
+main{padding:20px;max-width:1600px;margin:0 auto}
+.seg{display:inline-flex;gap:4px;padding:4px;background:var(--garis-lembut);border:1px solid var(--garis);border-radius:8px}
+.chip{min-height:36px;padding:6px 14px;border:0;border-radius:6px;background:transparent;color:var(--teks-redup);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.chip:hover{color:var(--teks-kuat)}
+.chip[aria-selected="true"],.chip.aktif{background:var(--kartu);color:var(--teks-kuat);box-shadow:0 1px 2px rgb(15 23 42/.08)}
+.btn-primary,.btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:8px 16px;border-radius:8px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}
+.btn-primary{background:var(--utama);color:#fff;border:1px solid var(--utama)}
+.btn-primary:hover{background:var(--utama-tua)}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed}
+.btn-secondary{background:var(--kartu);color:var(--teks);border:1px solid var(--garis)}
+.btn-secondary:hover{background:var(--garis-lembut)}
+.btn-ikon{min-height:40px;min-width:40px;padding:0;border-radius:8px;border:1px solid var(--garis);background:var(--kartu);color:var(--teks-redup);cursor:pointer;font-size:16px}
+:focus-visible{outline:2px solid var(--utama);outline-offset:2px}
+.section-box{background:var(--kartu);border:1px solid var(--garis);border-radius:12px;box-shadow:0 1px 2px rgb(15 23 42/.05);overflow:hidden}
+.section-head{padding:12px 16px;border-bottom:1px solid var(--garis-lembut)}
+.konten[hidden]{display:none}
+.kontrol-grid{margin-bottom:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.tata{display:flex;gap:16px;flex-wrap:wrap}
+#area-kamera{display:grid;gap:12px;align-content:start;flex:2 1 600px;min-width:0}
+.grid-1{grid-template-columns:1fr}
+.grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid-banyak{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:700px){.grid-4,.grid-banyak{grid-template-columns:1fr}}
+figure{margin:0;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--garis)}
+figure img{width:100%;aspect-ratio:16/9;object-fit:contain;display:block}
+figcaption{font-size:12px;color:var(--teks);padding:8px 12px;background:var(--kartu);font-weight:600}
+#riwayat{flex:1 1 340px;min-width:0}
+#terakhir{font-size:26px;font-weight:700;color:var(--hijau-teks);margin:4px 0 0;font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+.tabel-wadah{overflow:auto;max-height:34rem}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--garis-lembut);white-space:nowrap}
+th{position:sticky;top:0;background:var(--kepala);color:var(--teks-redup);font-weight:600;border-bottom:1px solid var(--garis)}
+tbody tr:hover{background:var(--garis-lembut)}
+.kosong{text-align:center;color:var(--teks-redup);padding:32px 14px}
+.unduh{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.ikon-excel{color:var(--hijau)}
+.form{max-width:520px;padding:20px}
+label{display:block;margin:0 0 6px;font-size:14px;font-weight:600;color:var(--teks)}
+input{width:100%;min-height:40px;padding:8px 12px;background:var(--kartu);color:var(--teks);border:1px solid var(--garis);border-radius:8px;font:inherit;margin-bottom:14px}
+input::placeholder{color:var(--teks-redup)}
+input:focus{outline:none;border-color:var(--utama);box-shadow:0 0 0 3px rgb(18 124 191/.2)}
+#pesan{margin:12px 0 0;font-size:13px;min-height:1.2em}
+#pesan.galat{color:var(--merah)}
+#pesan.berhasil{color:var(--hijau-teks)}
 </style></head><body>
 
 <header>
- <div><h1 style="margin:0;font-size:20px;color:#06B6D4">CPOS Plat Sawit</h1><span id="info" style="font-size:12px;color:#aaa">memuat...</span></div>
- <div class="tabs">
-  <button class="aktif" onclick="bukaTab(event, 'tab-live')">Live View</button>
-  <button onclick="bukaTab(event, 'tab-laporan')">Laporan Excel</button>
-  <button onclick="bukaTab(event, 'tab-kamera')">Kelola Kamera</button>
+ <div><h1>Deteksi Plat</h1><span id="info" class="redup">Memuat…</span></div>
+ <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+  <div class="seg" role="tablist" aria-label="Halaman">
+   <button class="chip" role="tab" id="t-live" aria-selected="true" aria-controls="tab-live" data-tab="tab-live">Kamera langsung</button>
+   <button class="chip" role="tab" id="t-laporan" aria-selected="false" aria-controls="tab-laporan" tabindex="-1" data-tab="tab-laporan">Laporan</button>
+   <button class="chip" role="tab" id="t-kamera" aria-selected="false" aria-controls="tab-kamera" tabindex="-1" data-tab="tab-kamera">Kelola kamera</button>
+  </div>
+  <button type="button" class="btn-ikon" id="tombolTema" aria-label="Ganti ke mode gelap" title="Ganti tema">☾</button>
  </div>
 </header>
 
-<div id="tab-live" class="konten aktif">
+<main>
+<section id="tab-live" class="konten" role="tabpanel" aria-labelledby="t-live">
   <div class="kontrol-grid">
-    <span style="font-size:13px;color:#aaa">Layout Kamera:</span>
-    <button onclick="ubahGrid('grid-1')">1 Kamera</button>
-    <button onclick="ubahGrid('grid-4')">4 Grid (2x2)</button>
-    <button onclick="ubahGrid('grid-banyak')">6 Grid (3 Kolom)</button>
+    <span class="redup">Tata letak kamera</span>
+    <div class="seg" role="group" aria-label="Tata letak kamera">
+      <button type="button" class="chip" data-grid="grid-1" aria-pressed="false">1 kamera</button>
+      <button type="button" class="chip aktif" data-grid="grid-4" aria-pressed="true">2 x 2</button>
+      <button type="button" class="chip" data-grid="grid-banyak" aria-pressed="false">3 kolom</button>
+    </div>
   </div>
-  <div style="display:flex;gap:16px;flex-wrap:wrap">
-    <section id="area-kamera" class="grid-4" style="flex:2 1 600px"></section>
-    <section id="riwayat" style="flex:1 1 340px">
-      <h3 style="margin-top:0;color:#06B6D4">Deteksi Terakhir</h3>
-      <p id="terakhir" style="font-size:28px;font-weight:bold;color:#3c3;margin:0 0 12px">-</p>
-      <table><thead><tr><th>Waktu</th><th>Kamera</th><th>Jenis</th><th>Plat</th><th>Pemilik</th></tr></thead>
-      <tbody id="baris"></tbody></table>
-    </section>
+  <div class="tata">
+    <div id="area-kamera" class="grid-4"><p class="redup">Memuat kamera…</p></div>
+    <div id="riwayat" class="section-box">
+      <div class="section-head">
+        <h2>Deteksi terakhir</h2>
+        <p id="terakhir">Belum ada data</p>
+      </div>
+      <div class="tabel-wadah">
+        <table><thead><tr><th>Waktu</th><th>Kamera</th><th>Jenis</th><th>Plat</th><th>Pemilik</th></tr></thead>
+        <tbody id="baris"><tr><td colspan="5" class="kosong">Belum ada data</td></tr></tbody></table>
+      </div>
+    </div>
   </div>
-</div>
+</section>
 
-<div id="tab-laporan" class="konten">
-  <h2>Unduh Laporan Deteksi (SQL Server)</h2>
-  <p style="color:#aaa">Pilih periode laporan untuk mengunduh data deteksi kendaraan lengkap dalam format Microsoft Excel:</p>
-  <div style="display:flex;gap:12px;margin-top:20px">
-    <a href="/api/excel?rentang=hari_ini" class="btn-excel">📊 Download Laporan Hari Ini</a>
-    <a href="/api/excel?rentang=minggu_ini" class="btn-excel">📅 Download Laporan 7 Hari Terakhir</a>
-    <a href="/api/excel?rentang=bulan_ini" class="btn-excel">📆 Download Laporan Bulan Ini</a>
+<section id="tab-laporan" class="konten section-box" role="tabpanel" aria-labelledby="t-laporan" hidden>
+  <div class="form" style="max-width:none">
+    <h2>Unduh laporan deteksi</h2>
+    <p class="redup">Semua kendaraan yang terbaca kamera pada periode yang dipilih.</p>
+    <div class="unduh">
+      <a href="/api/excel?rentang=hari_ini" class="btn-secondary"><svg class="ikon-excel" viewBox="0 0 24 24" height="1.1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9.5 12.5 5 5m0-5-5 5"/></svg>Excel hari ini</a>
+      <a href="/api/excel?rentang=minggu_ini" class="btn-secondary"><svg class="ikon-excel" viewBox="0 0 24 24" height="1.1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9.5 12.5 5 5m0-5-5 5"/></svg>Excel 7 hari</a>
+      <a href="/api/excel?rentang=bulan_ini" class="btn-secondary"><svg class="ikon-excel" viewBox="0 0 24 24" height="1.1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9.5 12.5 5 5m0-5-5 5"/></svg>Excel bulan ini</a>
+    </div>
   </div>
-</div>
+</section>
 
-<div id="tab-kamera" class="konten">
-  <h2>Tambah Kamera RTSP Baru</h2>
-  <p style="color:#aaa">Tambahkan IP Camera / CCTV Hikvision tanpa perlu mengubah file .env:</p>
-  <div style="max-width:480px;background:#1b1b1b;padding:20px;border-radius:6px;border:1px solid #333">
-    <label style="display:block;margin-bottom:4px;font-size:13px;color:#ccc">Nama Kamera / Pos</label>
-    <input type="text" id="kam-nama" placeholder="Contoh: POS_TIMBANGAN">
-    
-    <label style="display:block;margin-bottom:4px;font-size:13px;color:#ccc">RTSP Stream URL</label>
-    <input type="text" id="kam-rtsp" placeholder="rtsp://admin:pass@192.168.1.64:554/Streaming/Channels/101">
-    
-    <button class="btn-form" onclick="tambahKamera()">💾 Simpan & Tambahkan Kamera</button>
-  </div>
-</div>
+<section id="tab-kamera" class="konten" role="tabpanel" aria-labelledby="t-kamera" hidden>
+  <form id="formKamera" class="section-box form" autocomplete="off">
+    <h2>Tambah kamera</h2>
+    <p class="redup" style="margin:0 0 16px">Kamera CCTV dengan alamat RTSP. Kamera langsung tampil setelah Deteksi Plat dijalankan ulang.</p>
+    <label for="kam-nama">Nama kamera atau pos</label>
+    <input type="text" id="kam-nama" placeholder="Contoh: POS_TIMBANGAN" required>
+    <label for="kam-rtsp">Alamat RTSP</label>
+    <input type="text" id="kam-rtsp" placeholder="rtsp://user:sandi@alamat-ip:554/Streaming/Channels/101" required>
+    <button type="submit" class="btn-primary" id="simpanKamera">Simpan kamera</button>
+    <p id="pesan" role="status"></p>
+  </form>
+</section>
+</main>
 
 <script>
-function bukaTab(evt, namaTab) {
-  document.querySelectorAll('.konten').forEach(el => el.classList.remove('aktif'));
-  document.querySelectorAll('.tabs button').forEach(el => el.classList.remove('aktif'));
-  document.getElementById(namaTab).classList.add('aktif');
-  evt.currentTarget.classList.add('aktif');
-}
+const el = id => document.getElementById(id);
 
-function ubahGrid(kelas) {
-  const area = document.getElementById('area-kamera');
-  area.className = kelas;
-}
-
-async function tambahKamera() {
-  const nama = document.getElementById('kam-nama').value.trim();
-  const rtsp = document.getElementById('kam-rtsp').value.trim();
-  if(!nama || !rtsp){ alert('Mohon isi nama dan RTSP URL!'); return; }
-  await fetch('/api/kamera', {
-    method: 'POST', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({nama, rtsp})
+// Tab
+const tab = [...document.querySelectorAll('[role="tab"]')];
+function bukaTab(t, fokus) {
+  tab.forEach(x => {
+    const ya = x === t;
+    x.setAttribute('aria-selected', String(ya));
+    x.tabIndex = ya ? 0 : -1;
+    el(x.dataset.tab).hidden = !ya;
   });
-  alert('Kamera berhasil ditambahkan!');
-  location.reload();
+  if (fokus) t.focus();
 }
+tab.forEach(t => {
+  t.addEventListener('click', () => bukaTab(t, false));
+  t.addEventListener('keydown', e => {
+    const i = tab.indexOf(t);
+    const ke = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tab.length - 1 }[e.key];
+    if (ke === undefined) return;
+    e.preventDefault();
+    bukaTab(tab[(ke + tab.length) % tab.length], true);
+  });
+});
 
+// Tema
+function pasangTombolTema() {
+  const gelap = document.documentElement.classList.contains('dark');
+  el('tombolTema').textContent = gelap ? '☀' : '☾';
+  el('tombolTema').setAttribute('aria-label', gelap ? 'Ganti ke mode terang' : 'Ganti ke mode gelap');
+}
+el('tombolTema').addEventListener('click', () => {
+  const gelap = document.documentElement.classList.toggle('dark');
+  try { localStorage.setItem('tema', gelap ? 'gelap' : 'terang'); } catch (e) {}
+  pasangTombolTema();
+});
+pasangTombolTema();
+
+// Tata letak kamera
+document.querySelectorAll('[data-grid]').forEach(b => b.addEventListener('click', () => {
+  el('area-kamera').className = b.dataset.grid;
+  document.querySelectorAll('[data-grid]').forEach(x => {
+    x.classList.toggle('aktif', x === b);
+    x.setAttribute('aria-pressed', String(x === b));
+  });
+}));
+
+// Tambah kamera
+el('formKamera').addEventListener('submit', async e => {
+  e.preventDefault();
+  const nama = el('kam-nama').value.trim(), rtsp = el('kam-rtsp').value.trim();
+  const pesan = el('pesan');
+  if (!nama || !rtsp) { pesan.className = 'galat'; pesan.textContent = 'Isi nama kamera dan alamat RTSP.'; return; }
+  el('simpanKamera').disabled = true;
+  try {
+    const r = await fetch('/api/kamera', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nama, rtsp }) });
+    if (!r.ok) throw new Error();
+    pesan.className = 'berhasil';
+    pesan.textContent = `Kamera ${nama.toUpperCase()} disimpan.`;
+    el('formKamera').reset();
+  } catch (err) {
+    pesan.className = 'galat';
+    pesan.textContent = 'Kamera belum tersimpan. Periksa sambungan ke server Deteksi Plat, lalu coba lagi.';
+  } finally {
+    el('simpanKamera').disabled = false;
+  }
+});
+
+// Kamera dan riwayat
 const keterangan = {};
-function buatPanel(daftar){
-  const area = document.getElementById('area-kamera');
+function buatPanel(daftar) {
+  const area = el('area-kamera');
   area.innerHTML = '';
-  for(const k of daftar){
+  for (const k of daftar) {
     const f = document.createElement('figure');
     const img = document.createElement('img');
-    img.src = '/video/' + encodeURIComponent(k.nama); 
-    img.alt = k.nama;
+    img.src = '/video/' + encodeURIComponent(k.nama);
+    img.alt = 'Kamera ' + k.nama;
+    img.width = 640; img.height = 360;
     const cap = document.createElement('figcaption');
     f.appendChild(img); f.appendChild(cap); area.appendChild(f);
     keterangan[k.nama] = cap;
   }
 }
 
-async function muat(){
-  try{
+async function muat() {
+  try {
     const r = await fetch('/api/status'); const d = await r.json();
-    if(Object.keys(keterangan).length === 0 && d.kamera.length > 0) buatPanel(d.kamera);
-    for(const k of d.kamera){
-      if(keterangan[k.nama]) {
-        keterangan[k.nama].textContent = k.nama + ' | ' + k.status + ' | ' + k.resolusi + ' | ' + k.fps.toFixed(1) + ' fps';
-      }
+    if (Object.keys(keterangan).length === 0) {
+      if (d.kamera.length > 0) buatPanel(d.kamera);
+      else el('area-kamera').innerHTML = '<p class="redup">Belum ada kamera. Tambahkan di Kelola kamera.</p>';
     }
-    document.getElementById('info').textContent = 'AI ' + d.ai_ms.toFixed(0) + ' ms/frame | Kamera Active: ' + d.kamera.length;
-    document.getElementById('terakhir').textContent =
-      d.riwayat.length ? d.riwayat[0].plat + ' (' + d.riwayat[0].jenis + ')' : '-';
-    
-    const tb = document.getElementById('baris'); tb.textContent = '';
-    for(const x of d.riwayat){
+    for (const k of d.kamera) {
+      if (keterangan[k.nama]) keterangan[k.nama].textContent = `${k.nama} · ${k.status} · ${k.resolusi} · ${k.fps.toFixed(1)} fps`;
+    }
+    el('info').textContent = `${d.kamera.length} kamera aktif · AI ${d.ai_ms.toFixed(0)} ms per gambar`;
+    el('terakhir').textContent = d.riwayat.length ? `${d.riwayat[0].plat} (${d.riwayat[0].jenis})` : 'Belum ada data';
+
+    const tb = el('baris'); tb.textContent = '';
+    if (!d.riwayat.length) { tb.innerHTML = '<tr><td colspan="5" class="kosong">Belum ada data</td></tr>'; return; }
+    for (const x of d.riwayat) {
       const tr = document.createElement('tr');
-      for(const v of [x.waktu, x.kamera, x.jenis, x.plat, x.pemilik]){
-        const td = document.createElement('td'); td.textContent = v; tr.appendChild(td);
+      for (const v of [x.waktu, x.kamera, x.jenis, x.plat, x.pemilik]) {
+        const td = document.createElement('td'); td.textContent = v ?? ''; tr.appendChild(td);
       }
       tb.appendChild(tr);
     }
-  }catch(e){ document.getElementById('info').textContent = 'Server tidak terjangkau'; }
+  } catch (e) { el('info').textContent = 'Server Deteksi Plat tidak terjangkau. Mencoba lagi…'; }
 }
 muat(); setInterval(muat, 2000);
 </script></body></html>"""
@@ -229,7 +325,7 @@ class Keadaan:
             self.ai_ms = ms
 
     def tambah_plat(self, nama, hasil, jenis, pemilik):
-        baris = {"waktu": f"{datetime.fromtimestamp(hasil.waktu):%d/%m/%Y %H:%M:%S}", 
+        baris = {"waktu": f"{datetime.fromtimestamp(hasil.waktu):%d-%m-%Y %H:%M:%S}", 
                  "kamera": nama, "jenis": jenis, "pemilik": pemilik,
                  "plat": hasil.plat, "conf": f"{hasil.conf_ocr:.0%}", "frame": hasil.jumlah_frame}
         with self.kondisi:
@@ -514,6 +610,8 @@ class Penangan(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(excel_data)))
             self.end_headers()
             self.wfile.write(excel_data)
+        elif jalur.startswith("/font/") and jalur[6:] in FONT:
+            self._kirim("font/woff2", (FOLDER_FONT / jalur[6:]).read_bytes())
         elif jalur.startswith("/video/") and unquote(jalur[7:]) in k.kamera:
             self._video(k, unquote(jalur[7:]))
         elif jalur.startswith("/snapshot/") and unquote(jalur[10:]) in k.kamera:

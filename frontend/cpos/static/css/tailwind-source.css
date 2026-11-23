@@ -20,6 +20,8 @@
   @media (min-width: 1800px) { html { font-size: 87.5%; } }
   @media (min-width: 2400px) { html { font-size: 100%; } }
   body { @apply text-slate-900 bg-slate-50; }
+  /* Klik nama isian memindah kursor ke isiannya, jadi tunjukkan bahwa nama itu bisa diklik */
+  label[for] { cursor: pointer; }
   /* Scrollbar sama dengan Analytics untuk semua yang menggulir (halaman, tabel, popup, daftar pilihan): batang abu lembut di atas
      latar transparan, tanpa tombol panah. Firefox & Chrome baru memakai scrollbar-width/color; ::-webkit-scrollbar untuk browser lama. */
   * { scrollbar-width: thin; scrollbar-color: theme('colors.slate.300') transparent; }
@@ -43,13 +45,11 @@
     .sidebar-latar { @apply fixed inset-0 z-30 bg-slate-900/30; }
   }
   @media (min-width: 1280px) { .sidebar-latar { display: none; } }
-  /* Layar sentuh: isian & tombol cukup besar untuk jari (min. 44px) */
+  /* Layar sentuh: isian & tombol cukup besar untuk jari. Ditulis dalam px karena huruf dasar CPOS 13px (2.75rem baru 36px) */
   @media (pointer: coarse) {
-    .input-field, .btn-primary, .btn-secondary, .btn-danger, .btn-success { min-height: 2.75rem; }
-    .chip, .tab-btn { min-height: 2.5rem; }
+    .input-field, .btn-primary, .btn-secondary, .btn-danger, .btn-success, .chip, .tab-btn { min-height: 44px; }
   }
   .sidebar-brand { @apply h-16 flex items-center justify-between gap-2 px-4 border-b border-slate-100 flex-shrink-0; }
-  .sidebar-logo { @apply w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm shadow-blue-500/20; }
   .sidebar-ikon-btn { @apply w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition flex-shrink-0; }
   .sidebar-nav { @apply flex-1 overflow-y-auto px-3 py-3 space-y-1; }
   /* Scrollbar menu samping sama dengan Analytics: tipis, abu lembut, hanya terlihat saat kursor di atas menu.
@@ -100,11 +100,17 @@
   .pohon-level-3 { @apply bg-slate-100 text-slate-500; }
   .pohon-app { @apply text-[9px] font-bold rounded px-1 py-px flex-shrink-0; }
   .pohon-aturan { @apply min-w-[1.25rem] text-center text-[10px] font-bold rounded-full px-1.5 py-px bg-emerald-100 text-emerald-700 flex-shrink-0; }
-  .pohon-aturan-kosong { @apply bg-slate-100 text-slate-400; }
+  .pohon-aturan-kosong { @apply bg-slate-100 text-slate-600; }
   .pt-pilih { @apply cursor-pointer select-none rounded border border-slate-200 px-1.5 py-px text-[10px] font-bold text-slate-500 hover:border-utama-300; }
   .pt-pilih-aktif { @apply border-utama-400 bg-utama-50 text-utama-700; }
   .pohon-baris-aktif .pohon-level, .pohon-baris-aktif .pohon-aturan, .pohon-baris-aktif .pohon-app { @apply bg-white/20 text-white; }
   .pohon-tombol { @apply w-7 h-7 inline-flex items-center justify-center rounded-md text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-800; }
+  /* Hak Akses: baris aturan yang belum disimpan ditandai garis kiri (labelnya teks di kolom Efek), plus tombol ikon per baris */
+  .aturan-baru { box-shadow: inset 3px 0 0 theme('colors.emerald.500'); }
+  .aturan-diubah { box-shadow: inset 3px 0 0 theme('colors.amber.500'); }
+  .aturan-tombol { @apply w-8 h-8 inline-flex items-center justify-center rounded-md text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-900; }
+  /* Chrome memberi isian di dalam kotak tanggal padding 1px atas-bawah, jadi lebih tinggi 2px dari kotak teks dan pilihan di sebelahnya */
+  input[type="date"].input-field::-webkit-datetime-edit-fields-wrapper { padding-top: 0; padding-bottom: 0; }
   /* Lv2 dropdown (punya bagian Lv3): klik membuka / menutup daftar bagian, bukan pindah halaman */
   .sidebar-sub-judul { @apply cursor-pointer select-none list-none whitespace-normal; }
   .sidebar-sub-judul::-webkit-details-marker { display: none; }
@@ -134,7 +140,7 @@
   .topbar-kbd { @apply hidden lg:inline text-[10px] font-mono bg-white border border-slate-200 rounded px-1.5 py-0.5 text-slate-500; }
 
   /* Pencarian global (Ctrl+K) */
-  .cari-overlay { @apply fixed inset-0 z-[70] flex items-start justify-center pt-20 px-4 bg-slate-900/40 backdrop-blur-sm; }
+  .cari-overlay { @apply fixed inset-0 z-[70] flex items-start justify-center pt-20 px-4 bg-slate-900/50; }
   .cari-overlay.hidden { display: none; }
   .cari-box { @apply w-full max-w-2xl bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[75vh]; }
   .cari-grup-judul { @apply text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1.5 flex items-center justify-between; }
@@ -161,7 +167,6 @@
   /* Judul halaman (halaman tanpa tab) */
   .page-header { @apply flex items-center gap-3 mt-6 pb-4 border-b border-slate-200; }
   .page-header h1 { @apply text-xl font-bold text-slate-900 tracking-tight; }
-  .page-header-icon { @apply w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 text-white flex items-center justify-center text-sm shadow-sm shadow-blue-500/20; }
   .page-header-sub { @apply text-sm text-slate-500; }
   .halaman-judul { @apply flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6 pb-4 border-b border-slate-200; }
   /* Tabel laporan Pembelian TBS (RekapIn): kolom angka rata kanan & lurus (judul ikut), garis antar kolom, baris ringkasan tebal */
@@ -208,7 +213,7 @@
   .main-area:has(#bingkaiAnalytics) { @apply overflow-hidden; }
   .tab-body:has(> .analytics-bingkai) { @apply mt-0; }   /* bingkai langsung di bawah topbar, tanpa celah */
   .halaman-judul-kartu { @apply bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-0; }
-  .halaman-judul-kartu .judul-ikon { @apply w-11 h-11 bg-gradient-to-tr from-blue-700 to-indigo-600 text-white border-0; }
+  .halaman-judul-kartu .judul-ikon { @apply w-11 h-11 bg-utama-600 text-white border-0; }
   .filter-bar { @apply bg-white rounded-xl border border-slate-200 shadow-sm p-3 mb-5 flex flex-wrap items-center gap-2; }
   .judul-ikon { @apply w-10 h-10 rounded-xl flex items-center justify-center text-base flex-shrink-0; }
   .judul-ikon-biru { @apply bg-blue-50 text-blue-600 border border-blue-100; }
@@ -328,7 +333,7 @@
   .kerangka { @apply block h-3 rounded bg-slate-200 animate-pulse; }
 
   /* Modal */
-  .modal-overlay { @apply fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4; }
+  .modal-overlay { @apply fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50 p-4; }
   /* Modal setinggi apa pun tidak melewati layar: isi di-scroll, judul + tombol X tetap terlihat di atas */
   .modal-box { @apply bg-white rounded-xl border border-slate-200 w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto shadow-2xl; }
   .modal-box-lg { @apply max-w-3xl max-h-[90vh] overflow-y-auto; }
@@ -415,13 +420,12 @@ html.dark :is(.modal-overlay, .cari-overlay, .sidebar-latar, [class*="bg-slate-9
 html.dark :is(.bg-slate-700, .bg-slate-800, .bg-slate-900, .bg-slate-950, .pohon-level-1) { background-color: #334155; color: #f8fafc; }
 /* Latar & teks berwarna lembut (badge status, kotak info): shade 50/100/200 dan 700/800/900 sudah dibalik lewat variabel di
    tailwind.config.js. Di sini sisanya: warna utama, teks shade 600 yang terlalu gelap di latar gelap, dan shade 700 yang dipakai
-   sebagai latar (logo bergradien, hover tombol hijau / merah) supaya tidak ikut menjadi terang. */
+   sebagai latar (hover tombol hijau / merah) supaya tidak ikut menjadi terang. */
 html.dark { --utama-50: 15 36 64; --utama-100: 22 50 90; --utama-200: 30 64 120; }
 html.dark :is(.text-blue-600, .text-sky-600, .text-indigo-600, .text-utama-600, .text-utama-700) { color: #93c5fd; }
 html.dark :is(.text-red-600, .text-rose-600) { color: #fca5a5; }
 html.dark :is(.text-emerald-600, .text-green-600, .text-teal-600) { color: #6ee7b7; }
 html.dark :is(.text-amber-600, .text-yellow-600, .text-orange-600) { color: #fcd34d; }
-html.dark :is(.sidebar-logo, .page-header-icon, .halaman-judul-kartu .judul-ikon) { background-image: linear-gradient(to top right, #1d4ed8, #4f46e5); }
 html.dark .btn-success:hover { background-color: #047857; }
 html.dark .btn-danger:hover { background-color: #b91c1c; }
 /* Sidebar */
@@ -436,28 +440,25 @@ html.dark #bingkaiAnalytics { background-color: #0b1120; }
 /* ===================== HALAMAN ERROR (templates/error.html): warna logo CPOS (navy + amber) ===================== */
 .hal-error { background: radial-gradient(ellipse at 50% 35%, #ffffff 0%, #f1f5f9 70%); color: #0f172a; position: relative; overflow-x: hidden; }
 .hal-error-latar { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.hal-error-latar .sirkuit { stroke: #cbd5e1; }
-.hal-error-latar .sirkuit-titik { fill: #f59e0b; opacity: 0.55; }
 .hal-error-latar .daun { fill: #e2e8f0; opacity: 0.8; }
 .hal-error-navy { color: #0f172a; }
 .hal-error-redup { color: #64748b; }
-.hal-error-angka { font-size: clamp(5.5rem, 16vw, 10rem); line-height: 1; font-weight: 800; letter-spacing: -0.04em;
-  background: linear-gradient(180deg, #1e293b 0%, #0f172a 60%, #334155 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hal-error-angka { font-size: clamp(5.5rem, 16vw, 10rem); line-height: 1; font-weight: 800; letter-spacing: -0.04em; color: #0f172a; }
 .hal-error-tanda { height: clamp(6rem, 17vw, 10.5rem); width: auto; filter: drop-shadow(0 8px 18px rgba(245, 158, 11, 0.25)); }
 .hal-error-gembok { fill: #0f172a; }
 .hal-error-gembok-tali { stroke: #0f172a; }
 .hal-error-bayang { background: radial-gradient(ellipse, rgba(15, 23, 42, 0.18) 0%, transparent 70%); }
-.hal-error-tombol, .hal-error-tombol-2 { display: inline-flex; align-items: center; gap: 0.5rem; border-radius: 9999px; padding: 0.7rem 1.5rem;
-  font-size: 0.875rem; font-weight: 600; transition: transform .15s, box-shadow .15s; }
-.hal-error-tombol { color: #fff; background: linear-gradient(90deg, #0f172a 0%, #1e293b 55%, #b45309 100%); box-shadow: 0 6px 18px rgba(15, 23, 42, 0.25); }
-.hal-error-tombol:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.3); }
+/* Tombol sama dengan tombol aplikasi (btn-primary / btn-secondary): biru utama, sudut kecil */
+.hal-error-tombol, .hal-error-tombol-2 { display: inline-flex; align-items: center; gap: 0.5rem; border-radius: 0.5rem; padding: 0.6rem 1.25rem;
+  font-size: 0.875rem; font-weight: 600; transition: background-color .15s, border-color .15s; }
+.hal-error-tombol { color: #fff; background: rgb(var(--utama-600)); }
+.hal-error-tombol:hover { background: rgb(var(--utama-700)); }
 .hal-error-tombol-2 { color: #0f172a; background: #fff; border: 1px solid #cbd5e1; }
 .hal-error-tombol-2:hover { border-color: #94a3b8; }
 html.dark .hal-error { background: radial-gradient(ellipse at 50% 35%, #1e293b 0%, #0b1220 75%); color: #e2e8f0; }
 html.dark .hal-error-navy { color: #f8fafc; }
 html.dark .hal-error-redup { color: #94a3b8; }
-html.dark .hal-error-angka { background: linear-gradient(180deg, #f8fafc 0%, #cbd5e1 100%); -webkit-background-clip: text; background-clip: text; }
-html.dark .hal-error-latar .sirkuit { stroke: #334155; }
+html.dark .hal-error-angka { color: #f8fafc; }
 html.dark .hal-error-latar .daun { fill: #1e293b; }
 html.dark .hal-error-gembok { fill: #e2e8f0; }
 html.dark .hal-error-gembok-tali { stroke: #e2e8f0; }
@@ -479,6 +480,9 @@ html.dark option, html.dark optgroup { background-color: #121a2b; color: #e2e8f0
 /* Teks abu paling muda terlalu pucat: di mode terang digelapkan, di mode gelap diterangkan. :where supaya kelas hover dan aktif tetap menang */
 :where(html:not(.dark)) :is(.text-slate-300, .text-slate-400, .sidebar-sub-jumlah, .kpi-tanggal) { color: #64748b; }
 html.dark :is(.text-slate-300, .sidebar-sub-jumlah) { color: #94a3b8; }
+:where(html.dark) .text-slate-400 { color: #94a3b8; }   /* 3,65 menjadi 6,78 di kartu gelap; warna hover tetap menang */
+/* Baris tabel yang dibuka dengan Enter (mis. Kunjungan): tanda fokus keyboard */
+tr.baris-buka:focus-visible { outline: 2px solid #127cbf; outline-offset: -2px; }
 
 /* Pembelian TBS Daily, Weekly, Monthly: tabel ringkas tanpa scroll tegak; tabel lebar tetap bisa digeser mendatar */
 .tbs-harian .section-box .section-body:has(> table) { max-height: none; overflow-x: auto; overflow-y: hidden; }
@@ -533,9 +537,6 @@ html.dark .tbs-monthly .tbs-kartu[data-company="SJN"] { --tbs-grup: #4d2b14; --t
 /* Tombol ke atas: warna utama supaya terlihat di atas halaman putih. Sama dengan KembaliKeAtas.jsx di Analytics */
 #tombolKeAtas { background-color: #127cbf; border-color: #127cbf; color: #fff; }
 #tombolKeAtas:hover { background-color: #0d66a0; border-color: #0d66a0; }
-/* Agak transparan supaya isi di bawahnya tetap terbaca */
-#tombolKeAtas { opacity: 0.7; }
-#tombolKeAtas:hover, #tombolKeAtas:focus-visible { opacity: 1; }
 
 /* Kursor tangan hanya untuk yang bisa diklik. :where tanpa bobot, jadi kelas kursor khusus tetap menang. Isian teks tetap kursor teks. */
 :where(button, a[href], summary, select, [role="button"], [role="tab"], [role="menuitem"], [role="option"],
@@ -547,7 +548,6 @@ html.dark .tbs-monthly .tbs-kartu[data-company="SJN"] { --tbs-grup: #4d2b14; --t
 .konten:not(:has(.analytics-bingkai)) { padding-bottom: 4.5rem; }
 
 /* TBS Daily: ruang atas dihemat dan huruf diatur tbs_daily.js (--tbs-huruf), supaya empat tabel muat satu layar dan tetap terbaca */
-body:has(.tbs-daily) .halaman-judul { display: none; }
 body:has(.tbs-daily) .tab-body { margin-top: 0.5rem; margin-bottom: 0; }
 .tab-body:has(.tbs-daily) .filter-bar { padding: 0.25rem 0.75rem; margin-bottom: 0.5rem; }
 .tab-body:has(.tbs-daily) .filter-bar > div:has(> label) { display: flex; align-items: center; gap: 0.5rem; }

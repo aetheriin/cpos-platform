@@ -10,6 +10,67 @@ function closeModal(id) {
     document.getElementById(id).classList.add('hidden');
 }
 
+// Popup (.modal-overlay), termasuk yang dibuka tanpa openModal: diumumkan sebagai dialog, fokus pindah ke dalamnya,
+// Tab tidak keluar ke halaman di belakang, dan saat ditutup fokus kembali ke tombol yang membukanya.
+const Popup = {
+    pembuka: new Map(),
+    FOKUS: 'a[href], button:not([disabled]), input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])',
+    tampak: m => !m.classList.contains('hidden') && m.getClientRects().length > 0,
+    terbuka() { return [...document.querySelectorAll('.modal-overlay')].filter(this.tampak); },
+    bisaFokus(m) { return [...m.querySelectorAll(this.FOKUS)].filter(e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden'); },
+    periksa(m) {
+        const buka = this.tampak(m);
+        if (buka === !!m._popupBuka) return;
+        m._popupBuka = buka;
+        if (buka) this.dibuka(m); else this.ditutup(m);
+    },
+    dibuka(m) {
+        m.setAttribute('role', 'dialog');
+        m.setAttribute('aria-modal', 'true');
+        m.tabIndex = -1;
+        if (!m.hasAttribute('aria-labelledby') && !m.hasAttribute('aria-label')) {
+            const judul = m.querySelector('h1, h2, h3');
+            if (judul) { judul.id = judul.id || `${m.id || 'popup'}Judul`; m.setAttribute('aria-labelledby', judul.id); }
+        }
+        const asal = document.activeElement;
+        if (asal && asal !== document.body && !m.contains(asal)) this.pembuka.set(m, asal);
+        // Ditunda sekejap: halaman yang memfokuskan isian tertentu sendiri tetap didahulukan
+        setTimeout(() => { if (this.tampak(m) && !m.contains(document.activeElement)) {
+            const daftar = this.bisaFokus(m);                  // isian pertama lebih dulu daripada tombol tutup (x)
+            (daftar.find(e => e.matches('input, select, textarea')) || daftar[0] || m).focus();
+        } }, 0);
+    },
+    ditutup(m) {
+        const asal = this.pembuka.get(m);
+        this.pembuka.delete(m);
+        const aktif = document.activeElement;
+        if (aktif && aktif !== document.body && !m.contains(aktif)) return;   // fokus sudah dipindah halaman ke tempat lain
+        if (asal && asal.isConnected && asal.getClientRects().length) asal.focus();
+        else if (aktif && aktif.blur) aktif.blur();
+    },
+};
+
+new MutationObserver(catatan => catatan.forEach(c => {
+    if (c.type === 'attributes' && c.target.classList.contains('modal-overlay')) Popup.periksa(c.target);
+    c.addedNodes.forEach(n => {
+        if (n.nodeType !== 1) return;
+        (n.classList.contains('modal-overlay') ? [n] : n.querySelectorAll('.modal-overlay')).forEach(m => Popup.periksa(m));
+    });
+})).observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'hidden'], childList: true, subtree: true });
+
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    const m = Popup.terbuka().at(-1);
+    const aktif = document.activeElement;
+    if (!m || (aktif && aktif.closest('.pilih-cari-panel'))) return;     // panel pilihan berpencarian ada di luar popup
+    const daftar = Popup.bisaFokus(m);
+    if (!daftar.length) { e.preventDefault(); m.focus(); return; }
+    const pertama = daftar[0], akhir = daftar[daftar.length - 1];
+    if (!m.contains(aktif)) { e.preventDefault(); (e.shiftKey ? akhir : pertama).focus(); }
+    else if (e.shiftKey && (aktif === pertama || aktif === m)) { e.preventDefault(); akhir.focus(); }
+    else if (!e.shiftKey && aktif === akhir) { e.preventDefault(); pertama.focus(); }
+});
+
 // Esc menutup modal paling atas yang sedang terbuka. Tombol X modal itu yang diklik, supaya penutup khusus
 // (mis. mematikan kamera) tetap berjalan. Dialog konfirmasi & pencarian punya penanganan Esc sendiri.
 document.addEventListener('keydown', e => {

@@ -1,6 +1,6 @@
 """Kategori aging satu-satunya: Tepat Waktu (0-8 hari), Perlu Perhatian (9-15), Telat (16-30), Perlu Tindakan (>30).
 Dipakai dashboard PR & PO dan PO & PI (kategori_umur) serta laporan Reports (kelompok_umur): Outstanding, Purchase Request,
-Purchase Orders, Purchase Invoice."""
+Purchase Order, Purchase Invoice."""
 import pandas as pd
 
 KELOMPOK_UMUR = [("Tepat Waktu (0–8 hari)", 8), ("Perlu Perhatian (9–15 hari)", 15), ("Telat (16–30 hari)", 30), ("Perlu Tindakan (>30 hari)", None)]

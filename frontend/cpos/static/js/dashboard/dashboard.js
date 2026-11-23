@@ -206,7 +206,7 @@ async function muatArus() {
     document.getElementById('arusRingkas').innerHTML =
         stat('TBS diterima hari ini', angka((s.tbs_kg || 0) / 1000, 1), 'ton') +
         stat('Truk masuk / selesai', `${angka(s.masuk || 0, 0)} / ${angka(s.selesai || 0, 0)}`, 'truk') +
-        stat('Truk di dalam', angka(s.di_dalam || 0, 0), 'truk') +
+        stat('Masih diproses', angka(s.di_dalam || 0, 0), 'truk') +
         stat('Rata-rata siklus', s.siklus_menit != null ? angka(s.siklus_menit, 0) : '-', 'menit');
 
     document.getElementById('grafikPerJam').innerHTML = grafikPerJam(d.per_jam);
@@ -214,8 +214,10 @@ async function muatArus() {
 
     const jembatan = [...d.jembatan].sort((a, b) => a.terhubung - b.terhubung || a.area.localeCompare(b.area) || a.kode.localeCompare(b.kode));
     const online = jembatan.filter(j => j.terhubung).length;
-    document.getElementById('ringkasJembatan').innerHTML = jembatan.length
+    const elRingkas = document.getElementById('ringkasJembatan');
+    elRingkas.innerHTML = jembatan.length
         ? `<span class="${online === jembatan.length ? 'text-emerald-600' : 'text-red-600'}">${online}/${jembatan.length}</span> terhubung` : '';
+    elRingkas.hidden = !jembatan.length;     // kotak abu-abunya tetap tampil walau kosong
     document.getElementById('statusJembatan').innerHTML = jembatan.map(j => `
         <div class="flex items-center gap-3 py-2.5">
             <span class="w-2 h-2 rounded-full flex-shrink-0 ${j.terhubung ? (j.stabil ? 'bg-emerald-500' : 'bg-amber-400') : 'bg-red-500'}"></span>
@@ -245,6 +247,9 @@ async function muatArus() {
 function grafikPerJam(perJam) {
     const W = 560, H = 170, KIRI = 22, BAWAH = 18, ATAS = 8;
     const aktif = perJam.filter(x => x.masuk || x.selesai).map(x => x.jam);
+    // Belum ada truk: satu baris pesan, bukan sumbu dan garis kosong; keterangan warna ikut disembunyikan
+    document.getElementById('legendaPerJam')?.toggleAttribute('hidden', !aktif.length);
+    if (!aktif.length) return '<p class="py-6 text-center text-sm text-slate-500">Belum ada truk hari ini</p>';
     let awal = Math.min(6, ...aktif), akhir = Math.max(new Date().getHours(), ...aktif);
     if (akhir - awal < 7) akhir = Math.min(23, awal + 7);
     const jam = perJam.slice(awal, akhir + 1);
@@ -266,8 +271,7 @@ function grafikPerJam(perJam) {
         return `<line x1="${KIRI}" x2="${W}" y1="${yy}" y2="${yy}" stroke="#e2e8f0" stroke-dasharray="${f ? '3 3' : ''}"/>
             ${f ? `<text x="${KIRI - 4}" y="${(+yy + 3).toFixed(1)}" font-size="9" text-anchor="end" fill="#94a3b8" font-family="JetBrains Mono, monospace">${v}</text>` : ''}`;
     }).join('');
-    const kosong = !aktif.length ? `<text x="${(W + KIRI) / 2}" y="${H / 2}" font-size="12" text-anchor="middle" fill="#94a3b8">Belum ada truk hari ini</text>` : '';
-    return `<svg viewBox="0 0 ${W} ${H}" class="w-full h-auto" role="img" aria-label="Truk masuk dan selesai per jam hari ini">${garis}${batang}${kosong}</svg>`;
+    return `<svg viewBox="0 0 ${W} ${H}" class="w-full h-auto" role="img" aria-label="Truk masuk dan selesai per jam hari ini">${garis}${batang}</svg>`;
 }
 
 // Posisi truk yang masih di dalam per tahap; klik membuka List dengan tahap tersebut
@@ -305,9 +309,14 @@ async function muatSecurity() {
         <div class="flex items-start justify-between"><p class="stat-label">${label}</p>
             <span class="w-9 h-9 rounded-lg inline-flex items-center justify-center ${warna}"><i class="fa-solid ${ikon}"></i></span></div>
         <p class="text-3xl font-bold font-mono text-slate-900">${nilai}</p><p class="text-xs text-slate-400 mt-1">${ket}</p></div>`;
-    document.getElementById('ringkasSecurity').innerHTML =
-        kartu('Truk masuk hari ini', d.masuk, `${d.keluar} sudah keluar`, 'fa-truck', 'text-blue-600 bg-blue-50') +
-        kartu('Truk masih di dalam', d.di_dalam, 'belum dicatat keluar', 'fa-warehouse', 'text-amber-600 bg-amber-50') +
+    // Dengan widget Arus di halaman yang sama, "Truk masuk hari ini" sudah tampil di sana (hitungan yang sama), jadi tidak diulang
+    const adaArus = WIDGET.has('arus');
+    const elRingkasSec = document.getElementById('ringkasSecurity');
+    elRingkasSec.className = `grid gap-4 mb-5 ${adaArus ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 xl:grid-cols-4'}`;
+    elRingkasSec.innerHTML =
+        (adaArus ? '' : kartu('Truk masuk hari ini', d.masuk, `${d.keluar} sudah keluar`, 'fa-truck', 'text-blue-600 bg-blue-50')) +
+        kartu('Truk masih di dalam', d.di_dalam, adaArus ? `belum dicatat keluar di pos · ${d.keluar} sudah keluar` : 'belum dicatat keluar',
+              'fa-warehouse', 'text-amber-600 bg-amber-50') +
         kartu('Tamu di dalam', d.tamu, 'belum dicatat keluar', 'fa-id-card', 'text-emerald-600 bg-emerald-50') +
         kartu('Blacklist terdeteksi', d.blacklist, 'hari ini', 'fa-ban', 'text-red-600 bg-red-50');
     document.getElementById('jumlahDalam').textContent = `${d.di_dalam} truk`;

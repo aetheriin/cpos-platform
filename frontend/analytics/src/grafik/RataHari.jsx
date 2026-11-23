@@ -2,9 +2,11 @@ import { memo } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { kgRingkas, sumbu } from './tbs'
 import { ANIMASI, DURASI_ANIMASI } from './animasi'
+import { Kosong } from '../komponen/Keadaan'
 
 // Rata-rata netto harian untuk tiap hari dalam seminggu, dari hari yang ada pembeliannya (sama dengan measure Rata-rata di Excel). Klik batang untuk memfilter hari.
 function RataHari({ data, terpilih, onPilih }) {
+  if (data.length === 0) return <Kosong teks="Tidak ada pembelian pada periode dan filter ini" />
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">

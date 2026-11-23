@@ -75,7 +75,7 @@ function bukaDetailRequest(id) {
         const warna = r ? (WARNA_TAHAP[r.aksi] || 'bg-slate-300') : (sekarang ? 'bg-amber-400' : 'bg-slate-200');
         return `<li class="flex gap-3"><span class="mt-1 w-3 h-3 rounded-full flex-shrink-0 ${warna}"></span><div>
             <p class="font-semibold text-slate-800">Tahap ${n + 1} · ${escapeHtml(nama)}</p>
-            <p class="text-xs text-slate-500">${r ? `${escapeHtml(LABEL_AKSI[r.aksi] || r.aksi)} oleh ${escapeHtml(r.oleh)} · ${escapeHtml(r.waktu)}${r.catatan ? ` — ${escapeHtml(r.catatan)}` : ''}`
+            <p class="text-xs text-slate-500">${r ? `${escapeHtml(LABEL_AKSI[r.aksi] || r.aksi)} oleh ${escapeHtml(r.oleh)} · ${escapeHtml(r.waktu)}${r.catatan ? ` · catatan: ${escapeHtml(r.catatan)}` : ''}`
                 : (sekarang ? 'Menunggu persetujuan' : (p.status === 'MENUNGGU' ? 'Belum sampai' : '-'))}</p></div></li>`;
     }).join('');
     const awal = p.riwayat.find(x => x.aksi === 'DIAJUKAN');

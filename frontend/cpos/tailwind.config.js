@@ -22,7 +22,7 @@ const variabel = (gelap) => Object.fromEntries(WARNA.flatMap(w => DIBALIK.map(n 
 })))
 
 module.exports = {
-  content: ["./templates/**/*.html", "./static/js/**/*.js", "./static/rekapin/**/*.js", "./static/item_request/**/*.js", "./static/item_dashboard/**/*.js"],
+  content: ["./templates/**/*.html", "./static/js/**/*.js", "./static/rekapin/**/*.js", "./static/item_request/**/*.js", "./static/item_dashboard/**/*.js", "./static/netto_sumber/**/*.js"],
   theme: {
     extend: {
       // Warna utama aplikasi: nilainya di static/css/tailwind-source.css (:root --utama-*), ganti di sana saja

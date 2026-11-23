@@ -33,8 +33,8 @@ def _perangkat():
         conn = get_connection()
         try:
             cursor = conn.cursor()
-            cursor.execute("SELECT DeviceID AS id_pos, TokenHash AS token_hash, Active AS is_active FROM Device")
-            return {r[0]: (r[1], bool(r[2])) for r in cursor.fetchall() if isinstance(r[0], str)}
+            cursor.execute("SELECT DeviceID AS id_pos, TokenHash AS token_hash, Active AS is_active, CompAreaID AS id_comp_area FROM Device")
+            return {r[0]: (r[1], bool(r[2]), r[3]) for r in cursor.fetchall() if isinstance(r[0], str)}
         finally:
             conn.close()
     except Exception:       # noqa: BLE001 - tabel belum ada / DB mati -> hanya KIOSK_TOKEN .env
@@ -75,11 +75,9 @@ def daftar():
 
 
 def area_pos(id_pos):
-    """Area pos (untuk pengaturan per area saat dipanggil kiosk tanpa login). None bila tidak ada."""
-    try:
-        return next((p["id_comp_area"] for p in daftar() if p["id_pos"] == id_pos), None)
-    except Exception:       # noqa: BLE001
-        return None
+    """Area pos terdaftar (dari cache, dipanggil agen beberapa kali per detik). None bila tidak ada."""
+    data = _perangkat().get(id_pos)
+    return data[2] if data else None
 
 
 def daftar_aktif():

@@ -28,8 +28,9 @@ KOLOM_TIKET = [
     ("no_do", "Nomor DO", "teks"), ("produk", "Produk", "teks"), ("pengangkut", "Nama Pengangkutan", "teks"), ("tiket", "No. Tiket", "teks"),
     ("kendaraan", "No. Kendaraan", "teks"), ("supir", "Nama Supir", "teks"), ("kontrak", "Nomor Kontrak", "teks"), ("bruto", "Bruto (kg)", "angka"),
     ("tara", "Tara (kg)", "angka"), ("potongan", "Potongan (kg)", "angka"), ("netto", "Netto (kg)", "angka"),
-    ("netto_sumber", "Netto Sumber (kg)", "angka"), ("ffa", "FFA (%)", "angka"), ("air", "Kadar Air (%)", "angka"),
-    ("kotoran", "Kadar Kotoran (%)", "angka"), ("dobi", "Dobi", "angka"), ("split", "Split", "teks"), ("comp", "Perusahaan", "teks"),
+    ("netto_sumber", "Netto Sumber (kg)", "angka"), ("ffa", "FFA (%)", "angka"),
+    ("air", "Kadar Air (%)", "angka"), ("kotoran", "Kadar Kotoran (%)", "angka"), ("dobi", "Dobi", "angka"), ("split", "Split", "teks"),
+    ("comp", "Perusahaan", "teks"),
 ]
 KOLOM_PENGANGKUT = [
     ("pengangkut", "Nama Pengangkutan", "teks"), ("rit", "Jumlah Pengiriman", "angka"), ("netto", "Netto (kg)", "angka"), ("per_rit", "Rata-rata Muatan per Truk (kg)", "angka"),

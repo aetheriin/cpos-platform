@@ -31,6 +31,7 @@ HALAMAN = {
     "users": ("Kelola Pengguna", "fa-users", "Tambah akun, ubah level / departemen / area, atur ulang password, aktif / nonaktif"),
     "menu": ("Kelola Menu", "fa-bars-staggered", "Susunan menu 3 level: nama, induk, urutan, alamat, ikon, aksi yang berlaku, aktif / nonaktif"),
     "hak_akses": ("Hak Akses", "fa-user-shield", "Siapa mendapat menu apa: aturan per menu untuk semua user, peran, jabatan, departemen, atau user tertentu"),
+    "akses_admin": ("Akses Admin", "fa-user-lock", "Halaman Admin yang boleh dibuka pengguna non-admin. Hanya superadmin yang bisa mengaturnya"),
     "persetujuan": ("Alur Persetujuan", "fa-route", "Tahap persetujuan berjenjang per jenis pengajuan & kategori (mis. blacklist Supir)"),
     "alur_tiket": ("Alur Tiket", "fa-diagram-project", "Urutan tahap tiket (Security, timbang, sortasi, lab, keluar) per Area + Produk, termasuk tahap bersamaan"),
     "organisasi": ("Organisasi", "fa-sitemap", "Perusahaan, area perusahaan, Mill (tipe area), departemen, jabatan, dan status tiket"),
@@ -43,6 +44,14 @@ HALAMAN = {
     "audit": ("Audit Admin", "fa-clipboard-list", "Jejak semua perubahan yang dilakukan admin"),
     "kesehatan": ("Kesehatan Sistem", "fa-heart-pulse", "Database, cadangan data (backup), disk, versi aplikasi"),
 }
+# Kelompok menu samping admin. Halaman baru yang belum dimasukkan ke kelompok mana pun tampil di "Lainnya".
+GRUP_HALAMAN = (("Pengguna", ("users", "hak_akses", "akses_admin", "organisasi", "sesi")),
+                ("Alur kerja", ("persetujuan", "alur_tiket", "void", "jadwal")),
+                ("Sistem", ("menu", "pengaturan", "perangkat", "kesehatan")),
+                ("Catatan", ("log", "audit")))
+_SISA_HALAMAN = tuple(k for k in HALAMAN if all(k not in isi for _, isi in GRUP_HALAMAN))
+if _SISA_HALAMAN:
+    GRUP_HALAMAN += (("Lainnya", _SISA_HALAMAN),)
 
 POLA_USERNAME = re.compile(r"^[A-Z0-9._-]{3,50}$")
 PILIHAN_HALAMAN = {"users": ("jabatan", "department", "area", "company"), "persetujuan": ("jabatan", "department"),
@@ -53,6 +62,27 @@ PASSWORD_MIN = 8
 
 def _admin(f):
     return login_required(admin_required(f))
+
+
+def _non_admin():
+    """Pengguna non-admin yang membuka halaman Admin lewat hak menu (hak_akses.boleh_admin)."""
+    return not current_user.is_admin
+
+
+def _jaga_admin(syarat, pesan):
+    """Non-admin tidak boleh menyentuh hal khusus admin (akun / jabatan admin, menu Admin, hak menu Admin)."""
+    if syarat and _non_admin():
+        raise ValueError(pesan)
+
+
+def _menu_terlihat(daftar, kunci="kode"):
+    """Kelola Menu: non-admin tidak melihat menu Admin, jadi tidak bisa mengubahnya."""
+    return [m for m in daftar if not hak_akses.menu_admin(m[kunci])] if _non_admin() else daftar
+
+
+def _menu_hak_akses():
+    """Pohon menu Hak Akses tanpa menu Admin: haknya diatur superadmin di halaman Akses Admin."""
+    return [m for m in hak_akses.pohon_menu() if not hak_akses.menu_admin(m["kode"])]
 
 
 def _audit(aksi, target=None, detail=None):
@@ -84,7 +114,8 @@ def _jalankan(fn):
 @admin_bp.route("/admin")
 @_admin
 def admin_index():
-    return redirect("/admin/users")
+    terbuka = hak_akses.halaman_admin_terbuka()
+    return redirect(f"/admin/{terbuka[0]}" if terbuka else "/")
 
 
 @admin_bp.route("/admin/<halaman>")
@@ -93,11 +124,15 @@ def admin_halaman(halaman):
     if halaman not in HALAMAN:
         abort(404)
     judul, ikon, keterangan = HALAMAN[halaman]
+    # Non-admin: sidebar & breadcrumb mengikuti menu biasa (grup Admin), bukan konsol admin
+    kode_menu = hak_akses.KODE_HALAMAN_ADMIN.get(halaman) if _non_admin() else None
     # Data pilihan hanya diambil untuk halaman yang memakainya (tiap daftar = satu koneksi ke database)
     perlu = PILIHAN_HALAMAN.get(halaman, ())
-    return render_template("admin/admin.html", halaman=f"admin:{halaman}", menu_admin=HALAMAN,
+    return render_template("admin/admin.html", halaman=f"admin:{halaman}", menu_admin=HALAMAN, grup_admin=GRUP_HALAMAN,
                            admin_aktif=halaman, judul=judul, ikon=ikon, keterangan=keterangan,
-                           jabatan_list=[j for j in hak_akses.daftar_jabatan() if j["is_active"]] if "jabatan" in perlu else [],
+                           kode_aktif=kode_menu, remah=hak_akses.remah_menu(kode_menu) if kode_menu else None,
+                           jabatan_list=[j for j in hak_akses.daftar_jabatan() if j["is_active"] and not (j["is_admin"] and _non_admin())]
+                           if "jabatan" in perlu else [],
                            department_list=[d for d in org.daftar_department() if d["is_active"]] if "department" in perlu else [],
                            area_list=[a for a in org.daftar_area() if a["is_active"]] if "area" in perlu else [],
                            company_list=[c for c in org.daftar_company() if c["is_active"]] if "company" in perlu else [],
@@ -127,6 +162,7 @@ def _akun_form():
     jabatan admin sistem tanpa departemen."""
     jabatan = {j["id_jabatan"]: j for j in hak_akses.daftar_jabatan() if j["is_active"]}
     id_jabatan = _id_form("id_jabatan", jabatan, "jabatan")
+    _jaga_admin(jabatan[id_jabatan]["is_admin"], "Jabatan admin hanya bisa diberikan oleh admin")
     id_area = _id_form("id_comp_area", {a["id_comp_area"] for a in org.daftar_area() if a["is_active"]}, "area")
     if jabatan[id_jabatan]["is_admin"]:
         id_department = None
@@ -212,6 +248,7 @@ def _user_atau_404(id_user):
 def users_ubah(id_user):
     def aksi():
         u = _user_atau_404(id_user)
+        _jaga_admin(u["is_admin"], "Akun admin hanya bisa diubah oleh admin")
         personel, (level, id_department, id_area) = _personel_form(u), _akun_form()
         ganti_level = u["id_level"] != level["id_level"]
         if u["is_admin"] and not level["is_admin"]:
@@ -233,6 +270,7 @@ def users_ubah(id_user):
 def users_reset_password(id_user):
     def aksi():
         u = _user_atau_404(id_user)
+        _jaga_admin(u["is_admin"], "Password akun admin hanya bisa diatur ulang oleh admin")
         baru = _password_form()
         lama = get_password_hash(id_user)
         if (lama and check_password_hash(lama, baru)) or password_pernah_dipakai(id_user, baru):
@@ -250,6 +288,7 @@ def users_reset_password(id_user):
 def users_aktif(id_user):
     def aksi():
         u, aktif = _user_atau_404(id_user), _aktif_dari_form()
+        _jaga_admin(u["is_admin"], "Akun admin hanya bisa diaktifkan atau dinonaktifkan oleh admin")
         if not aktif:
             if id_user == current_user.id:
                 raise ValueError("Tidak bisa menonaktifkan akun sendiri")
@@ -284,6 +323,7 @@ def _level_atau_404(id_level):
 def level_aktif(id_level):
     def aksi():
         lv, aktif = _level_atau_404(id_level), _aktif_dari_form()
+        _jaga_admin(lv["is_admin"], "Level admin hanya bisa diatur oleh admin")
         if not aktif and lv["is_admin"]:
             raise ValueError("Level admin tidak bisa dinonaktifkan")
         hak_akses.set_aktif_level(id_level, aktif)
@@ -298,7 +338,7 @@ def level_aktif(id_level):
 @_admin
 def akses_awal():
     """Pohon menu + pilihan sasaran (peran = departemen + jabatan, jabatan, departemen) + widget dashboard."""
-    return jsonify({"menu": hak_akses.pohon_menu(), "widget": hak_akses.daftar_widget(),
+    return jsonify({"menu": _menu_hak_akses(), "widget": hak_akses.daftar_widget(),
                     "company": [{"id": c["id_company"], "nama": c["nama"]} for c in org.daftar_company() if c["is_active"]],
                     "jabatan": [{"id": j["id_jabatan"], "nama": j["nama"]} for j in hak_akses.daftar_jabatan()
                                 if j["is_active"] and not j["is_admin"]],
@@ -312,6 +352,8 @@ def akses_awal():
 @admin_bp.route("/api/admin/akses/menu/<int:id_menu>")
 @_admin
 def akses_menu(id_menu):
+    if not any(m["id_menu"] == id_menu for m in _menu_hak_akses()):
+        return jsonify({"error": "Menu tidak ditemukan"}), 404
     return jsonify(hak_akses.aturan_menu(id_menu))
 
 
@@ -378,7 +420,7 @@ def _aturan_dari_json(m, data):
 @_admin
 def akses_menu_simpan(id_menu):
     def aksi():
-        m = next((x for x in hak_akses.pohon_menu() if x["id_menu"] == id_menu), None)
+        m = next((x for x in _menu_hak_akses() if x["id_menu"] == id_menu), None)
         if m is None:
             raise ValueError("Menu tidak ditemukan")
         try:
@@ -404,7 +446,7 @@ def akses_matriks():
     if jenis not in ("DEPT", "LEVEL"):
         return jsonify({"error": "Jenis kolom tidak dikenal"}), 400
     sel = []
-    for m in hak_akses.pohon_menu():
+    for m in _menu_hak_akses():
         mendukung = {"lihat", *m["aksi"]}
         status = {}
         for a in hak_akses.aturan_menu(m["id_menu"]):
@@ -438,7 +480,7 @@ def akses_matriks_simpan():
             if p.get("status") not in STATUS_MATRIKS:
                 raise ValueError("Status tidak dikenal")
             per_menu.setdefault(int(p["id_menu"]), {})[str(p["id_target"])] = p["status"]
-        daftar = {x["id_menu"]: x for x in hak_akses.pohon_menu()}
+        daftar = {x["id_menu"]: x for x in _menu_hak_akses()}
         disimpan = 0
         for id_menu, target in per_menu.items():
             m = daftar.get(id_menu)
@@ -493,7 +535,7 @@ def akses_cek(id_user):
             sumber.setdefault(r["MenuCode"], []).append({
                 "aksi": hak_akses.NAMA_AKSI.get(r["ActionID"]), "tolak": bool(r["IsDeny"]),
                 "jenis": r["TargetType"], "nama": r["TargetName"]})
-        menu = [{**m, "hak": hak.get(m["kode"]), "sumber": sumber.get(m["kode"], [])} for m in hak_akses.pohon_menu()]
+        menu = [{**m, "hak": hak.get(m["kode"]), "sumber": sumber.get(m["kode"], [])} for m in _menu_hak_akses()]
         return jsonify({"user": {k: u.get(k) for k in ("id_user", "username", "nama", "nama_level", "is_admin")},
                         "menu": menu, "widget": hak_akses.widget_user(id_user)})
     return _jalankan(aksi)
@@ -504,6 +546,7 @@ def akses_cek(id_user):
 def level_halaman_awal(id_level):
     def aksi():
         lv = _level_atau_404(id_level)
+        _jaga_admin(lv["is_admin"], "Level admin hanya bisa diatur oleh admin")
         halaman_awal = _teks("halaman_awal", maks=100)
         if halaman_awal != lv["halaman_awal"] and halaman_awal not in {p["url"] for p in hak_akses.halaman_awal_pilihan()}:
             raise ValueError("Pilih halaman awal dari daftar")
@@ -521,7 +564,7 @@ POLA_KODE_MENU = re.compile(r"^[A-Z][A-Z0-9_]{1,39}$")
 @admin_bp.route("/api/admin/menu")
 @_admin
 def menu_daftar():
-    return jsonify({"menu": db_menu.daftar_menu(), "aplikasi": db_menu.APLIKASI,
+    return jsonify({"menu": _menu_terlihat(db_menu.daftar_menu()), "aplikasi": db_menu.APLIKASI,
                     "aksi": [{"id": hak_akses.ID_AKSI[a], "nama": a} for a in hak_akses.AKSI_OPSI]})
 
 
@@ -543,6 +586,13 @@ def menu_simpan():
         aplikasi = request.form.get("aplikasi") or "CPOS"
         if aplikasi not in db_menu.APLIKASI:
             raise ValueError("Pilih aplikasi dari daftar")
+        if _non_admin():
+            semua = {m["id_menu"]: m for m in db_menu.daftar_menu()}
+            induk = semua.get(request.form.get("id_induk", type=int))
+            _jaga_admin(id_menu is not None and (id_menu not in semua or hak_akses.menu_admin(semua[id_menu]["kode"])),
+                        "Menu Admin hanya bisa diubah oleh admin")
+            _jaga_admin(id_menu is None and hak_akses.menu_admin(kode), "Kode G_ADMIN dan awalan ADM_ khusus menu Admin")
+            _jaga_admin(induk is not None and hak_akses.menu_admin(induk["kode"]), "Menu tidak bisa dimasukkan ke grup Admin")
         sah = {hak_akses.ID_AKSI[a] for a in hak_akses.AKSI_OPSI}
         daftar_aksi = sorted({int(x) for x in request.form.getlist("aksi") if x.lstrip("-").isdigit()} & sah)
         kode = db_menu.simpan_menu(id_menu, kode, nama, request.form.get("id_induk", type=int), url, ikon, aplikasi, daftar_aksi)
@@ -553,10 +603,33 @@ def menu_simpan():
     return _jalankan(aksi)
 
 
+def _gabung_urutan(semua, id_induk, urutan_terlihat):
+    """Urutan dari non-admin (tanpa menu Admin) -> urutan lengkap; menu Admin tetap di posisinya semula."""
+    saudara = [x for x in semua if x["id_induk"] == id_induk]
+    sisa = iter(urutan_terlihat)
+    hasil = [x["id_menu"] if hak_akses.menu_admin(x["kode"]) else next(sisa, None) for x in saudara]
+    if None in hasil or next(sisa, None) is not None:
+        raise ValueError("Daftar menu berubah, muat ulang halaman lalu coba lagi")
+    return hasil
+
+
 @admin_bp.route("/api/admin/menu/<int:id_menu>/geser", methods=["POST"])
 @_admin
 def menu_geser(id_menu):
     def aksi():
+        if _non_admin():
+            # Geser di antara menu yang terlihat saja; posisi menu Admin yang tersembunyi tidak ikut berubah
+            semua = db_menu.daftar_menu()
+            m = next((x for x in semua if x["id_menu"] == id_menu), None)
+            _jaga_admin(m is None or hak_akses.menu_admin(m["kode"]), "Menu Admin hanya bisa diubah oleh admin")
+            terlihat = [x["id_menu"] for x in _menu_terlihat(semua) if x["id_induk"] == m["id_induk"]]
+            i = terlihat.index(id_menu)
+            j = i + (request.form.get("arah", type=int) or 1)
+            if 0 <= j < len(terlihat):
+                terlihat[i], terlihat[j] = terlihat[j], terlihat[i]
+            db_menu.urut_menu(m["id_induk"], _gabung_urutan(semua, m["id_induk"], terlihat))
+            hak_akses.hapus_cache()
+            return jsonify({"message": "Urutan menu disimpan"})
         db_menu.geser_menu(id_menu, request.form.get("arah", type=int) or 1)
         hak_akses.hapus_cache()
         return jsonify({"message": "Urutan menu disimpan"})
@@ -571,7 +644,10 @@ def menu_urut():
             urutan = [int(x) for x in json.loads(request.form.get("urutan") or "[]")]
         except (ValueError, TypeError):
             raise ValueError("Data urutan tidak valid") from None
-        db_menu.urut_menu(request.form.get("id_induk", type=int), urutan)
+        id_induk = request.form.get("id_induk", type=int)
+        if _non_admin():
+            urutan = _gabung_urutan(db_menu.daftar_menu(), id_induk, urutan)
+        db_menu.urut_menu(id_induk, urutan)
         hak_akses.hapus_cache()
         _audit("MENU_UBAH", "URUTAN", f"Urutan {len(urutan)} menu diubah (seret-lepas)")
         return jsonify({"message": "Urutan menu disimpan"})
@@ -582,6 +658,8 @@ def menu_urut():
 def menu_aktif(id_menu):
     def aksi():
         aktif = _aktif_dari_form()
+        m = next((x for x in db_menu.daftar_menu() if x["id_menu"] == id_menu), None)
+        _jaga_admin(m is None or hak_akses.menu_admin(m["kode"]), "Menu Admin hanya bisa diubah oleh admin")
         db_menu.set_aktif_menu(id_menu, aktif)
         hak_akses.hapus_cache()
         _audit("MENU_AKTIF" if aktif else "MENU_NONAKTIF", str(id_menu))
@@ -694,6 +772,8 @@ def department_simpan():
 def jabatan_simpan():
     def aksi():
         id_j, nama = _id_opsional("id_jabatan"), _teks("nama")
+        _jaga_admin(id_j is not None and any(j["id_jabatan"] == id_j and j["is_admin"] for j in hak_akses.daftar_jabatan()),
+                    "Jabatan admin hanya bisa diubah oleh admin")
         if hak_akses.nama_jabatan_dipakai(nama, kecuali=id_j):
             raise ValueError(f"Jabatan {nama} sudah ada.")
         teks = (request.form.get("urutan") or "").strip()
@@ -896,6 +976,8 @@ def organisasi_aktif(jenis, id_baris):
 
     def aksi():
         aktif = _aktif_dari_form()
+        _jaga_admin(jenis == "jabatan" and any(j["id_jabatan"] == id_baris and j["is_admin"] for j in hak_akses.daftar_jabatan()),
+                    "Jabatan admin hanya bisa diubah oleh admin")
         if not aktif:
             dipakai = {"company": [(c["id_company"], c["jumlah_area"]) for c in org.daftar_company()],
                        "area": [(a["id_comp_area"], a["jumlah_user"]) for a in org.daftar_area()],
@@ -932,6 +1014,7 @@ def sesi_paksa_keluar():
         if id_user == current_user.id:
             raise ValueError("Untuk keluar dari akun sendiri gunakan tombol Keluar")
         u = _user_atau_404(id_user)
+        _jaga_admin(u["is_admin"], "Sesi akun admin hanya bisa diakhiri oleh admin")
         db.cabut_sesi(id_user)
         sesi_aktif.hapus_user(id_user)
         _audit("SESI_PAKSA_KELUAR", u["username"])
@@ -1470,3 +1553,118 @@ def kesehatan():
                      "sesi_aktif": len(sesi_aktif.daftar(pengaturan.nilai("SESI_IDLE_MENIT") * 60))},
     })
 
+
+
+# ===== AKSES ADMIN (hak menu Admin untuk non-admin; hanya superadmin, lihat hak_akses.boleh_admin) =====
+JENIS_AKSES_ADMIN = ("ROLE", "LEVEL", "DEPT", "USER")
+
+
+def _halaman_akses_admin():
+    """Menu halaman Admin (ADM_*) urut seperti sidebar admin, dengan aturan Izinkan-nya."""
+    per_kode = {m["kode"]: m for m in hak_akses.pohon_menu() if hak_akses.menu_admin(m["kode"])}
+    hasil = []
+    urutan = [(grup, h) for grup, isi in GRUP_HALAMAN for h in isi if h in hak_akses.KODE_HALAMAN_ADMIN]
+    for grup, halaman in urutan:
+        kode = hak_akses.KODE_HALAMAN_ADMIN[halaman]
+        m = per_kode.get(kode)
+        if m is None:
+            continue
+        aturan = [{"jenis": a["jenis"], "id_target": a["id_target"], "nama_target": a["nama_target"],
+                   "lihat": bool(a["aksi"].get("lihat")), "ubah": bool(a["aksi"].get("ubah"))}
+                  for a in hak_akses.aturan_menu(m["id_menu"]) if not a["tolak"] and a["jenis"] in JENIS_AKSES_ADMIN]
+        judul, ikon, _ = HALAMAN[halaman]
+        hasil.append({"kode": kode, "id_menu": m["id_menu"], "nama": judul, "ikon": ikon, "grup": grup,
+                      "bisa_ubah": "ubah" in m["aksi"], "aturan": aturan})
+    return hasil
+
+
+def _pastikan_superadmin():
+    if _non_admin():
+        raise ValueError("Akses Admin hanya bisa diatur oleh superadmin")
+
+
+@admin_bp.route("/api/admin/akses-admin")
+@_admin
+def akses_admin_daftar():
+    if _non_admin():
+        return jsonify({"error": "Akses Admin hanya bisa diatur oleh superadmin"}), 403
+    halaman = _halaman_akses_admin()
+    return jsonify({"halaman": halaman, "siap": bool(halaman),
+                    "jabatan": [{"id": j["id_jabatan"], "nama": j["nama"]} for j in hak_akses.daftar_jabatan()
+                                if j["is_active"] and not j["is_admin"]],
+                    "departemen": [{"id": d["id_department"], "nama": d["nama"]} for d in org.daftar_department() if d["is_active"]]})
+
+
+def _sinkron_grup_admin():
+    """Gerbang grup Admin = gabungan semua yang boleh melihat salah satu halaman Admin (diisi otomatis)."""
+    grup = next((m for m in hak_akses.pohon_menu() if m["kode"] == hak_akses.GRUP_ADMIN), None)
+    if grup is None:
+        return
+    data, kunci = [], set()
+    for h in _halaman_akses_admin():
+        for a in h["aturan"]:
+            if a["lihat"] and (a["jenis"], str(a["id_target"])) not in kunci:
+                kunci.add((a["jenis"], str(a["id_target"])))
+                data.append({"jenis": a["jenis"], "id_target": a["id_target"], "tolak": False, "aksi": ["lihat"]})
+    hak_akses.simpan_aturan_menu(grup["id_menu"], _aturan_dari_json(grup, data))
+
+
+@admin_bp.route("/api/admin/akses-admin/<kode>", methods=["POST"])
+@_admin
+def akses_admin_simpan(kode):
+    def aksi():
+        _pastikan_superadmin()
+        h = next((x for x in _halaman_akses_admin() if x["kode"] == kode), None)
+        if h is None:
+            raise ValueError("Halaman Admin tidak ditemukan")
+        try:
+            masuk = json.loads(request.form.get("aturan") or "[]")
+        except ValueError:
+            raise ValueError("Data tidak valid") from None
+        data = []
+        for a in masuk if isinstance(masuk, list) else []:
+            if a.get("jenis") not in JENIS_AKSES_ADMIN:
+                raise ValueError("Pilih Peran, Jabatan, Departemen, atau User")
+            if a.get("jenis") == "USER" and not str(a.get("id_target") or "").isdigit():
+                raise ValueError("Pilih user untuk setiap baris User")
+            ubah = bool(a.get("ubah")) and h["bisa_ubah"]
+            if not (a.get("lihat") or ubah):
+                continue
+            data.append({"jenis": a["jenis"], "id_target": a.get("id_target"), "tolak": False,
+                         "aksi": ["lihat", "ubah"] if ubah else ["lihat"]})
+        aturan = _aturan_dari_json({"kode": kode}, data)
+        hak_akses.simpan_aturan_menu(h["id_menu"], aturan)
+        _sinkron_grup_admin()
+        get_user_by_id.hapus()
+        hak_akses.hapus_cache()
+        _audit("AKSES_ADMIN_UBAH", kode, f"{h['nama']} · {len(aturan)} penerima")
+        return jsonify({"message": f"Akses {h['nama']} disimpan dan berlaku dalam ±30 detik"})
+    return _jalankan(aksi)
+
+
+@admin_bp.route("/api/admin/akses-admin/user/<int:id_user>")
+@_admin
+def akses_admin_user(id_user):
+    """Akses Admin satu orang: halaman Admin yang boleh dibuka, Lihat / Ubah, dan aturan asalnya."""
+    if _non_admin():
+        return jsonify({"error": "Akses Admin hanya bisa diatur oleh superadmin"}), 403
+
+    def aksi():
+        u = _user_atau_404(id_user)
+        hak = hak_akses.hak_menu_user(id_user)
+        sumber = {}
+        for r in hak_akses.sumber_akses(id_user):
+            if hak_akses.menu_admin(r["MenuCode"]) and not r["IsDeny"]:
+                nama = hak_akses.NAMA_AKSI.get(r["ActionID"])
+                sumber.setdefault(r["MenuCode"], {}).setdefault((r["TargetType"], r["TargetName"]), set()).add(nama)
+        jenis = {"ROLE": "Peran", "LEVEL": "Jabatan", "DEPT": "Departemen", "USER": "User", "ALL": "Semua user"}
+        halaman = []
+        for h in _halaman_akses_admin():
+            hk = hak.get(h["kode"]) or {}
+            halaman.append({"kode": h["kode"], "nama": h["nama"], "grup": h["grup"], "lihat": bool(hk.get("lihat")),
+                            "ubah": bool(hk.get("ubah")) and h["bisa_ubah"],
+                            "asal": [f"{jenis.get(j, j)}: {n}" + (" (Lihat, Ubah)" if "ubah" in a else " (Lihat)")
+                                     for (j, n), a in sumber.get(h["kode"], {}).items()]})
+        return jsonify({"user": {"id_user": u["id_user"], "nama": u["nama"], "username": u["username"],
+                                 "peran": u.get("nama_level"), "is_admin": u["is_admin"]}, "halaman": halaman})
+    return _jalankan(aksi)

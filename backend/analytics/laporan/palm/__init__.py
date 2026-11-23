@@ -7,7 +7,7 @@ from .sumber import muat
 
 LAPORAN = Laporan(
     id="palm_weighbridge",
-    nama="Weighbridge Fraud Detector",
+    nama="Weighbridge Fraud Analysis",
     deskripsi="Transaksi timbang sawit dan indikator risiko kecurangannya.",
     pemuat=muat,
     mulai_bawaan=konfigurasi.PALM_MULAI,

@@ -16,16 +16,15 @@ let jumlahAsli = 0;
 const bentukAturan = a => JSON.stringify({ jenis: a.jenis, id_target: a.id_target, tolak: a.tolak,
                                            aksi: AKSI.filter(k => a.aksi[k]), widget: a.widget, cakupan: a.cakupan });
 const statusAturan = a => !a._asli ? 'baru' : (a._asli !== bentukAturan(a) ? 'diubah' : '');
-const GAYA_STATUS = {
-    baru: 'background:rgba(16,185,129,.14);box-shadow:inset 4px 0 0 #10b981',
-    diubah: 'background:rgba(245,158,11,.14);box-shadow:inset 4px 0 0 #f59e0b',
-};
+// Baris yang belum disimpan: garis kiri (kelas di tailwind-source.css, ikut tema) dan label teks, bukan warna saja
+const KELAS_STATUS = { baru: 'aturan-baru', diubah: 'aturan-diubah' };
 
 function penandaAturan(a) {
     const s = statusAturan(a);
     if (!s) return '';
-    return `<span title="${s === 'baru' ? 'Aturan baru, belum disimpan' : 'Diubah, belum disimpan'}"
-        style="display:inline-block;width:9px;height:9px;border-radius:9999px;background:${s === 'baru' ? '#10b981' : '#f59e0b'};margin-right:6px;vertical-align:middle"></span>`;
+    return s === 'baru'
+        ? '<span class="badge-status bg-emerald-100 text-emerald-700 ml-1.5" title="Aturan baru, belum disimpan">Baru</span>'
+        : '<span class="badge-status bg-amber-100 text-amber-800 ml-1.5" title="Diubah, belum disimpan">Diubah</span>';
 }
 
 function perbaruiRingkasan() {
@@ -194,9 +193,9 @@ function tampilAturan() {
     document.querySelectorAll('.kolom-widget').forEach(el => el.classList.toggle('hidden', !adaWidget()));
     const namaWidget = Object.fromEntries(DATA.widget.map(w => [w.kode, w.nama]));
     document.getElementById('tabelAturan').innerHTML = aturan.map((a, i) => `
-        <tr class="${a.tolak ? 'bg-red-50/60' : 'hover:bg-slate-50'}" style="${GAYA_STATUS[statusAturan(a)] || ''}">
-            <td class="table-cell !px-2 whitespace-nowrap">${penandaAturan(a)}<select class="input-field py-1 text-xs font-semibold w-24 ${a.tolak ? 'text-red-700' : 'text-emerald-700'}" data-i="${i}" data-f="tolak">
-                ${opsi([['0', 'Izinkan'], ['1', 'Larang']], a.tolak ? '1' : '0')}</select></td>
+        <tr class="${a.tolak ? 'bg-red-50/60' : 'hover:bg-slate-50'} ${KELAS_STATUS[statusAturan(a)] || ''}">
+            <td class="table-cell !px-2 whitespace-nowrap"><div class="flex items-center"><select class="input-field py-1 text-xs font-semibold w-24 ${a.tolak ? 'text-red-700' : 'text-emerald-700'}" data-i="${i}" data-f="tolak" aria-label="Efek">
+                ${opsi([['0', 'Izinkan'], ['1', 'Larang']], a.tolak ? '1' : '0')}</select>${penandaAturan(a)}</div></td>
             <td class="table-cell !px-2"><select class="input-field py-1 text-xs w-28" data-i="${i}" data-f="jenis">${opsi(JENIS, a.jenis)}</select></td>
             <td class="table-cell !px-2">${sasaran(a, i)}</td>
             ${berlaku.map(k => `<td class="table-cell !px-1 text-center"><input type="checkbox" class="w-4 h-4" data-i="${i}" data-f="aksi"
@@ -206,9 +205,9 @@ function tampilAturan() {
                 : `<button type="button" class="link-aksi text-blue-600 text-left" data-on-click="bukaWidgetAturan" data-arg="${i}">
                     ${a.widget.length ? a.widget.map(w => escapeHtml(namaWidget[w] || w)).join(', ') : '<span class="text-slate-400">Atur isi</span>'}</button>`}</td>` : ''}
             <td class="table-cell !px-2 text-right whitespace-nowrap">
-                <button type="button" class="px-1.5 text-emerald-600 hover:text-emerald-800" title="Allow all baris ini" data-on-click="aksiBaris" data-arg="${i}|$true"><i class="fa-solid fa-check-double"></i></button>
-                <button type="button" class="px-1.5 text-slate-400 hover:text-red-600" title="Deny all baris ini" data-on-click="aksiBaris" data-arg="${i}|$false"><i class="fa-solid fa-ban"></i></button>
-                <button type="button" class="px-1.5 text-slate-400 hover:text-red-600" title="Hapus aturan" data-on-click="hapusAturan" data-arg="${i}"><i class="fa-solid fa-trash-can"></i></button>
+                <button type="button" class="aturan-tombol" title="Centang semua aksi baris ini" aria-label="Centang semua aksi baris ini" data-on-click="aksiBaris" data-arg="${i}|$true"><i class="fa-regular fa-square-check" aria-hidden="true"></i></button>
+                <button type="button" class="aturan-tombol" title="Kosongkan aksi baris ini" aria-label="Kosongkan aksi baris ini" data-on-click="aksiBaris" data-arg="${i}|$false"><i class="fa-regular fa-square" aria-hidden="true"></i></button>
+                <button type="button" class="aturan-tombol hover:!text-red-600" title="Hapus aturan" aria-label="Hapus aturan" data-on-click="hapusAturan" data-arg="${i}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
             </td>
         </tr>`).join('') || barisKosong(12, 'Belum ada aturan: menu ini tidak terlihat oleh siapa pun.', { fungsi: 'tambahAturan', label: 'Tambah aturan' });
 }

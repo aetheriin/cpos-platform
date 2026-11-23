@@ -78,7 +78,7 @@ def bangun(data, dari, sampai, minggu=None, perusahaan=None, kategori=None, pemb
 
     mingguan = [
         {
-            "indeks": i, "mulai": _tgl(s), "akhir": _tgl(e), "label": f"{s:%d/%m} - {e:%d/%m}",
+            "indeks": i, "mulai": _tgl(s), "akhir": _tgl(e), "label": f"{s:%d-%m} sd {e:%d-%m}",
             "outstanding_awal": int(P.outstanding_awal(semua, s)),
             "new_po": int(P.new_po(semua, s, e)),
             "new_pi": int(P.new_pi(semua, s, e)),

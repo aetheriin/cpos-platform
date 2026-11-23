@@ -3,19 +3,19 @@
     <div class="modal-box">
         <div class="modal-header">
             <h3 class="font-bold">Pendaftaran Supir Baru & Perekaman Wajah</h3>
-            <button data-on-click="closeModal" data-arg="modalTambahSupir"><i class="fa-solid fa-xmark"></i></button>
+            <button type="button" data-on-click="closeModal" data-arg="modalTambahSupir" title="Tutup" aria-label="Tutup"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
         <div class="p-6 space-y-4">
             <div>
-                <label class="field-label">Nama Lengkap</label>
+                <label for="tambahNama" class="field-label">Nama Lengkap</label>
                 <input type="text" id="tambahNama" placeholder="Masukkan Nama Lengkap" class="input-field">
             </div>
             <div>
-                <label class="field-label">NIK</label>
+                <label for="tambahNik" class="field-label">NIK</label>
                 <input type="text" id="tambahNik" placeholder="16 digit NIK" data-nik maxlength="16" inputmode="numeric" class="input-field">
             </div>
             <div>
-                <label class="field-label">SIM</label>
+                <label for="tambahSim" class="field-label">SIM</label>
                 <input type="text" id="tambahSim" placeholder="Masukkan Nomor SIM" class="input-field">
             </div>
 
@@ -52,7 +52,7 @@
         <div id="panelModeCari" class="p-6 space-y-4">
 
             <div>
-                <label class="field-label">NIK supir yang datang hari ini</label>
+                <label for="cariNik" class="field-label">NIK supir yang datang hari ini</label>
                 <input type="text" id="cariNik" placeholder="Ketik NIK lalu Tab" data-nik maxlength="16" inputmode="numeric" class="input-field"
                     data-on-enter="cariSupirByNik" data-arg="$el">
             </div>
@@ -73,9 +73,9 @@
                 Perubahan identitas tercatat di audit log dan supir ditandai "Pernah Diperbarui".
             </div>
             <p id="editTanpaDriver" class="hidden text-sm text-red-500">Belum ada supir terpilih. Pilih atau scan supir dulu.</p>
-            <div><label class="field-label">Nama Lengkap</label><input type="text" id="updateNama" class="input-field"></div>
-            <div><label class="field-label">NIK</label><input type="text" id="updateNik" data-nik maxlength="16" inputmode="numeric" class="input-field"></div>
-            <div><label class="field-label">SIM</label><input type="text" id="updateSim" class="input-field"></div>
+            <div><label for="updateNama" class="field-label">Nama Lengkap</label><input type="text" id="updateNama" class="input-field"></div>
+            <div><label for="updateNik" class="field-label">NIK</label><input type="text" id="updateNik" data-nik maxlength="16" inputmode="numeric" class="input-field"></div>
+            <div><label for="updateSim" class="field-label">SIM</label><input type="text" id="updateSim" class="input-field"></div>
 
             <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center">
                 <div id="updateFotoPreview" class="photo-circle mb-3"><i class="fa-solid fa-camera text-slate-300 text-2xl"></i></div>
@@ -101,7 +101,7 @@
             </table>
             <div class="p-6 border-t border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                 <div>
-                    <label class="field-label">Daftarkan supir (NIK)</label>
+                    <label for="updCariNik" class="field-label">Daftarkan supir (NIK)</label>
                     <input type="text" id="updCariNik" placeholder="Ketik NIK lalu Tab" class="input-field"
                         data-on-enter="cariSupirUntukTruk" data-arg="$value">
                 </div>
@@ -131,7 +131,7 @@
             </table>
             <div class="p-6 border-t border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                    <label class="field-label">Customer</label>
+                    <label for="kkSupplier" class="field-label">Customer</label>
                     <select id="kkSupplier" class="input-field">
                         <option value="">-- Pilih --</option>
                         {% for s in supplier_list %}
@@ -140,7 +140,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="field-label">Produk (opsional)</label>
+                    <label for="kkProduk" class="field-label">Produk (opsional)</label>
                     <select id="kkProduk" class="input-field">
                         <option value="">-- Semua --</option>
                         {% for p in produk_list %}
@@ -149,7 +149,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="field-label">Jenis Transaksi (opsional)</label>
+                    <label for="kkJenis" class="field-label">Jenis Transaksi (opsional)</label>
                     <select id="kkJenis" class="input-field">
                         <option value="">-- Semua --</option>
                         <option value="PEMBELIAN">Pembelian</option>
@@ -158,19 +158,19 @@
                     </select>
                 </div>
                 <div>
-                    <label class="field-label">No. Kontrak (opsional)</label>
+                    <label for="kkNoKontrak" class="field-label">No. Kontrak (opsional)</label>
                     <input type="text" id="kkNoKontrak" class="input-field">
                 </div>
                 <div>
-                    <label class="field-label">Tanggal Mulai</label>
+                    <label for="kkMulai" class="field-label">Tanggal Mulai</label>
                     <input type="date" id="kkMulai" class="input-field">
                 </div>
                 <div>
-                    <label class="field-label">Tanggal Selesai (kosong = tanpa batas)</label>
+                    <label for="kkSelesai" class="field-label">Tanggal Selesai (kosong = tanpa batas)</label>
                     <input type="date" id="kkSelesai" class="input-field">
                 </div>
                 <div class="md:col-span-2">
-                    <label class="field-label">Keterangan</label>
+                    <label for="kkKeterangan" class="field-label">Keterangan</label>
                     <input type="text" id="kkKeterangan" class="input-field">
                 </div>
                 <div class="flex items-end">
@@ -184,9 +184,9 @@
 <div id="modalStandarMutu" class="modal-overlay">
     <div class="modal-box p-6 space-y-3">
         <h3 class="font-bold mb-2">Ubah Standar Mutu</h3>
-        <div><label class="field-label">Maks FFA (%)</label><input type="number" id="stdInputFfa" class="input-field"></div>
-        <div><label class="field-label">Maks Air (%)</label><input type="number" id="stdInputAir" class="input-field"></div>
-        <div><label class="field-label">Maks Kotoran (%)</label><input type="number" id="stdInputKotoran" class="input-field"></div>
+        <div><label for="stdInputFfa" class="field-label">Maks FFA (%)</label><input type="number" id="stdInputFfa" class="input-field"></div>
+        <div><label for="stdInputAir" class="field-label">Maks Air (%)</label><input type="number" id="stdInputAir" class="input-field"></div>
+        <div><label for="stdInputKotoran" class="field-label">Maks Kotoran (%)</label><input type="number" id="stdInputKotoran" class="input-field"></div>
         <div class="flex justify-end gap-2">
             <button data-on-click="closeModal" data-arg="modalStandarMutu" class="btn-secondary">Batal</button>
             <button data-on-click="simpanStandarMutu" data-arg="$el" class="btn-primary">Simpan</button>
@@ -199,11 +199,11 @@
     <div class="modal-box">
         <div class="modal-header">
             <h3 class="font-bold">Cetak QR</h3>
-            <button data-on-click="closeModal" data-arg="modalCetakQR"><i class="fa-solid fa-xmark"></i></button>
+            <button type="button" data-on-click="closeModal" data-arg="modalCetakQR" title="Tutup" aria-label="Tutup"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
         <div class="p-6 space-y-4">
             <div>
-                <label class="field-label">Nomor Plat Kendaraan</label>
+                <label for="qrNoPlat" class="field-label">Nomor Plat Kendaraan</label>
                 <input type="text" id="qrNoPlat" data-plat placeholder="Tekan Tab →" class="input-field uppercase"
                     data-on-enter="lookupPlatUntukQR" data-arg="$el">
             </div>

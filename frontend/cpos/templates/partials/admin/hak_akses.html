@@ -19,7 +19,7 @@
                     <button type="button" class="pohon-tombol" data-on-click="lipatPohon" data-arg="$true" title="Lipat semua"><i class="fa-solid fa-angles-up"></i></button>
                 </div>
             </div>
-            <input type="search" id="cariMenuAkses" class="input-field py-1.5" placeholder="Cari menu..." data-on-input="tampilPohonMenu">
+            <input type="search" id="cariMenuAkses" aria-label="Cari menu" class="input-field py-1.5" placeholder="Cari menu..." data-on-input="tampilPohonMenu">
         </div>
         <div id="pohonMenu" class="flex-1 overflow-y-auto py-1.5"></div>
     </div>
@@ -34,15 +34,16 @@
             <button type="submit" id="btnSimpanAturan" class="btn-primary btn-sm" disabled>Simpan</button>
         </div>
         <div class="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-slate-100 text-xs">
-            <button type="button" class="btn-secondary btn-sm" data-on-click="salinAturan" data-perlu-menu disabled title="Salin semua aturan menu ini"><i class="fa-regular fa-copy mr-1"></i>Copy</button>
-            <button type="button" class="btn-secondary btn-sm" id="btnTempel" data-on-click="tempelAturan" disabled title="Tambahkan aturan yang disalin ke menu ini"><i class="fa-solid fa-paste mr-1"></i>Paste</button>
-            <button type="button" class="btn-secondary btn-sm" data-on-click="beriKeTurunan" data-perlu-menu disabled title="Berikan semua aturan Izinkan menu ini ke semua menu di bawahnya (Lv2 / Lv3)"><i class="fa-solid fa-sitemap mr-1"></i>Beri ke semua turunan</button>
-            <span class="w-px h-5 bg-slate-200"></span>
-            <button type="button" class="btn-secondary btn-sm text-emerald-700" data-on-click="semuaAksi" data-arg="$true" data-perlu-menu disabled title="Centang semua aksi di semua baris"><i class="fa-solid fa-check-double mr-1"></i>Allow all</button>
-            <button type="button" class="btn-secondary btn-sm text-red-600" data-on-click="semuaAksi" data-arg="$false" data-perlu-menu disabled title="Kosongkan semua aksi di semua baris"><i class="fa-solid fa-ban mr-1"></i>Deny all</button>
+            <button type="button" class="btn-secondary btn-sm" data-on-click="salinAturan" data-perlu-menu disabled title="Salin semua aturan menu ini"><i class="fa-regular fa-copy mr-1" aria-hidden="true"></i>Salin</button>
+            <button type="button" class="btn-secondary btn-sm" id="btnTempel" data-on-click="tempelAturan" disabled title="Tambahkan aturan yang disalin ke menu ini"><i class="fa-solid fa-paste mr-1" aria-hidden="true"></i>Tempel</button>
+            <button type="button" class="btn-secondary btn-sm" data-on-click="beriKeTurunan" data-perlu-menu disabled title="Berikan semua aturan Izinkan menu ini ke semua menu di bawahnya (Lv2 / Lv3)"><i class="fa-solid fa-sitemap mr-1" aria-hidden="true"></i>Beri ke semua turunan</button>
+            <span class="w-px h-5 bg-slate-200" aria-hidden="true"></span>
+            {# Hanya mencentang / mengosongkan kotak aksi; Izinkan atau Larang tetap diatur di kolom Efek #}
+            <button type="button" class="btn-secondary btn-sm" data-on-click="semuaAksi" data-arg="$true" data-perlu-menu disabled title="Centang semua aksi di semua baris"><i class="fa-regular fa-square-check mr-1" aria-hidden="true"></i>Centang semua</button>
+            <button type="button" class="btn-secondary btn-sm" data-on-click="semuaAksi" data-arg="$false" data-perlu-menu disabled title="Kosongkan semua aksi di semua baris"><i class="fa-regular fa-square mr-1" aria-hidden="true"></i>Kosongkan semua</button>
             <span class="flex-1"></span>
             <span id="infoSalinan" class="text-slate-400"></span>
-            <button type="button" class="btn-primary btn-sm" data-on-click="tambahAturan" data-perlu-menu disabled><i class="fa-solid fa-plus mr-1"></i>Aturan</button>
+            <button type="button" class="btn-primary btn-sm" data-on-click="tambahAturan" data-perlu-menu disabled><i class="fa-solid fa-plus mr-1" aria-hidden="true"></i>Tambah aturan</button>
         </div>
         <div class="flex-1 overflow-auto min-h-0">
             <table data-tanpa-urut class="w-full text-left text-sm">
@@ -67,7 +68,7 @@
     <div class="lg:col-span-4 xl:col-span-3 section-box flex flex-col min-h-0">
         <div class="px-4 py-3 border-b border-slate-100 space-y-2">
             <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">User</p>
-            <input type="search" id="cariUserCek" class="input-field py-1.5" placeholder="NIK, nama, atau username" data-on-input="cariUserCek">
+            <input type="search" id="cariUserCek" aria-label="Cari user" class="input-field py-1.5" placeholder="NIK, nama, atau username" data-on-input="cariUserCek">
         </div>
         <div id="hasilUserCek" class="flex-1 overflow-y-auto divide-y divide-slate-100"></div>
     </div>
@@ -103,7 +104,7 @@
 {# ===== TAB: MATRIKS AKSES (menu × departemen / jabatan; klik sel memutar: kosong → Lihat → Penuh → Larang) ===== #}
 <div id="tabAkses-matriks" class="hidden">
     <div class="filter-bar">
-        <select id="mxJenis" class="input-field w-56" data-on-change="muatMatriks" data-tanpa-cari>
+        <select id="mxJenis" aria-label="Kolom matriks" class="input-field w-56" data-on-change="muatMatriks" data-tanpa-cari>
             <option value="DEPT">Kolom: Departemen</option>
             <option value="LEVEL">Kolom: Jabatan</option>
         </select>
@@ -112,7 +113,7 @@
             <option value="PT">Hak baru: PT sendiri</option>
             <option value="SEMUA">Hak baru: Semua PT</option>
         </select>
-        <input type="search" id="mxCari" class="input-field w-56" placeholder="Cari menu..." data-on-input="gambarMatriks">
+        <input type="search" id="mxCari" aria-label="Cari menu di matriks" class="input-field w-56" placeholder="Cari menu..." data-on-input="gambarMatriks">
         <div class="flex-1"></div>
         <span id="mxRingkas" class="badge-status bg-amber-100 text-amber-800 hidden"></span>
         <button type="button" class="btn-secondary" id="btnMxBatal" data-on-click="batalMatriks" disabled>Batal</button>

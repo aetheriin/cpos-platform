@@ -11,7 +11,7 @@
     <button type="button" class="btn-secondary" data-on-click="verifikasiLog" data-arg="$el"
             title="Cek rantai hash semua log aktivitas"><i class="fa-solid fa-link mr-1"></i> Verifikasi rantai log</button>
     <div class="relative">
-        <input type="text" id="cariAuditAdmin" placeholder="Cari aksi / target / admin" class="input-field pl-9 w-60" data-on-input="cariAuditAdmin" data-arg="$value">
+        <input type="text" id="cariAuditAdmin" aria-label="Cari jejak admin" placeholder="Cari aksi / target / admin" class="input-field pl-9 w-60" data-on-input="cariAuditAdmin" data-arg="$value">
         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
     </div>
 </div>
@@ -31,7 +31,7 @@
 
 <div class="section-box">
     {% call section_header('audit-data', 'Perubahan Data (nilai lama → baru)') %}
-    <select id="filterTabelData" class="input-field w-56 py-1.5" data-henti-klik data-on-change="muatAuditData">
+    <select id="filterTabelData" aria-label="Saring data yang berubah" class="input-field w-56 py-1.5" data-henti-klik data-on-change="muatAuditData">
         <option value="">Semua data</option>
     </select>
     {% endcall %}

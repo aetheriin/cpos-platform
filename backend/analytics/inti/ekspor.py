@@ -12,8 +12,8 @@ from . import konfigurasi
 
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 MAKS_BARIS = konfigurasi.MAKS_BARIS_EKSPOR
-FORMAT_TANGGAL = "dd/mm/yyyy"
-FORMAT_WAKTU = "dd/mm/yyyy hh:mm"
+FORMAT_TANGGAL = "dd-mm-yyyy"
+FORMAT_WAKTU = "dd-mm-yyyy hh:mm"
 FORMAT_DESIMAL = "#,##0.00"
 LEBAR_MAKS, LEBAR_MIN, CONTOH_BARIS = 50, 8, 200
 

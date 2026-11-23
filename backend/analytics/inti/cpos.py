@@ -47,6 +47,12 @@ def pengguna(nilai_cookie, user_agent=None, ip=None):
         if e.code not in (401, 403):
             raise CposTidakTersedia(f"CPOS menjawab {e.code}") from e
         data = None
+        if e.code == 403:       # sesi masih berlaku, tapi akun ini ditolak (mis. Super Admin, wajib ganti password)
+            try:
+                isi = json.load(e)
+            except (ValueError, OSError):
+                isi = {}
+            data = {"_ditolak": isi.get("kode") or "", "_pesan": isi.get("error") or ""}
     except (urllib.error.URLError, OSError, ValueError) as e:
         raise CposTidakTersedia(str(e)) from e
     with _kunci:

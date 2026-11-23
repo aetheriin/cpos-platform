@@ -12,7 +12,7 @@ export default function TombolExcel({ sibuk = false, kecil = false, ...sisa }) {
         <path d="M14 2v6h6" />
         <path d="m9.5 12.5 5 5m0-5-5 5" />
       </svg>
-      {sibuk ? 'Menyiapkan...' : 'Excel'}
+      {sibuk ? 'Menyiapkan…' : 'Excel'}
     </button>
   )
 }

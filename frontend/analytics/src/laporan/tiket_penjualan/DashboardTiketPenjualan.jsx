@@ -87,7 +87,7 @@ export default function DashboardTiketPenjualan({ dataId, onDataHilang }) {
         {data && acuan && <PilihPeriode mode={periode.mode} acuan={acuan} batas={batas} onUbah={ubahPeriode} sampaiJam={data.banding?.sampai_jam} />}
 
         {galat && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Halaman belum bisa ditampilkan: {galat.message}</div>}
-        {!data && !galat && <MemuatLaporan teks="Memuat tiket penjualan..." />}
+        {!data && !galat && <MemuatLaporan teks="Memuat tiket penjualan…" />}
 
         {data && kpi.rit === 0 && (
           <section className="rounded-xl border border-slate-200 bg-white">

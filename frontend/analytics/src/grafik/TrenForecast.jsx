@@ -4,9 +4,11 @@ import { lintasTahun, persen, tgl, tglLengkap } from '../lib/data'
 import { kgRingkas, rupiah, sumbu } from './tbs'
 import { LEGENDA } from './legenda'
 import { ANIMASI, DURASI_ANIMASI } from './animasi'
+import { Kosong } from '../komponen/Keadaan'
 
 const WARNA_AKTUAL = '#0369a1'
 const WARNA_FORECAST = '#d97706'
+const WARNA_INTERVAL = 'rgba(217, 119, 6, 0.15)' // WARNA_FORECAST yang dipudarkan; legenda ikut pucat
 
 function Petunjuk({ active, payload, ukuran }) {
   const d = active && payload?.[0]?.payload
@@ -46,6 +48,7 @@ function TrenForecast({ tren, forecast, terpilih, onPilih }) {
     ]
   }, [tren, forecast, ukuran, iv])
   const uji = forecast?.uji // forecast yang dibuat 7 hari lalu, dibandingkan dengan aktualnya (selalu dalam kg)
+  if (data.length === 0) return <Kosong teks="Tidak ada pembelian pada periode dan filter ini" />
   const titik = (warna) => (data.length > 62 ? false : { r: 2.5, fill: warna, strokeWidth: 0 }) // rentang panjang: garis saja, titik muncul saat disorot
   const tickTgl = lintasTahun(data) ? tglLengkap : tgl
   const persenIv = iv ? `${Math.round(iv.tingkat * 100)}%` : ''
@@ -69,7 +72,7 @@ function TrenForecast({ tren, forecast, terpilih, onPilih }) {
             <YAxis width={52} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#475569' }} tickFormatter={sumbu} />
             <Tooltip content={<Petunjuk ukuran={ukuran} />} cursor={{ stroke: '#64748b' }} />
             <Legend {...LEGENDA} />
-            {iv && <Area dataKey="rentang" name={`Interval ${persenIv}`} stroke="none" fill={WARNA_FORECAST} fillOpacity={0.15} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} connectNulls={false} legendType="square" />}
+            {iv && <Area dataKey="rentang" name={`Interval ${persenIv}`} stroke="none" fill={WARNA_INTERVAL} isAnimationActive={ANIMASI} animationDuration={DURASI_ANIMASI} connectNulls={false} legendType="square" />}
             {forecast && <ReferenceLine x={forecast.akhir_aktual} stroke="#64748b" strokeDasharray="4 4" />}
             {terpilih.map((h) => (
               <ReferenceLine key={h} x={h} stroke={WARNA_AKTUAL} strokeWidth={2} strokeOpacity={0.35} />

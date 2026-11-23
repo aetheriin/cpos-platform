@@ -24,9 +24,28 @@ function pasangPilihanKosong(sel, pilihKosong = true) {
     if (pilihKosong && !terpilih) sel.selectedIndex = 0;
 }
 
+let nomorPilihCari = 0;
+
+// Nama pilihan untuk pembaca layar: aria-labelledby / <label for> / aria-label / title milik <select> aslinya.
+// aria-label & title disalin ke teks tersembunyi supaya tombol terbaca "<nama pilihan> <pilihan aktif>".
+function idNamaPilihan(sel, bungkus) {
+    if (sel.getAttribute('aria-labelledby')) return sel.getAttribute('aria-labelledby');
+    const label = sel.id && document.querySelector(`label[for="${sel.id}"]`);
+    if (label) return label.id || (label.id = `${sel.id}Label`);
+    const teks = sel.getAttribute('aria-label') || sel.title;
+    if (!teks) return '';
+    const span = document.createElement('span');
+    span.className = 'sr-only';
+    span.id = `pilihCariNama${nomorPilihCari}`;
+    span.textContent = teks;
+    bungkus.appendChild(span);
+    return span.id;
+}
+
 function pasangPilihCari(sel) {
     if (sel.dataset.cariTerpasang || sel.multiple || Number(sel.size) > 1) return;
     sel.dataset.cariTerpasang = '1';
+    nomorPilihCari += 1;
     pasangPilihanKosong(sel);
 
     // Lebar / posisi grid ikut ke pembungkus, sisanya (ukuran teks, padding) ke kotak ketik
@@ -40,10 +59,13 @@ function pasangPilihCari(sel) {
     const input = document.createElement('button');
     input.type = 'button';
     input.className = [...kelas.filter(k => !KELAS_TATA_LETAK.test(k)), 'w-full', 'pr-8', 'text-left', 'truncate', 'pilih-cari-tombol'].join(' ');
-    if (sel.id) input.id = sel.id + 'Cari';
+    input.id = sel.id ? sel.id + 'Cari' : `pilihCari${nomorPilihCari}`;
     if (sel.title) input.title = sel.title;
+    input.setAttribute('aria-haspopup', 'listbox');
+    input.setAttribute('aria-expanded', 'false');
     const ikon = document.createElement('i');
     ikon.className = 'fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none';
+    ikon.setAttribute('aria-hidden', 'true');
     const daftar = document.createElement('div');
     // position: fixed supaya panel tidak terpotong modal / tabel (overflow)
     daftar.className = 'pilih-cari-panel hidden';
@@ -56,6 +78,15 @@ function pasangPilihCari(sel) {
     const ul = daftar.querySelector('ul');
     bungkus.append(sel, input, ikon);
     document.body.appendChild(daftar);
+    // Pembaca layar: tombol membuka daftar pilihan; <select> asli disembunyikan supaya tidak terbaca dua kali
+    const idNama = idNamaPilihan(sel, bungkus);
+    if (idNama) input.setAttribute('aria-labelledby', `${idNama} ${input.id}`);
+    ul.id = `${input.id}Daftar`;
+    ul.setAttribute('role', 'listbox');
+    input.setAttribute('aria-controls', ul.id);
+    Object.entries({ role: 'combobox', 'aria-expanded': 'true', 'aria-controls': ul.id, 'aria-autocomplete': 'list' })
+        .forEach(([k, v]) => ketik.setAttribute(k, v));
+    sel.setAttribute('aria-hidden', 'true');
 
     // Tak terlihat tetapi tetap bisa difokus browser, supaya pesan "wajib diisi" (required) tetap muncul
     Object.assign(sel.style, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%', opacity: '0', pointerEvents: 'none' });
@@ -81,9 +112,9 @@ function pasangPilihCari(sel) {
         const aktif = terpilih();
         sorot = k ? (cocok.length ? 0 : -1) : Math.max(0, cocok.indexOf(aktif));
         ul.innerHTML = cocok.length
-            ? cocok.map((o, i) => `<li data-i="${i}" class="pilih-cari-item${o === aktif && o.value !== '' ? ' pilih-cari-aktif' : ''}${o.value === '' ? ' text-slate-400' : ''}">
-                <span class="truncate">${escapeHtml(o.text)}</span>${o === aktif && o.value !== '' ? '<i class="fa-solid fa-check text-blue-600 text-xs flex-shrink-0"></i>' : ''}</li>`).join('')
-            : `<li class="px-3 py-2 text-sm italic text-center text-slate-400">${t('Data tidak ditemukan')}</li>`;
+            ? cocok.map((o, i) => `<li data-i="${i}" id="${ul.id}-${i}" role="option" aria-selected="${o === aktif}" class="pilih-cari-item${o === aktif && o.value !== '' ? ' pilih-cari-aktif' : ''}${o.value === '' ? ' text-slate-400' : ''}">
+                <span class="truncate">${escapeHtml(o.text)}</span>${o === aktif && o.value !== '' ? '<i class="fa-solid fa-check text-blue-600 text-xs flex-shrink-0" aria-hidden="true"></i>' : ''}</li>`).join('')
+            : `<li role="option" aria-disabled="true" class="px-3 py-2 text-sm italic text-center text-slate-400">${t('Tidak ada yang cocok')}</li>`;
         posisi();
         tandai();
     }
@@ -91,6 +122,7 @@ function pasangPilihCari(sel) {
         if (sel.disabled) return;
         daftar.classList.remove('hidden');
         input.classList.add('pilih-cari-buka');
+        input.setAttribute('aria-expanded', 'true');
         ketik.value = '';
         render('');
         ketik.focus();
@@ -113,11 +145,13 @@ function pasangPilihCari(sel) {
         ul.querySelectorAll('[data-i]').forEach(el => el.classList.toggle('pilih-cari-sorot', Number(el.dataset.i) === sorot));
         const el = ul.querySelector(`[data-i="${sorot}"]`);
         if (el) el.scrollIntoView({ block: 'nearest' });
+        if (el) ketik.setAttribute('aria-activedescendant', el.id); else ketik.removeAttribute('aria-activedescendant');
     }
     function tutup(fokus) {
         if (!terbuka()) return;
         daftar.classList.add('hidden');
         input.classList.remove('pilih-cari-buka');
+        input.setAttribute('aria-expanded', 'false');
         if (fokus) input.focus();
     }
     function pilih(o) {

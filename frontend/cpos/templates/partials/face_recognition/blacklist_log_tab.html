@@ -4,7 +4,7 @@
         <label class="field-label mb-0" for="logTanggal">Tanggal</label>
         <input type="date" id="logTanggal" class="input-field w-44" data-on-change="muatLogBlacklist">
         {% if is_pusat %}
-        <select id="logArea" class="input-field w-72" data-on-change="muatLogBlacklist" data-tanpa-cari>
+        <select id="logArea" aria-label="Area" class="input-field w-72" data-on-change="muatLogBlacklist" data-tanpa-cari>
             <option value="">Semua area</option>
             {% for a in area_list %}<option value="{{ a.id_comp_area }}">{{ a.label }}</option>{% endfor %}
         </select>

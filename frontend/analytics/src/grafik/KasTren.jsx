@@ -25,7 +25,7 @@ export function PilihPeriode({ nilai, onUbah }) {
       {[['hari', 'Harian'], ['bulan', 'Bulanan']].map(([k, nama]) => (
         <button key={k} type="button" role="radio" aria-checked={nilai === k} onClick={() => onUbah(k)}
           className={'rounded px-2 py-0.5 text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ' +
-            (nilai === k ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800')}>
+            (nilai === k ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:text-slate-900')}>
           {nama}
         </button>
       ))}

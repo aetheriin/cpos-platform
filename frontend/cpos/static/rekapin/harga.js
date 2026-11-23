@@ -4,7 +4,7 @@ let hargaSementara = [];
 const KOLOM_HARGA = ['harga_cpo', 'harga_kernel', 'oer_cpo', 'biaya_olah', 'qty_rsi'];
 const KOLOM_HARGA_WAJIB = ['harga_cpo', 'harga_kernel', 'oer_cpo', 'biaya_olah'];
 const BATAS_HARGA = { harga_cpo: 1_000_000, harga_kernel: 1_000_000, oer_cpo: 100, biaya_olah: 1_000_000 };
-const rpHarga = v => v == null ? '—' : Number(v).toLocaleString('id-ID', { maximumFractionDigits: 2 });
+const rpHarga = v => v == null ? '-' : Number(v).toLocaleString('id-ID', { maximumFractionDigits: 2 });
 const tglHarga = s => s ? s.split('-').reverse().join('-') : '';
 
 document.addEventListener('click', e => {
@@ -28,7 +28,7 @@ function resetFilterHarga() {
 async function tampilkanHarga() {
     const tombol = document.getElementById('rkTombolTampilkan');
     const status = document.getElementById('rkStatusHarga');
-    status.textContent = t('Memuat...');
+    status.textContent = t('Memuat…');
     status.className = 'text-xs text-slate-400';
     const hasil = await denganTombol(tombol, muatHarga);
     const jam = new Date().toLocaleTimeString('id-ID');
@@ -64,7 +64,7 @@ async function muatHarga() {
         <td class="table-cell text-right font-mono">${rpHarga(r.harga_kernel)}</td>
         <td class="table-cell text-right">${badge(`${rpHarga(r.oer_cpo)}%`, 'bg-emerald-50 text-emerald-700')}</td>
         <td class="table-cell text-right font-mono">${rpHarga(r.biaya_olah)}</td>
-        <td class="table-cell text-right font-mono">${r.qty_rsi == null ? '—' : rpHarga(r.qty_rsi) + ' ton'}</td>
+        <td class="table-cell text-right font-mono">${r.qty_rsi == null ? '-' : rpHarga(r.qty_rsi) + ' ton'}</td>
         <td class="table-cell text-xs text-slate-500">${escapeHtml(r.oleh || '')}<div>${escapeHtml(r.diubah)}</div></td>
         <td class="table-cell text-right whitespace-nowrap space-x-2">
             ${hak.ubah ? `<button type="button" class="link-aksi text-blue-600" data-on-click="bukaHarga" data-arg="${i}">Ubah</button>` : ''}
@@ -149,7 +149,7 @@ function tampilkanHargaSementara() {
         <td class="table-cell text-right font-mono">${rpHarga(r.harga_kernel)}</td>
         <td class="table-cell text-right">${rpHarga(r.oer_cpo)}%</td>
         <td class="table-cell text-right font-mono">${rpHarga(r.biaya_olah)}</td>
-        <td class="table-cell text-right font-mono">${r.qty_rsi == null ? '—' : `${rpHarga(r.qty_rsi)} ton`}</td>
+        <td class="table-cell text-right font-mono">${r.qty_rsi == null ? '-' : `${rpHarga(r.qty_rsi)} ton`}</td>
         <td class="table-cell text-right whitespace-nowrap">
             <button type="button" class="link-aksi text-blue-600" data-on-click="editHargaSementara" data-arg="${i}">Ubah</button>
             <button type="button" class="link-aksi text-red-600 ml-2" data-on-click="hapusHargaSementara" data-arg="${i}">Hapus</button>

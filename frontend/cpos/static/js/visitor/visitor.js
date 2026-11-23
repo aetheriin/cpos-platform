@@ -24,7 +24,7 @@ async function muatKunjungan() {
         ambilJson(`/api/visitor/kunjungan?kelompok=EMPLOYEE&${p}`),
     ]);
     byId('tabelVisitor').innerHTML = vis.error ? barisGagal(11, vis.error)
-        : vis.map(r => `<tr class="hover:bg-slate-50 cursor-pointer" data-id="${r.id_aktivitas}">
+        : vis.map(r => `<tr class="hover:bg-slate-50 cursor-pointer baris-buka" tabindex="0" title="Buka rincian kunjungan" data-id="${r.id_aktivitas}">
             <td class="table-cell font-mono whitespace-nowrap">${kjSel(r.no_plat)}</td><td class="table-cell">${kjSel(r.lokasi)}</td>
             <td class="table-cell whitespace-nowrap">${kjSel(r.waktu_masuk)}</td><td class="table-cell">${kjSel(r.nama)}</td>
             <td class="table-cell">${kjSel(r.dari)}</td><td class="table-cell text-center">${r.nama ? r.jumlah_penumpang : kjSel('')}</td>
@@ -32,7 +32,7 @@ async function muatKunjungan() {
             <td class="table-cell whitespace-nowrap">${kjSel(r.waktu_keluar)}</td><td class="table-cell">${kjSel(r.kategori)}</td>
             <td class="table-cell">${kjSel(r.nik)}</td></tr>`).join('') || barisKosong(11, 'Belum ada kunjungan');
     byId('tabelEmployee').innerHTML = kar.error ? barisGagal(6, kar.error)
-        : kar.map(r => `<tr class="hover:bg-slate-50 cursor-pointer" data-id="${r.id_aktivitas}">
+        : kar.map(r => `<tr class="hover:bg-slate-50 cursor-pointer baris-buka" tabindex="0" title="Buka rincian kunjungan" data-id="${r.id_aktivitas}">
             <td class="table-cell font-mono whitespace-nowrap">${kjSel(r.no_plat)}</td><td class="table-cell">${kjSel(r.nik)}</td>
             <td class="table-cell">${kjSel(r.nama)}</td><td class="table-cell whitespace-nowrap">${kjSel(r.waktu_masuk)}</td>
             <td class="table-cell whitespace-nowrap">${kjSel(r.waktu_keluar)}</td><td class="table-cell">${kjSel(r.kategori)}</td></tr>`).join('')
@@ -42,6 +42,13 @@ async function muatKunjungan() {
 ['tabelVisitor', 'tabelEmployee'].forEach(id => byId(id).addEventListener('click', e => {
     const tr = e.target.closest('tr[data-id]');
     if (tr) bukaKunjungan(Number(tr.dataset.id));
+}));
+// Baris juga bisa dibuka lewat keyboard: Tab ke baris, lalu Enter atau Spasi
+['tabelVisitor', 'tabelEmployee'].forEach(id => byId(id).addEventListener('keydown', e => {
+    const tr = e.target.closest('tr[data-id]');
+    if (!tr || e.target !== tr || (e.key !== 'Enter' && e.key !== ' ')) return;
+    e.preventDefault();
+    bukaKunjungan(Number(tr.dataset.id));
 }));
 
 async function muatPilihanKunjungan() {

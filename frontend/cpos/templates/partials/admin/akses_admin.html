@@ -1,0 +1,73 @@
+{# Akses Admin: halaman Admin mana yang boleh dibuka pengguna non-admin (menu ADM_*, database/perubahan/031_menu_admin.sql).
+   Hanya superadmin. Logika di static/js/admin/akses_admin.js, API di routes/admin.py (akses_admin_*). #}
+<div class="seg mb-4" role="tablist" aria-label="Cara melihat akses">
+    <button type="button" class="chip chip-active" role="tab" id="aaTabHalaman" aria-selected="true" aria-controls="aaPanelHalaman" data-aa-tab="halaman">
+        <i class="fa-solid fa-table-list mr-1" aria-hidden="true"></i>Per halaman</button>
+    <button type="button" class="chip" role="tab" id="aaTabOrang" aria-selected="false" aria-controls="aaPanelOrang" tabindex="-1" data-aa-tab="orang">
+        <i class="fa-solid fa-user-check mr-1" aria-hidden="true"></i>Per orang</button>
+</div>
+
+{# ===== Per halaman: siapa saja yang boleh membuka satu halaman Admin ===== #}
+<div id="aaPanelHalaman" role="tabpanel" aria-labelledby="aaTabHalaman" class="grid grid-cols-1 lg:grid-cols-12 gap-4 akses-tinggi">
+    <div class="lg:col-span-4 xl:col-span-3 section-box flex flex-col min-h-0">
+        <div class="px-4 py-3 border-b border-slate-100">
+            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Halaman Admin</p>
+        </div>
+        <nav id="aaDaftar" class="flex-1 overflow-y-auto py-1.5" aria-label="Halaman Admin">
+            <p class="px-4 py-6 text-sm text-slate-500">Memuat…</p>
+        </nav>
+    </div>
+
+    <form id="aaForm" class="lg:col-span-8 xl:col-span-9 section-box flex flex-col min-h-0 scroll-mt-4" autocomplete="off">
+        <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap items-start gap-2">
+            <div class="min-w-0 flex-1">
+                <h2 id="aaJudul" class="text-sm font-bold text-slate-900 truncate">Pilih halaman di kiri</h2>
+                <p class="text-xs text-slate-500">Lihat: boleh membuka halaman. Ubah: boleh menyimpan perubahan di halaman itu.</p>
+                <p id="aaKeterangan" class="text-xs text-slate-500"></p>
+            </div>
+            <span id="aaBerubah" class="badge-status bg-amber-100 text-amber-800 hidden" role="status">Belum disimpan</span>
+            <button type="button" class="btn-secondary btn-sm" id="aaTambah" disabled><i class="fa-solid fa-plus mr-1" aria-hidden="true"></i>Tambah penerima</button>
+            <button type="submit" class="btn-primary btn-sm" id="aaSimpan" disabled>Simpan</button>
+        </div>
+        <div class="flex-1 overflow-auto min-h-0">
+            <table data-tanpa-urut class="w-full text-left text-sm">
+                <thead class="table-header-row sticky top-0 z-10">
+                    <tr><th class="table-cell">Diberikan ke</th><th class="table-cell">Siapa</th>
+                        <th class="table-cell text-center">Lihat</th><th class="table-cell text-center">Ubah</th>
+                        <th class="table-cell"><span class="sr-only">Hapus</span></th></tr>
+                </thead>
+                <tbody id="aaTabel" class="divide-y divide-slate-100">
+                    <tr><td colspan="5" class="table-cell text-center text-slate-500 py-10">Pilih halaman di kiri untuk melihat siapa yang boleh membukanya</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </form>
+</div>
+
+{# ===== Per orang: halaman Admin apa saja yang boleh dibuka satu orang, dan dari aturan mana ===== #}
+<div id="aaPanelOrang" role="tabpanel" aria-labelledby="aaTabOrang" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-4 akses-tinggi">
+    <div class="lg:col-span-4 xl:col-span-3 section-box flex flex-col min-h-0">
+        <div class="px-4 py-3 border-b border-slate-100 space-y-2">
+            <label class="field-label" for="aaCariOrang">Cari user</label>
+            <input type="search" id="aaCariOrang" class="input-field py-1.5" placeholder="NIK, nama, atau username">
+        </div>
+        <p id="aaJumlahOrang" class="sr-only" role="status"></p>
+        <div id="aaHasilOrang" class="flex-1 overflow-y-auto divide-y divide-slate-100"></div>
+    </div>
+    <div class="lg:col-span-8 xl:col-span-9 section-box flex flex-col min-h-0 scroll-mt-4" id="aaOrangPanel">
+        <div class="px-4 py-3 border-b border-slate-100">
+            <h2 id="aaOrangJudul" class="text-sm font-bold text-slate-900">Pilih user di kiri</h2>
+            <p id="aaOrangInfo" class="text-xs text-slate-500">Halaman Admin yang boleh dia buka, dan aturan yang memberikannya.</p>
+        </div>
+        <div class="flex-1 overflow-auto min-h-0">
+            <table data-tanpa-urut class="w-full text-left text-sm">
+                <thead class="table-header-row sticky top-0 z-10">
+                    <tr><th class="table-cell">Halaman Admin</th><th class="table-cell">Hak</th><th class="table-cell">Diberikan lewat</th></tr>
+                </thead>
+                <tbody id="aaOrangTabel" class="divide-y divide-slate-100">
+                    <tr><td colspan="3" class="table-cell text-center text-slate-500 py-10">Cari dan pilih user untuk melihat akses Admin-nya</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
