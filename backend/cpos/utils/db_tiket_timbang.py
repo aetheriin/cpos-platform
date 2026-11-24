@@ -21,7 +21,7 @@ def baca_berat_tiket(no_tiket):
             FROM dbo.PALM_Tickets
             WHERE TicketNo = ?
               AND ISNULL([Void], 0) = 0
-              AND ISNULL([Pemisahanted], 0) = 0
+              AND ISNULL([Splitted], 0) = 0
             ORDER BY TicketID DESC
             """,
             no_tiket,
@@ -116,7 +116,7 @@ def simpan_berat_tiket(no_tiket, berat_kg, operator, waktu_timbang=None):
             FROM dbo.PALM_Tickets WITH (UPDLOCK, HOLDLOCK)
             WHERE TicketNo = ?
               AND ISNULL([Void], 0) = 0
-              AND ISNULL([Pemisahanted], 0) = 0
+              AND ISNULL([Splitted], 0) = 0
               AND (ISNULL([Step], 0) < 2 OR DateTimeOut IS NULL)
             ORDER BY TicketID DESC
             """,

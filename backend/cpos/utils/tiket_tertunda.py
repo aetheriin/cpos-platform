@@ -44,7 +44,7 @@ def _proses_satu(baris):
         if (
             hasil_lama["step"] >= 2
             and hasil_lama["datetimeout"] is not None
-            and not hasil_lama["pisahted"]
+            and not hasil_lama["splitted"]
             and not hasil_lama["void"]
         ):
             db_tiket_pisah.selesaikan_timbang_pending(ticket_id)

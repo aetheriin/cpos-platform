@@ -26,7 +26,7 @@ def cari_tiket_berdasarkan_plat(no_plat):
             WHERE REPLACE(REPLACE(REPLACE(UPPER(LTRIM(RTRIM(VehicleNo))), ' ', ''), '-', ''), '.', '')
                 = REPLACE(REPLACE(REPLACE(UPPER(?), ' ', ''), '-', ''), '.', '')
             AND ISNULL([Void], 0) = 0
-            AND ISNULL([Pemisahanted], 0) = 0
+            AND ISNULL([Splitted], 0) = 0
             AND (ISNULL([Step], 0) < 2 OR DateTimeOut IS NULL)
             ORDER BY TicketID ASC
             """,
@@ -92,7 +92,7 @@ def cari_tiket_berdasarkan_no_tiket(no_tiket):
             FROM dbo.PALM_Tickets
             WHERE TicketNo = ?
               AND ISNULL([Void], 0) = 0
-              AND ISNULL([Pemisahanted], 0) = 0
+              AND ISNULL([Splitted], 0) = 0
               AND (ISNULL([Step], 0) < 2 OR DateTimeOut IS NULL)
             ORDER BY TicketID DESC
             """,
@@ -187,7 +187,7 @@ def daftar_tiket_aktif(ticket_ids):
                    AND s.SupplierID = t.AssociateID
                 WHERE t.TicketID IN ({tanda_tanya})
                   AND ISNULL(t.Void, 0) = 0
-                  AND ISNULL(t.Pemisahanted, 0) = 0
+                  AND ISNULL(t.[Splitted], 0) = 0
                   AND (ISNULL(t.[Step], 0) < 2 OR t.DateTimeOut IS NULL)
                 """,
                 *bagian,

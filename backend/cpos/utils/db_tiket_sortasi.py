@@ -60,7 +60,7 @@ def simpan_hasil_sortasi_tiket(
             FROM dbo.PALM_Tickets WITH (UPDLOCK, HOLDLOCK)
             WHERE TicketNo = ?
               AND ISNULL(Void, 0) = 0
-              AND ISNULL(Pemisahanted, 0) = 0
+              AND ISNULL(Splitted, 0) = 0
             ORDER BY TicketID DESC
             """,
             no_tiket,

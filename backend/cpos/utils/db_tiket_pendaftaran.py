@@ -40,7 +40,7 @@ def _kunci_dan_cari_tiket_aktif(cursor, vehicle_no):
         WHERE REPLACE(REPLACE(REPLACE(UPPER(LTRIM(RTRIM(VehicleNo))), ' ', ''), '-', ''), '.', '')
             = ?
           AND ISNULL([Void], 0) = 0
-          AND ISNULL([Pemisahanted], 0) = 0
+          AND ISNULL([Splitted], 0) = 0
           AND (ISNULL([Step], 0) < 2 OR DateTimeOut IS NULL)
         ORDER BY TicketID ASC
         """,
