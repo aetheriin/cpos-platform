@@ -404,7 +404,7 @@ KALIMAT = {
                               f"{_kali(d['kali'])} kali rata-rata semua perusahaan ({fmt(d['umum'], 'hari')}).",
     "pr_out_basi": lambda d: (f"{_bil(d['dokumen'])} PR ({_pct(d['porsi'])}) sudah lebih dari {d['batas']} hari belum jadi PO"
                               + (f", {_bil(d['pt_n'])} di antaranya milik {d['pt']}"
-                                 + (f" yang sebagian besar dibuat {' dan '.join(d['bulan'])}" if d.get("bulan") else "") if d.get("pt") else "")
+                                 + (f" yang sebagian besar dibuat {' dan '.join(d['bulan'])}" if d.get("bulan") else "") if d.get("pt") and d["pt_n"] < d["dokumen"] else "")
                               + "."
                               + (f" Rata-rata umur {_bil(round(d['rata']))} hari terlihat tinggi karena PR lama ini, padahal separuh PR "
                                  f"outstanding umurnya di bawah {_bil(round(d['median']))} hari." if d.get("median") is not None

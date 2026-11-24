@@ -207,7 +207,7 @@ CONTOH = [
     "Apa itu PVR?",
     "PI yang belum PVR per perusahaan",
     "Lama PI jadi PVR per bulan",
-    "Gimana cara hitung aging PR?",
+    "Bagaimana cara menghitung aging PR?",
 ]
 
 # Nama yang dipakai Asisten saat ditanya "siapa namamu". Ganti di sini kalau ingin nama lain.
@@ -260,7 +260,7 @@ OBROLAN = [
      "jawab": "Aging dipakai untuk dokumen yang masih menunggu: hari dari tanggal dokumen dibuat sampai hari ini. Lama proses dipakai untuk "
               "dokumen yang sudah lanjut: hari dari tanggal dokumen dibuat sampai dokumen berikutnya dibuat, misalnya PR sampai PO pertama. "
               "Jadi PR yang belum jadi PO punya aging tapi belum punya lama proses.",
-     "saran_khusus": ["Gimana cara hitung aging PR?", "Gimana cara hitung aging PO?"]},
+     "saran_khusus": ["Bagaimana cara menghitung aging PR?", "Bagaimana cara menghitung aging PO?"]},
     {"pola": r"(data|laporan|angka)(nya)? .*(diperbarui|diupdate|update|terbaru|real ?time|kapan)|kapan (data|laporan)(nya)? .*(update|diperbarui)",
      "jawab": "Data diambil dari ERP saat laporan dibuka, lalu dipakai ulang sampai 15 menit supaya tidak memuat ulang terus. "
               "Kalau perlu angka paling baru, tekan Muat ulang data di panel periode."},
@@ -285,12 +285,12 @@ MENU = {
                          "umum": {"belum": "belum po", "sebagian": "po sebagian", "sudah": "sudah po", "ditutup": "ditutup tanpa po"},
                          "isi": "Tiap baris PR dengan status belum, sebagian, atau sudah dibuatkan PO.",
                          "saran": ["Apa yang perlu diperhatikan di menu ini?", "PR yang belum PO per perusahaan", "Daftar PR belum PO terlama", "Lama PR jadi PO per buyer",
-                                   "Jumlah PR per bulan", "PR bulan ini per kategori", "Gimana cara hitung aging PR?"]},
+                                   "Jumlah PR per bulan", "PR bulan ini per kategori", "Bagaimana cara menghitung aging PR?"]},
     "pr_po": {"sumber": "pr", "ukuran": "jumlah_pr",
               "umum": {"belum": "belum po", "sebagian": "po sebagian", "sudah": "sudah po"},
               "isi": "PR yang belum menjadi PO dan lama prosesnya. Periode dan aging memakai tanggal PR dibuat.",
               "saran": ["Apa yang perlu diperhatikan di menu ini?", "PR yang belum PO per perusahaan", "Lama PR jadi PO per bulan", "Daftar PR belum PO terlama",
-                        "Rata-rata aging PR belum PO per perusahaan", "Gimana cara hitung aging PR?"]},
+                        "Rata-rata aging PR belum PO per perusahaan", "Bagaimana cara menghitung aging PR?"]},
     "purchase_order": {"sumber": "po", "ukuran": "jumlah_po",
                        "umum": {"belum": "belum pi", "sebagian": "pi sebagian", "sudah": "sudah pi", "ditutup": "ditutup tanpa pi"},
                        "isi": "Tiap baris PO dengan status belum, sebagian, atau sudah dibuatkan PI.",
@@ -300,7 +300,7 @@ MENU = {
               "umum": {"belum": "belum pi", "sebagian": "pi sebagian", "sudah": "sudah pi"},
               "isi": "PO yang belum dibuatkan PI. Periode dan aging memakai tanggal PO dibuat; lama proses dari tanggal PO sampai PI terakhir.",
               "saran": ["Apa yang perlu diperhatikan di menu ini?", "PO yang belum PI per perusahaan", "Lama PO jadi PI per bulan", "Daftar PO belum PI terlama",
-                        "PO yang belum PI per supplier", "Gimana cara hitung aging PO?"]},
+                        "PO yang belum PI per supplier", "Bagaimana cara menghitung aging PO?"]},
     "po_amt": {"sumber": "po", "ukuran": "nilai_po", "umum": {},
                "isi": "Nilai belanja PO dalam rupiah per kategori, bulan, dan supplier.",
                "saran": ["Apa yang perlu diperhatikan di menu ini?", "Nilai PO per bulan", "Nilai PO per kategori", "10 supplier dengan nilai PO terbesar",
@@ -318,13 +318,13 @@ MENU = {
     "penilaian_pv": {"isi": "Skor kasir pembuat PV hutang per bulan, aturannya sama dengan PVR KPI dengan bobot PV.",
                      "saran": ["Apa yang perlu diperhatikan di menu ini?", "Apa itu PV?", "Lama PI sampai PV per perusahaan", "Hutang dengan PV tanggal ke depan per perusahaan"]},
     "palm_weighbridge": {"isi": "Tiket timbang sawit yang janggal, misalnya tara menyimpang dari riwayat kendaraan atau durasi tidak wajar.",
-                         "saran": ["Apa yang perlu diperhatikan di menu ini?", "Apa itu tara?", "Apa itu TBS?", "Gimana cara hitung netto?"]},
+                         "saran": ["Apa yang perlu diperhatikan di menu ini?", "Apa itu tara?", "Apa itu TBS?", "Bagaimana cara menghitung netto?"]},
     "tiket_penjualan": {"isi": "Tiket timbang produk keluar per hari, minggu, atau bulan, dengan peringkat produk, pengangkut, dan pembeli.",
-                        "saran": ["Apa yang perlu diperhatikan di menu ini?", "Apa itu tara?", "Piutang per customer", "Gimana cara hitung netto?"]},
+                        "saran": ["Apa yang perlu diperhatikan di menu ini?", "Apa itu tara?", "Piutang per customer", "Bagaimana cara menghitung netto?"]},
     "tbs_mingguan": {"isi": "Tonase TBS per business group per minggu lengkap (Senin sampai Minggu), dengan tanda naik atau turun yang tidak biasa.",
                      "saran": ["Apa yang perlu diperhatikan di menu ini?", "Apa itu TBS?", "Apa itu business group?", "Hutang per sumber"]},
     "penerimaan_tbs": {"isi": "Penerimaan TBS harian dan perkiraan 7 hari ke depan, per supplier dan kebun.",
-                       "saran": ["Apa yang perlu diperhatikan di menu ini?", "Apa itu TBS?", "Apa itu forecast?", "Gimana cara hitung netto?"]},
+                       "saran": ["Apa yang perlu diperhatikan di menu ini?", "Apa itu TBS?", "Apa itu forecast?", "Bagaimana cara menghitung netto?"]},
     "cash_flow": {"isi": "Saldo berjalan, mutasi harian, dan jasa giro per rekening. In uang masuk, out uang keluar.",
                   "saran": ["Apa yang perlu diperhatikan di menu ini?", "Apa itu jasa giro?", "Apa itu running balance?", "Hutang per perusahaan"]},
 }

@@ -18,7 +18,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from inti import cpos, ekspor, konfigurasi
-from inti.filter import FilterTidakValid
+import pandas as pd
+from inti.filter import FilterTidakValid, saring
 from inti.gudang import Gudang
 from inti.laporan import MAKS_MINGGU, TampilanRentang
 from laporan import SEMUA as LAPORAN
@@ -516,6 +517,7 @@ class PertanyaanAsisten(BaseModel):
     teks: str
     lalu: dict | None = None   # permintaan sebelumnya, untuk kalimat lanjutan
     menu: str | None = None    # id laporan yang sedang dibuka: rekomendasi dan prioritas jawaban
+    tampilan: dict | None = None   # data_id, periode, dan filter yang sedang tampil di laporan itu (dari halaman)
 
 
 class NilaiAsisten(BaseModel):
@@ -535,11 +537,23 @@ def tanya_asisten(perm: PertanyaanAsisten, user=Depends(pengguna_saat_ini)):
     laporan tidak dilepas. Data yang masih segar dari sesi lain dipakai tanpa SQL."""
     pemilik = f"{_pemilik(user)}:asisten"
     _cpos_terakhir[pemilik] = time.monotonic()
+    menu = perm.menu if perm.menu in LAPORAN else None
+    tamp = _tampilan_asisten(menu, perm.tampilan, user)   # None: pakai periode bawaan
 
     def ambil(sumber):
+        if menu in _BARIS_MENU and _BARIS_MENU[menu][0] == sumber:
+            return _baris_menu(menu, tamp, pemilik, sumber, user)
         lap = LAPORAN[asisten.kamus.SUMBER[sumber]["laporan"]]
         if lap.id not in user["laporan"]:
             raise asisten.TanpaAkses(sumber)
+        if tamp:
+            # data laporan yang sedang dibuka, atau data pendukungnya (mis. PR & PO memakai baris Purchase Request) disaring perusahaan yang sama
+            ds = tamp["ds"] if lap.id == menu else _muat_asisten(lap, pemilik, sumber, user)
+            df = ds.df
+            pt = tamp["filter"].get("perusahaan")
+            if pt and hasattr(df, "columns") and "comp" in df.columns:
+                df = df[df["comp"].astype(str).str.upper().isin([x.upper() for x in pt])]
+            return df, {"mulai": ds.mulai, "akhir": ds.akhir, "dimuat_pada": ds.dimuat_pada.isoformat(timespec="seconds")}
         p = gudang.mulai_muat(lap.id, *_periode_bawaan(lap), lap.pemuat, pemilik)
         if p.status == "gagal":
             raise HTTPException(503, f"Data laporan {lap.nama} gagal dimuat: {p.pesan}")
@@ -556,6 +570,19 @@ def tanya_asisten(perm: PertanyaanAsisten, user=Depends(pengguna_saat_ini)):
         lap = LAPORAN[laporan_id]
         if lap.id not in user["laporan"]:
             raise asisten.TanpaAkses(lap.id)
+        if tamp and lap.id == menu:
+            # sama dengan yang tampil di halaman: periode, rentang, dan filter halaman; filter dari insight (mis. transaksi) didahulukan
+            f = {**tamp["filter"], **{k: sorted(set(v)) for k, v in filt.items() if k in lap.filter_didukung and v}}
+            kunci = ("dashboard", tamp["minggu"], str(tamp["dari"]), str(tamp["sampai"]), tuple((k, tuple(v)) for k, v in sorted(f.items())))
+            hasil = tamp["ds"].hasil.get(kunci)
+            if hasil is None:
+                try:
+                    hasil = lap.bangun(tamp["lihat"], tamp["jumlah_minggu"], tamp["minggu"], f)
+                except FilterTidakValid:
+                    hasil = lap.bangun(tamp["lihat"], tamp["jumlah_minggu"], tamp["minggu"], {k: v for k, v in f.items() if k in filt})
+                if len(tamp["ds"].hasil) < 300:
+                    tamp["ds"].hasil[kunci] = hasil
+            return hasil
         p = gudang.mulai_muat(lap.id, *_periode_bawaan(lap), lap.pemuat, pemilik)
         if p.status == "gagal":
             raise HTTPException(503, f"Data laporan {lap.nama} gagal dimuat: {p.pesan}")
@@ -572,12 +599,97 @@ def tanya_asisten(perm: PertanyaanAsisten, user=Depends(pengguna_saat_ini)):
                 ds.hasil[kunci] = hasil
         return hasil
 
-    menu = perm.menu if perm.menu in LAPORAN else None
+    dasbor.lingkup = tamp["teks"] if tamp else None
     hasil = asisten.tanya(perm.teks, perm.lalu, ambil, _perusahaan_dikenal(), user["username"], (user.get("nama") or user["username"]).split()[0].title(),
                           menu, LAPORAN[menu].nama if menu else None, dasbor)
     if hasil.get("jenis") != "memuat":
         log.info("Asisten %s: %r -> %s", user["username"], perm.teks[:120], hasil.get("jenis"))
     return hasil
+
+
+def _susun_pr(df):
+    from laporan.purchase_request.sumber import susun
+    return susun(df)
+
+
+def _susun_po(df):
+    from laporan.purchase_order.sumber import susun
+    return susun(df)
+
+
+# Menu outstanding yang baris insight-nya dihitung dari datanya sendiri: (sumber asisten, kolom tanggal dokumen, dimensi filter, penyusun baris)
+_BARIS_MENU = {
+    "pr_po": ("pr", "pr_date", {"perusahaan": "comp", "kategori": "category", "buyer": "buyer", "umur": "umur"}, _susun_pr),
+    "po_pi": ("po", "cd", {"perusahaan": "comp", "kategori": "category", "pembuat": "creator", "umur": "umur"}, _susun_po),
+}
+
+
+def _baris_menu(menu, tamp, pemilik, sumber, user):
+    """Baris PR atau PO dari data menu itu sendiri (bentuknya sama dengan laporan Purchase Request / Purchase Order),
+    dengan periode, rentang tanggal, dan filter yang sedang tampil di halaman."""
+    lap = LAPORAN[menu]
+    if lap.id not in user["laporan"]:
+        raise asisten.TanpaAkses(sumber)
+    ds = tamp["ds"] if tamp else _muat_asisten(lap, pemilik, sumber, user)
+    _, kol_tgl, dimensi, susun = _BARIS_MENU[menu]
+    filt = tamp["filter"] if tamp else {}
+    dari, sampai = (tamp["dari"], tamp["sampai"]) if tamp else (None, None)
+    kunci = ("asisten_baris", str(dari), str(sampai), tuple((k, tuple(v)) for k, v in sorted(filt.items())))
+    df = ds.hasil.get(kunci)
+    if df is None:
+        mentah = ds.df
+        if "lalu" in mentah.columns:
+            mentah = mentah[~mentah["lalu"].astype(bool)]   # periode pembanding KPI tidak ikut
+        if dari and sampai:
+            t = pd.to_datetime(mentah[kol_tgl], errors="coerce")
+            mentah = mentah[(t >= pd.Timestamp(dari)) & (t < pd.Timestamp(sampai) + pd.Timedelta(days=1))]
+        mentah = saring(mentah, filt, dimensi)
+        df = susun(mentah)
+        if len(ds.hasil) < 300:
+            ds.hasil[kunci] = df
+    return df, {"mulai": ds.mulai, "akhir": ds.akhir, "dimuat_pada": ds.dimuat_pada.isoformat(timespec="seconds")}
+
+
+def _muat_asisten(lap, pemilik, sumber, user):
+    """Data laporan dengan periode bawaan untuk AkasaBot. Belum siap: Memuat."""
+    p = gudang.mulai_muat(lap.id, *_periode_bawaan(lap), lap.pemuat, pemilik)
+    if p.status == "gagal":
+        raise HTTPException(503, f"Data laporan {lap.nama} gagal dimuat: {p.pesan}")
+    ds = gudang.ambil(p.data_id) if p.status == "selesai" else None
+    if ds is None:
+        raise asisten.Memuat(sumber)
+    return _batasi_pt(ds, _pt_boleh(user, lap.id))
+
+
+def _tampilan_asisten(menu, t, user):
+    """Periode dan filter yang sedang tampil di halaman laporan `menu`, supaya AkasaBot membaca data yang sama.
+    None kalau tidak dikirim atau datanya sudah tidak ada (AkasaBot kembali memakai periode bawaan)."""
+    if not menu or not isinstance(t, dict) or not isinstance(t.get("data_id"), str) or menu not in user["laporan"]:
+        return None
+    lap = LAPORAN[menu]
+    try:
+        ds = _dataset(lap, t["data_id"][:40], user)
+        dari = date.fromisoformat(t["dari"]) if t.get("dari") else None
+        sampai = date.fromisoformat(t["sampai"]) if t.get("sampai") else None
+        jm = int(t.get("jumlah_minggu") or 5)
+        jm = min(max(jm, 1), MAKS_MINGGU)
+        minggu = t.get("minggu")
+        minggu = None if minggu is None else min(max(int(minggu), 0), MAKS_MINGGU - 1)
+        lihat, jm = _rentang(lap, ds, jm, dari, sampai)
+    except (HTTPException, ValueError, TypeError):
+        return None
+    f = {}
+    for nama, nilai in (t.get("filter") or {}).items():
+        if nama in lap.filter_didukung and isinstance(nilai, list):
+            v = sorted({str(x)[:120] for x in nilai if str(x).strip()})[:60]
+            if v:
+                f[nama] = v
+    awal, akhir = (dari, sampai) if dari and sampai else (ds.mulai, ds.akhir)
+    teks = f"Dihitung dari tampilan laporan saat ini: {_tanggal(awal)} sampai {_tanggal(akhir)}"
+    if f:
+        teks += ", filter " + "; ".join(f"{_LABEL_FILTER.get(k, k.replace('_', ' ').capitalize())} {', '.join(v[:3])}{' dan lainnya' if len(v) > 3 else ''}"
+                                       for k, v in f.items())
+    return {"ds": ds, "lihat": lihat, "dari": dari, "sampai": sampai, "jumlah_minggu": jm, "minggu": minggu, "filter": f, "teks": teks + "."}
 
 
 @app.get("/api/asisten/saran")

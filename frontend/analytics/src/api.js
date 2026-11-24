@@ -76,8 +76,19 @@ function paramFilter(dataId, filter) {
   return p
 }
 
-export const ambilDashboard = (laporanId, dataId, filter, sinyal) =>
-  ambilJson(`/api/laporan/${encodeURIComponent(laporanId)}/dashboard?${paramFilter(dataId, filter)}`, { signal: sinyal })
+// Tampilan terakhir tiap laporan (data, periode, filter), dikirim ke AkasaBot supaya jawabannya mengikuti yang sedang dilihat
+const tampilanTerakhir = {}
+function catatTampilan(laporanId, dataId, filter) {
+  const pilihan = {}
+  for (const [nama, nilai] of Object.entries(filter)) if (Array.isArray(nilai) && nilai.length) pilihan[nama] = nilai
+  tampilanTerakhir[laporanId] = {
+    data_id: dataId, filter: pilihan, jumlah_minggu: filter.jumlahMinggu ?? null, minggu: filter.minggu ?? null,
+    dari: filter.dari && filter.sampai ? filter.dari : null, sampai: filter.dari && filter.sampai ? filter.sampai : null,
+  }
+}
+
+export const ambilDashboard = (laporanId, dataId, filter, sinyal) => (catatTampilan(laporanId, dataId, filter),
+  ambilJson(`/api/laporan/${encodeURIComponent(laporanId)}/dashboard?${paramFilter(dataId, filter)}`, { signal: sinyal }))
 
 export function ambilRincian(laporanId, dataId, filter, jenis, kunci, sinyal) {
   const p = paramFilter(dataId, filter)
@@ -87,6 +98,7 @@ export function ambilRincian(laporanId, dataId, filter, jenis, kunci, sinyal) {
 }
 
 export function ambilDetail(laporanId, dataId, filter, opsi, sinyal) {
+  catatTampilan(laporanId, dataId, filter)
   const p = paramFilter(dataId, filter)
   p.set('jenis', opsi.jenis)
   if (opsi.cari) p.set('cari', opsi.cari)
@@ -138,7 +150,7 @@ export const statusServer = () => ambilJson('/api/status', { tanpa401: true })
 // Asisten (komponen/Asisten.jsx): tanya jawab data laporan. lalu = permintaan jawaban sebelumnya, untuk kalimat lanjutan.
 const kirimJson = (url, isi) =>
   ambilJson(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(isi) })
-export const tanyaAsisten = (teks, lalu, menu) => kirimJson('/api/asisten/tanya', { teks, lalu, menu })
+export const tanyaAsisten = (teks, lalu, menu) => kirimJson('/api/asisten/tanya', { teks, lalu, menu, tampilan: tampilanTerakhir[menu] ?? null })
 export const saranAsisten = (menu) => ambilJson(`/api/asisten/saran?${new URLSearchParams(menu ? { menu } : {})}`)
 export const nilaiAsisten = (id, suka) => kirimJson('/api/asisten/nilai', { id, suka })
 export const ingatAsisten = (asal, ke) => kirimJson('/api/asisten/ingat', { asal, ke })

@@ -61,7 +61,7 @@ def baca_hasil_pisah_tiket(ticket_id):
         cursor = koneksi.cursor()
         cursor.execute(
             """
-            SELECT SPDO, [Step], DateTimeOut, Pemisahanted, Void
+            SELECT SPDO, [Step], DateTimeOut, [Splitted], Void
             FROM dbo.PALM_Tickets
             WHERE TicketID = ?
             """,
@@ -96,7 +96,7 @@ def baca_hasil_pisah_tiket(ticket_id):
             "no_do1": str(induk[0] or "").strip(),
             "step": int(induk[1] or 0),
             "datetimeout": induk[2],
-            "pisahted": bool(induk[3]),
+            "splitted": bool(induk[3]),
             "void": bool(induk[4]),
             "anak": anak,
         }

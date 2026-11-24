@@ -201,6 +201,6 @@ html[data-sematan] main { padding-bottom: 4.5rem; }
 /* Pita kepala tetap biru tua di mode gelap (warna identitas), hanya lebih gelap supaya tidak menyala di latar gelap */
 [data-tema="gelap"] .akasa-pita { background-color: #0b3a57; }
 
-/* Saat tata letak berubah, grafik sesaat masih selebar ukuran lamanya sebelum ResponsiveContainer mengukur ulang. Luapan dipotong supaya halaman
-   tidak melebar dan panel tepi (Filter, AkasaBot) tidak meloncat. */
-.recharts-responsive-container { overflow: clip; }
+/* Saat tata letak berubah, grafik sesaat masih selebar ukuran lamanya. Luapan dipotong di tepi halaman, bukan di grafik,
+   supaya label grafik tetap utuh dan halaman tidak bisa digeser ke samping. clip (bukan hidden) supaya elemen lekat tetap jalan. */
+main { overflow-x: clip; }
